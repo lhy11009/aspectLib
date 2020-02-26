@@ -52,7 +52,7 @@ def ParseFromDealiiInput(fin):
     line = fin.readline()
     while line is not "":
         # Skip comment lines, mark by '#' in file
-        if re.match('^ *#', line):
+        if re.match('^(\t| )*#', line):
             pass
         # Set key and value, marked by 'set' in file
         elif re.match('^.*set', line):
