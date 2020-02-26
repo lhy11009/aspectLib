@@ -45,7 +45,6 @@ def Parse(ifile, ofile):
     todo
     """
     assert(os.access(ifile, os.R_OK))
-    assert(os.access(ofile, os.W_OK))
     # todo
     with open(ifile, 'r') as fin:
         inputs = _Parse.ParseFromDealiiInput(fin)
