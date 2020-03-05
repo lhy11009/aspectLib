@@ -56,7 +56,7 @@ def ParseFromDealiiInput(fin):
             pass
         # Set key and value, marked by 'set' in file
         elif re.match('^.*set', line):
-            temp = re.sub('^.*set ', '', line)
+            temp = re.sub('^(\t| )*set ', '', line, count=1)
             temp = temp.split('=', maxsplit=1)
             key = temp[0]
             key = key.strip(' ')
