@@ -4,48 +4,18 @@ import os
 import json
 import re
 from matplotlib import pyplot as plt
-
+from importlib_resources import files
+import shilofue.data
 
 jsonDir = 'json'  # json files folder
 
 
-################################################################################
-# Check OS status of file, end program if failed
-def OS_Check(filename, status):
-    if status is 'r':
-        if not os.access(filename, os.R_OK):
-            print("Read access not permitted on %s" % filename)
-            sys.exit(1)
-    elif status is 'w':
-        if not os.access(filename, os.W_OK):
-            print("Write access not permitted on %s" % filename)
-            sys.exit(1)
-    elif status is 'a':
-        if not os.access(filename, os.W_OK):
-            print("Write at the end of the file access not permitted on %s" % filename)
-            sys.exit(1)
-    elif status is 'f':
-        if not os.access(filename, os.F_OK):
-            print("File not Found on %s" % filename)
-            sys.exit(1)
-    else:
-        print("Wrong input for parameter 'status'(second) in Function OS_Check")
-        sys.exit(1)
-
-
-################################################################################
-# Read variable value and assign default if not found ##########
-def Config(_kwargs, _name, _default):
-    try:
-        value = _kwargs[_name]
-    except KeyError:
-        value = _default
-    return value
-
-
-################################################################################
-# Dump configure in json
 def JsonDump(_dict, _name):
+    '''
+    JsonDump(_dict, _name):
+    Dump configure in json
+
+    '''
     if not os.path.isdir(jsonDir):
         os.mkdir(jsonDir)
     filename = os.path.join(jsonDir, "%s.json" % _name)
@@ -53,19 +23,28 @@ def JsonDump(_dict, _name):
         json.dump(_dict, fout)
 
 
-################################################################################
-# Read configuration from json
 def JsonRead(_filename):
+    '''
+    JsonRead(_filename):
+    Read configuration from json
+
+    '''
     filename = os.path.join(jsonDir, _filename)
-    OS_Check(filename, 'r')
+    assert(os.access(filename, os.R_OK))
+    # source = files(shilofue.data).joinpath(_filename)
+    # with as_file(source) as f_json:
+        # data = json.load(f_json)
     fin = open(filename, 'r')
     data = json.load(fin)
     return data
 
 
-################################################################################
-# Format options
 def PlotOptions(prefix):
+    '''
+    PlotOptions(prefix):
+    Format options
+
+    '''
     Options = {}
     for dirname, dirnames, filenames in os.walk(jsonDir):
         for filename in filenames:
@@ -76,11 +55,19 @@ def PlotOptions(prefix):
     return Options
 
 
-################################################################################
-# class for unit convert
 class UNITCONVERT():
-    # Error type
+    '''
+    UNITCONVERT():
+    class for unit convert
+
+    '''
+
     class OptionNotValid(Exception):
+        '''
+        OptionNotValid(Exception)
+        Error type
+
+        '''
         pass
 
     def __init__(self, filename):
@@ -95,16 +82,22 @@ class UNITCONVERT():
                              change option")
 
 
-################################################################################
-# class for statistic data
 class STATISTICS():
+    '''
+    STATISTICS():
+    class for statistic data
+
+    '''
+
     def __init__(self):
         self.Options = PlotOptions('Statistics')
 
-    # Read header information
     def ReadSTSHead(self, filename):
+        '''
+        Read header information
+        '''
         self.header = {}
-        OS_Check(filename, 'r')
+        assert(os.access(filename, os.R_OK))
         fin = open(filename, 'r')
         for line in fin:
             # derive column, unit and key from header
@@ -130,18 +123,27 @@ class STATISTICS():
             option['unit'] = unit
             self.header[key] = option
 
-    # Read statistic from file ##########
     def ReadSTS(self, filename):
+        '''
+        ReadSTS(self, filename):
+        Read statistic from file
+        '''
         # This file starts with lines of comment
-        OS_Check(filename, 'r')
+        assert(os.access(filename, os.R_OK))
         self.data = np.genfromtxt(filename, comments='#')
 
-    # Plot statistic from data ##########
     def PlotSTS(self, fig, ax, _opt):
+        '''
+        PlotSTS(self, fig, ax, _opt):
+        Plot statistic from data
+        '''
         # xname and yname are from json file, then column is determined
         # by header information ####
-        xname = Config(_opt, 'xname', 'Time')
-        yname = Config(_opt, 'yname', 'Number_of_mesh_cells')
+        xname = _opt.get('xname', 'Time')
+        yname = _opt.get('yname', 'Number_of_mesh_cells')
+        color = _opt.get('color', 'r')
+        Label = _opt.get('label', 'default')
+        Line = _opt.get('line', '-')
         print("xname:", xname)
         print("yname:", yname)  # debug
         colx = self.header[xname]['col']
@@ -150,9 +152,6 @@ class STATISTICS():
         unity = self.header[yname]['unit']
         x = self.data[:, colx]
         y = self.data[:, coly]
-        color = Config(_opt, 'color', 'r')
-        Label = Config(_opt, 'label', 'default')
-        Line = Config(_opt, 'line', '-')
         ax.plot(x, y, '%s%s' % (Line, color), label=Label)
         # construct label from xname and yname ####
         if unitx is not None:
@@ -167,9 +166,11 @@ class STATISTICS():
         ax.legend()
         fig.tight_layout()
 
-    # Plot statistic from data ##########
     def PlotSTSCombine(self, **kwargs):
-        canvas = Config(kwargs, 'canvas', np.array([1, 1]))
+        '''
+        Plot statistic from data
+        '''
+        canvas = kwargs.get('canvas', np.array([1, 1]))
         ptype = kwargs['ptype']
         print("ptype: ", ptype)  # debug
         fig, axs = plt.subplots(canvas[0], canvas[1])
@@ -185,9 +186,11 @@ class STATISTICS():
         plt.close(fig)
         return filename
 
-    # Read and plot
     def __call__(self, filename, **kwargs):
-        canvas = Config(kwargs, 'canvas', np.array([1, 1]))
+        '''
+        Read and plot
+        '''
+        canvas = kwargs.get('canvas', np.array([1, 1]))
         ptype = kwargs['ptype']
         self.ReadSTSHead(filename)
         self.ReadSTS(filename)
