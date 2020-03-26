@@ -8,7 +8,7 @@
 set Dimension                              = 2
 set Use years in output instead of seconds = true
 set Start time                             = 0
-set End time                               = 40.0e6 # 40 million years
+set End time                               = 3.0e6 # 3 million years
 set Output directory                       = output
 set Additional shared libraries = /home/lochy/ASPECT_PROJECT/aspect_plugins/subduction_temperature2d/libsubduction_temperature2d.so, /home/lochy/ASPECT_PROJECT/aspect_plugins/prescribe_field/libprescribed_temperature.so
 #set Resume computation 			   = false # set to true to restart from checkpoint
@@ -27,8 +27,7 @@ set Nonlinear solver scheme                = single Advection, single Stokes
 
 # terminate when reach certain time step, for debugging use
 subsection Termination criteria
-  set Termination criteria = end step
-  set End step = 1
+  set Termination criteria = end time
 end
 
 # Default values are 1e-12,1e-12 and 1e-7
@@ -297,7 +296,7 @@ end
 # Depth average, Number of Zones are zones divided vertically to get average, 10 is default
 #                Time between graphical output = 0 means output at every step
 subsection Postprocess
-  set List of postprocessors = visualization, velocity statistics, temperature statistics, depth average
+  set List of postprocessors = visualization, basic statistics, global statistics, velocity statistics, temperature statistics, composition statistics, depth average
 
   subsection Depth average
     set Number of zones = 50    
