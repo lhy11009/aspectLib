@@ -16,4 +16,5 @@ def test_plot_case_info():
     ptype = statistics_conf['ptype']
     Statistics = Plot.STATISTICS()
     Statistics(test_file, ptype=ptype, canvas=canvas)
+    print(os.path.isfile('Statistics.pdf'))
     assert(os.path.isfile('Statistics.pdf'))

@@ -4,7 +4,7 @@ import os
 import json
 import re
 from matplotlib import pyplot as plt
-from importlib_resources import files
+from importlib import resources
 import shilofue.data
 
 jsonDir = 'json'  # json files folder
@@ -29,13 +29,8 @@ def JsonRead(_filename):
     Read configuration from json
 
     '''
-    filename = os.path.join(jsonDir, _filename)
-    assert(os.access(filename, os.R_OK))
-    # source = files(shilofue.data).joinpath(_filename)
-    # with as_file(source) as f_json:
-        # data = json.load(f_json)
-    fin = open(filename, 'r')
-    data = json.load(fin)
+    with resources.open_text(shilofue.data, _filename) as fin:
+        data = json.load(fin)
     return data
 
 
