@@ -3,7 +3,13 @@ import numpy as np
 from shilofue import Plot
 
 
-def test_plot_case_info():
+def test_plot_statistics():
+    '''
+    A test on ploting statistics results
+    '''
+    if(os.path.isfile('Statistics.pdf')):
+        # remove previous files
+        os.remove('Statistics.pdf')
     # test_file = 'fixtures/parse_test.prm'
     test_file = os.path.join(os.path.dirname(__file__), 'fixtures', 'statistics')
     assert(os.access(test_file, os.R_OK))
@@ -16,5 +22,5 @@ def test_plot_case_info():
     ptype = statistics_conf['ptype']
     Statistics = Plot.STATISTICS()
     Statistics(test_file, ptype=ptype, canvas=canvas)
-    print(os.path.isfile('Statistics.pdf'))
-    assert(os.path.isfile('Statistics.pdf'))
+    assert(os.path.isfile('Statistics.pdf'))  # assert that the file is generated successfully
+    # os.remove('Statistics.pdf')  # remove this file after finished

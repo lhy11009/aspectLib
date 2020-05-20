@@ -97,6 +97,7 @@ class STATISTICS():
         for line in fin:
             # derive column, unit and key from header
             if re.match("^#", line) is None:
+                # only look at the first few lines starting with "#"
                 break
             line = re.sub("^# ", '', line)
             match_obj = re.match("[0-9]*", line)
@@ -113,10 +114,10 @@ class STATISTICS():
             key = re.sub(" ", "_", line)
             # save information as key, options
             # options include col and unit ####
-            option = {}
-            option['col'] = col
-            option['unit'] = unit
-            self.header[key] = option
+            info = {}
+            info['col'] = col
+            info['unit'] = unit
+            self.header[key] = info
 
     def ReadSTS(self, filename):
         '''
@@ -150,11 +151,11 @@ class STATISTICS():
         ax.plot(x, y, '%s%s' % (Line, color), label=Label)
         # construct label from xname and yname ####
         if unitx is not None:
-            xLabel = re.sub("_", " ", xname) + ' [' + unitx + ']'
+            xLabel = re.sub("_", " ", xname) + ' (' + unitx + ')'
         else:
             xLabel = re.sub("_", " ", xname)
         if unity is not None:
-            yLabel = re.sub("_", " ", yname) + ' [' + unity + ']'
+            yLabel = re.sub("_", " ", yname) + ' (' + unity + ')'
         else:
             yLabel = re.sub("_", " ", yname)
         ax.set(xlabel=xLabel, ylabel=yLabel)
@@ -166,7 +167,7 @@ class STATISTICS():
         Plot statistic from data
         '''
         canvas = kwargs.get('canvas', np.array([1, 1]))
-        ptype = kwargs['ptype']
+        ptype = kwargs['ptype']  # types()
         print("ptype: ", ptype)  # debug
         fig, axs = plt.subplots(canvas[0], canvas[1])
         for i in range(len(ptype)):
