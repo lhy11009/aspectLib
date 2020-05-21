@@ -34,7 +34,10 @@ class STATISTICS():
             # default is to read from 'Statistics.json' in shilofue.json
             with resources.open_text(shilofue.json, 'Statistics.json') as fin:
                 _configs = json.load(fin)
-        self.header = ReadHeader(_filename)
+        assert(os.access(_filename, os.R_OK))
+        with open(_filename, 'r') as fin:
+            _texts = fin.readlines()  # read the text of the file header
+        self.header = ReadHeader(_texts)  # inteprate header information
         self.ReadSTS(_filename)
         # fileout = self.PlotSTSCombine(names=ptype, canvas=canvas)
         _fileout = self.PlotSTSCombine(_configs)
