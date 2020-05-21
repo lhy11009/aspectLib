@@ -1,0 +1,7 @@
+{
+    "canvas": [1, 2],
+    "types": [
+        "RMS_Velocity",
+        "Number_of_Cells"
+    ]
+}
