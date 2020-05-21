@@ -1,71 +1,13 @@
-import numpy as np
 import sys
 import os
 import json
 import re
-from matplotlib import pyplot as plt
-from importlib import resources
 import shilofue.json
-
-def PlotOptions(prefix):
-    '''
-    PlotOptions(prefix) 
-    Read format options for plotting from json files
-    Args:
-        prefix(string):
-            a prefix for options, all json files with this prefix will be imported
-    Returns:
-        options(dict):
-            a dictionary for options. Every match with the prefix will generate a 
-            key in this dictionary, while the value is read from a json file.
-            For example, if the prefix is 'Statistics' and one json file is
-            'Statistics_Number_of_Cells.json', then there will be a key called
-            'Number_of_Cells' in this dictionary.
-    '''
-    _options = {}  # options is a dictionary
-    for _filename in resources.contents(shilofue.json):
-        # this resources.contents return a interable from a sub-package,
-        # entries in this interable are filenames
-        if re.match("^" + prefix + '_', _filename):
-            # the following two lines eliminate the words before the first '_'
-            # with that '_' as well as the '.json' in the end.
-            # so that if filename is 'Statistics_Number_of_Cells.json',
-            # _name is 'Number_of_Cells'
-            _name = re.sub("^.*?_", '', _filename) # when 
-            _name = re.sub(r".json", '', _name)
-            with resources.open_text(shilofue.json, _filename) as fin:
-                _options[_name] = json.load(fin)  # values are entries in this file
-    assert(_options is not {})  # assert not vacant
-    return _options
-
-
-class UNITCONVERT():
-    '''
-    UNITCONVERT():
-    class for unit convert
-
-    '''
-
-    class OptionNotValid(Exception):
-        '''
-        OptionNotValid(Exception)
-        Error type
-
-        '''
-        pass
-
-    def __init__(self, _filename):
-        with resources.open_text(shilofue.json, _filename) as fin:
-            _data = json.load(fin)
-        self.Converts = _data['Converts']
-
-    def __call__(self, _units):
-        for option in self.Converts:
-            if _units == option["units"]:
-                return option["factor"]
-        raise self.OptionNotValid("Error when getting the correct unit\
-                             change option")
-
+import numpy as np
+from importlib import resources
+from shilofue.Utilities import JsonOptions
+from shilofue.Utilities import ReadHeader
+from matplotlib import pyplot as plt
 
 class STATISTICS():
     '''
@@ -75,7 +17,7 @@ class STATISTICS():
     '''
 
     def __init__(self):
-        self.options = PlotOptions('Statistics')
+        self.options = JsonOptions('Statistics')
     
     def __call__(self, _filename, **kwargs):
         '''
@@ -92,43 +34,12 @@ class STATISTICS():
             # default is to read from 'Statistics.json' in shilofue.json
             with resources.open_text(shilofue.json, 'Statistics.json') as fin:
                 _configs = json.load(fin)
-        self.ReadSTSHead(_filename)
+        self.header = ReadHeader(_filename)
         self.ReadSTS(_filename)
         # fileout = self.PlotSTSCombine(names=ptype, canvas=canvas)
         _fileout = self.PlotSTSCombine(_configs)
         return _fileout
 
-    def ReadSTSHead(self, filename):
-        '''
-        Read header information
-        '''
-        self.header = {}
-        assert(os.access(filename, os.R_OK))
-        fin = open(filename, 'r')
-        for line in fin:
-            # derive column, unit and key from header
-            if re.match("^#", line) is None:
-                # only look at the first few lines starting with "#"
-                break
-            line = re.sub("^# ", '', line)
-            match_obj = re.match("[0-9]*", line)
-            col = int(match_obj[0]) - 1
-            line = re.sub("^.*?: ", '', line)
-            match_obj = re.search("[(].*[)]", line)
-            if match_obj:
-                unit = match_obj.group(0)
-                unit = unit[1: -1]
-            else:
-                unit = None
-            line = re.sub(" [(].*[)]", '', line)
-            line = line.strip("\n")
-            key = re.sub(" ", "_", line)
-            # save information as key, options
-            # options include col and unit ####
-            info = {}
-            info['col'] = col
-            info['unit'] = unit
-            self.header[key] = info
 
     def ReadSTS(self, filename):
         '''
