@@ -17,7 +17,7 @@ def test_plot_statistics():
     # Init the UnitConvert class
     UnitConvert = UNITCONVERT()
     # plot statistics ouput #####
-    Statistics = Plot.LINEARPLOT('Statistics', unit_convert=UnitConvert)
+    Statistics = Plot.STATISTICS_PLOT('Statistics', unit_convert=UnitConvert)
     Statistics(test_file, fileout='./Statistics.pdf')
     assert(os.path.isfile('Statistics.pdf'))  # assert that the file is generated successfully
     # os.remove('Statistics.pdf')  # remove this file after finished
@@ -37,5 +37,9 @@ def test_plot_depth_average():
     # plot statistics ouput #####
     DepthAverage = Plot.DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert)
     DepthAverage(test_file, fileout='./DepthAverage.pdf')
+    assert(DepthAverage.time_step_length == 50)
+    assert(DepthAverage.time_step_indexes[-1][-1] == 376)
+    assert(abs(DepthAverage.time_step_times[0]-0.0)<1e-6)
+    assert(abs(DepthAverage.time_step_times[-1]-2.63571e+06)/2.63571e+06 < 1e-6)
     assert(os.path.isfile('DepthAverage.pdf'))  # assert that the file is generated successfully
     # os.remove('Statistics.pdf')  # remove this file after finished

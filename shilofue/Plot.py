@@ -17,7 +17,7 @@ class LINEARPLOT():
 
     '''
 
-    def __init__(self, _name, **kwargs):
+    def init(self, _name, kwargs):
         '''
         _name(str):
             name of the plotting
@@ -25,46 +25,66 @@ class LINEARPLOT():
             unit_convert(fun):
                 a unit_convert function, default is None
         '''
+        self.name = _name
         self.options = JsonOptions(_name)
         self.UnitConvert = kwargs.get('unit_convert', None)
         self.dim = kwargs.get('dim', 2)  # dimension
         assert(self.dim in [1, 2, 3])  # dimension must be 1, 2, 3
-    
-    def __call__(self, _filename, **kwargs):
-        '''
-        Read and plot
-        Attributes:
-            _filename(string):
-                filename for data file
-        Returns:
-            _fileout(string):
-                filename for output figure
-        '''
-        # canvas = kwargs.get('canvas', np.array([1, 1]))
-        # ptype = kwargs['ptype']
         # Read plot options from a json file
         _jsonfile = kwargs.get('json', None)
-        _fileout = kwargs.get('fileout', _filename + '.pdf')
         if _jsonfile is not None:
             with open(_jsonfile, 'r') as fin:
-                _configs = json.load(fin)
+                self.configs = json.load(fin)
         else:
-            # default is to read from 'Statistics.json' in shilofue.json
-            with resources.open_text(shilofue.json, 'Statistics.json') as fin:
-                _configs = json.load(fin)
+            # default is to read from '.json' in shilofue.json
+            with resources.open_text(shilofue.json, self.name + '.json') as fin:
+                self.configs = json.load(fin)
+    
+    def __call__(self):
+        '''
+        todo
+        '''
+        pass
+
+    def ReadHeader(self, _filename):
+        '''
+        Read header information from file.
+        An example of string is:
+        '# 1: Time (years)'
+        Args:
+            _filename(str):
+                filename for data file
+        '''
         assert(os.access(_filename, os.R_OK))
         with open(_filename, 'r') as fin:
             _texts = fin.readlines()  # read the text of the file header
-        self.header = ReadHeader(_texts)  # inteprate header information
+        self.header = ReadHeader(_texts)
+
+    def ReadData(self, _filename):
+        '''
+        Read Data
+        Attributes:
+            _filename(string):
+                filename for data file
+        '''
         assert(os.access(_filename, os.R_OK))  # read in data
         self.data = np.genfromtxt(_filename, comments='#')
+
+    def ManageData(self):
+        '''
+        manage data, get new data for this class
+        for the base class, this method simply takes the combination
+        of self.data
+        Returns:
+            _data_list(list):
+                list of data for ploting
+        '''
         _data_list = []
         for i in range(self.data.shape[1]):
             _data_list.append(self.data[:, i])
-        _fileout = self.PlotCombine(_data_list, _fileout, _configs)
-        return _fileout
-
-    def PlotCombine(self, _data_list, _fileout, _configs):
+        return _data_list
+    
+    def PlotCombine(self, _data_list, _fileout):
         '''
         Combine all plottings
         Arguments:
@@ -88,12 +108,12 @@ class LINEARPLOT():
         '''
         # plot configuration
         assert(type(_data_list) is list)
-        _canvas = _configs.get('canvas', [1, 1])
+        _canvas = self.configs.get('canvas', [1, 1])
         assert(type(_canvas) is list and len(_canvas) == 2)
-        _types = _configs['types']  # types of plotting
+        _types = self.configs['types']  # types of plotting
         assert(type(_types) is list and
             _canvas[0] * _canvas[1] == len(_types))  # size of canvas match size of _types
-        _size = _configs.get('size', (12, 12))  # size of the plot
+        _size = self.configs.get('size', (12, 12))  # size of the plot
         # plot
         fig, axs = plt.subplots(_canvas[0], _canvas[1], figsize=_size)
         for i in range(len(_types)):
@@ -201,25 +221,23 @@ class LINEARPLOT():
         _ax.legend()
 
 
-class DEPTH_AVERAGE_PLOT(LINEARPLOT):
+class STATISTICS_PLOT(LINEARPLOT):
     '''
     Class for plotting depth average file.
-    This is inheritage of the LINEARPLOT class
+    This is an inheritage of the LINEARPLOT class
 
     Attributes:
         todo
     Args:
-        __init__():
-            initiation
         todo
     '''
-
+    def __init__(self, _name, **kwargs):
+        self.init(_name, kwargs)  # call init from base function
+    
     def __call__(self, _filename, **kwargs):
         '''
-        call function of this class
         Read and plot
-
-        Args:
+        Attributes:
             _filename(string):
                 filename for data file
         Returns:
@@ -227,26 +245,93 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
                 filename for output figure
         '''
         _fileout = kwargs.get('fileout', _filename + '.pdf')
-        _jsonfile = kwargs.get('json', None)
-        if _jsonfile is not None:
-            with open(_jsonfile, 'r') as fin:
-                _configs = json.load(fin)
-        else:
-            # default is to read from 'DepthAverage.json' in shilofue.json
-            with resources.open_text(shilofue.json, 'DepthAverage.json') as fin:
-                _configs = json.load(fin)
+        self.ReadHeader(_filename)  # inteprate header information
+        self.ReadData(_filename)  # read data
+        _data_list = self.ManageData()  # manage output data
+        _fileout = self.PlotCombine(_data_list, _fileout)
+        return _fileout
+
+
+class DEPTH_AVERAGE_PLOT(LINEARPLOT):
+    '''
+    Class for plotting depth average file.
+    This is an inheritage of the LINEARPLOT class
+
+    Attributes:
+        todo
+    Args:
+        todo
+    '''
+    def __init__(self, _name, **kwargs):
+        self.init(_name, kwargs)  # call init from base function
+        self.time_step_times = []  # time step information
+        self.time_step_indexes = []
+        self.time_step_length = None
+
+    def __call__(self, _filename, **kwargs):
+        '''
+        Read and plot
+        Attributes:
+            _filename(string):
+                filename for data file
+        Returns:
+            _fileout(string):
+                filename for output figure
+        '''
+        _fileout = kwargs.get('fileout', _filename + '.pdf')
+        _time = kwargs.get('time', 'last')  # default is 'last' which means the last step
+        self.ReadHeader(_filename)  # inteprate header information
+        self.ReadData(_filename)  # read data
+        self.SplitTimeStep()  # split time step data
+        _data_list = self.ManageData()  # manage output data
+        self.ManageUnits()  # mange unit to output
+        _fileout = self.PlotCombine(_data_list, _fileout)
+        return _fileout
+
+    def ReadHeader(self, _filename):
+        '''
+        Read header information from file.
+        overload base function, use ReadHeader2
+        function in utilities.py
+        Args:
+            _filename(str):
+                filename for data file
+        '''
         assert(os.access(_filename, os.R_OK))
         with open(_filename, 'r') as fin:
             _texts = fin.readlines()  # read the text of the file header
-        self.header = ReadHeader2(_texts)  # inteprate header information
-        assert(os.access(_filename, os.R_OK))  # read in data
-        self.data = np.genfromtxt(_filename, comments='#')
-        _data_list = self.manage_data()
-        self.manage_units()
-        _fileout = self.PlotCombine(_data_list, _fileout, _configs)
-        return _fileout
+        self.header = ReadHeader2(_texts)
+
+    def SplitTimeStep(self):
+        '''
+        split time steps, since the data is a big chunck
+        '''
+        self.time_step_times = []  # initialize
+        self.time_step_indexes = []
+        _col_time = self.header['time']['col']
+        _col_depth = self.header['depth']['col']
+        _times = self.data[:, _col_time]
+        _depths = self.data[:, _col_depth]
+        # get the lenght of a single time step
+        for i in range(1, _depths.size):
+            if _depths[i] < _depths[i-1]:
+                break
+        self.time_step_length = i
+        # make a ndarray of different value of time
+        _step_times = [_times[_idx] for _idx in range(0, _times.size, self.time_step_length)]
+        i = 0  # first sub list for first step
+        self.time_step_times.append(_step_times[0])
+        self.time_step_indexes.append([0])
+        # loop to group data at the same step
+        for j in range(1, len(_step_times)):
+            _time = _step_times[j]
+            if abs(_time - _step_times[j-1]) > 1e-16:
+                self.time_step_indexes.append([])
+                self.time_step_times.append(_time)
+                i += 1
+            self.time_step_indexes[i].append(j)
     
-    def manage_data(self):
+    def ManageData(self):
         '''
         manage data, get new data for this class
         Returns:
@@ -267,7 +352,7 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
         self.header['total_col'] += 1
         return _data_list
     
-    def manage_units(self):
+    def ManageUnits(self):
         '''
         manage units, get units for data.
         This is due to the bad form of the header of this file
