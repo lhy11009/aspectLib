@@ -1,0 +1,10 @@
+{
+    "name": "super_adiabatic_temperature",
+    "xname": "super_adiabatic_temperature",
+    "yname": "depth",
+    "yunit": "km",
+    "invert_y": 1,
+    "color": "c",
+    "line": ".",
+    "label": "Super Adiabatic Temperature"
+}

@@ -2,6 +2,7 @@ import json
 import re
 import os
 import shilofue.json
+import numpy as np
 from importlib import resources
 
 
@@ -52,6 +53,7 @@ def ReadHeader(_texts):
                     unit of this variable
     '''
     _header = {}
+    _header['total_col'] = 0  # total columes in file
     for _line in _texts:
         # derive column, unit and key from header
         if re.match("^#", _line) is None:
@@ -78,10 +80,40 @@ def ReadHeader(_texts):
         # options include col and unit
         _info = {}
         _info['col'] = _col
+        _header['total_col'] = max(_header['total_col'], _col+1)
         _info['unit'] = _unit
         _header[_key] = _info
     return _header
 
+def ReadHeader2(_texts):
+    '''
+    Read header information from file.
+    An example of string is:
+    '# Time Depth Viscosity Temperature'
+    Args:
+        _texts(list<string>): a list of string, each is a line of header, for
+        this method, there should be only one line
+    Returns:
+        _header(dict): header information
+            key(dict): infomation under this key:
+                'col':
+                    column in file
+                'unit':
+                    unit of this variable
+    '''
+    _header = {}
+    _header['total_col'] = 0  # total columes in file
+    # derive column, unit and key from header
+    _line = _texts[0]
+    _line = re.sub("^# ", '', _line)  # eliminate '#' in front
+    _line_segments = re.split('( |\t|\n)+', _line)  # split by words
+    for _key in _line_segments:
+        if _key not in ['', ' ', '\t', '\n']:
+            _header[_key] = {} # initial dictionary for this key
+            _header[_key]['col'] = _header['total_col']  # assign column number
+            _header[_key]['unit'] = None
+            _header['total_col'] += 1
+    return _header
 
 class UNITCONVERT():
     '''

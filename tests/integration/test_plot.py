@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from shilofue import Plot
+from shilofue.Utilities import UNITCONVERT
 
 
 def test_plot_statistics():
@@ -13,8 +14,28 @@ def test_plot_statistics():
     # test_file = 'fixtures/statistics'
     test_file = os.path.join(os.path.dirname(__file__), 'fixtures', 'statistics')
     assert(os.access(test_file, os.R_OK))
+    # Init the UnitConvert class
+    UnitConvert = UNITCONVERT()
     # plot statistics ouput #####
-    Statistics = Plot.STATISTICS()
-    Statistics(test_file)
+    Statistics = Plot.LINEARPLOT('Statistics', unit_convert=UnitConvert)
+    Statistics(test_file, fileout='./Statistics.pdf')
     assert(os.path.isfile('Statistics.pdf'))  # assert that the file is generated successfully
+    # os.remove('Statistics.pdf')  # remove this file after finished
+
+def test_plot_depth_average():
+    '''
+    A test on ploting depth average results
+    '''
+    if(os.path.isfile('DepthAverage.pdf')):
+        # remove previous files
+        os.remove('DepthAverage.pdf')
+    # test_file = 'fixtures/statistics'
+    test_file = os.path.join(os.path.dirname(__file__), 'fixtures', 'depth_average.txt')
+    assert(os.access(test_file, os.R_OK))
+    # Init the UnitConvert class
+    UnitConvert = UNITCONVERT()
+    # plot statistics ouput #####
+    DepthAverage = Plot.DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert)
+    DepthAverage(test_file, fileout='./DepthAverage.pdf')
+    assert(os.path.isfile('DepthAverage.pdf'))  # assert that the file is generated successfully
     # os.remove('Statistics.pdf')  # remove this file after finished
