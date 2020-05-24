@@ -1,10 +1,11 @@
 {
     "name": "temperature",
     "xname": "temperature",
+    "xunit": "K",
     "yname": "depth",
     "yunit": "km",
     "invert_y": 1,
     "color": "r",
-    "line": ".",
+    "line": ".-",
     "label": "Temperature"
 }

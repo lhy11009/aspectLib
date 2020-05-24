@@ -5,6 +5,6 @@
     "yunit": "km",
     "invert_y": 1,
     "color": "purple",
-    "line": ".",
+    "line": ".-",
     "label": "Vertical Heat Flux"
 }

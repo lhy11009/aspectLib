@@ -84,7 +84,7 @@ class LINEARPLOT():
             _data_list.append(self.data[:, i])
         return _data_list
     
-    def PlotCombine(self, _data_list, _fileout):
+    def PlotCombine(self, _data_list, _fileout, **kwargs):
         '''
         Combine all plottings
         Arguments:
@@ -99,6 +99,9 @@ class LINEARPLOT():
                 types(list):
                     types of ploting, should have the 
                     same size with canvas
+            **kwargs:
+                title(str):
+                    title of the ploting
         Returns:
             _filename(string):
                 name of the plotting created
@@ -114,6 +117,7 @@ class LINEARPLOT():
         assert(type(_types) is list and
             _canvas[0] * _canvas[1] == len(_types))  # size of canvas match size of _types
         _size = self.configs.get('size', (12, 12))  # size of the plot
+        _title = kwargs.get('title', None)  # get title
         # plot
         fig, axs = plt.subplots(_canvas[0], _canvas[1], figsize=_size)
         for i in range(len(_types)):
@@ -275,18 +279,39 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
             _filename(string):
                 filename for data file
         Returns:
-            _fileout(string):
+            _fileout(string or list):
                 filename for output figure
         '''
         _fileout = kwargs.get('fileout', _filename + '.pdf')
         _time = kwargs.get('time', 'last')  # default is 'last' which means the last step
         self.ReadHeader(_filename)  # inteprate header information
         self.ReadData(_filename)  # read data
-        self.SplitTimeStep()  # split time step data
-        _data_list = self.ManageData()  # manage output data
         self.ManageUnits()  # mange unit to output
-        _fileout = self.PlotCombine(_data_list, _fileout)
-        return _fileout
+        self.SplitTimeStep()  # split time step data
+        # work out the name of output files
+        _fname_base = _fileout.rpartition('.')[0]
+        _fname_type = _fileout.rpartition('.')[2]
+        _fname_list = []  # initialize a list for return
+        if type(_time) in [float, int]:
+            _time_list = [_time]
+        elif type(_time) in [list, np.ndarray]:
+            _time_list = _time
+        else:
+            raise TypeError('type of time needs to be in [float, int, list, np.ndarrayy]')
+        for _t in _time_list:
+            if type(_t) not in [float, int]:
+                raise TypeError('type of values in time needs to be in [float, int, list, np.ndarrayy]')
+            _data_list = self.ManageData(_t)  # manage output data
+            _t_in_myr = _t * self.UnitConvert(self.header['time']['unit'], 'myr')
+            _fname = "%s_t%.8e.%s" % (_fname_base, _t_in_myr, _fname_type)
+            _figure_title = "Detph Average, t = %.10f myr" % _t_in_myr
+            _fname = self.PlotCombine(_data_list, _fname, title=_figure_title)
+            _fname_list.append(_fname)
+        if len(_fname_list) == 0:
+            # if there is only one name, just return this name
+            return _fname_list[0]
+        else:
+            return _fname_list
 
     def ReadHeader(self, _filename):
         '''
@@ -306,8 +331,8 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
         '''
         split time steps, since the data is a big chunck
         '''
-        self.time_step_times = []  # initialize
-        self.time_step_indexes = []
+        _time_step_times = []  # initialize
+        _time_step_indexes = []
         _col_time = self.header['time']['col']
         _col_depth = self.header['depth']['col']
         _times = self.data[:, _col_time]
@@ -320,35 +345,42 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
         # make a ndarray of different value of time
         _step_times = [_times[_idx] for _idx in range(0, _times.size, self.time_step_length)]
         i = 0  # first sub list for first step
-        self.time_step_times.append(_step_times[0])
-        self.time_step_indexes.append([0])
+        _time_step_times.append(_step_times[0])
+        _time_step_indexes.append([0])
         # loop to group data at the same step
         for j in range(1, len(_step_times)):
             _time = _step_times[j]
             if abs(_time - _step_times[j-1]) > 1e-16:
-                self.time_step_indexes.append([])
-                self.time_step_times.append(_time)
+                _time_step_indexes.append([])
+                _time_step_times.append(_time)
                 i += 1
-            self.time_step_indexes[i].append(j)
+            _time_step_indexes[i].append(j)
+        self.time_step_times = np.array(_time_step_times)
+        self.time_step_indexes = _time_step_indexes
     
-    def ManageData(self):
+    def ManageData(self, _time):
         '''
         manage data, get new data for this class
         Returns:
             _data_list(list):
                 list of data for ploting
+            _time(float):
+                time of plotting
         '''
         _data_list = []
+        _time_step = np.argmin(abs(self.time_step_times - _time))  # time_step
+        _index0 = self.time_step_indexes[_time_step][-1] * self.time_step_length
+        _index1 = self.time_step_indexes[_time_step + 1][0] * self.time_step_length
         for i in range(self.data.shape[1]):
-            _data_list.append(self.data[:, i])
+            _data_list.append(self.data[_index0 : _index1, i])
         # get the super adiabatic temperature
         _col_temperature = self.header['temperature']['col']
         _col_adiabatic_temperature = self.header['adiabatic_temperature']['col']
-        _super_adiabatic_temperature = self.data[:, _col_temperature] - self.data[:, _col_adiabatic_temperature]
+        _super_adiabatic_temperature = self.data[_index0 : _index1, _col_temperature] - self.data[_index0 : _index1, _col_adiabatic_temperature]
         _data_list.append(_super_adiabatic_temperature)
         self.header['super_adiabatic_temperature'] = {}
         self.header['super_adiabatic_temperature']['col'] = self.header['total_col']
-        self.header['super_adiabatic_temperature']['unit'] = None
+        self.header['super_adiabatic_temperature']['unit'] = 'K'
         self.header['total_col'] += 1
         return _data_list
     
@@ -357,9 +389,9 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
         manage units, get units for data.
         This is due to the bad form of the header of this file
         '''
+        self.header['time']['unit'] = 'yr'
         self.header['depth']['unit'] = 'm'
         self.header['temperature']['unit'] = 'K'
-        self.header['super_adiabatic_temperature']['unit'] = 'K'
         self.header['viscosity']['unit'] = 'Pa s'
         self.header['velocity_magnitude']['unit'] = 'm/yr'
         if self.dim == 2:

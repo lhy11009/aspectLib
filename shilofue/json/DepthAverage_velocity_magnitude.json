@@ -1,10 +1,11 @@
 {
     "name": "velocity_magnitude",
     "xname": "velocity_magnitude",
+    "xunit": "cm/yr",
     "yname": "depth",
     "yunit": "km",
     "invert_y": 1,
     "color": "b",
-    "line": ".",
+    "line": ".-",
     "label": "Velocity Magnitude"
 }

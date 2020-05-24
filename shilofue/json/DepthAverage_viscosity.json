@@ -6,6 +6,6 @@
     "yunit": "km",
     "invert_y": 1,
     "color": "k",
-    "line": ".",
+    "line": ".-",
     "label": "Viscosity"
 }
