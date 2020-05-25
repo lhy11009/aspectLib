@@ -12,8 +12,13 @@
 dir=$(pwd)
 filename="test.prm"
 nnode=1
-Nproc_per_node=1
+total_tasks=1
+time_by_hour=24
+partition="med"
+name="task"
 
+# parse parameters from command line
+# todo pass in name of case
 while [ -n "$1" ]; do 
   param="$1" 
   case $param in 
@@ -49,11 +54,30 @@ while [ -n "$1" ]; do
     -N=*|--nnode=*)
       nnode="${param#*=}"
     ;;  
+    #####################################
+    # time in hour
+    #####################################
+    -t) 
+      shift
+      time_by_hour="${1}"
+    ;;
+    -t=*|--time=*)
+      time_by_hour="${param#*=}"
+    ;;  
+    #####################################
+    # partition
+    #####################################
+    -p) 
+      shift
+      partition="${1}"
+    ;;
+    -p=*|--partition=*)
+      partition="${param#*=}"
+    ;;  
   esac
   shift
 done 
 
-echo $filename
 # The useful part of your job goes below
 
 export OMP_NUM_THREADS=$SLURM_NTASKS
@@ -63,5 +87,26 @@ export OMP_NUM_THREADS=$SLURM_NTASKS
 Aspect_executable="${Aspect_DIR}/aspect"
 prm_file="$dir/$filename"
 
-# The main job executable to run: note the use of srun before it
-srun -n $total_tasks -N $nnode ${Aspect_executable} ${prm_file}
+
+# compose the sbatch file
+# todo: add comment to sbatch file
+
+if [ -f 'job.sh' ]; then
+	eval "rm job.sh"
+fi
+eval "touch job.sh"
+echo "#!/bin/bash -l" >> job.sh
+echo "#SBATCH -J $name" >> job.sh
+echo "#SBATCH -N $nnode" >> job.sh
+echo "#SBATCH -n $total_tasks" >> job.sh
+echo "#SBATCH -o $name-%j.stdout" >> job.sh
+echo "#SBATCH -e $name-%j.stderr" >> job.sh
+echo "#SBATCH -t $time_by_hour:00:00" >> job.sh
+echo "" >> job.sh
+echo "export OMP_NUM_THREADS=\$SLURM_NTASKS" >> job.sh
+echo "" >> job.sh
+echo "srun ${Aspect_executable} ${prm_file}" >> job.sh
+
+# submit the job
+
+eval "sbatch -p $partition job.sh"
