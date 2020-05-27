@@ -14,8 +14,9 @@ filename="test.prm"
 nnode=1
 total_tasks=1
 time_by_hour=24
-partition="med"
+partition="med2"
 name="task"
+mem_per_cpu=2000  # 2000M
 
 # parse parameters from command line
 # todo pass in name of case
@@ -74,6 +75,16 @@ while [ -n "$1" ]; do
     -p=*|--partition=*)
       partition="${param#*=}"
     ;;  
+    #####################################
+    # memory per cpu
+    #####################################
+    -m) 
+      shift
+      mem_per_cpu="${1}"
+    ;;
+    -m=*|--mem-per-cup=*)
+      mem_per_cpu="${param#*=}"
+    ;;  
   esac
   shift
 done 
@@ -102,6 +113,8 @@ echo "#SBATCH -n $total_tasks" >> job.sh
 echo "#SBATCH -o $name-%j.stdout" >> job.sh
 echo "#SBATCH -e $name-%j.stderr" >> job.sh
 echo "#SBATCH -t $time_by_hour:00:00" >> job.sh
+echo "#SBATCH --partition=$partition" >> job.sh
+echo "#SBATCH --mem-per-cpu=$mem_per_cpu" >> job.sh
 echo "" >> job.sh
 echo "export OMP_NUM_THREADS=\$SLURM_NTASKS" >> job.sh
 echo "" >> job.sh
