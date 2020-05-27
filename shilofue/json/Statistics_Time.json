@@ -1,0 +1,9 @@
+{
+    "name": "Time",
+    "xname": "Time_step_number",
+    "yname": "Time",
+    "yunit": "myr",
+    "color": "k",
+    "line": ".",
+    "label": "Time"
+}
