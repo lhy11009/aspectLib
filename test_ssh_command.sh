@@ -1,6 +1,5 @@
 # !/bin/bash
 
-source record.sh
 
 FILENAME="test.prm"  # filename for aspect
 
@@ -20,12 +19,14 @@ Options:
 "
 }
 
+echo 'source $ASPECT_LAB_DIR/record.sh' > 'run_records'
 server_submit_job(){
     ssh $1 << EOF
+        eval 'source \$ASPECT_LAB_DIR/record.sh'
         eval "cd $(dirname $2)"
-        take_record 'cd $(dirname $2)' '$HOME/server_runs'
+        take_record 'cd $(dirname $2)' '\$HOME/server_runs'
         eval "submit_job.sh $(basename $2)"
-        take_record 'submit_job.sh $(basename $2)' '$HOME/server_runs'
+        take_record 'submit_job.sh $(basename $2)' '\$HOME/server_runs'
 EOF
 }
 
