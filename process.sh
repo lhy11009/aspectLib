@@ -26,14 +26,25 @@ command:
 # Inputs:
 #   $1(str): user@server
 #   $2(str): filename for .prm
+#   $3(str): addtional variables
 process_submit(){
+    get_addtional_options $3  # get addtional output
     ssh $1 << EOF
         eval 'source \$ASPECT_LAB_DIR/record.sh'
         eval "cd $(dirname $2)"
         take_record 'cd $(dirname $2)' '\$HOME/server_runs'
-        eval "submit_job.sh $(basename $2)"
-        take_record 'submit_job.sh $(basename $2)' '\$HOME/server_runs'
+        eval "submit_job.sh $ADDITIONAL_OPTIONS $(basename $2)"
+        take_record 'submit_job.sh $ADDITIONAL_OPTIONS $(basename $2)' '\$HOME/server_runs'
 EOF
+    unset ADDITIONAL_OPTIONS
+}
+
+# get_addtional_options from a string which looks like:
+# '#--total_tasks=32#--partition=med2'
+# and return with something like:
+# ' --total_tasks=32 --partition=med2'
+get_addtional_options(){
+    ADDITIONAL_OPTIONS=${1//\#/ }
 }
 
 # Main function
@@ -121,12 +132,13 @@ main()
         if [[ ! -v "SERVER" || ! -n "SERVER" ]]; then
             exit "With the submit option, Must give a SERVER variable"
         fi
-        if [[ ! ${#ARGUMENT[@]} -eq 1 ]]; then
-            exit "With the submit option, Argumemnt mush be just the name for the file on server"
+        if [[ ${#ARGUMENT[@]} -gt 2 ]]; then
+            exit "With the submit option, Argumemnt mush be just the name for the file on server, an addtional one may be given as additional option"
         fi
-        REMOTE_FILE=${ARGUMENT[0]}
+        local REMOTE_FILE=${ARGUMENT[0]}
+        local ADDITIONAL_OPTIONS=${ARGUMENT[1]}
         # REMOTE_FILE='\$TwoDSubduction_DIR/katrina_case/katrina_case_parse_inputs_1/test.prm' # test remote file
-        process_submit "$USER@$SERVER" $REMOTE_FILE
+        process_submit "$USER@$SERVER" $REMOTE_FILE $ADDITIONAL_OPTION
     fi
 }
 
