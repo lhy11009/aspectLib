@@ -1,7 +1,5 @@
 #!/bin/bash
 
-source server_commands.sh
-
 # todo
 # complete usage
 usage()
@@ -24,7 +22,21 @@ command:
 "
 }
 
+# Submit job to servers
+# Inputs:
+#   $1(str): user@server
+#   $2(str): filename for .prm
+process_submit(){
+    ssh $1 << EOF
+        eval 'source \$ASPECT_LAB_DIR/record.sh'
+        eval "cd $(dirname $2)"
+        take_record 'cd $(dirname $2)' '\$HOME/server_runs'
+        eval "submit_job.sh $(basename $2)"
+        take_record 'submit_job.sh $(basename $2)' '\$HOME/server_runs'
+EOF
+}
 
+# Main function
 main()
 {
     unset ARGUMNET
@@ -114,7 +126,7 @@ main()
         fi
         REMOTE_FILE=${ARGUMENT[0]}
         # REMOTE_FILE='\$TwoDSubduction_DIR/katrina_case/katrina_case_parse_inputs_1/test.prm' # test remote file
-        server_submit_job "$USER@$SERVER" $REMOTE_FILE
+        process_submit "$USER@$SERVER" $REMOTE_FILE
     fi
 }
 
