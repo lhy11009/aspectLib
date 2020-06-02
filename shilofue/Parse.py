@@ -1,4 +1,5 @@
 import re
+from shilofue.Utilities import my_assert
 
 '''
 For now, my strategy is first defining a method to parse inputs for every key word,
@@ -113,6 +114,61 @@ def ParseFromDealiiInput(fin):
     return inputs
 
 
+class CASE():
+    '''
+    class for a case
+    Attributes:
+    '''
+    def __init__(self, _config):
+        '''
+        initiate from a dictionary
+        Inputs:
+            _config(dict):
+                a dictionary that has two members: names and values
+                'names'(list):
+                    a sequence of keys
+                'values'(list):
+                    a sequence of values
+        '''
+        self.names = _config('names')
+        self.values = _config('values')
+
+    def Parse(self, _ofile):
+        '''
+        parse case to a .prm file
+        '''
+        pass
+
+
+class GROUP_CASE():
+    '''
+    Class for a group of cases
+    Attributes:
+        cases(list<class CASE>):
+            a list of cases
+    '''
+    def __init__(self, _idict):
+        '''
+        initiate from a dictionary
+        '''
+        self.cases = []  # initiate a list to save parsed cases
+        _names, _parameters = GetGroupCaseFromDict(_idict)  # Get a list for names and a list for parameters from a dictionary read from a json file
+        _cases_config = ExpandNamesParameters(_names, _parameters)
+        for _case_config in _cases_config:
+            # initiate a new case with __init__ of clase CASE and append
+            self.cases.append(CASE(_case_config))
+    
+    def Parse(self, _target_dir):
+        '''
+        Inputs:
+            _target_dir(str):
+                name of the target directory
+        '''
+        for _case in self.cases:
+            _ofile = 'foo.prm'
+            _case.Parse(_ofile)
+
+
 def ParseToDealiiInput(fout, outputs, layer=0):
     """
     def ParseToDealiiInput(fout, outputs, layer=0)
@@ -135,3 +191,71 @@ def ParseToDealiiInput(fout, outputs, layer=0):
             if layer == 0:
                 fout.write('\n')
     return
+
+
+def GetGroupCaseFromDict(_idict):
+    '''
+    Get a list for names and a list for parameters from a dictionary read from a json file
+    Inputs:
+    _idict(dict):
+        input dictionary
+    Returns:
+        _names(list):
+            list of names, each member is a list itself
+        _parameters(list):
+            list of parameters, each member is a list itself
+    '''
+    my_assert(type(_idict) == dict, TypeError, 'Input is not a dictionary')
+    _parameters = []  # initialize a array to load parameters
+    _names = []  # initialize a array to load names of parameters
+    for key, value in sorted(_idict.items(), key=lambda item: item[0]):
+        if type(value) is dict:
+            # in a top hierachy, append the name and call recursively
+            _sub_names, _sub_parameters = GetGroupCaseFromDict(value)
+            for i in range(len(_sub_names)):
+                # concatenate names and append
+                _names.append([key] + _sub_names[i])
+            _parameters += _sub_parameters  # append parameters
+        elif type(value) is list:
+            _names.append([key])  # concatenate names
+            _parameters.append(value)
+        elif type(value) in [int, float, str]:
+            _names.append([key])  # concatenate names
+            _parameters.append([value])
+        else:
+            raise TypeError('%s is not int, float or str' % str(type(value)))
+    return _names, _parameters
+    
+
+def ExpandNamesParameters(_names, _parameters):
+    '''
+    Inputs:
+        _names(list):
+            list of names, each member is a list itself
+        _parameters(list):
+            list of parameters, each member is a list itself
+    Returns:
+        _cases_config(list<dict>):
+            a list of dictionaries. One dictionary is a config for a list file
+    '''
+    my_assert(type(_names) == list, TypeError, 'First Entry is not a list')
+    my_assert(type(_parameters) == list, TypeError, 'Second Entry is not a list')
+    my_assert(len(_names) == len(_parameters), ValueError, 'Length of first and second entry is not equal')
+    _total = 1
+    for _sub_parameters in _parameters:
+        # take the value of total of all lengths multiplied
+        _total *= len(_sub_parameters)
+    # initialize this list of dictionaries for configurations
+    _cases_config = []
+    for i in range(_total):
+        _cases_config.append({'names': [], 'values': []})
+    # fill in all entries
+    for j in range(len(_cases_config)):
+        _cases_config[j]['names'] = _names.copy()
+        for i in range(len(_names)):
+            _ind = j  # get the index in _parameters[i]
+            for k in range(len(_names)-1, i, -1):
+                _ind = int(_ind // len(_parameters[k]))
+            _ind = _ind % len(_parameters[i])
+            _cases_config[j]['values'].append(_parameters[i][_ind])
+    return _cases_config
