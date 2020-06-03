@@ -1,6 +1,7 @@
 import pytest
 from shilofue.Parse import GetGroupCaseFromDict
 from shilofue.Parse import ExpandNamesParameters
+from shilofue.Parse import ChangeDiscValues
 
 def test_build_group_from_dict():
     # test 0-1, raise error because input type is not dict
@@ -55,4 +56,21 @@ def test_build_group_from_dict():
     assert (_cases_config[0]['values'] == [1e24, 1e20, 0])
     assert (_cases_config[1]['values'] == [1e24, 1e20, 1e6])
     assert (_cases_config[11]['values'] == [1e25, 1e22, 1e6])
+
+def test_change_disc_values():
+    '''
+    Test the function ChangeDiscValues()
+    '''
+    # test 1
+    # initiate the dictionary
+    _idict={}
+    _idict['Start time'] = 0
+    _idict['Material model'] = {'Visco Plastic': {'Reference viscosity': 1e20, 'Maximum viscosity': 1e24}}
+    # initiate two lists
+    _names = [['Material model', 'Visco Plastic', 'Maximum viscosity'], ['Material model', 'Visco Plastic', 'Reference viscosity'] ,['Start time']]
+    _values = [1e25, 1e22, 1e6]
+    ChangeDiscValues(_idict, _names, _values)  # change value within _idict
+    assert(_idict['Start time'] == 1e6)
+    assert(_idict['Material model'] == {'Visco Plastic': {'Reference viscosity': 1e22, 'Maximum viscosity': 1e25}})
+
 

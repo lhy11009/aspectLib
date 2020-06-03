@@ -56,6 +56,76 @@ class COMPOSITION():
         return line
 
 
+class CASE():
+    '''
+    class for a case
+    Attributes:
+        names(list):
+            list for name of variables to change
+        values(list):
+            list of value of variables to change
+        idict(dict):
+            dictionary import from a base file
+    '''
+    def __init__(self, _idict, _config):
+        '''
+        initiate from a dictionary
+        Inputs:
+            _idict(dict):
+                dictionary import from a base file
+            _config(dict):
+                a dictionary that has two members: names and values
+                'names'(list):
+                    a sequence of keys
+                'values'(list):
+                    a sequence of values
+        '''
+        self.idict = _idict
+        self.names = _config['names']
+        self.values = _config['values']
+        self.ofile = 'test.prm'
+        ChangeDiscValues(self.idict, self.names, self.values)  # change values in idict accordingly
+
+    def __call__(self):
+        '''
+        Create a .prm file
+        '''
+        # assign file name with a method defined
+        with open(self.ofile, 'w') as fout:
+            ParseToDealiiInput(fout, self.idict)
+        pass
+
+
+class GROUP_CASE():
+    '''
+    Class for a group of cases
+    Attributes:
+        cases(list<class CASE>):
+            a list of cases
+    '''
+    def __init__(self, _idict):
+        '''
+        initiate from a dictionary
+        '''
+        self.cases = []  # initiate a list to save parsed cases
+        _names, _parameters = GetGroupCaseFromDict(_idict)  # Get a list for names and a list for parameters from a dictionary read from a json file
+        _cases_config = ExpandNamesParameters(_names, _parameters)
+        for _case_config in _cases_config:
+            # initiate a new case with __init__ of clase CASE and append
+            self.cases.append(CASE(_idict, _case_config))
+    
+    def Parse(self, _target_dir):
+        '''
+        Inputs:
+            _target_dir(str):
+                name of the target directory
+        '''
+        # todo
+        for _case in self.cases:
+            _ofile = 'foo.prm'
+            _case.Parse()
+
+
 def ParseFromDealiiInput(fin):
     """
     ParseFromDealiiInput(fin)
@@ -114,61 +184,6 @@ def ParseFromDealiiInput(fin):
     return inputs
 
 
-class CASE():
-    '''
-    class for a case
-    Attributes:
-    '''
-    def __init__(self, _config):
-        '''
-        initiate from a dictionary
-        Inputs:
-            _config(dict):
-                a dictionary that has two members: names and values
-                'names'(list):
-                    a sequence of keys
-                'values'(list):
-                    a sequence of values
-        '''
-        self.names = _config('names')
-        self.values = _config('values')
-
-    def Parse(self, _ofile):
-        '''
-        parse case to a .prm file
-        '''
-        pass
-
-
-class GROUP_CASE():
-    '''
-    Class for a group of cases
-    Attributes:
-        cases(list<class CASE>):
-            a list of cases
-    '''
-    def __init__(self, _idict):
-        '''
-        initiate from a dictionary
-        '''
-        self.cases = []  # initiate a list to save parsed cases
-        _names, _parameters = GetGroupCaseFromDict(_idict)  # Get a list for names and a list for parameters from a dictionary read from a json file
-        _cases_config = ExpandNamesParameters(_names, _parameters)
-        for _case_config in _cases_config:
-            # initiate a new case with __init__ of clase CASE and append
-            self.cases.append(CASE(_case_config))
-    
-    def Parse(self, _target_dir):
-        '''
-        Inputs:
-            _target_dir(str):
-                name of the target directory
-        '''
-        for _case in self.cases:
-            _ofile = 'foo.prm'
-            _case.Parse(_ofile)
-
-
 def ParseToDealiiInput(fout, outputs, layer=0):
     """
     def ParseToDealiiInput(fout, outputs, layer=0)
@@ -190,6 +205,8 @@ def ParseToDealiiInput(fout, outputs, layer=0):
             fout.write(indent + 'end\n')
             if layer == 0:
                 fout.write('\n')
+        else:
+            raise ValueError('Value in dict must be str')
     return
 
 
@@ -259,3 +276,27 @@ def ExpandNamesParameters(_names, _parameters):
             _ind = _ind % len(_parameters[i])
             _cases_config[j]['values'].append(_parameters[i][_ind])
     return _cases_config
+
+
+def ChangeDiscValues(_idict, _names, _values):
+    '''
+    Change values in a complex dictionary with names and values
+    Inputs:
+        _idict(dict):
+            Dictionary of parameters from a .prm file
+        _names(list):
+            list of parameters, each member is a list it self,
+            which contains the path the the variable
+        _values(list):
+            list of values of variables
+    '''
+    my_assert(type(_idict) == dict, TypeError, 'First Entry needs to be a dict')
+    my_assert(type(_names) == list, TypeError, 'Second Entry needs to be a list')
+    my_assert(type(_values) == list, TypeError, 'Third Entry needs to be a list')
+    my_assert(len(_names) == len(_values), ValueError, 'Length of second and third entries must match')
+    for i in range(len(_names)):
+        _name = _names[i]
+        _sub_dict = _idict
+        for _key in _name[0: len(_name)-1]:
+            _sub_dict = _sub_dict[_key]
+        _sub_dict[_name[-1]] = _values[i]

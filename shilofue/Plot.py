@@ -17,7 +17,7 @@ class LINEARPLOT():
 
     '''
 
-    def init(self, _name, kwargs):
+    def __init__(self, _name, kwargs):
         '''
         _name(str):
             name of the plotting
@@ -236,7 +236,7 @@ class STATISTICS_PLOT(LINEARPLOT):
         todo
     '''
     def __init__(self, _name, **kwargs):
-        self.init(_name, kwargs)  # call init from base function
+        LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
     
     def __call__(self, _filename, **kwargs):
         '''
@@ -267,7 +267,7 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
         todo
     '''
     def __init__(self, _name, **kwargs):
-        self.init(_name, kwargs)  # call init from base function
+        LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
         self.time_step_times = []  # time step information
         self.time_step_indexes = []
         self.time_step_length = None

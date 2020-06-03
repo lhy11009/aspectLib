@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import argparse
 from shilofue.Parse import COMPOSITION
 from shilofue.Parse import ParseFromDealiiInput
 from shilofue.Parse import ParseToDealiiInput
@@ -80,3 +81,39 @@ def GroupParse(_json_file, _ifile, _target_dir):
     with open(_ifile, 'r') as fin:
         _inputs_base = ParseFromDealiiInput(fin)
 
+
+def __main__():
+    '''
+    main function of this module
+    Inputs:
+        sys.arg[1](str):
+            commend
+        sys.arg[2, :](str):
+            options
+    '''
+    # parse commend
+    _available_commends = ['create', 'create_group']  # only these commends are available now
+    _commend = sys.argv[1]
+    if _commend not in _available_commends:
+        raise ValueError('Commend %s is not available.' % _commend)
+    # parse options
+    parser = argparse.ArgumentParser(description='TwoDSubdunction Project')
+    parser.add_argument('-b', '--base_file', type=str,
+                        default='./TwoDSubduction/base.prm',
+                        help='Filename for base file')
+    parser.add_argument('-j', '--json_file', type=str,
+                        default='./TwoDSubduction/foo.json',
+                        help='Filename for json file')
+    _options = []
+    try:
+        _options = sys.argv[2: ]
+    except IndexError:
+        pass
+    arg = parser.parse_args(_options)
+    # execute commend
+    if _commend == 'create_group':
+        # create a group of cases
+        _cases = InitGroup(arg.json_file)
+        for _case in _cases:
+            CreateCase(_case)
+            print(_case)
