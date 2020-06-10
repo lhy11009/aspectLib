@@ -85,6 +85,7 @@ def ReadHeader(_texts):
         _header[_key] = _info
     return _header
 
+
 def ReadHeader2(_texts):
     '''
     Read header information from file.
@@ -114,6 +115,22 @@ def ReadHeader2(_texts):
             _header[_key]['unit'] = None
             _header['total_col'] += 1
     return _header
+
+
+def my_assert(_condition, _errortype, _message):
+    '''
+    an assert function for runtime use
+    Inputs:
+        _condition(True or False):
+            the condition to assert
+        _errortype(some error):
+            the type of error to raise
+        _message(str):
+            the message to raise
+    '''
+    if _condition is False:
+        raise _errortype(_message)
+
 
 class UNITCONVERT():
     '''
