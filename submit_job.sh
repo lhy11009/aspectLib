@@ -1,5 +1,7 @@
 #!/bin/bash -l
 
+source utilities.sh
+
 # Name of the job
 #SBATCH -J test
 
@@ -37,7 +39,12 @@ parse_command(){
 	    _command="submit"
     elif [[ "$1" = "remote" ]]; then
 	    _command="remote"
+    elif [[ "$1" = "test" ]]; then
+	    _command="test"
+    else
+	    return 1
     fi
+    return 0
 }
 
 parse_options(){
@@ -150,17 +157,66 @@ submit(){
     eval "sbatch -p $partition job.sh"
 }
 
-test_parse_command{
+test_parse_command(){
     unset _command
-    parse_command "submit -n 32"
-    
+    # case 1
+    parse_command 'submit' '-n' '32'
+    if [[ ${_command} != "submit" ]]; then
+	cecho ${BAD} "test_parse_command fail for \"submit -n 32\""
+        exit 1
+    fi
+    unset _command
+    # case 2
+    parse_command '-n' '32'
+    if [[ ${_command} != "submit" ]]; then
+	cecho ${BAD} "test_parse_command fail for \"-n 32\""
+	exit 1
+    fi    
+    unset _command
+    # case 3
+    parse_command 'remote' '-n' '32'
+    if [[ ${_command} != "remote" ]]; then
+	cecho ${BAD} "test_parse_command fail for \"remote -n 32\""
+	exit 1
+    fi   
+    unset _command
+    # case 4
+    parse_command 'foo'
+    if [[ "$?" != 1 ]]; then 
+	cecho ${BAD} "test_parse_command fail for \"foo\""
+	exit 1
+    fi   
+    cecho ${GOOD} "test_parse_command pass"
 }
 
-
+test_submit(){
+    # test submit to local slurm system
+    local job_id
+    local _test1="submit_job.sh -n 1 -p med2 tests/integration/fixtures/submit_test.prm"
+    job_id=$(eval "${_test1}" | sed 's/Submitted\ batch\ job\ //')
+    if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
+	cecho ${BAD} "test_submit fail for \"${_test1}\", job id is not returned"
+	exit 1
+    fi
+    # get info from the squeue command
+    get_job_info ${job_id} 'ST'
+    if ! [[ ${return_value} = 'R' || ${return_value} = 'PD' ]]; then
+	cecho ${BAD} "test_submit fail for \"${_test1}\", job failed"
+	exit 1
+    fi
+    echo "task-${job_id}.stdout"  # screen output
+    eval "ls task-${job_id}.stdout" # debug
+    eval "scancel ${job_id}"  # terminate this job
+    cecho ${GOOD} "test_submit pass"
+}
 
 main(){
     parse_command "$1" # parse the command
-    if [[ ${_command} = "submit" ]]; then
+    quit_if_fail "No such command \"$1\""
+    if [[ ${_command} = "test" ]]; then
+	test_parse_command
+	test_submit
+    elif [[ ${_command} = "submit" ]]; then
     	parse_options "$@"  # parse option with '-'
     	submit  # submit job
     elif [[ ${_command} = "remote" ]]; then

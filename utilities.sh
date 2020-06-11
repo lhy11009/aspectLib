@@ -68,4 +68,31 @@ quit_if_fail() {
     fi
 }
 
+
+################################################################################
+# Define functions to work with slurm system
+get_job_info(){
+    # get info from the squeue command
+    # inputs:
+    #	1: job_id
+    #	2: key
+    unset return_value
+    local _outputs
+    local _temp
+    _outputs=$(eval "squeue -j ${1}")
+    _temp=$(echo "${_outputs}" | sed -n '1'p)
+    IFS=' ' read -r -a  _headers<<< "${_temp}"
+    _temp=$(echo "${_outputs}" | sed -n '2'p)
+    IFS=' ' read -r -a  _infos<<< "${_temp}"
+    local i=0
+    for element in ${_headers[@]}; do
+	if [[ "$element" = "$2" ]]; then
+	    return_value="${_infos[i]}"
+	    return 0
+	fi
+	i=$i+1
+    done
+    return 1  # if the key is not find, return an error message
+}
+ 
 set +a  # return to default setting
