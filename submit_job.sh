@@ -29,9 +29,17 @@ Usage:
 Options:
 "
 }
+
 parse_command(){
-    exit 0
+    unset _command
+    # parse command with the fist input
+    if [[ "$1" =~ -.* || "$1" = "submit" ]]; then
+	    _command="submit"
+    elif [[ "$1" = "remote" ]]; then
+	    _command="remote"
+    fi
 }
+
 parse_options(){
     # parse parameters from command line
     # todo pass in name of case
@@ -142,7 +150,24 @@ submit(){
     eval "sbatch -p $partition job.sh"
 }
 
-main(){
-    parse_options  # parse options with '-'
-    submit  # submit job
+test_parse_command{
+    unset _command
+    parse_command "submit -n 32"
+    
 }
+
+
+
+main(){
+    parse_command "$1" # parse the command
+    if [[ ${_command} = "submit" ]]; then
+    	parse_options "$@"  # parse option with '-'
+    	submit  # submit job
+    elif [[ ${_command} = "remote" ]]; then
+	# submit to cluster
+	echo "remote"
+    fi
+}
+
+
+main "$@"
