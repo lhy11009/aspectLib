@@ -30,7 +30,7 @@ command:
 process_submit(){
     get_addtional_options $3  # get addtional output
     ssh $1 << EOF
-        eval 'source \$ASPECT_LAB_DIR/record.sh'
+        eval 'source \$ASPECT_LAB_DIR/utilities.sh'
         eval "cd $(dirname $2)"
         take_record 'cd $(dirname $2)' '\$HOME/server_runs'
         eval "submit_job.sh $ADDITIONAL_OPTIONS $(basename $2)"
