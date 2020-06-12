@@ -262,8 +262,11 @@ main(){
             # check format
             echo "with 'remote' command, '\$2' needs to be 'user@server'"
         fi
+        # submit job
+        # todo, drag down results and compare
+        # todo reset the scheme of output characters on server
         ssh ${server_info} << EOF
-    	    eval "submit_job.sh test" > ".test_output" # submit job
+    	    eval "submit_job.sh test" > ".test_output"
 EOF
     else
         # command error is already catched
