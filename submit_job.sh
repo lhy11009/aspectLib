@@ -157,6 +157,13 @@ submit(){
     eval "sbatch -p $partition job.sh"
 }
 
+lookup(){
+    # todo look up job status
+}
+
+################################################################################
+# test functions
+################################################################################
 test_parse_command(){
     unset _command
     # case 1
@@ -192,23 +199,47 @@ test_parse_command(){
 test_submit(){
     # test submit to local slurm system
     local job_id
-    local _test1="submit_job.sh -n 1 -p med2 tests/integration/fixtures/submit_test.prm"
-    job_id=$(eval "${_test1}" | sed 's/Submitted\ batch\ job\ //')
+    # test 1: mission with 1 core
+    local _test="submit_job.sh -n 1 -p med2 tests/integration/fixtures/submit_test.prm"
+    job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
     if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
-	cecho ${BAD} "test_submit fail for \"${_test1}\", job id is not returned"
+	cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
 	exit 1
     fi
     # get info from the squeue command
     get_job_info ${job_id} 'ST'
+    quit_if_fail "get_job_info: no such stat 'ST'"
     if ! [[ ${return_value} = 'R' || ${return_value} = 'PD' ]]; then
-	cecho ${BAD} "test_submit fail for \"${_test1}\", job failed"
+	cecho ${BAD} "test_submit fail for \"${_test}\", job failed"
 	exit 1
     fi
-    echo "task-${job_id}.stdout"  # screen output
-    eval "ls task-${job_id}.stdout" # debug
+    eval "scancel ${job_id}"  # terminate this job
+    
+    # test 2: mission with nproc core
+    local _nproc=$(nproc)  # numbers of cores in a node
+    _test="submit_job.sh -n ${_nproc}  -p med2 tests/integration/fixtures/submit_test.prm"
+    job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
+    if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
+	cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
+	exit 1
+    fi
+    # get info from the squeue command
+    get_job_info ${job_id} 'ST'
+    quit_if_fail "get_job_info: no such stat 'ST'"
+    if ! [[ ${return_value} = 'R' || ${return_value} = 'PD' ]]; then
+	cecho ${BAD} "test_submit fail for \"${_test}\", job failed"
+	exit 1
+    fi
+    get_job_info ${job_id} 'CPU'
+    quit_if_fail "get_job_info: no such stat 'CPU'"
+    if ! [[ ${return_value} = ${_nproc} ]]; then
+	cecho ${BAD} "test_submit fail for \"${_test}\", nproc doesn't match"
+	exit 1
+    fi
     eval "scancel ${job_id}"  # terminate this job
     cecho ${GOOD} "test_submit pass"
 }
+
 
 main(){
     parse_command "$1" # parse the command
