@@ -20,6 +20,11 @@ partition="med2"
 name="task"
 mem_per_cpu=2000  # 2000M
 
+test_dir="${dir}/.test"  # do test in this directory
+if ! [[ -d ${test_dir} ]]; then
+    mkdir "${test_dir}"
+fi
+
 usage()
 {
     printf "\
@@ -201,9 +206,10 @@ test_parse_command(){
 
 test_submit(){
     # test submit to local slurm system
+    cd "${test_dir}"  # shift to testdir
     local job_id
     # test 1: mission with 1 core
-    local _test="submit_job.sh -n 1 -p med2 tests/integration/fixtures/submit_test.prm"
+    local _test="submit_job.sh -n 1 -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
     job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
     if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
 	cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
@@ -220,7 +226,7 @@ test_submit(){
 
     # test 2: mission with nproc core
     local _nproc=$(nproc)  # numbers of cores in a node
-    _test="submit_job.sh -n ${_nproc}  -p med2 tests/integration/fixtures/submit_test.prm"
+    _test="submit_job.sh -n ${_nproc}  -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
     job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
     if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
 	cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
@@ -241,6 +247,7 @@ test_submit(){
     fi
     eval "scancel ${job_id}"  # terminate this job
     cecho ${GOOD} "test_submit pass"
+    cd "${dir}"  # shift back to main directory
 }
 
 
@@ -248,8 +255,8 @@ main(){
     parse_command "$1" # parse the command
     quit_if_fail "No such command \"$1\""
     if [[ ${_command} = "test" ]]; then
-	    test_parse_command
-	    test_submit
+	test_parse_command
+	test_submit
     elif [[ ${_command} = "submit" ]]; then
     	parse_options "$@"  # parse option with '-'
     	submit  # submit job
