@@ -41,6 +41,8 @@ parse_command(){
 	    _command="remote"
     elif [[ "$1" = "test" ]]; then
 	    _command="test"
+    elif [[ "$1" = "remote_test" || "$1" = "rt" ]]; then
+	    _command="remote_test"
     else
 	    return 1
     fi
@@ -50,17 +52,17 @@ parse_command(){
 parse_options(){
     # parse parameters from command line
     # todo pass in name of case
-    while [ -n "$1" ]; do 
-      param="$1" 
-      case $param in 
-        -h|--help) 
-          echo ""  # help information 
-          exit 0 
+    while [ -n "$1" ]; do
+      param="$1"
+      case $param in
+        -h|--help)
+          echo ""  # help information
+          exit 0
         ;;
         #####################################
         # filename
         #####################################
-        [^-]*) 
+        [^-]*)
           shift
           filename="$param"
           filename=${filename/#\.\//}
@@ -68,72 +70,72 @@ parse_options(){
         #####################################
         # number of total tasks
         #####################################
-        -n) 
+        -n)
           shift
           total_tasks="${1}"
         ;;
         -n=*|--total_tasks=*)
           total_tasks="${param#*=}"
-        ;;  
+        ;;
         #####################################
         # number of nodes
         #####################################
-        -N) 
+        -N)
           shift
           nnode="${1}"
         ;;
         -N=*|--nnode=*)
           nnode="${param#*=}"
-        ;;  
+        ;;
         #####################################
         # time in hour
         #####################################
-        -t) 
+        -t)
           shift
           time_by_hour="${1}"
         ;;
         -t=*|--time=*)
           time_by_hour="${param#*=}"
-        ;;  
+        ;;
         #####################################
         # partition
         #####################################
-        -p) 
+        -p)
           shift
           partition="${1}"
         ;;
         -p=*|--partition=*)
           partition="${param#*=}"
-        ;;  
+        ;;
         #####################################
         # memory per cpu
         #####################################
-        -m) 
+        -m)
           shift
           mem_per_cpu="${1}"
         ;;
         -m=*|--mem-per-cup=*)
           mem_per_cpu="${param#*=}"
-        ;;  
+        ;;
       esac
       shift
-    done 
+    done
 }
 
 submit(){
     # The useful part of your job goes below
-    
+
     export OMP_NUM_THREADS=$SLURM_NTASKS
-    
+
     # Aspect executable
-    
+
     Aspect_executable="${Aspect_DIR}/aspect"
     prm_file="$dir/$filename"
-    
-    
+
+
     # compose the sbatch file
     # todo: add comment to sbatch file
-    
+
     if [ -f 'job.sh' ]; then
     	eval "rm job.sh"
     fi
@@ -151,14 +153,15 @@ submit(){
     echo "export OMP_NUM_THREADS=\$SLURM_NTASKS" >> job.sh
     echo "" >> job.sh
     echo "srun ${Aspect_executable} ${prm_file}" >> job.sh
-    
+
     # submit the job
-    
+
     eval "sbatch -p $partition job.sh"
 }
 
 lookup(){
     # todo look up job status
+    eval "foo"
 }
 
 ################################################################################
@@ -178,21 +181,21 @@ test_parse_command(){
     if [[ ${_command} != "submit" ]]; then
 	cecho ${BAD} "test_parse_command fail for \"-n 32\""
 	exit 1
-    fi    
+    fi
     unset _command
     # case 3
     parse_command 'remote' '-n' '32'
     if [[ ${_command} != "remote" ]]; then
 	cecho ${BAD} "test_parse_command fail for \"remote -n 32\""
 	exit 1
-    fi   
+    fi
     unset _command
     # case 4
     parse_command 'foo'
-    if [[ "$?" != 1 ]]; then 
+    if [[ "$?" != 1 ]]; then
 	cecho ${BAD} "test_parse_command fail for \"foo\""
 	exit 1
-    fi   
+    fi
     cecho ${GOOD} "test_parse_command pass"
 }
 
@@ -214,7 +217,7 @@ test_submit(){
 	exit 1
     fi
     eval "scancel ${job_id}"  # terminate this job
-    
+
     # test 2: mission with nproc core
     local _nproc=$(nproc)  # numbers of cores in a node
     _test="submit_job.sh -n ${_nproc}  -p med2 tests/integration/fixtures/submit_test.prm"
@@ -245,14 +248,26 @@ main(){
     parse_command "$1" # parse the command
     quit_if_fail "No such command \"$1\""
     if [[ ${_command} = "test" ]]; then
-	test_parse_command
-	test_submit
+	    test_parse_command
+	    test_submit
     elif [[ ${_command} = "submit" ]]; then
     	parse_options "$@"  # parse option with '-'
     	submit  # submit job
-    elif [[ ${_command} = "remote" ]]; then
-	# submit to cluster
-	echo "remote"
+    elif [[ ${_command} = "remote_test" ]]; then
+	    # test submit to cluster
+        local server_info="$2"  # user@server
+        shift
+        echo "${server_info}"  # screen output
+        if ! [[ ${server_info} =~ .*\@.* ]]; then
+            # check format
+            echo "with 'remote' command, '\$2' needs to be 'user@server'"
+        fi
+        ssh ${server_info} << EOF
+    	    eval "submit_job.sh test" > ".test_output" # submit job
+EOF
+    else
+        # command error is already catched
+        echo "foo"
     fi
 }
 
