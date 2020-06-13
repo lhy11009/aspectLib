@@ -1,6 +1,10 @@
 import os
 from shilofue import Parse
 
+_test_dir = ".test"
+if not os.path.isdir(_test_dir):
+    # check we have the directory to store test result
+    os.mkdir(_test_dir)
 
 def test_parse_from_file():
     # test_file = 'fixtures/parse_test.prm'
@@ -25,6 +29,9 @@ def test_parse_to_new_case():
     Case = Parse.CASE(inputs, _config)
     assert(Case.idict['End time'] == '80.0e6')
     assert(Case.idict['Material model']['Visco Plastic']['Reset corner viscosity constant'] == '1e21')
-    Case()
-    assert(os.path.isfile('foo'))
-    os.remove('foo')
+    # call CASE: __call__ function to generate a output
+    _ofile = os.path.join(_test_dir, 'foo.prm')
+    if os.path.isfile(_ofile):
+        os.remove(_ofile)
+    Case(_ofile)
+    assert(os.path.isfile(_ofile))

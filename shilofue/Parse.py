@@ -83,15 +83,14 @@ class CASE():
         self.idict = _idict
         self.names = _config['names']
         self.values = _config['values']
-        self.ofile = 'test.prm'
         ChangeDiscValues(self.idict, self.names, self.values)  # change values in idict accordingly
 
-    def __call__(self):
+    def __call__(self, _ofile):
         '''
         Create a .prm file
         '''
         # assign file name with a method defined
-        with open(self.ofile, 'w') as fout:
+        with open(_ofile, 'w') as fout:
             ParseToDealiiInput(fout, self.idict)
         pass
 
