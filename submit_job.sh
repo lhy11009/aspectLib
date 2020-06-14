@@ -171,12 +171,11 @@ write_log(){
     # Inputs:
     #   $1: job id
     #   $2: log file name
-    get_job_info $1 'ST'
+    local job_id=$1
+    local log_file=$2
+    get_job_info ${job_id} 'ST'
     quit_if_fail "get_job_info: no such stat 'ST'"
-    if [[ ${return_value} = '' ]]; then
-        # reset job status to complete
-        return_value='CG'
-    echo "$1 ${return_value}" >> "$2"
+    echo "${job_id} ${return_value}" >> "${log_file}"
 }
 
 ################################################################################
@@ -211,7 +210,7 @@ test_parse_command(){
 	cecho ${BAD} "test_parse_command fail for \"foo\""
 	exit 1
     fi
-    cecho ${GOOD} "test_parse_command pass"
+    cecho ${GOOD} "test_parse_command passed"
 }
 
 test_submit(){
@@ -222,14 +221,14 @@ test_submit(){
     local _test="submit_job.sh -n 1 -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
     job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
     if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
-	    cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
+        cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
 	exit 1
     fi
     # get info from the squeue command
     get_job_info ${job_id} 'ST'
     quit_if_fail "get_job_info: no such stat 'ST'"
     if ! [[ ${return_value} = 'R' || ${return_value} = 'PD' ]]; then
-	    cecho ${BAD} "test_submit fail for \"${_test}\", job failed"
+        cecho ${BAD} "test_submit fail for \"${_test}\", job failed"
 	exit 1
     fi
     eval "scancel ${job_id}"  # terminate this job
@@ -256,7 +255,7 @@ test_submit(){
 	exit 1
     fi
     eval "scancel ${job_id}"  # terminate this job
-    cecho ${GOOD} "test_submit pass"
+    cecho ${GOOD} "test_submit passed"
     cd "${dir}"  # shift back to main directory
 }
 
@@ -266,13 +265,19 @@ test_write_log(){
         # remove older file
         eval "rm ${_ofile}"
     fi
-    # test 1, write a terminated
-    local _test="submit_job.sh write_log 111111 "
-    eval "_test"
-    _output=$(cat "${_ofile}" | sed -n '1'p)
-    if ! [[ ${_output} = '111111 CG' ]]:
-        cecho ${BAD} "test_write_log fails for \"${_test}\", output format is wrong"
+    # test 1, write a non-existent job, it should return a NA status
+    local _test="submit_job.sh write_log 111111 ${_ofile}"
+    eval "${_test}"
+    if ! [[ -e "${_ofile}" ]]; then
+        cecho ${BAD} "test_write_log fails for \"${_test}\", \"${_ofile}\"  doesn't exist"
+	exit 1
     fi
+    _output=$(cat "${_ofile}" | sed -n '1'p)
+    if ! [[ ${_output} = '111111 NA' ]]; then
+        cecho ${BAD} "test_write_log fails for \"${_test}\", output format is wrong"
+	exit 1
+    fi
+    cecho ${GOOD} "test_write_log passed"
 }
 
 
@@ -280,8 +285,8 @@ main(){
     parse_command "$1" # parse the command
     quit_if_fail "No such command \"$1\""
     if [[ ${_command} = "test" ]]; then
-	    test_parse_command
-	    test_submit
+        test_parse_command
+	test_submit
         test_write_log
     elif [[ ${_command} = "submit" ]]; then
     	parse_options "$@"  # parse option with '-'
@@ -308,7 +313,7 @@ EOF
 	        cecho ${BAD} "with 'write_log' command, '\$2' needs to be an id"
 	        exit 1
         fi
-        if ! [[ $3 ='' ]]; then
+        if ! [[ $3 = '' ]]; then
             log_file="$3"
         fi
         write_log ${job_id} ${log_file}

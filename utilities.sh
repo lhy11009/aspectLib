@@ -79,7 +79,12 @@ get_job_info(){
     unset return_value
     local _outputs
     local _temp
-    _outputs=$(eval "squeue -j ${1}")
+    _outputs=$(eval "squeue -j ${1} 2>&1")
+    if [[ ${_outputs} =~ "slurm_load_jobs error: Invalid job id specified" ]]; then
+        # catch non-exitent job id
+        return_value='NA'
+	return 0
+    fi
     _temp=$(echo "${_outputs}" | sed -n '1'p)
     IFS=' ' read -r -a  _headers<<< "${_temp}"
     _temp=$(echo "${_outputs}" | sed -n '2'p)
