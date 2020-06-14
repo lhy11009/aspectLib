@@ -48,6 +48,8 @@ parse_command(){
 	    _command="test"
     elif [[ "$1" = "remote_test" || "$1" = "rt" ]]; then
 	    _command="remote_test"
+    elif [[ "$1" = "write_log" ]]; then
+	    _command="write_log"
     else
 	    return 1
     fi
@@ -164,9 +166,17 @@ submit(){
     eval "sbatch -p $partition job.sh"
 }
 
-lookup(){
-    # todo look up job status
-    eval "foo"
+write_log(){
+    # write to a log file
+    # Inputs:
+    #   $1: job id
+    #   $2: log file name
+    get_job_info $1 'ST'
+    quit_if_fail "get_job_info: no such stat 'ST'"
+    if [[ ${return_value} = '' ]]; then
+        # reset job status to complete
+        return_value='CG'
+    echo "$1 ${return_value}" >> "$2"
 }
 
 ################################################################################
@@ -212,14 +222,14 @@ test_submit(){
     local _test="submit_job.sh -n 1 -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
     job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
     if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
-	cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
+	    cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
 	exit 1
     fi
     # get info from the squeue command
     get_job_info ${job_id} 'ST'
     quit_if_fail "get_job_info: no such stat 'ST'"
     if ! [[ ${return_value} = 'R' || ${return_value} = 'PD' ]]; then
-	cecho ${BAD} "test_submit fail for \"${_test}\", job failed"
+	    cecho ${BAD} "test_submit fail for \"${_test}\", job failed"
 	exit 1
     fi
     eval "scancel ${job_id}"  # terminate this job
@@ -250,13 +260,29 @@ test_submit(){
     cd "${dir}"  # shift back to main directory
 }
 
+test_write_log(){
+    _ofile="${test_dir}/test.log"
+    if [[ -e ${_ofile} ]]; then
+        # remove older file
+        eval "rm ${_ofile}"
+    fi
+    # test 1, write a terminated
+    local _test="submit_job.sh write_log 111111 "
+    eval "_test"
+    _output=$(cat "${_ofile}" | sed -n '1'p)
+    if ! [[ ${_output} = '111111 CG' ]]:
+        cecho ${BAD} "test_write_log fails for \"${_test}\", output format is wrong"
+    fi
+}
+
 
 main(){
     parse_command "$1" # parse the command
     quit_if_fail "No such command \"$1\""
     if [[ ${_command} = "test" ]]; then
-	test_parse_command
-	test_submit
+	    test_parse_command
+	    test_submit
+        test_write_log
     elif [[ ${_command} = "submit" ]]; then
     	parse_options "$@"  # parse option with '-'
     	submit  # submit job
@@ -267,14 +293,25 @@ main(){
         echo "${server_info}"  # screen output
         if ! [[ ${server_info} =~ .*\@.* ]]; then
             # check format
-            echo "with 'remote' command, '\$2' needs to be 'user@server'"
+            cecho ${BAD} "with 'remote' command, '\$2' needs to be 'user@server'"
         fi
         # submit job
         # todo, drag down results and compare
         # todo reset the scheme of output characters on server
         ssh ${server_info} << EOF
-    	    eval "submit_job.sh test" > ".test_output"
+    	    eval "submit_job.sh test"
 EOF
+    elif [[ ${_command} = "write_log" ]]; then
+        local log_file="${HOME}/jobs.log"
+        local job_id="$2"
+        if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
+	        cecho ${BAD} "with 'write_log' command, '\$2' needs to be an id"
+	        exit 1
+        fi
+        if ! [[ $3 ='' ]]; then
+            log_file="$3"
+        fi
+        write_log ${job_id} ${log_file}
     else
         # command error is already catched
         echo "foo"
