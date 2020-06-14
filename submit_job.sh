@@ -24,6 +24,7 @@ test_dir="${dir}/.test"  # do test in this directory
 if ! [[ -d ${test_dir} ]]; then
     mkdir "${test_dir}"
 fi
+test_fixtures_dir="tests/integration/fixtures"
 
 usage()
 {
@@ -170,12 +171,25 @@ write_log(){
     # write to a log file
     # Inputs:
     #   $1: job id
-    #   $2: log file name
-    local job_id=$1
-    local log_file=$2
+    #   $2: job directory
+    #   $3: log file name
+    local job_dir=$1
+    local job_id=$2
+    local log_file=$3
+    local _file
     get_job_info ${job_id} 'ST'
     quit_if_fail "get_job_info: no such stat 'ST'"
-    echo "${job_id} ${return_value}" >> "${log_file}"
+    local ST=${return_value}
+    # parse stdout file
+    for _file in ${job_dir}/*
+    do
+        # look for stdout file
+        if [[ "${_file}" =~ ${job_id}.stdout ]]; then
+            break
+	fi		
+    done
+    parse_stdout ${_file}  # parse this file
+    echo "${job_dir} ${job_id} ${ST} ${last_time_step} ${last_time}" >> "${log_file}"
 }
 
 ################################################################################
@@ -260,20 +274,21 @@ test_submit(){
 }
 
 test_write_log(){
-    _ofile="${test_dir}/test.log"
+    local _ofile="${test_dir}/test.log"
     if [[ -e ${_ofile} ]]; then
         # remove older file
         eval "rm ${_ofile}"
     fi
     # test 1, write a non-existent job, it should return a NA status
-    local _test="submit_job.sh write_log 111111 ${_ofile}"
+    local _test="submit_job.sh write_log ${test_fixtures_dir} 2009375 ${_ofile}"
     eval "${_test}"
     if ! [[ -e "${_ofile}" ]]; then
         cecho ${BAD} "test_write_log fails for \"${_test}\", \"${_ofile}\"  doesn't exist"
 	exit 1
     fi
     _output=$(cat "${_ofile}" | sed -n '1'p)
-    if ! [[ ${_output} = '111111 NA' ]]; then
+    if ! [[ ${_output} = "${test_fixtures_dir} 2009375 NA 10 101705years" ]]
+    then
         cecho ${BAD} "test_write_log fails for \"${_test}\", output format is wrong"
 	exit 1
     fi
@@ -308,15 +323,19 @@ main(){
 EOF
     elif [[ ${_command} = "write_log" ]]; then
         local log_file="${HOME}/jobs.log"
-        local job_id="$2"
+	local job_dir="$2"
+	if ! [[ -d ${job_dir} ]]; then
+	        cecho ${BAD} "with 'write_log' command, '\$2' needs to be existing directory"
+	fi
+        local job_id="$3"
         if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
-	        cecho ${BAD} "with 'write_log' command, '\$2' needs to be an id"
+	        cecho ${BAD} "with 'write_log' command, '\$3' needs to be an id"
 	        exit 1
         fi
-        if ! [[ $3 = '' ]]; then
-            log_file="$3"
+        if ! [[ $4 = '' ]]; then
+            log_file="$4"
         fi
-        write_log ${job_id} ${log_file}
+        write_log ${job_dir} ${job_id} ${log_file}
     else
         # command error is already catched
         echo "foo"

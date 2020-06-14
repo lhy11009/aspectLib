@@ -99,5 +99,50 @@ get_job_info(){
     done
     return 1  # if the key is not find, return an error message
 }
+
+parse_stdout(){
+	# parse from a stdout file
+	# Ouputs:
+	#	last_time_step(str)
+	#	last_time(str): time of last time step
+	local _ifile=$1
+	unset last_time_step
+	unset last_time
+	while IFS= read -r line; do
+		if [[ ${line} =~ \*\*\* ]]; then
+			break
+		fi
+	done <<< "$(sed '1!G;h;$!d' ${_ifile})"
+	last_time_step=${line#*Timestep\ }
+	last_time_step=${last_time_step%:*}
+	last_time=${line#*t=}
+	last_time=${last_time/ /}
+}
+
+################################################################################
+# Test functions
+test_parse_stdout(){
+	# test the parse_stdout function, return values are last timestpe and time
+	local _ifile="tests/integration/fixtures/task-2009375.stdout"
+	if ! [[ -e ${_ifile} ]]; then
+		cecho ${BAD} "test_parse_stdout failed, no input file ${_ifile}"
+		exit 1
+	fi
+	parse_stdout ${_ifile}  # parse this file
+	if ! [[ ${last_time_step} = "10" ]]; then
+		cecho ${BAD} "test_parse_stdout failed, time_step is wrong"
+		exit 1
+	fi
+	if ! [[ ${last_time} = "101705years" ]]; then
+		cecho ${BAD} "test_parse_stdout failed, time is wrong"
+		exit 1
+	fi
+	cecho ${GOOD} "test_parse_stdout passed"
+}
+
+if [[ "$1" = "test" ]]; then
+	# run tests by ./utilities.sh test
+	test_parse_stdout
+fi
  
 set +a  # return to default setting
