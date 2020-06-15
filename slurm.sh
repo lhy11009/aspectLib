@@ -1,17 +1,8 @@
-#!/bin/bash -l
+#!/bin/bash
 
-source utilities.sh
+dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source "${dir}/utilities.sh"
 
-# Name of the job
-#SBATCH -J test
-
-# Standard out and Standard Error output files with the job number in the name.
-#SBATCH -o %j.stdout
-#SBATCH -e %j.stderr
-
-# envirmont variables below
-
-dir=$(pwd)
 filename="test.prm"
 nnode=1
 total_tasks=1
@@ -24,7 +15,7 @@ test_dir="${dir}/.test"  # do test in this directory
 if ! [[ -d ${test_dir} ]]; then
     mkdir "${test_dir}"
 fi
-test_fixtures_dir="tests/integration/fixtures"
+test_fixtures_dir="${dir}/tests/integration/fixtures"
 
 usage()
 {
@@ -264,7 +255,7 @@ test_submit(){
     cd "${test_dir}"  # shift to testdir
     local job_id
     # test 1: mission with 1 core
-    local _test="submit_job.sh -n 1 -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
+    local _test="slurm.sh -n 1 -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
     job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
     if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
         cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
@@ -281,7 +272,7 @@ test_submit(){
 
     # test 2: mission with nproc core
     local _nproc=$(nproc)  # numbers of cores in a node
-    _test="submit_job.sh -n ${_nproc}  -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
+    _test="slurm.sh -n ${_nproc}  -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
     job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
     if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
 	cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
@@ -330,7 +321,7 @@ test_write_log(){
 test_read_log(){
 	local log_file="${test_fixtures_dir}/test.log"
 	read_log "${log_file}"
-	if ! [[ "${return_value0}" = "tests/integration/fixtures tests/integration/fixtures1" && "${return_value1}" = "2009375 2009376" ]]; then
+	if ! [[ "${return_value0}" = "tests/integration/fixtures tests/integration/fixtures" && "${return_value1}" = "2009375 2009376" ]]; then
 		cecho ${BAD} "test_read_log failed, return values are not correct"
 		return 1
 	fi
@@ -362,7 +353,7 @@ main(){
         # todo, drag down results and compare
         # todo reset the scheme of output characters on server
         ssh ${server_info} << EOF
-    	    eval "submit_job.sh test"
+    	    eval "slurm.sh test"
 EOF
     elif [[ ${_command} = "write_log" ]]; then
         local log_file="${HOME}/jobs.log"

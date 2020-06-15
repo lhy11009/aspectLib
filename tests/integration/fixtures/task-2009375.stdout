@@ -1,0 +1,258 @@
+==========================================
+SLURM_JOB_ID = 2009375
+SLURM_NODELIST = c8-80
+CUDA_VISIBLE_DEVICES = 
+==========================================
+-----------------------------------------------------------------------------
+-- This is ASPECT, the Advanced Solver for Problems in Earth's ConvecTion.
+--     . version 2.2.0-pre (reset_corner_viscosity, 5264f0d89)
+--     . using deal.II 9.1.1
+--     .       with 32 bit indices and vectorization level 1 (128 bits)
+--     . using Trilinos 12.10.1
+--     . using p4est 2.2.0
+--     . running in OPTIMIZED mode
+--     . running with 32 MPI processes
+-----------------------------------------------------------------------------
+
+Loading shared library </home/lochy/ASPECT_PROJECT/aspect_plugins/subduction_temperature2d/libsubduction_temperature2d.so>
+Loading shared library </home/lochy/ASPECT_PROJECT/aspect_plugins/prescribe_field/libprescribed_temperature.so>
+
+
+   Loading Ascii data initial file /home/lochy/software/aspect/data/initial-temperature/ascii-data/test/box_2d_Vs_YT16.txt.
+
+-----------------------------------------------------------------------------
+-- For information on how to cite ASPECT, see:
+--   https://aspect.geodynamics.org/citing.html?ver=2.2.0-pre&dg=1&sha=5264f0d89&src=code
+-----------------------------------------------------------------------------
+Number of active cells: 4,096 (on 7 levels)
+Number of degrees of freedom: 201,604 (33,282+4,225+16,641+36,864+36,864+36,864+36,864)
+
+*** Timestep 0:  t=0 years
+   Solving temperature system... 0 iterations.
+   Solving spcrust system ... 0 iterations.
+   Solving spharz system ... 0 iterations.
+   Solving opcrust system ... 0 iterations.
+   Solving opharz system ... 0 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+6 iterations.
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00000
+     RMS, max velocity:        0.0324 m/year, 0.204 m/year
+     Temperature min/avg/max:  273 K, 1641 K, 1673 K
+     Writing depth average:    output/depth_average
+
+Number of active cells: 8,512 (on 8 levels)
+Number of degrees of freedom: 418,789 (69,086+8,728+34,543+76,608+76,608+76,608+76,608)
+
+*** Timestep 0:  t=0 years
+   Solving temperature system... 0 iterations.
+   Solving spcrust system ... 0 iterations.
+   Solving spharz system ... 0 iterations.
+   Solving opcrust system ... 0 iterations.
+   Solving opharz system ... 0 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+35 iterations.
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00001
+     RMS, max velocity:        0.022 m/year, 0.143 m/year
+     Temperature min/avg/max:  273 K, 1641 K, 1673 K
+     Writing depth average:    output/depth_average
+
+Number of active cells: 25,792 (on 9 levels)
+Number of degrees of freedom: 1,267,104 (208,274+26,181+104,137+232,128+232,128+232,128+232,128)
+
+*** Timestep 0:  t=0 years
+   Solving temperature system... 0 iterations.
+   Solving spcrust system ... 0 iterations.
+   Solving spharz system ... 0 iterations.
+   Solving opcrust system ... 0 iterations.
+   Solving opharz system ... 0 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+58 iterations.
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00002
+     RMS, max velocity:        0.0204 m/year, 0.147 m/year
+     Temperature min/avg/max:  273 K, 1641 K, 1673 K
+     Writing depth average:    output/depth_average
+
+Number of active cells: 38,080 (on 10 levels)
+Number of degrees of freedom: 1,871,888 (308,178+38,741+154,089+342,720+342,720+342,720+342,720)
+
+*** Timestep 0:  t=0 years
+   Solving temperature system... 0 iterations.
+   Solving spcrust system ... 0 iterations.
+   Solving spharz system ... 0 iterations.
+   Solving opcrust system ... 0 iterations.
+   Solving opharz system ... 0 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+73 iterations.
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00003
+     RMS, max velocity:        0.0195 m/year, 0.134 m/year
+     Temperature min/avg/max:  273 K, 1641 K, 1673 K
+     Writing depth average:    output/depth_average
+
+Number of active cells: 46,090 (on 11 levels)
+Number of degrees of freedom: 2,268,078 (374,486+47,109+187,243+414,810+414,810+414,810+414,810)
+
+*** Timestep 0:  t=0 years
+   Solving temperature system... 0 iterations.
+   Solving spcrust system ... 0 iterations.
+   Solving spharz system ... 0 iterations.
+   Solving opcrust system ... 0 iterations.
+   Solving opharz system ... 0 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+77 iterations.
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00004
+     RMS, max velocity:        0.0199 m/year, 0.142 m/year
+     Temperature min/avg/max:  273 K, 1641 K, 1820 K
+     Writing depth average:    output/depth_average
+
+*** Timestep 1:  t=9938.44 years
+   Solving temperature system... 12 iterations.
+   Solving spcrust system ... 6 iterations.
+   Solving spharz system ... 6 iterations.
+   Solving opcrust system ... 4 iterations.
+   Solving opharz system ... 4 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+74 iterations.
+
+   Postprocessing:
+     RMS, max velocity:       0.0197 m/year, 0.14 m/year
+     Temperature min/avg/max: 273 K, 1641 K, 1730 K
+     Writing depth average:   output/depth_average
+
+*** Timestep 2:  t=20010.7 years
+   Solving temperature system... 11 iterations.
+   Solving spcrust system ... 6 iterations.
+   Solving spharz system ... 6 iterations.
+   Solving opcrust system ... 3 iterations.
+   Solving opharz system ... 4 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+73 iterations.
+
+   Postprocessing:
+     RMS, max velocity:       0.0207 m/year, 0.137 m/year
+     Temperature min/avg/max: 273 K, 1641 K, 1731 K
+     Writing depth average:   output/depth_average
+
+*** Timestep 3:  t=30281.7 years
+   Solving temperature system... 11 iterations.
+   Solving spcrust system ... 6 iterations.
+   Solving spharz system ... 6 iterations.
+   Solving opcrust system ... 4 iterations.
+   Solving opharz system ... 4 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+69 iterations.
+
+   Postprocessing:
+     RMS, max velocity:       0.0208 m/year, 0.137 m/year
+     Temperature min/avg/max: 273 K, 1641 K, 1757 K
+     Writing depth average:   output/depth_average
+
+*** Timestep 4:  t=40613 years
+   Solving temperature system... 10 iterations.
+   Solving spcrust system ... 5 iterations.
+   Solving spharz system ... 5 iterations.
+   Solving opcrust system ... 3 iterations.
+   Solving opharz system ... 4 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+49 iterations.
+
+   Postprocessing:
+     RMS, max velocity:       0.0208 m/year, 0.136 m/year
+     Temperature min/avg/max: 273 K, 1641 K, 1774 K
+     Writing depth average:   output/depth_average
+
+*** Timestep 5:  t=50958.1 years
+   Solving temperature system... 10 iterations.
+   Solving spcrust system ... 5 iterations.
+   Solving spharz system ... 5 iterations.
+   Solving opcrust system ... 3 iterations.
+   Solving opharz system ... 4 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+54 iterations.
+
+   Postprocessing:
+     RMS, max velocity:       0.0208 m/year, 0.138 m/year
+     Temperature min/avg/max: 273 K, 1641 K, 1783 K
+     Writing depth average:   output/depth_average
+
+*** Timestep 6:  t=61204.4 years
+   Solving temperature system... 10 iterations.
+   Solving spcrust system ... 5 iterations.
+   Solving spharz system ... 5 iterations.
+   Solving opcrust system ... 3 iterations.
+   Solving opharz system ... 4 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+46 iterations.
+
+   Postprocessing:
+     RMS, max velocity:       0.0209 m/year, 0.138 m/year
+     Temperature min/avg/max: 273 K, 1641 K, 1786 K
+     Writing depth average:   output/depth_average
+
+*** Timestep 7:  t=71395 years
+   Solving temperature system... 9 iterations.
+   Solving spcrust system ... 5 iterations.
+   Solving spharz system ... 5 iterations.
+   Solving opcrust system ... 3 iterations.
+   Solving opharz system ... 4 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+41 iterations.
+
+   Postprocessing:
+     RMS, max velocity:       0.021 m/year, 0.14 m/year
+     Temperature min/avg/max: 273 K, 1641 K, 1789 K
+     Writing depth average:   output/depth_average
+
+*** Timestep 8:  t=81504.9 years
+   Solving temperature system... 9 iterations.
+   Solving spcrust system ... 5 iterations.
+   Solving spharz system ... 5 iterations.
+   Solving opcrust system ... 3 iterations.
+   Solving opharz system ... 4 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+49 iterations.
+
+   Postprocessing:
+     RMS, max velocity:       0.0211 m/year, 0.139 m/year
+     Temperature min/avg/max: 273 K, 1641 K, 1794 K
+     Writing depth average:   output/depth_average
+
+*** Timestep 9:  t=91635.9 years
+   Solving temperature system... 9 iterations.
+   Solving spcrust system ... 5 iterations.
+   Solving spharz system ... 5 iterations.
+   Solving opcrust system ... 3 iterations.
+   Solving opharz system ... 4 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+53 iterations.
+
+   Postprocessing:
+     RMS, max velocity:       0.0213 m/year, 0.14 m/year
+     Temperature min/avg/max: 273 K, 1641 K, 1798 K
+     Writing depth average:   output/depth_average
+
+*** Timestep 10:  t=101705 years
+   Solving temperature system... 9 iterations.
+   Solving spcrust system ... 5 iterations.
+   Solving spharz system ... 5 iterations.
+   Solving opcrust system ... 3 iterations.
+   Solving opharz system ... 4 iterations.
+   Rebuilding Stokes preconditioner...
+   Solving Stokes system... 200+54 iterations.
+
+   Postprocessing:
+     RMS, max velocity:       0.0213 m/year, 0.139 m/year
+     Temperature min/avg/max: 273 K, 1641 K, 1800 K
+     Writing depth average:   output/depth_average
+
+Number of active cells: 46,084 (on 11 levels)
+Number of degrees of freedom: 2,267,790 (374,442+47,103+187,221+414,756+414,756+414,756+414,756)

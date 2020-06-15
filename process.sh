@@ -1,145 +1,114 @@
 #!/bin/bash
 
-# todo
-# complete usage
-usage()
-{
-    printf "\
+dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-Usage:
-Run command on the server side
+source "${dir}/utilities.sh"
+test_dir="${dir}/.test"  # do test in this directory
+if ! [[ -d ${test_dir} ]]; then
+    mkdir "${test_dir}"
+fi
+test_fixtures_dir="${dir}/tests/integration/fixtures"
 
-    %s [server_name] [command] [file_name]
-
-server_name:
-
-    Name of server
-
-command:
-
-    submit:
-        Submit a job to cluster with a slurm system
-"
+usage(){
+	#todo
+	echo "foo"
 }
 
-# Submit job to servers
-# Inputs:
-#   $1(str): user@server
-#   $2(str): filename for .prm
-#   $3(str): addtional variables
-process_submit(){
-    get_addtional_options $3  # get addtional output
-    ssh $1 << EOF
-        eval 'source \$ASPECT_LAB_DIR/utilities.sh'
-        eval "cd $(dirname $2)"
-        take_record 'cd $(dirname $2)' '\$HOME/server_runs'
-        eval "submit_job.sh $ADDITIONAL_OPTIONS $(basename $2)"
-        take_record 'submit_job.sh $ADDITIONAL_OPTIONS $(basename $2)' '\$HOME/server_runs'
-EOF
-    unset ADDITIONAL_OPTIONS
+update(){
+	local log_file=$1
+	# look into log file
+	eval "slurm.sh"  # todo
+	# updata log file
+	eval "slurm.sh" # todo
 }
 
-# get_addtional_options from a string which looks like:
-# '#--total_tasks=32#--partition=med2'
-# and return with something like:
-# ' --total_tasks=32 --partition=med2'
-get_addtional_options(){
-    ADDITIONAL_OPTIONS=${1//\#/ }
+
+update_from_server(){
+	local server_info=$2
+	local local_log_file=$3
+	local remote_log_file=$4
+	# update log file
+	echo "rsync -avur "  # todo
 }
 
-# Main function
-main()
-{
-    unset ARGUMNET
-    unset USER
-    unset SERVER
-    unset OPTION
-    unset CASE_NAME
-    unset DIR
-    while [ -n "$1" ]; do
-        param="$1"
-        case $param in
-            -h|--help)
-                usage
-                exit 0
-            ;;
-            #####################################
-            # Arguments
-            [^-]*)
-                ARGUMENT="${ARGUMENT} ${1}"
-            ;;
-            #####################################
-            # Option
-            -o)
-                shift
-                OPTION="${1}"
-            ;;
-            -o=*|--option=*)
-                OPTION="${param#*=}"
-            ;;
-            #####################################
-            # Casename
-            -c)
-                shift
-                CASE_NAME="${1}"
-            ;;
-            -c=*|--case_name=*)
-                CASE_NAME="${param#*=}"
-            ;;
-            #####################################
-            # Path to case data
-            -d)
-                shift
-                DIR="${1}"
-            ;;
-            -d=*|--dir=*)
-                DIR="${param#*=}"
-                # replace '~' by $HOME
-                DIR=${PREFIX/#~\//$HOME\/}
-            ;;
-            #####################################
-            # USER
-            -u)
-                shift
-                USER="${1}"
-            ;;
-            -u=*|--user=*)
-                USER="${param#*=}"
-            ;;
-            #####################################
-            # Server name
-            -s)
-                shift
-                SERVER="${1}"
-            ;;
-            -s=*|--server=*)
-                SERVER="${param#*=}"
-            ;;
-            #####################################
-        esac
-        shift # go to next variable, so we can still do something
-    done
-    # handle cases with wrong inputs
-    if [[ ! -v "OPTION" || ! -n "OPTION" ]]; then
-        exit "Must give an OPTION variable"
-    fi
-    # REMOTE_DIR=  # get the remote path, todo
-    if [[ "$OPTION" = "submit" ]]; then
-        # submit a case to remote server
-        if [[ ! -v "USER" || ! -n "USER" ]]; then
-            exit "With the submit option, Must give a USER variable"
-        fi
-        if [[ ! -v "SERVER" || ! -n "SERVER" ]]; then
-            exit "With the submit option, Must give a SERVER variable"
-        fi
-        if [[ ${#ARGUMENT[@]} -gt 2 ]]; then
-            exit "With the submit option, Argumemnt mush be just the name for the file on server, an addtional one may be given as additional option"
-        fi
-        local REMOTE_FILE=${ARGUMENT[0]}
-        local ADDITIONAL_OPTIONS=${ARGUMENT[1]}
-        # REMOTE_FILE='\$TwoDSubduction_DIR/katrina_case/katrina_case_parse_inputs_1/test.prm' # test remote file
-        process_submit "$USER@$SERVER" $REMOTE_FILE $ADDITIONAL_OPTION
-    fi
+
+update_outputs_from_server(){
+	# copy case output from server
+	local server_info=$2
+	local local_log_file=$3
+	local line
+	for IFS=read -r line; do
+		echo "rsync -avur"  # todo
+	done <<< $(cat "${log_file}")
 }
 
-main "$@"
+################################################################################
+# test functions
+################################################################################
+test_update(){
+	local log_file="${test_dir}/test.log"
+	local correct_output_file="${test_fixtures_dir}/outputs/process_sh_test_update.output"
+	eval "cp ${test_fixtures_dir}/test.log ${log_file}"
+	update "${log_file}"
+	if [[ $? -eq 1 ]]; then
+		cecho ${BAD} "test_update failed, error reading log file ${log_file}"
+		exit 1
+	fi
+	if ! [[ $(diff "${log_file}" "${correct_output_file}") = '' ]]; then
+		cecho ${BAD} "test_update failed, output format is wrong"
+		exit 1
+	fi
+	cecho ${GOOD} "test_update passed"
+}
+
+
+test_update_from_server(){
+	echo "foo" # todo
+}
+
+
+test_update_outputs_from_server(){
+	echo "foo" # todo
+}
+
+
+################################################################################
+# main function
+################################################################################
+main(){
+	if [[ "$1" = "test" ]]; then
+		test_update
+	elif [[ "$1" = "remote_test" ]]; then
+		test_update_from_server
+		test_update_outputs_from_server
+	elif [[ "$1" = "update" ]]; then
+		local log_file=$2
+		if [[ "${log_file}" = '' ]]; then
+			cecho ${BAD} "with \"update\" command, a $2 must be given for the log_file variable"
+		fi
+	       	update "${log_file}"
+	elif [[ "$1" = "update_from_server" ]]; then
+		local server_info=$2
+		local local_log_file=$3
+		local remote_log_file=$4
+		if [[ "${local_log_file}" = '' || "${remote_log_file}" = '' ]]; then
+			cecho ${BAD} "with \"update_from_server\" command, $3and $4 must be given for log_files on local side and log_files on remote side"
+		fi
+		update_from_server "${server_info}" "${local_log_file}" "${remote_log_file}"
+	elif [[ "$1" = "update_outputs_from_server" ]]; then
+		local server_info=$2
+		local local_log_file=$3
+		if [[ "${remote_log_file}" = '' ]]; then
+			cecho ${BAD} "with \"update_from_server\" command, $3 must be given for log_files on local side"
+		fi
+		update_outputs_from_server "${server_info}" "${remote_log_file}"
+	elif [[ "$1" = '-h' || "$1" = '--help' ]]; then
+		usage
+	else
+		cecho ${BAD} "bad command \"$1\""
+		usage
+	fi
+}
+
+
+main
