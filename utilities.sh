@@ -1,7 +1,23 @@
 #!/bin/bash
 
+dir=$(pwd)
+test_dir="${dir}/.test"  # do test in this directory
+if ! [[ -d ${test_dir} ]]; then
+    mkdir "${test_dir}"
+fi
+test_fixtures_dir="tests/integration/fixtures"
 
 set -a  # to export every variables that will be set
+
+################################################################################
+# Unit functions
+element_in() {
+	# determine if element is in an array
+	local e match="$1"
+	shift
+	for e; do [[ "$e" == "$match" ]] && return 0; done
+	return 1
+}
 
 ################################################################################
 # Taking record of commands
@@ -119,8 +135,22 @@ parse_stdout(){
 	last_time=${last_time/ /}
 }
 
+
 ################################################################################
 # Test functions
+test_element_in(){
+	local _test_array=('a' 'b' 'c d')
+	if ! element_in 'a' "${_test_array[@]}"; then
+		cecho ${BAD} "test_element_in failed, 'a' is not in ${_test_array}[@]"
+	fi
+	if element_in 'c' "${_test_array[@]}"; then
+		cecho ${BAD} "test_element_in failed, 'c' is in ${_test_array}[@]"
+	fi
+	cecho ${GOOD} "test_element_in passed"
+		
+}
+
+
 test_parse_stdout(){
 	# test the parse_stdout function, return values are last timestpe and time
 	local _ifile="tests/integration/fixtures/task-2009375.stdout"
@@ -140,9 +170,11 @@ test_parse_stdout(){
 	cecho ${GOOD} "test_parse_stdout passed"
 }
 
+
 if [[ "$1" = "test" ]]; then
 	# run tests by ./utilities.sh test
 	test_parse_stdout
+	test_element_in
 fi
  
 set +a  # return to default setting
