@@ -9,17 +9,32 @@ if ! [[ -d ${test_dir} ]]; then
 fi
 test_fixtures_dir="${dir}/tests/integration/fixtures"
 
+
 usage(){
 	#todo
 	echo "foo"
 }
 
+
 update(){
 	local log_file=$1
+	local job_dirs
+	local job_ids
+	local job_dir
+	local job_id
 	# look into log file
-	eval "slurm.sh"  # todo
+	read_log "${log_file}"
+	# write log file
+	write_log_header "${log_file}"
+	IFS=' ' read -r -a job_dirs <<< ${return_value0}
+	IFS=' ' read -r -a job_ids <<< ${return_value1}
+	i=0
+	for job_id in ${job_ids[@]}; do
+		job_dir="${job_dirs[i]}"
+		write_log "${job_dir}" "${job_id}" "${log_file}"
+		i=$i+1
+	done
 	# updata log file
-	eval "slurm.sh" # todo
 }
 
 
@@ -37,7 +52,7 @@ update_outputs_from_server(){
 	local server_info=$2
 	local local_log_file=$3
 	local line
-	for IFS=read -r line; do
+	while IFS= read -r line; do
 		echo "rsync -avur"  # todo
 	done <<< $(cat "${log_file}")
 }
@@ -63,7 +78,23 @@ test_update(){
 
 
 test_update_from_server(){
-	echo "foo" # todo
+	local correct_output_file="${test_fixtures_dir}/test.log"
+	local server_info=$1
+	local local_log_file="${test_dir}/test.log"
+	if [[ -e "${local_log_file}" ]]; then
+		# remove old file
+		eval "rm ${local_log_file}"
+	fi
+	ssh "${server_info}" eval "echo \"${ASPECT_LAB_DIR}\"" > "${test_dir}/temp"
+	REMOTE_ASPECT_LAB_DIR=$(cat "${test_dir}/temp")
+	echo "REMOTE_ASPECT_LAB_DIR: ${REMOTE_ASPECT_LAB_DIR}"  # screen output
+	remome_log_file="${REMOTE_ASPECT_LAB_DIR}/tests/integration/fixtures/test.log"	
+	update_from_server "${server_info}" "${remote_log_file}" "${local_log_file}"
+	if ! [[ $(diff "${log_file}" "${correct_output_file}") = '' ]]; then
+		cecho ${BAD} "test_update failed, output format is wrong"
+		exit 1
+	fi
+	cecho ${GOOD} "test_update passed"
 }
 
 
@@ -111,4 +142,6 @@ main(){
 }
 
 
-main
+if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
+	main $@
+fi

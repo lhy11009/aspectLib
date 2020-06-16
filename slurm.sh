@@ -159,61 +159,8 @@ submit(){
 }
 
 
-write_log_header(){
-	# write a header to a log file
-	# Inputs:
-	#	$1: log file name
-	local log_file=$1
-	echo "job_dir job_id ST last_time_step last_time" > ${log_file}
-}
-
-write_log(){
-    # write to a log file
-    # Inputs:
-    #   $1: job id
-    #   $2: job directory
-    #   $3: log file name
-    local job_dir=$1
-    local job_id=$2
-    local log_file=$3
-    local _file
-    get_job_info ${job_id} 'ST'
-    quit_if_fail "get_job_info: no such stat 'ST'"
-    local ST=${return_value}
-    # parse stdout file
-    for _file in ${job_dir}/*
-    do
-        # look for stdout file
-        if [[ "${_file}" =~ ${job_id}.stdout ]]; then
-            break
-	fi		
-    done
-    parse_stdout ${_file}  # parse this file
-    echo "${job_dir} ${job_id} ${ST} ${last_time_step} ${last_time}" >> "${log_file}"
-}
 
 
-read_log(){
-	# read a log file
-	# Inputs:
-	#	$1: log file name
-	local log_file=$1
-	local i=0
-	local foo
-	unset return_value0
-	unset return_value1
-	while IFS=' ' read -r -a foo; do
-		if [[ $i -eq 1 ]]; then
-			return_value0="${foo[0]}"
-			return_value1="${foo[1]}"
-		elif [[ $i -gt 1 ]]; then
-			return_value0="${return_value0} ${foo[0]}"
-			return_value1="${return_value1} ${foo[1]}"
-		fi
-		i=$i+1
-	done <<< $(cat "${log_file}")
-	return 0
-}
 
 ################################################################################
 # test functions
@@ -296,39 +243,6 @@ test_submit(){
     cd "${dir}"  # shift back to main directory
 }
 
-test_write_log(){
-    local _ofile="${test_dir}/test.log"
-    if [[ -e ${_ofile} ]]; then
-        # remove older file
-        eval "rm ${_ofile}"
-    fi
-    # test 1, write a non-existent job, it should return a NA status
-    write_log_header "${_ofile}"
-    write_log "${test_fixtures_dir}" "2009375" "${_ofile}"
-    if ! [[ -e "${_ofile}" ]]; then
-        cecho ${BAD} "test_write_log fails for test1, \"${_ofile}\"  doesn't exist"
-	exit 1
-    fi
-    _output=$(cat "${_ofile}" | sed -n '2'p)
-    if ! [[ ${_output} = "${test_fixtures_dir} 2009375 NA 10 101705years" ]]
-    then
-        cecho ${BAD} "test_write_log fails for test2, output format is wrong"
-	exit 1
-    fi
-    cecho ${GOOD} "test_write_log passed"
-}
-
-test_read_log(){
-	local log_file="${test_fixtures_dir}/test.log"
-	read_log "${log_file}"
-	if ! [[ "${return_value0}" = "tests/integration/fixtures tests/integration/fixtures" && "${return_value1}" = "2009375 2009376" ]]; then
-		cecho ${BAD} "test_read_log failed, return values are not correct"
-		return 1
-	fi
-	cecho ${GOOD} "test_read_log passed"
-}
-
-
 
 main(){
     parse_command "$1" # parse the command
@@ -336,8 +250,6 @@ main(){
     if [[ ${_command} = "test" ]]; then
         test_parse_command
 	test_submit
-        test_write_log
-	test_read_log
     elif [[ ${_command} = "submit" ]]; then
     	parse_options "$@"  # parse option with '-'
     	submit  # submit job
@@ -355,21 +267,6 @@ main(){
         ssh ${server_info} << EOF
     	    eval "slurm.sh test"
 EOF
-    elif [[ ${_command} = "write_log" ]]; then
-        local log_file="${HOME}/jobs.log"
-	local job_dir="$2"
-	if ! [[ -d ${job_dir} ]]; then
-	        cecho ${BAD} "with 'write_log' command, '\$2' needs to be existing directory"
-	fi
-        local job_id="$3"
-        if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
-	        cecho ${BAD} "with 'write_log' command, '\$3' needs to be an id"
-	        exit 1
-        fi
-        if ! [[ $4 = '' ]]; then
-            log_file="$4"
-        fi
-        write_log ${job_dir} ${job_id} ${log_file}
     else
         # command error is already catched
         echo "foo"
@@ -377,4 +274,6 @@ EOF
 }
 
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
+	main $@
+fi
