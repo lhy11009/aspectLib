@@ -18,12 +18,9 @@ element_in() {
 	return 1
 }
 
-################################################################################
-# Taking record of commands
-#
-# 1) Example Command:
 
 take_record() {
+    # Taking record of commands
     message=$(eval echo $1)
     record_file=$(eval echo $2)
 
@@ -34,7 +31,6 @@ take_record() {
     }
 
     echo "$(timestamp): ${message}" >> ${record_file}
-
 }
 
 ################################################################################
@@ -86,6 +82,22 @@ quit_if_fail() {
 
 ################################################################################
 # Define functions to work with slurm system
+get_remote_environment(){
+    # get the value of a remote environment variable
+    # Inputs:
+    #   1: server_info
+    #   2: variable name
+    [[ $# = 2 ]] || return 1
+    unset return_value
+    local server_info=$1
+    local name=$2
+	ssh "${server_info}" << EOF > ".log"
+        eval "echo \${${name}}"
+EOF
+	return_value=$(tail -n 1 ".log")
+}
+
+
 get_job_info(){
     # get info from the squeue command
     # inputs:
@@ -189,7 +201,7 @@ write_log(){
         # look for stdout file
         if [[ "${_file}" =~ ${job_id}.stdout ]]; then
             break
-	fi		
+	fi
     done
     parse_stdout ${_file}  # parse this file
     echo "${job_dir} ${job_id} ${ST} ${last_time_step} ${last_time}" >> "${log_file}"
@@ -205,7 +217,7 @@ test_element_in(){
 		cecho ${BAD} "test_element_in failed, 'c' is in ${_test_array}[@]"
 	fi
 	cecho ${GOOD} "test_element_in passed"
-		
+
 }
 
 
@@ -274,7 +286,7 @@ main(){
 	fi
 }
 
- 
+
 set +a  # return to default setting
 
 
