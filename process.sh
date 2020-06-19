@@ -52,15 +52,29 @@ update_from_server(){
 
 update_outputs_from_server(){
 	# copy case output from server
+    # files to update is read from a local log file, so before calling this function
+    # a local log file should be generated;
+    # local directory and remote directory are withing the same project, so the
+    # path for the project is substituted from the remote directory to the
+    # local directory
+    # Inputs:
+    #   $1: server_info, user@address
+    #   $2: local_log_file
     local project="TwoDSubduction"  # todo: loop for different project
+    [[ ${RSYNC} = '' ]] && local RSYNC='rsync' # RSYNC could be set to substitute rsync,todo: look for better solution
 	local server_info=$1
 	local local_log_file=$2
     local local_root=$(eval "echo \${${project}_DIR}")  # get local root dir
-	local line
+    local target_dir
+    get_remote_environment "${server_info}" "${project}_DIR"  # get remote dir
+    local remote_root=${return_value}
 	read_log "${local_log_file}"
+    local job_dirs  # read local log file
 	IFS=' ' read -r -a job_dirs <<< ${return_value0}
 	for job_dir in ${job_dirs[@]}; do
-		echo "rsync -avur "  # todo
+        target_dir=${job_dir/"${remote_root}"/"${local_root}"}
+        [[ -d ${target_dir} ]] || mkdir -p "${target_dir}"  # mkdir target dir if it doesn't exist
+		eval "${RSYNC} -avur ${server_info}:${job_dir}/* ${target_dir}/"
 	done
 }
 ################################################################################
@@ -84,6 +98,7 @@ test_update(){
 
 
 test_update_from_server(){
+    # todo: have a function to check all the environmental variables on server
 	local correct_output_file="${test_fixtures_dir}/test.log"
 	local server_info=$1
 	local local_log_file="${test_dir}/test.log"
@@ -93,7 +108,6 @@ test_update_from_server(){
 	fi
     # figure out remove file
     get_remote_environment ${server_info} "ASPECT_LAB_DIR"
-	echo "REMOTE_ASPECT_LAB_DIR: ${return_value}"  # screen output
 	remote_log_file="${return_value}/tests/integration/fixtures/test.log"
 	update_from_server "${server_info}" "${remote_log_file}" "${local_log_file}"
     if ! [[ -e "${local_log_file}" ]]; then
@@ -107,6 +121,29 @@ test_update_from_server(){
 	cecho ${GOOD} "test_update_from_server passed"
 }
 
+
+test_update_outputs_from_server(){
+    # todo: this is a test need to be done in the project folder
+    # so there is need to make this test when installing this bundle
+    # Inputs:
+    #   $1:server_info
+    server_info=$1
+    local project="TwoDSubduction"  # todo: loop for different project
+    local local_root=$(eval "echo \${${project}_DIR}")  # get local root dir
+    local target_dir="${local_root}/tests/update_outputs_from_server_tests"
+    [[ -d "${target_dir}" ]] && rm -r "${target_dir}"  # remove old dir
+    local_log_file="${local_root}/tests/test.log"
+    update_outputs_from_server "${server_info}" "${local_log_file}"
+    if ! [[ -e "${target_dir}/foo1/foo1a" && -e "${target_dir}/foo1/foo1b" && -e "${target_dir}/foo1/foo1c" ]]; then
+        cecho ${BAD} "test_update_outputs_from_server failed, file in foo1 doesn't exist";
+        return 1
+    fi
+    if ! [[ -e "${target_dir}/foo2/foo2a" && -e "${target_dir}/foo2/foo2b" && -e "${target_dir}/foo2/foo2c" ]]; then
+        cecho ${BAD} "test_update_outputs_from_server failed, file in foo2 doesn't exist";
+        return 1
+    fi
+    cecho ${GOOD} "test_update_outputs_from_server succeed"
+}
 
 ################################################################################
 # main function

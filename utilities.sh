@@ -156,10 +156,13 @@ read_log(){
 	#	$1: log file name
 	local log_file=$1
 	local i=0
-	local foo
 	unset return_value0
 	unset return_value1
-	while IFS=' ' read -r -a foo; do
+    local line
+	local foo
+	while IFS= read -r line; do
+        IFS=' ' read -r -a foo<<< "${line}"  # construct an array from line
+        # i = 0 is the header line, ignore that
 		if [[ $i -eq 1 ]]; then
 			return_value0="${foo[0]}"
 			return_value1="${foo[1]}"
@@ -167,8 +170,8 @@ read_log(){
 			return_value0="${return_value0} ${foo[0]}"
 			return_value1="${return_value1} ${foo[1]}"
 		fi
-		i=$i+1
-	done <<< $(cat "${log_file}")
+        ((i++))
+	done < "${log_file}"
 	return 0
 }
 
