@@ -121,11 +121,11 @@ get_job_info(){
     IFS=' ' read -r -a  _infos<<< "${_temp}"
     local i=0
     for element in ${_headers[@]}; do
-	if [[ "$element" = "$2" ]]; then
-	    return_value="${_infos[i]}"
-	    return 0
-	fi
-	i=$i+1
+	    if [[ "$element" = "$2" ]]; then
+	        return_value="${_infos[i]}"
+	        return 0
+	    fi
+        ((i++))
     done
     return 2  # if the key is not find, return an error message
 }
