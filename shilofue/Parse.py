@@ -163,6 +163,10 @@ def PatternFromStr(_str):
         _pattern(str): pattern
     '''
     _pattern=''
+    _parts = _str.split('_')
+    for _part in _parts:
+        # connect upper case of every first character
+        _pattern += _part[0].upper()
     return _pattern
 
 
@@ -175,11 +179,15 @@ def PatternFromValue(_value):
         _pattern(str or float or int): pattern
     '''
     if type(_value) is str:
-        _pattern=''
+        _pattern = ''
+        # connect the lower case of every first character
+        _parts = _value.split(' ')
+        for _part in _parts:
+            _pattern += _part[0].lower()
     elif type(_value) is float:
-        _pattern=''
+        _pattern='%.3e' % _value
     elif type(_value) is int:
-        _pattern=''
+        _pattern='%d' % _value
     else:
         raise(TypeError('value must be str or float or int'))
     return _pattern

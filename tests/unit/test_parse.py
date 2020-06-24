@@ -1,7 +1,7 @@
 import pytest
 from shilofue.Parse import GetGroupCaseFromDict
 from shilofue.Parse import ExpandNamesParameters
-from shilofue.Parse import ChangeDiscValues
+from shilofue.Parse import ChangeDiscValues, PatternFromStr, PatternFromValue
 
 def test_build_group_from_dict():
     # test 0-1, raise error because input type is not dict
@@ -74,3 +74,20 @@ def test_change_disc_values():
     assert(_idict['Material model'] == {'Visco Plastic': {'Reference viscosity': 1e22, 'Maximum viscosity': 1e25}})
 
 
+def test_pattern_from_str():
+    '''
+    Test the function PatterFromStr
+    '''
+    assert(PatternFromStr('foo_foo') == 'FF')
+    assert(PatternFromStr('upper_lower_viscosity') == 'ULV')
+    pass
+
+
+def test_pattern_from_value():
+    '''
+    Test the function PatterFromValue
+    '''
+    assert(PatternFromValue('spherical') == 's')
+    assert(PatternFromValue(0.1) == '1.000e-01')
+    assert(PatternFromValue(100) == '100')
+    pass
