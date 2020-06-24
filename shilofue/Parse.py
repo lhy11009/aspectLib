@@ -1,4 +1,5 @@
 import re
+import os
 from shilofue.Utilities import my_assert
 
 '''
@@ -65,34 +66,123 @@ class CASE():
         values(list):
             list of value of variables to change
         idict(dict):
-            dictionary import from a base file
+            dictionary of parameters
     '''
-    def __init__(self, _idict, _config):
+    def __init__(self, _idict, **kwargs):
         '''
         initiate from a dictionary
         Inputs:
             _idict(dict):
                 dictionary import from a base file
-            _config(dict):
-                a dictionary that has two members: names and values
-                'names'(list):
-                    a sequence of keys
-                'values'(list):
-                    a sequence of values
+            kwargs:
+                config: (dict) - a dictionary that contains the configuration
         '''
         self.idict = _idict
-        self.names = _config['names']
-        self.values = _config['values']
-        ChangeDiscValues(self.idict, self.names, self.values)  # change values in idict accordingly
+        self.config = kwargs.get('config', None)
+        
+    def UpdatePrmDict(self, _names, _values):
+        '''
+        Update the dictionary of prm file,
+        call function ChangeDiscValues()
+        Inputs:
+            _names(list): list of names
+            _values(list): list of values
+        '''
+        ChangeDiscValues(self.idict, _names, _values)  # change values in idict accordingly
 
-    def __call__(self, _ofile):
+    def Intepret(self):
+        '''
+        Intepret configuration,
+        Predifined for offsprings
+        Returns:
+            _names(list): list of names to be passed to UpdatePrmDict
+            _valuess(list): list of valuess to be passed to UpdatePrmDict
+        '''
+        _names = []
+        _values = []
+        return _names, _values
+        pass
+
+    def CaseName(self):
+        '''
+        Generate case name from self.config
+        '''
+        _case_name = ''
+        for key, value in self.config.items():
+            _pattern = PatternFromStr(key)
+            _pattern_value = PatternFromValue(value)
+            _case_name += (_pattern + _pattern_value)
+        return _case_name
+
+    def __call__(self, **kwargs):
         '''
         Create a .prm file
+        inputs:
+            kwargs:
+                method: (str) - method of generate files
+                dirname: (str) - output directory, in use with 'auto' method
+                basename: (str) - base for case name, in use with 'auto' method
+                filename: (str) - output file, in use with 'manual' method
         '''
         # assign file name with a method defined
-        with open(_ofile, 'w') as fout:
-            ParseToDealiiInput(fout, self.idict)
-        pass
+        _method = kwargs.get('method', 'auto')
+        if _method == 'auto':
+            _dirname = kwargs.get('dirname', '.')
+            _basename = kwargs.get('basename', '')
+            # First intepret the configurations
+            my_assert(self.config != None, ValueError,
+                      'With the \'auto\' method, the config must exist')
+            _names, _values = self.Intepret()
+            # Then update parameters
+            self.UpdatePrmDict(_names, _values)
+            # Next generate a case name
+            _case_name = _basename + self.CaseName()
+            # After that, make a directory with case name
+            _case_dir = os.path.join(_dirname, _case_name)
+            if os.path.isdir(_case_dir) is False:
+                os.mkdir(_case_dir)
+            _filename = os.path.join(_case_dir, 'case.prm')
+            # At last, export a .prm file
+            with open(_filename, 'w') as fout:
+                ParseToDealiiInput(fout, self.idict)
+            pass
+        elif _method == 'manual':
+            # export a .prm file
+            _filename = kwargs.get('filename', None)
+            with open(_filename, 'w') as fout:
+                ParseToDealiiInput(fout, self.idict)
+            pass
+
+
+def PatternFromStr(_str):
+    '''
+    Generate a pattern from a _str
+    Inputs:
+        _str(str): input string
+    Returns:
+        _pattern(str): pattern
+    '''
+    _pattern=''
+    return _pattern
+
+
+def PatternFromValue(_value):
+    '''
+    Generate a pattern from a _value
+    Inputs:
+        _str(str): input string
+    Returns:
+        _pattern(str or float or int): pattern
+    '''
+    if type(_value) is str:
+        _pattern=''
+    elif type(_value) is float:
+        _pattern=''
+    elif type(_value) is int:
+        _pattern=''
+    else:
+        raise(TypeError('value must be str or float or int'))
+    return _pattern
 
 
 class GROUP_CASE():
