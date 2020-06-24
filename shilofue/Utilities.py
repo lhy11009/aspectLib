@@ -221,3 +221,39 @@ class UNITCONVERT():
         assert(_unit_from_base == _unit_to_base)  # assert that the base of these two are the same
         _convert_ratio = _unit_from_magnitude / _unit_to_magnitude  # ratio of the two magnitude
         return _convert_ratio
+
+
+# re functions
+def re_neat_word(_pattern):
+    '''
+    Eliminate ' ', '\\t', '\\n' in front of and at the back of _pattern
+    todo: add test function
+    Inputs:
+        _pattern(str): input
+    Outputs:
+        _neat(str): result
+    '''
+    _neat = re.sub('^[ \t]*', '', _pattern)
+    _neat = re.sub('[ \t\n]*$', '', _neat)  # strip value
+    return _neat
+
+
+def re_count_indent(_pattern):
+    '''
+    conunt indentation at the start of a string
+    todo: use system ts for tab space
+    Inputs:
+        _pattern(str): input
+    Outputs:
+        _indent(int): indentation at the start of the string
+    '''
+    assert(type(_pattern) is str)
+    _indent = 0
+    for i in range(len(_pattern)):
+        if _pattern[i] == ' ':
+            _indent += 1
+        elif _pattern[i] == '\t':
+            _indent += 4
+        else:
+            break
+    return _indent

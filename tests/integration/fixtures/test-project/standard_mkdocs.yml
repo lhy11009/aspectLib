@@ -1,0 +1,7 @@
+site_name: My Project
+nav:
+    - Home: index.md
+    - foo:
+        - Summary: foo/summary.md
+        - Parameters: foo/case.prm
+theme: readthedocs
