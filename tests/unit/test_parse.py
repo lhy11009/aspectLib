@@ -1,5 +1,5 @@
 import pytest
-from shilofue.Parse import GetGroupCaseFromDict
+from shilofue.Parse import GetGroupCaseFromDict, GetGroupCaseFromDict1
 from shilofue.Parse import ExpandNamesParameters
 from shilofue.Parse import ChangeDiscValues, PatternFromStr, PatternFromValue
 
@@ -56,6 +56,50 @@ def test_build_group_from_dict():
     assert (_cases_config[0]['values'] == [1e24, 1e20, 0])
     assert (_cases_config[1]['values'] == [1e24, 1e20, 1e6])
     assert (_cases_config[11]['values'] == [1e25, 1e22, 1e6])
+
+
+def test_get_group_case_from_dict1():
+    '''
+    Test the function GetGroupCaseFromDict1
+    '''
+    # test1
+    # test dictionary
+    _idict = {'config': {'foo': [0, 1, 2]},
+              'test': {'foo1': [1, 2, 3]}}
+    # call function
+    _config_tests = GetGroupCaseFromDict1(_idict)
+    # assertion
+    _standard_config_tests = [
+                              {'config': {'foo': 0}, 'test': {'foo1': 1}},
+                              {'config': {'foo': 1}, 'test': {'foo1': 1}},
+                              {'config': {'foo': 2}, 'test': {'foo1': 1}},
+                              {'config': {'foo': 0}, 'test': {'foo1': 2}},
+                              {'config': {'foo': 1}, 'test': {'foo1': 2}},
+                              {'config': {'foo': 2}, 'test': {'foo1': 2}},
+                              {'config': {'foo': 0}, 'test': {'foo1': 3}},
+                              {'config': {'foo': 1}, 'test': {'foo1': 3}},
+                              {'config': {'foo': 2}, 'test': {'foo1': 3}}
+                             ]
+    assert(_config_tests == _standard_config_tests)
+    # test2
+    # test dictionary
+    _idict = {'config': {'foo': [0, 1], 'foo1': [0, 1]},
+              'test': {'foo2': [0, 1]}}
+    # call function
+    _config_tests = GetGroupCaseFromDict1(_idict)
+    # assertion
+    _standard_config_tests = [
+                              {'config': {'foo': 0, 'foo1': 0}, 'test': {'foo2': 0}},
+                              {'config': {'foo': 1, 'foo1': 0}, 'test': {'foo2': 0}},
+                              {'config': {'foo': 0, 'foo1': 1}, 'test': {'foo2': 0}},
+                              {'config': {'foo': 1, 'foo1': 1}, 'test': {'foo2': 0}},
+                              {'config': {'foo': 0, 'foo1': 0}, 'test': {'foo2': 1}},
+                              {'config': {'foo': 1, 'foo1': 0}, 'test': {'foo2': 1}},
+                              {'config': {'foo': 0, 'foo1': 1}, 'test': {'foo2': 1}},
+                              {'config': {'foo': 1, 'foo1': 1}, 'test': {'foo2': 1}}
+    ]
+    assert(_config_tests == _standard_config_tests)
+
 
 def test_change_disc_values():
     '''

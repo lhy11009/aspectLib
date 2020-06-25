@@ -1,0 +1,10 @@
+{
+    "config":
+    {
+        "upper_lower_viscosity": 100.0
+    },
+    "test":
+    {
+        "initial_adaptive_refinement": 8
+    }
+}

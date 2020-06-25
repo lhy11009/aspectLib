@@ -5,7 +5,7 @@ import argparse
 from shilofue.Parse import COMPOSITION
 from shilofue.Parse import ParseFromDealiiInput
 from shilofue.Parse import ParseToDealiiInput
-from shilofue.Parse import GROUP_CASE
+from shilofue.Parse import CASE, GROUP_CASE
 from shilofue.Rheology import GetLowerMantleRheology
 
 
@@ -32,11 +32,12 @@ def LowerMantle(Inputs, jump, T, P, V1):
     backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
     backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0] 
     backgroud_lower_mantle_diffusion = GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='d')
-    prefactors_for_diffusion_creep.data['background'].append(backgroud_lower_mantle_diffusion['A'])
-    grain_size.data['background'].append(backgroud_lower_mantle_diffusion['d'])
-    grain_size_exponents_for_diffusion_creep.data['background'].append(backgroud_lower_mantle_diffusion['m'])
-    activation_energies_for_diffusion_creep.data['background'].append(backgroud_lower_mantle_diffusion['E']) 
-    activation_volumes_for_diffusion_creep.data['background'].append(backgroud_lower_mantle_diffusion['V'])
+    # todo: add in choice of phases
+    prefactors_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['A'], backgroud_lower_mantle_diffusion['A']]
+    grain_size.data['background'] = [backgroud_upper_mantle_diffusion['d'], backgroud_lower_mantle_diffusion['d']]
+    grain_size_exponents_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['m'], backgroud_lower_mantle_diffusion['m']]
+    activation_energies_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['E'], backgroud_lower_mantle_diffusion['E']]
+    activation_volumes_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['V'], backgroud_lower_mantle_diffusion['V']] 
     # parse back
     visco_plastic["Prefactors for diffusion creep"] = prefactors_for_diffusion_creep.parse_back()
     visco_plastic["Grain size"] = grain_size.parse_back()
@@ -44,6 +45,18 @@ def LowerMantle(Inputs, jump, T, P, V1):
     visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
     visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
     return Inputs
+
+
+def MeshRefinement(Inputs, _config):
+    '''
+    change mesh refinement
+    '''
+    try:
+        _initial_adaptive_refinement = int(_config['initial_adaptive_refinement'])
+        Inputs['Mesh refinement']['Initial adaptive refinement'] = str(_initial_adaptive_refinement)
+    except KeyError:
+        pass
+
 
 def Parse(ifile, ofile):
     """
@@ -58,6 +71,27 @@ def Parse(ifile, ofile):
     # todo
     with open(ofile, 'w') as fout:
         ParseToDealiiInput(fout, inputs)
+
+
+class MYCASE(CASE):
+    '''
+    Inherit from class CASE in Parse.py
+    '''
+    def Intepret(self, **kwargs):
+        '''
+        Intepret configuration for my TwoDSubduction Cases
+        kwargs:
+            extra(dict) - extra configuration
+        '''
+        _extra = kwargs.get('extra', {})
+        _operations = kwargs.get('operations', [])
+        _config = { **self.config, **self.test, **_extra }  # append _extra to self.config
+        if 'LowerMantle' in _operations:
+            # change lower mantle viscosity
+            LowerMantle(self.idict, _config['upper_lower_viscosity'], _config['T660'], _config['P660'], _config['LowerV'])
+        if 'MeshRefinement' in _operations:
+            # change initial mesh refinement
+            MeshRefinement(self.idict, _config)
 
 
 def GroupParse(_json_file, _ifile, _target_dir):

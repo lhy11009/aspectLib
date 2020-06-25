@@ -1,6 +1,7 @@
 import re
 import os
-from shilofue.Utilities import my_assert
+import json
+from shilofue.Utilities import my_assert, re_neat_word
 
 '''
 For now, my strategy is first defining a method to parse inputs for every key word,
@@ -25,10 +26,12 @@ class COMPOSITION():
         self.data = {}
         parts = line.split(',')
         for part in parts:
+            key_str = part.split(':')[0]
+            key = re_neat_word(key_str)
             values_str = part.split(':')[1].split('|')
             # convert string to float
-            values = [float(val) for val in values_str]
-            self.data[part.split(':')[0]] = values
+            values = [float(re_neat_word(val)) for val in values_str]
+            self.data[key] = values
 
     def parse_back(self):
         """
@@ -67,6 +70,8 @@ class CASE():
             list of value of variables to change
         idict(dict):
             dictionary of parameters
+        config(dict):
+            dictionary of configuration for the parameters
     '''
     def __init__(self, _idict, **kwargs):
         '''
@@ -76,9 +81,14 @@ class CASE():
                 dictionary import from a base file
             kwargs:
                 config: (dict) - a dictionary that contains the configuration
+                test: (dict) - a dictionary that contains the configuration to test
         '''
+        my_assert(type(_idict)==dict, TypeError, "First entry mush be a dictionary")
         self.idict = _idict
-        self.config = kwargs.get('config', None)
+        self.config = kwargs.get('config', {})
+        my_assert(type(self.config)==dict, TypeError, 'Config must be a dictionary')
+        self.test = kwargs.get('test', {})
+        my_assert(type(self.test)==dict, TypeError, 'Test must be a dictionary')
         
     def UpdatePrmDict(self, _names, _values):
         '''
@@ -90,17 +100,11 @@ class CASE():
         '''
         ChangeDiscValues(self.idict, _names, _values)  # change values in idict accordingly
 
-    def Intepret(self):
+    def Intepret(self, **kwargs):
         '''
         Intepret configuration,
         Predifined for offsprings
-        Returns:
-            _names(list): list of names to be passed to UpdatePrmDict
-            _valuess(list): list of valuess to be passed to UpdatePrmDict
         '''
-        _names = []
-        _values = []
-        return _names, _values
         pass
 
     def CaseName(self):
@@ -108,10 +112,16 @@ class CASE():
         Generate case name from self.config
         '''
         _case_name = ''
-        for key, value in self.config.items():
+        for key, value in sorted(self.config.items(), key=lambda item: item[0]):
             _pattern = PatternFromStr(key)
             _pattern_value = PatternFromValue(value)
             _case_name += (_pattern + _pattern_value)
+        if self.test != {}:
+            _case_name += 'test'
+            for key, value in sorted(self.test.items(), key=lambda item: item[0]):
+                _pattern = PatternFromStr(key)
+                _pattern_value = PatternFromValue(value)
+                _case_name += (_pattern + _pattern_value)
         return _case_name
 
     def __call__(self, **kwargs):
@@ -129,20 +139,25 @@ class CASE():
         if _method == 'auto':
             _dirname = kwargs.get('dirname', '.')
             _basename = kwargs.get('basename', '')
-            # First intepret the configurations
+            _extra = kwargs.get('extra', {})  # extra dictionary, pass to intepret
+            _operations = kwargs.get('operations', [])  # operations to do, pass to intepret
+            # First intepret the configurations and update prm
             my_assert(self.config != None, ValueError,
                       'With the \'auto\' method, the config must exist')
-            _names, _values = self.Intepret()
-            # Then update parameters
-            self.UpdatePrmDict(_names, _values)
+            self.Intepret(extra=_extra, operations=_operations)
             # Next generate a case name
             _case_name = _basename + self.CaseName()
             # After that, make a directory with case name
             _case_dir = os.path.join(_dirname, _case_name)
             if os.path.isdir(_case_dir) is False:
                 os.mkdir(_case_dir)
-            _filename = os.path.join(_case_dir, 'case.prm')
+            # write configs to _json
+            _json_outputs = {'config': self.config, 'test': self.test, 'extra': _extra} # todo
+            _json_ofile = os.path.join(_case_dir, 'config.json')
+            with open(_json_ofile, 'w') as fout:
+                json.dump(_json_outputs, fout)
             # At last, export a .prm file
+            _filename = os.path.join(_case_dir, 'case.prm')
             with open(_filename, 'w') as fout:
                 ParseToDealiiInput(fout, self.idict)
             pass
@@ -200,27 +215,40 @@ class GROUP_CASE():
         cases(list<class CASE>):
             a list of cases
     '''
-    def __init__(self, _idict):
+    def __init__(self, CASE_CLASS, _inputs, _json_inputs):
         '''
         initiate from a dictionary
+        Inputs:
+            _inputs(dict): inputs from a base input file
+            _json_inputs(dict): inputs from a json file containing configurations
         '''
         self.cases = []  # initiate a list to save parsed cases
-        _names, _parameters = GetGroupCaseFromDict(_idict)  # Get a list for names and a list for parameters from a dictionary read from a json file
-        _cases_config = ExpandNamesParameters(_names, _parameters)
-        for _case_config in _cases_config:
-            # initiate a new case with __init__ of clase CASE and append
-            self.cases.append(CASE(_idict, _case_config))
+        self.configs = _json_inputs
+        self.config_tests = GetGroupCaseFromDict1(_json_inputs)  # Get a list for names and a list for parameters from a dictionary read from a json file
+        for _config_test in self.config_tests:
+            _config = _config_test['config']
+            _test = _config_test.get('test', {})
+            self.cases.append(CASE_CLASS(_inputs, config=_config, test=_test))
     
-    def Parse(self, _target_dir):
+    def __call__(self, _odir, **kwargs):
         '''
         Inputs:
-            _target_dir(str):
+            _odir(str):
                 name of the target directory
+            kwargs:
+                extra(dict): extra configurations
+                operation(dict): operations to do
         '''
-        # todo
+        _extra = kwargs.get('extra', {})
+        _operations = kwargs.get('operations', [])
+        # write configs to _json
+        _json_outputs = self.configs
+        _json_outputs['extra'] = _extra 
+        _json_ofile = os.path.join(_odir, 'config.json')
+        with open(_json_ofile, 'w') as fout:
+            json.dump(_json_outputs, fout)
         for _case in self.cases:
-            _ofile = 'foo.prm'
-            _case.Parse()
+            _case(dirname=_odir, extra=_extra, operations=_operations)
 
 
 def ParseFromDealiiInput(fin):
@@ -339,7 +367,57 @@ def GetGroupCaseFromDict(_idict):
         else:
             raise TypeError('%s is not int, float or str' % str(type(value)))
     return _names, _parameters
-    
+
+
+def GetGroupCaseFromDict1(_idict):
+    '''
+    second method(simpler one) of getting a list for names and a list for parameters from a dictionary read from a json file
+    Inputs:
+        _idict(dict):
+            input dictionary
+    returns:
+        _config_tests(dict of dict):
+            list of configuretions and tests for cases
+    '''
+    my_assert(type(_idict) == dict, TypeError, 'Input is not a dictionary')
+    _config_tests=[]
+    _configs = _idict['config']
+    _tests = _idict.get('test', {})
+    # get total number of cases
+    _total = 1
+    _totals = [1]
+    for key, value in sorted(_configs.items(), key=lambda item: item[0]):
+        if type(value) == list:
+            _total *= len(value)
+        _totals.append(_total)
+    for key, value in sorted(_tests.items(), key=lambda item: item[0]):
+        if type(value) == list:
+            _total *= len(value)
+        _totals.append(_total)
+    # get case configuration and test
+    for j in range(_total):
+        # loop for every case
+        _config_test = {'config': {}, 'test': {}}  # initiate dict
+        i = 0  # current index of parameters
+        for key, value in sorted(_configs.items(), key=lambda item: item[0]):
+            # loop for configurations
+            # derive index number by mod
+            _ind = j
+            _ind = int(_ind // _totals[i])
+            _ind = _ind % len(value)
+            # indexing by _ind and append value to key
+            _config_test['config'][key] = value[_ind]
+            i += 1
+        for key, value in sorted(_tests.items(), key=lambda item: item[0]):
+            # loop for tests
+            _ind = j
+            _ind = int(_ind // _totals[i])
+            _ind = _ind % len(value)
+            _config_test['test'][key] = value[_ind]
+            i += 1
+        _config_tests.append(_config_test)
+    return _config_tests
+
 
 def ExpandNamesParameters(_names, _parameters):
     '''
