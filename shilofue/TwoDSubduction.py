@@ -7,7 +7,10 @@ from shilofue.Parse import ParseFromDealiiInput
 from shilofue.Parse import ParseToDealiiInput
 from shilofue.Parse import CASE, GROUP_CASE
 from shilofue.Rheology import GetLowerMantleRheology
+from shilofue.Utilities import my_assert
 
+
+_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', "MeshRefinement"]  # all the possible operations
 
 
 def LowerMantle(Inputs, jump, T, P, V1):
@@ -88,35 +91,17 @@ class MYCASE(CASE):
         _config = { **self.config, **self.test, **_extra }  # append _extra to self.config
         if 'LowerMantle' in _operations:
             # change lower mantle viscosity
-            LowerMantle(self.idict, _config['upper_lower_viscosity'], _config['T660'], _config['P660'], _config['LowerV'])
+            try:
+                LowerMantle(self.idict, _config['upper_lower_viscosity'], _config['T660'], _config['P660'], _config['LowerV'])
+            except KeyError:
+                pass
         if 'MeshRefinement' in _operations:
             # change initial mesh refinement
+            # check the key exists in the dict: fixed in the function
             MeshRefinement(self.idict, _config)
 
 
-def GroupParse(_json_file, _ifile, _target_dir):
-    '''
-    Parse a group of input file with the parameters defined in the jsonfile
-    Inputs:
-        _json_flle(str): 
-            filename for a json file
-        _ifile(str):
-            filename for a input .prm, as base for the group of cases
-        _target_dir(str):
-            name of the target directory
-        kwarg:
-            'test'(True or False):
-                if this is a group of test case
-    '''
-    assert(os.access(_json_file, os.R_OK))
-    _idict = json.load(_json_file)
-    GroupCase = GROUP_CASE(_idict)
-    GroupCase.Parse(_target_dir)
-    with open(_ifile, 'r') as fin:
-        _inputs_base = ParseFromDealiiInput(fin)
-
-
-def __main__():
+def main():
     '''
     main function of this module
     Inputs:
@@ -126,18 +111,24 @@ def __main__():
             options
     '''
     # parse commend
-    _available_commends = ['create', 'create_group']  # only these commends are available now
+    _available_commends = ['create', 'create_group', 'plot']  # only these commends are available now
     _commend = sys.argv[1]
     if _commend not in _available_commends:
         raise ValueError('Commend %s is not available.' % _commend)
     # parse options
     parser = argparse.ArgumentParser(description='TwoDSubdunction Project')
     parser.add_argument('-b', '--base_file', type=str,
-                        default='./TwoDSubduction/base.prm',
+                        default='./files/TwoDSubduction/base.prm',
                         help='Filename for base file')
     parser.add_argument('-j', '--json_file', type=str,
-                        default='./TwoDSubduction/foo.json',
+                        default='./config_case.json',
                         help='Filename for json file')
+    parser.add_argument('-o', '--output_dir', type=str,
+                        default='../TwoDSubduction/',
+                        help='Directory for output')
+    parser.add_argument('-e', '--operations_file', type=str,
+                        default=None,
+                        help='A file that has a list of operations, if not given, do all the available operations')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -146,8 +137,61 @@ def __main__():
     arg = parser.parse_args(_options)
     # execute commend
     if _commend == 'create_group':
+        print('Now we create a group of cases:')  # screen output
         # create a group of cases
-        _cases = InitGroup(arg.json_file)
-        for _case in _cases:
-            CreateCase(_case)
-            print(_case)
+        # read files
+        with open(arg.base_file, 'r') as fin:
+            _inputs = ParseFromDealiiInput(fin)
+        with open(arg.json_file, 'r') as fin:
+            _config = json.load(fin)
+        if not os.path.isdir(arg.output_dir):
+            os.mkdir(arg.output_dir)
+        # create a directory under the name of the group
+        _group_name = _config.get('name', 'foo')
+        _odir = os.path.join(arg.output_dir, _group_name)
+        my_assert(not os.path.isdir(_odir), ValueError, "The script doesn't support updating a pr-exiting group")
+        os.mkdir(_odir)
+        # initialte a class instance
+        MyGroup = GROUP_CASE(MYCASE, _inputs, _config)
+        # call __call__ function to generate
+        _extra = _config.get('extra', {})
+        if arg.operations_file is None:
+            # take all availale operations
+            _operations = _ALL_AVAILABLE_OPERATIONS
+        _case_names = MyGroup(_odir, operations=_operations, extra=_extra)
+        for _case_name in _case_names:
+            # ouptut to screen
+            print(_case_name)
+
+    elif _commend == 'create':
+        print('Now we create a single case:')  # screen output
+        # create a case
+        # read files
+        with open(arg.base_file, 'r') as fin:
+            _inputs = ParseFromDealiiInput(fin)
+        with open(arg.json_file, 'r') as fin:
+            _config = json.load(fin)
+        if not os.path.isdir(arg.output_dir):
+            os.mkdir(arg.output_dir)
+        # Initial a case
+        MyCase = MYCASE(_inputs, config=_config['config'], test=_config['test'])
+        # call __call__ function to generate
+        _extra = _config.get('extra', {})
+        if arg.operations_file is None:
+            # take all availale operations
+            _operations = _ALL_AVAILABLE_OPERATIONS
+        _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations)
+        print(_case_name)
+    elif _commend == 'update':
+        # update a case
+        # todo
+        pass
+    elif _commend == 'plot':
+        # todo
+        # plot something
+        pass
+
+
+# run script
+if __name__ == '__main__':
+    main()

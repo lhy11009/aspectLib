@@ -77,6 +77,7 @@ class CASE():
         '''
         initiate from a dictionary
         Inputs:
+            case_name(str): case name of the model
             _idict(dict):
                 dictionary import from a base file
             kwargs:
@@ -84,6 +85,7 @@ class CASE():
                 test: (dict) - a dictionary that contains the configuration to test
         '''
         my_assert(type(_idict)==dict, TypeError, "First entry mush be a dictionary")
+        self.case_name = ''
         self.idict = _idict
         self.config = kwargs.get('config', {})
         my_assert(type(self.config)==dict, TypeError, 'Config must be a dictionary')
@@ -146,9 +148,9 @@ class CASE():
                       'With the \'auto\' method, the config must exist')
             self.Intepret(extra=_extra, operations=_operations)
             # Next generate a case name
-            _case_name = _basename + self.CaseName()
+            self.case_name = _basename + self.CaseName()
             # After that, make a directory with case name
-            _case_dir = os.path.join(_dirname, _case_name)
+            _case_dir = os.path.join(_dirname, self.case_name)
             if os.path.isdir(_case_dir) is False:
                 os.mkdir(_case_dir)
             # write configs to _json
@@ -167,6 +169,7 @@ class CASE():
             with open(_filename, 'w') as fout:
                 ParseToDealiiInput(fout, self.idict)
             pass
+        return self.case_name
 
 
 def PatternFromStr(_str):
@@ -218,11 +221,14 @@ class GROUP_CASE():
     def __init__(self, CASE_CLASS, _inputs, _json_inputs):
         '''
         initiate from a dictionary
+        Attribute:
+            case_names(list): list of casa names
         Inputs:
             _inputs(dict): inputs from a base input file
             _json_inputs(dict): inputs from a json file containing configurations
         '''
         self.cases = []  # initiate a list to save parsed cases
+        self.case_names = []
         self.configs = _json_inputs
         self.config_tests = GetGroupCaseFromDict1(_json_inputs)  # Get a list for names and a list for parameters from a dictionary read from a json file
         for _config_test in self.config_tests:
@@ -248,7 +254,9 @@ class GROUP_CASE():
         with open(_json_ofile, 'w') as fout:
             json.dump(_json_outputs, fout)
         for _case in self.cases:
-            _case(dirname=_odir, extra=_extra, operations=_operations)
+            _case_name = _case(dirname=_odir, extra=_extra, operations=_operations)
+            self.case_names.append(_case_name)
+        return self.case_names
 
 
 def ParseFromDealiiInput(fin):
