@@ -191,7 +191,7 @@ def main():
         # check this group exist
         my_assert(os.path.isdir(arg.output_dir), FileExistsError, "%s doesn't exist" % arg.output_dir)
         my_assert(os.path.isdir(_config_file), FileExistsError, "%s doesn't exist" % arg._config_file)
-        # initial class instance
+        # initial class instance, todo
         # MyCase = MYCASE(_inputs, config=_config['config'], test=_config['test'])
         # call function to return case names
         # check that these cases exit

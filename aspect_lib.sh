@@ -78,14 +78,61 @@ EOF
 }
 
 
-test(){
-    # do test, todo
-    # create jobs
-    eval "./aspect_lib.sh TwoDSubduction create"
-    # create a group of jobs
-    eval "./aspect_lib.sh TwoDSubduction create_group"
-    # submit jobs
-    eval "./aspect_lib.sh TwoDSubduction submit ULV1.000e+02testIAR8 lochy@peloton.cse.ucdavis.edu"
+test_aspect_lib(){
+    local project="$1"
+    local local_root=$(eval "echo \${${project}_DIR}")
+    # test1 create a case #############################################
+    case_name="ULV1.000e+02testIAR8"
+    case_dir="${local_root}/${case_name}"
+    [[ -d "${case_dir}" ]] && eval "rm -r ${case_dir}"  # remove older dir
+    # test file
+    test_json_file="${dir}/tests/integration/fixtures/config_case.json"
+    [[ -e "${test_json_file}" ]] || { cecho ${BAD} "test file ${test_json_file} doesn't exist"; exit 1; }
+    eval "cp ${test_json_file} ${dir}/"
+    # call function
+    ./aspect_lib.sh "${project}" 'create'
+    quit_if_fail "test_aspect_lib: create case failed"
+    # test2 create a group ############################################
+    group_name='test_group'
+    group_dir="${local_root}/${group_name}"
+    [[ -d "${group_dir}" ]] && eval "rm -r ${group_dir}"  # remove older dir
+    # test_file
+    test_json_file="${dir}/tests/integration/fixtures/config_group.json"
+    [[ -e "${test_json_file}" ]] || { cecho ${BAD} "test file ${test_json_file} doesn't exist"; exit 1; }
+    eval "cp ${test_json_file} ${dir}/"
+    # call function
+    ./aspect_lib.sh "${project}" 'create_group'
+    quit_if_fail "test_aspect_lib: create group failed"
+    cecho ${GOOD} "test_aspect_lib succeeded"
+}
+
+test_aspect_lib_remote(){
+    local project="$1"
+    local local_root=$(eval "echo \${${project}_DIR}")
+    local server_info="$2"
+    # test1 create and submit case ####################################
+    case_name="ULV1.000e+02testIAR8"
+    case_dir="${local_root}/${case_name}"
+    [[ -d "${case_dir}" ]] && eval "rm -r ${case_dir}"  # remove older dir
+    # test file
+    test_json_file="${dir}/tests/integration/fixtures/config_case.json"
+    [[ -e "${test_json_file}" ]] || { cecho ${BAD} "test file ${test_json_file} doesn't exist"; exit 1; }
+    eval "cp ${test_json_file} ${dir}/"
+    # call function
+    ./aspect_lib.sh "${project}" 'create_submit' "${server_info}"
+    quit_if_fail "test_aspect_lib_remote submit case failed"
+    # test2 create and submit group ####################################
+    group_name='test_group'
+    group_dir="${local_root}/${group_name}"
+    [[ -d "${group_dir}" ]] && eval "rm -r ${group_dir}"  # remove older dir
+    # test_file
+    test_json_file="${dir}/tests/integration/fixtures/config_group.json"
+    [[ -e "${test_json_file}" ]] || { cecho ${BAD} "test file ${test_json_file} doesn't exist"; exit 1; }
+    eval "cp ${test_json_file} ${dir}/"
+    # call function
+    ./aspect_lib.sh "${project}" 'create_submit_group' "${server_info}"
+    quit_if_fail "test_aspect_lib_remote submit group failed"
+    cecho ${GOOD} "test_aspect_lib_remote succeeded"
 }
 
 
@@ -115,33 +162,46 @@ main(){
         # todo
         local group_name="$3"
         local server_info="$4"
-        local group_dir="${local_root}/${case_name}"
+        local group_dir="${local_root}/${group_name}"
         # get remote case directory
         get_remote_environment "${server_info}" "${project}_DIR"
         local remote_root=${return_value}
-        # get a list of cases, todo
-        # local case_dirs=
-        for case_dir in ${case_dirs[@]}; do
-            local remote_case_dir=${case_dir/"${local_root}"/"${remote_root}"}
-            # call submit functions
-            submit "${case_dir}" "${remote_case_dir}" "${server_info}"
+        # get a list of cases and submit
+        for case_dir in "${group_dir}/"*/; do
+            local _files=$(ls "${case_dir}")
+            if [[ "${_files[@]}" =~ 'case.prm' ]]; then
+                local remote_case_dir=${case_dir/"${local_root}"/"${remote_root}"}
+                # call submit functions
+                submit "${case_dir}" "${remote_case_dir}" "${server_info}"
+            fi
         done
+        return 0
     elif [[ ${_commend} = 'create_submit' ]]; then
-        # todo
-        # get remote foler
-        get_remote_environment "${server_info}" "${project}_DIR"
-        local remote_root=${return_value}
-        local remote_case_dir=${case_dir/"${local_root}"/"${remote_root}"}
-        # submit to server, todo
-        ssh ${server_info} << EOF
-            eval "slurm"
-EOF
+        local server_info="$3"
+        ./aspect_lib.sh "${project}" 'create'
+        [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh create failed"; exit 1; }
+        # get case name
+        local _info=$(cat ".temp")
+        local case_name=$(echo "${_info}" | sed -n '2'p)
+        # submit to server
+        ./aspect_lib.sh "${project}" 'submit' "${case_name}" "${server_info}"
+        [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh submit failed"; exit 1; }
     elif [[ ${_commend} = 'create_submit_group' ]]; then
-        # todo
-        echo "foo"
+        local server_info="$3"
+        ./aspect_lib.sh "${project}" 'create_group'
+        [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh create failed"; exit 1; }
+        # get group name
+        local _info=$(cat ".temp")
+        local group_name=$(echo "${_info}" | sed -n '2'p)
+        # call self
+        ./aspect_lib.sh "${project}" 'submit_group' "${group_name}" "${server_info}"
     elif [[ ${_commend} = 'test' ]]; then
-        # do test, todo
-        echo "foo"
+        # do test
+        test_aspect_lib "${project}"
+    elif [[ ${_commend} = 'remote_test' ]]; then
+        # do test
+        local server_info="$3"
+        test_aspect_lib_remote "${project}" "${server_info}"
     else
         cecho ${BAD} "Bad commend: ${_commend}"
     fi
