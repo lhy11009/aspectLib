@@ -220,8 +220,8 @@ test_submit(){
     # test 2: mission with nproc core
     local _nproc=$(nproc)  # numbers of cores in a node
     _test="slurm.sh -n ${_nproc}  -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
-    job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
-    if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
+    job_id=$(echo "${_test}" | sed 's/Submitted\ batch\ job\ //')
+    if ! [[ ${job_id} != '' && ${job_id} =~ ^[0-9]*$ ]]; then
 	cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
 	exit 1
     fi

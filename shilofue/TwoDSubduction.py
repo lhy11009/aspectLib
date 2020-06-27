@@ -10,7 +10,7 @@ from shilofue.Rheology import GetLowerMantleRheology
 from shilofue.Utilities import my_assert
 
 
-_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', "MeshRefinement"]  # all the possible operations
+_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'query']  # all the possible operations
 
 
 def LowerMantle(Inputs, jump, T, P, V1):
@@ -159,6 +159,7 @@ def main():
             # take all availale operations
             _operations = _ALL_AVAILABLE_OPERATIONS
         _case_names = MyGroup(_odir, operations=_operations, extra=_extra)
+        print(_group_name)
         for _case_name in _case_names:
             # ouptut to screen
             print(_case_name)
@@ -182,6 +183,21 @@ def main():
             _operations = _ALL_AVAILABLE_OPERATIONS
         _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations)
         print(_case_name)
+    
+    elif _commend == 'query':
+        # for now, only out put the cases in this group
+        print('Now we query into a group')
+        _config_file = os.path.join(arg.output_dir, 'config.json')
+        # check this group exist
+        my_assert(os.path.isdir(arg.output_dir), FileExistsError, "%s doesn't exist" % arg.output_dir)
+        my_assert(os.path.isdir(_config_file), FileExistsError, "%s doesn't exist" % arg._config_file)
+        # initial class instance
+        # MyCase = MYCASE(_inputs, config=_config['config'], test=_config['test'])
+        # call function to return case names
+        # check that these cases exit
+
+        pass
+
     elif _commend == 'update':
         # update a case
         # todo

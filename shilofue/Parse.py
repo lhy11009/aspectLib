@@ -151,8 +151,8 @@ class CASE():
             self.case_name = _basename + self.CaseName()
             # After that, make a directory with case name
             _case_dir = os.path.join(_dirname, self.case_name)
-            if os.path.isdir(_case_dir) is False:
-                os.mkdir(_case_dir)
+            my_assert(os.path.isdir(_case_dir) is False, ValueError, 'The script doesn\'t support updating a pr-exiting group')
+            os.mkdir(_case_dir)
             # write configs to _json
             _json_outputs = {'config': self.config, 'test': self.test, 'extra': _extra} # todo
             _json_ofile = os.path.join(_case_dir, 'config.json')
@@ -235,6 +235,14 @@ class GROUP_CASE():
             _config = _config_test['config']
             _test = _config_test.get('test', {})
             self.cases.append(CASE_CLASS(_inputs, config=_config, test=_test))
+
+    def get_case_names(self):
+        '''
+        return case names, todo
+        Return:
+            _case_names(list)
+        '''
+        pass
     
     def __call__(self, _odir, **kwargs):
         '''
