@@ -155,10 +155,11 @@ def main():
         MyGroup = GROUP_CASE(MYCASE, _inputs, _config)
         # call __call__ function to generate
         _extra = _config.get('extra', {})
+        _base_name = _config.get('basename', '')
         if arg.operations_file is None:
             # take all availale operations
             _operations = _ALL_AVAILABLE_OPERATIONS
-        _case_names = MyGroup(_odir, operations=_operations, extra=_extra)
+        _case_names = MyGroup(_odir, operations=_operations, extra=_extra, basename=_base_name)
         print(_group_name)
         for _case_name in _case_names:
             # ouptut to screen
@@ -178,10 +179,11 @@ def main():
         MyCase = MYCASE(_inputs, config=_config['config'], test=_config['test'])
         # call __call__ function to generate
         _extra = _config.get('extra', {})
+        _base_name = _config.get('basename', '')
         if arg.operations_file is None:
             # take all availale operations
             _operations = _ALL_AVAILABLE_OPERATIONS
-        _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations)
+        _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations, basename=_base_name)
         print(_case_name)
     
     elif _commend == 'query':

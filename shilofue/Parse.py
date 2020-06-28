@@ -252,9 +252,11 @@ class GROUP_CASE():
             kwargs:
                 extra(dict): extra configurations
                 operation(dict): operations to do
+                basename(str): base name for cases
         '''
         _extra = kwargs.get('extra', {})
         _operations = kwargs.get('operations', [])
+        _base_name = kwargs.get('basename', '')
         # write configs to _json
         _json_outputs = self.configs
         _json_outputs['extra'] = _extra 
@@ -262,7 +264,7 @@ class GROUP_CASE():
         with open(_json_ofile, 'w') as fout:
             json.dump(_json_outputs, fout)
         for _case in self.cases:
-            _case_name = _case(dirname=_odir, extra=_extra, operations=_operations)
+            _case_name = _case(dirname=_odir, extra=_extra, operations=_operations, basename=_base_name)
             self.case_names.append(_case_name)
         return self.case_names
 

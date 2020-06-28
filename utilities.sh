@@ -33,6 +33,23 @@ take_record() {
     echo "$(timestamp): ${message}" >> ${record_file}
 }
 
+
+fix_route() {
+    # substitute ~ with ${HOME}
+    local dir=$(pwd)
+    if [[ "${1}" =~ ^[^\/\.~] ]]; then
+        # append a relative route
+        local output="${dir}/${1}"
+    elif [[ "${1}" =~ ^~ ]]; then
+        local output=${1/#~/$HOME}
+    elif [[ "${1}" =~ ^\. ]]; then
+        local output=${1/#\./$dir}
+    else
+        local output="$1"
+    fi
+    echo "${output}"
+}
+
 ################################################################################
 # Colours for progress and error reporting
 BAD="\033[1;31m"
@@ -278,12 +295,28 @@ test_write_log(){
 
 }
 
+test_fix_route() {
+    # test1 test for relacing '~'
+    fixed_route=$(fix_route "~/foo/ffoooo")
+    [[ "${fixed_route}" = "${HOME}/foo/ffoooo" ]] || { cecho ${BAD} "test_fix_route failed for test 1"; exit 1; }
+    # test2, test for replacing '.'
+    local dir=$(pwd)
+    fixed_route=$(fix_route "./foo/ffoooo")
+    [[ "${fixed_route}" = "${dir}/foo/ffoooo" ]] || { cecho ${BAD} "test_fix_route failed for test 2"; exit 1; }
+    # test3, test for replacing relative route
+    fixed_route=$(fix_route "foo/ffoooo")
+    [[ "${fixed_route}" = "${dir}/foo/ffoooo" ]] || { cecho ${BAD} "test_fix_route failed for test 3"; exit 1; }
+    cecho ${GOOD} "test_fix_route passed"
+}
+
 
 main(){
 	if [[ "$1" = "test" ]]; then
 		# run tests by ./utilities.sh test
 		test_parse_stdout
+        test_fix_route
 		test_element_in
+        # these two must be down with a slurm systems, todo_future: fix it
 		test_read_log
 		test_write_log
 	fi

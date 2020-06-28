@@ -57,10 +57,9 @@ end
 subsection Mesh refinement
     set Initial global refinement = 6
     set Minimum refinement level		 = 6
-    set Initial adaptive refinement = 11
+    set Initial adaptive refinement = 4
     set Time steps between mesh refinement = 10
-    set Strategy = minimum refinement function, composition approximate gradient,\
-                    viscosity, strain rate
+    set Strategy = minimum refinement function
     set Refinement fraction 		 = 0.80
     set Coarsening fraction		 = 0.20
     set Refinement criteria merge operation = plus
@@ -69,10 +68,15 @@ subsection Mesh refinement
     subsection Minimum refinement function
         set Coordinate system = spherical
         set Variable names = r,phi,t
-        set Function constants = Ro=6.371e6, PHIC=0.628319, DD=1e6, Dd=1.7e5, TW=5e5
+        set Function constants = PHIC=0.628319, Ro=6.371e6, RC=4.000e+05, \
+                ST=2.000e+05, DCS=7.500e+03, DHS=3.520e+04, DCO=7.500e+03, DHO=3.520e+04, \
+                DD=1e6, frac=1.5
         set Function expression = ((Ro-r<DD) ? \
-                               ((Ro-r<Dd) ? \
-                                (r*(phi-PHIC)<TW ? 10: 9): 8) : 0)
+                                  ((Ro-r<=DCS*frac+DHS*frac)|| \
+                                    ((phi>=PHIC)&&(Ro-r<=ST*frac)&& \
+                                    (phi*Ro<=PHIC*Ro+min(frac*RC,sqrt(abs(2.0*frac*RC*(Ro-r)-(Ro-r)^2.0))))&& \
+                                    (RC-sqrt(abs(((phi-PHIC)*Ro)^2.0+((Ro-r)-RC)^2.0))<=DCS*frac+DHS*frac)) ? \ 
+                                  10: 8):0)
     end
 end
 

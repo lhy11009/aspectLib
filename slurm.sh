@@ -63,8 +63,7 @@ parse_options(){
         #####################################
         [^-]*)
           shift
-          filename="$param"
-          filename=${filename/#\.\//}
+          filename=$(fix_route "$param")
         ;;
         #####################################
         # number of total tasks
@@ -129,15 +128,19 @@ submit(){
     # Aspect executable
 
     Aspect_executable="${Aspect_DIR}/aspect"
-    prm_file="$dir/$filename"
-
 
     # compose the sbatch file
-    # todo: add comment to sbatch file
+    # todo_future: add comment to sbatch file
+
+    # first cd to the folder
+    local previous_dir=$(pwd)
+    local case_dir=$(dirname "$filename")
+    cd "$case_dir"
 
     if [ -f 'job.sh' ]; then
     	eval "rm job.sh"
     fi
+
     eval "touch job.sh"
     echo "#!/bin/bash -l" >> job.sh
     echo "#SBATCH -J $name" >> job.sh
@@ -151,11 +154,14 @@ submit(){
     echo "" >> job.sh
     echo "export OMP_NUM_THREADS=\$SLURM_NTASKS" >> job.sh
     echo "" >> job.sh
-    echo "srun ${Aspect_executable} ${prm_file}" >> job.sh
+    echo "srun ${Aspect_executable} ${filename}" >> job.sh
 
     # submit the job
 
     eval "sbatch -p $partition job.sh"
+
+    # go back to previous dir
+    cd "${previous_dir}"
 }
 
 
@@ -202,6 +208,7 @@ test_submit(){
     cd "${test_dir}"  # shift to testdir
     local job_id
     # test 1: mission with 1 core
+    # todo: fix route for test cases
     local _test="slurm.sh -n 1 -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
     job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
     if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
@@ -254,7 +261,7 @@ main(){
     	parse_options "$@"  # parse option with '-'
     	submit  # submit job
     elif [[ ${_command} = "remote_test" ]]; then
-	    # test submit to cluster
+	t   # test submit to cluster
         local server_info="$2"  # user@server
         shift
         if ! [[ ${server_info} =~ .*\@.* ]]; then
