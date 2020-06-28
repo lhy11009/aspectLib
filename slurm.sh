@@ -205,11 +205,11 @@ test_parse_command(){
 
 test_submit(){
     # test submit to local slurm system
-    cd "${test_dir}"  # shift to testdir
+    # copy file to test_dir
+    cp "${dir}/tests/integration/fixtures/submit_test.prm" "${test_dir}/"
     local job_id
     # test 1: mission with 1 core
-    # todo: fix route for test cases
-    local _test="slurm.sh -n 1 -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
+    local _test="slurm.sh -n 1 -p med2 ${test_dir}/submit_test.prm"
     job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
     if ! [[ ${job_id} =~ ^[0-9]*$ ]]; then
         cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
@@ -226,8 +226,8 @@ test_submit(){
 
     # test 2: mission with nproc core
     local _nproc=$(nproc)  # numbers of cores in a node
-    _test="slurm.sh -n ${_nproc}  -p med2 ${dir}/tests/integration/fixtures/submit_test.prm"
-    job_id=$(echo "${_test}" | sed 's/Submitted\ batch\ job\ //')
+    _test="slurm.sh -n ${_nproc}  -p med2 ${test_dir}/submit_test.prm"
+    job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
     if ! [[ ${job_id} != '' && ${job_id} =~ ^[0-9]*$ ]]; then
 	cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
 	exit 1
@@ -247,7 +247,6 @@ test_submit(){
     fi
     eval "scancel ${job_id}"  # terminate this job
     cecho ${GOOD} "test_submit passed"
-    cd "${dir}"  # shift back to main directory
 }
 
 
