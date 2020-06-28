@@ -98,7 +98,7 @@ test_update(){
 
 
 test_update_from_server(){
-    # todo: have a function to check all the environmental variables on server
+    # todo_future: have a function to check all the environmental variables on server
 	local correct_output_file="${test_fixtures_dir}/test.log"
 	local server_info=$1
 	local local_log_file="${test_dir}/test.log"
@@ -107,6 +107,7 @@ test_update_from_server(){
 		eval "rm ${local_log_file}"
 	fi
     # figure out remove file
+    # todo_future: fix the return value
     get_remote_environment ${server_info} "ASPECT_LAB_DIR"
 	remote_log_file="${return_value}/tests/integration/fixtures/test.log"
 	update_from_server "${server_info}" "${remote_log_file}" "${local_log_file}"
@@ -169,13 +170,16 @@ main(){
 	       	update "${log_file}"
 	elif [[ "$1" = "update_from_server" ]]; then
         # download new log file from server
-		if ! [[ $# -eq 4 ]]; then
-			cecho ${BAD} "with \"update_from_server\" command, \$2, \$3 and \$4 must be given for server information, log_files on local side and log_files on remote side"
+        # todo_future, use a config file for configration
+		if ! [[ $# -eq 3 ]]; then
+			cecho ${BAD} "with \"update_from_server\" command, \$2, \$3 must be given for server information, local log file"
             exit 1
 		fi
-		local server_info=$2
-		local local_log_file=$3
-		local remote_log_file=$4
+		local local_log_file=$2
+		local server_info=$3
+        # figure out remote directory
+        get_remote_environment ${server_info} "ASPECT_LAB_DIR"
+	    remote_log_file=${local_log_file/"${dir}"/"${return_value}"}
 		update_from_server "${server_info}" "${local_log_file}" "${remote_log_file}"
 	elif [[ "$1" = "update_outputs_from_server" ]]; then
         # test update_outputs_from_server

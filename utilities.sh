@@ -108,10 +108,10 @@ get_remote_environment(){
     unset return_value
     local server_info=$1
     local name=$2
-	ssh "${server_info}" << EOF > ".log"
+	ssh "${server_info}" << EOF > "${dir}/.log"
         eval "echo \${${name}}"
 EOF
-	return_value=$(tail -n 1 ".log")
+	return_value=$(tail -n 1 "${dir}/.log")
 }
 
 
