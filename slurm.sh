@@ -115,6 +115,18 @@ parse_options(){
         -m=*|--mem-per-cup=*)
           mem_per_cpu="${param#*=}"
         ;;
+        #####################################
+        # log file
+        #####################################
+        -l)
+          shift
+          local temp="${1}"
+	  log_file=$(fix_route "${temp}")
+        ;;
+        -l=*|--log_file=*)
+          local temp="${param#*=}"
+	  log_file=$(fix_route "${temp}")
+        ;;
       esac
       shift
     done
@@ -258,9 +270,18 @@ main(){
 	test_submit
     elif [[ ${_command} = "submit" ]]; then
     	parse_options "$@"  # parse option with '-'
-    	submit  # submit job
+	# get job_id
+	local _message=$(submit)  # submit job
+    	job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
+	# get case directory, be default it's the same as the prm file 
+	case_dir=$(dirname "${fileanme}")
+	case_dir=$(fix_route "${case_dir}")  # get a full route
+	# call write_log from utilities.sh
+	[[ ${job_id} =~ ^[0-9]*$ && "${log_file}" != '' ]] && write_log "${case_dir}" "${job_id}" "${log_file}"
+	# output the message to be backwork compatible
+	echo "${_message}"
     elif [[ ${_command} = "remote_test" ]]; then
-	t   # test submit to cluster
+	# test submit to cluster
         local server_info="$2"  # user@server
         shift
         if ! [[ ${server_info} =~ .*\@.* ]]; then

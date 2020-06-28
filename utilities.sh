@@ -296,16 +296,19 @@ test_write_log(){
 }
 
 test_fix_route() {
+    local dir=$(pwd)
     # test1 test for relacing '~'
     fixed_route=$(fix_route "~/foo/ffoooo")
     [[ "${fixed_route}" = "${HOME}/foo/ffoooo" ]] || { cecho ${BAD} "test_fix_route failed for test 1"; exit 1; }
     # test2, test for replacing '.'
-    local dir=$(pwd)
     fixed_route=$(fix_route "./foo/ffoooo")
     [[ "${fixed_route}" = "${dir}/foo/ffoooo" ]] || { cecho ${BAD} "test_fix_route failed for test 2"; exit 1; }
     # test3, test for replacing relative route
     fixed_route=$(fix_route "foo/ffoooo")
     [[ "${fixed_route}" = "${dir}/foo/ffoooo" ]] || { cecho ${BAD} "test_fix_route failed for test 3"; exit 1; }
+    # test4, test for replacing '.'
+    fixed_route=$(fix_route ".")
+    [[ "${fixed_route}" = "${dir}" ]] || { cecho ${BAD} "test_fix_route failed for test 4"; exit 1; }
     cecho ${GOOD} "test_fix_route passed"
 }
 
