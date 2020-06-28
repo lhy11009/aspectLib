@@ -161,6 +161,15 @@ main(){
         local server_info=$2
 		test_update_from_server "${server_info}"
 		test_update_outputs_from_server "${server_info}"
+	elif [[ "$1" = "add" ]]; then
+		if [[ "$#" -eq 4 ]]; then
+			cecho ${BAD} "with \"update\" command, \$2 \$3 and \$4 must be given for job_dir, job_id, log_file"
+            		exit 1
+	    	fi
+		local job_dir="$2"
+		local job_id="$3"
+		local log_file=$4
+		write_log "${job_dir}" "${job_id}" "${log_file}"
 	elif [[ "$1" = "update" ]]; then
 		local log_file=$2
 		if [[ "${log_file}" = '' ]]; then
