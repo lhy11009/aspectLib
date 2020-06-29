@@ -171,6 +171,7 @@ main(){
 		local log_file=$4
 		write_log "${job_dir}" "${job_id}" "${log_file}"
 	elif [[ "$1" = "update" ]]; then
+        # todo_future, strip root dir from output dir
 		local log_file=$2
 		if [[ "${log_file}" = '' ]]; then
 			cecho ${BAD} "with \"update\" command, a \$2 must be given for the log_file variable"
@@ -189,6 +190,9 @@ main(){
         # figure out remote directory
         get_remote_environment ${server_info} "ASPECT_LAB_DIR"
 	    remote_log_file=${local_log_file/"${dir}"/"${return_value}"}
+        # use ssh to update log file on server side
+        ssh "$server_info" eval "${ASPECT_LAB_DIR}/process.sh update ${remote_log_file}"
+        # call function to transfer file
 		update_from_server "${server_info}" "${local_log_file}" "${remote_log_file}"
 	elif [[ "$1" = "update_outputs_from_server" ]]; then
         # test update_outputs_from_server
