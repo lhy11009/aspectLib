@@ -34,7 +34,7 @@ update(){
 	for job_id in ${job_ids[@]}; do
 		job_dir="${job_dirs[i]}"
 		write_log "${job_dir}" "${job_id}" "${log_file}"
-		i=$i+1
+		((i++))
 	done
 	# updata log file
 }

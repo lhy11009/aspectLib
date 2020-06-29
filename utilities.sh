@@ -175,7 +175,7 @@ read_log(){
 	local i=0
 	unset return_value0
 	unset return_value1
-    local line
+	local line
 	local foo
 	while IFS= read -r line; do
         IFS=' ' read -r -a foo<<< "${line}"  # construct an array from line
@@ -213,7 +213,7 @@ write_log(){
     local log_file=$3
     local _file
     get_job_info ${job_id} 'ST'
-    quit_if_fail "get_job_info: invalid id number ${job_id} or no such stat 'ST'"
+    quit_if_fail "get_job_info: invalid id number ${job_id} or no such stat 'ST'" 
     local ST=${return_value}
     # parse stdout file
     for _file in ${job_dir}/*
