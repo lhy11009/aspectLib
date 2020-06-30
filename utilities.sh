@@ -125,7 +125,7 @@ get_job_info(){
     if ! [[ "$1" =~ ^[0-9]*$ ]]; then
 	    return 1
     fi
-    _outputs=$(eval "squeue -j ${1} 2>&1")
+    _outputs=$(eval "${SQUEUE} -j ${1} 2>&1")  # thus it could be accessed through ssh
     if [[ ${_outputs} =~ "slurm_load_jobs error: Invalid job id specified" ]]; then
         # catch non-exitent job id
         return_value='NA'
