@@ -1,4 +1,5 @@
 #!/bin/bash
+# todo_future : put tests to seperate files and have a test_manager
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -42,11 +43,13 @@ update(){
 
 update_from_server(){
 	# update log file from remote
-    [[ ${RSYNC} = '' ]] && local RSYNC='rsync'
 	local server_info=$1
 	local remote_log_file=$2
 	local local_log_file=$3
-    eval "${RSYNC} -v ${server_info}:${remote_log_file} ${local_log_file}"
+    # use ssh to update log file on server side, \$ escapes '$' so that it is called on the remote side
+    ssh "$server_info" eval "\${ASPECT_LAB_DIR}/process.sh update ${remote_log_file}"
+    # use scp to update log file on local side
+    eval "scp ${server_info}:${remote_log_file} ${local_log_file}"
 }
 
 
@@ -99,7 +102,7 @@ test_update(){
 
 test_update_from_server(){
     # todo_future: have a function to check all the environmental variables on server
-	local correct_output_file="${test_fixtures_dir}/test.log"
+    # test 1: call update_from_server function
 	local server_info=$1
 	local local_log_file="${test_dir}/test.log"
 	if [[ -e "${local_log_file}" ]]; then
@@ -110,12 +113,25 @@ test_update_from_server(){
     # todo_future: fix the return value
     get_remote_environment ${server_info} "ASPECT_LAB_DIR"
 	remote_log_file="${return_value}/tests/integration/fixtures/test.log"
-	update_from_server "${server_info}" "${remote_log_file}" "${local_log_file}"
+	remote_test_log_file="${return_value}/.test/test.log"
+    # mannually fix the test through a ssh session
+    # the sed line is tricky, it is used to mannually fit the route in the test
+    # otherwise it could be mischievous on different machines
+    ssh "${server_info}" << EOF
+        [[ -e "${remote_test_log_file}" ]] && eval "rm ${remote_test_log_file}"
+        eval "cp ${remote_log_file} ${remote_test_log_file}"
+        eval "sed -i \"2,3s+^+${return_value}\\/+g\" \"${remote_test_log_file}\""
+EOF
+	update_from_server "${server_info}" "${remote_test_log_file}" "${local_log_file}"
     if ! [[ -e "${local_log_file}" ]]; then
 		cecho ${BAD} "test_update failed, output file doesn't exist"
 		exit 1
     fi
-	if ! [[ $(diff "${local_log_file}" "${correct_output_file}") = '' ]]; then
+    local line2=$(sed -n '2'p "${local_log_file}")  # second line of local log file
+    local line3=$(sed -n '3'p "${local_log_file}")  # third line of local log file
+    local correct_line2="${return_value}/tests/integration/fixtures 2009375 NA 10 101705years"
+    local correct_line3="${return_value}/tests/integration/fixtures 2009376 NA 11 101706years"
+    if ! [[ "${line2}" = "${correct_line2}" && "${line3}" = "${correct_line3}" ]]; then
 		cecho ${BAD} "test_update failed, output format is wrong"
 		exit 1
 	fi
@@ -190,8 +206,6 @@ main(){
         # figure out remote directory
         get_remote_environment ${server_info} "ASPECT_LAB_DIR"
 	    remote_log_file=${local_log_file/"${dir}"/"${return_value}"}
-        # use ssh to update log file on server side
-        ssh "$server_info" eval "${ASPECT_LAB_DIR}/process.sh update ${remote_log_file}"
         # call function to transfer file
 		update_from_server "${server_info}" "${local_log_file}" "${remote_log_file}"
 	elif [[ "$1" = "update_outputs_from_server" ]]; then
