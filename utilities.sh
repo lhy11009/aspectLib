@@ -37,15 +37,14 @@ take_record() {
 fix_route() {
     # substitute ~ with ${HOME}
     local dir=$(pwd)
-    if [[ "${1}" =~ ^[^\/\.~] ]]; then
-        # append a relative route
-        local output="${dir}/${1}"
-    elif [[ "${1}" =~ ^~ ]]; then
+    if [[ "${1}" =~ ^\/ ]]; then
+        local output="${1}"
+    elif [[ "${1}" =~ ^~\/ ]]; then
         local output=${1/#~/$HOME}
-    elif [[ "${1}" =~ ^\. ]]; then
+    elif [[ "${1}" =~ ^(\.\/) || "${1}" =~ ^(\.$) ]]; then
         local output=${1/#\./$dir}
     else
-        local output="$1"
+        local output="${dir}/${1}"
     fi
     echo "${output}"
 }
@@ -309,6 +308,9 @@ test_fix_route() {
     # test4, test for replacing '.'
     fixed_route=$(fix_route ".")
     [[ "${fixed_route}" = "${dir}" ]] || { cecho ${BAD} "test_fix_route failed for test 4"; exit 1; }
+    # test5, test for relative address starts with .'
+    fixed_route=$(fix_route ".test")
+    [[ "${fixed_route}" = "${dir}/.test" ]] || { cecho ${BAD} "test_fix_route failed for test 5"; exit 1; }
     cecho ${GOOD} "test_fix_route passed"
 }
 

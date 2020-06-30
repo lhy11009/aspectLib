@@ -62,7 +62,6 @@ parse_options(){
         # filename
         #####################################
         [^-]*)
-          shift
           filename=$(fix_route "$param")
         ;;
         #####################################
@@ -258,6 +257,23 @@ test_submit(){
 	exit 1
     fi
     eval "scancel ${job_id}"  # terminate this job
+    # test 3 submit with a log file assigned, case infomation will be added to this file
+    _log_file="${test_dir}/job.log"
+    [[ -e "${_log_file}" ]] && eval "rm ${_log_file}"  # remove older file
+    _test="slurm.sh -n ${_nproc}  -p med2 ${test_dir}/submit_test.prm -l ${test_dir}/job.log"
+    job_id=$(eval "${_test}" | sed 's/Submitted\ batch\ job\ //')
+    if ! [[ ${job_id} != '' && ${job_id} =~ ^[0-9]*$ ]]; then
+	cecho ${BAD} "test_submit fail for \"${_test}\", job id is not returned"
+	exit 1
+    fi
+    # pull out content in the output file
+    _line=$(sed -n '2'p "${_log_file}") 
+    # compare with standard ouput
+    if ! [[ "${_line}" =~ \.test\ [0-9]+\ [A-Z]+ ]]; then
+	    cecho ${BAD} "output format in the log file is not correct for \"${_test}\"."
+	    exit 1
+    fi
+    eval "scancel ${job_id}"  # terminate this job
     cecho ${GOOD} "test_submit passed"
 }
 
@@ -274,10 +290,13 @@ main(){
 	local _message=$(submit)  # submit job
     	job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
 	# get case directory, be default it's the same as the prm file 
-	case_dir=$(dirname "${fileanme}")
+	local case_dir=$(dirname "${filename}")
 	case_dir=$(fix_route "${case_dir}")  # get a full route
 	# call write_log from utilities.sh
-	[[ ${job_id} =~ ^[0-9]*$ && "${log_file}" != '' ]] && write_log "${case_dir}" "${job_id}" "${log_file}"
+	if [[ ${job_id} =~ ^[0-9]*$ && "${log_file}" != '' ]]; then
+		[[ -e "${log_file}" ]] || write_log_header "${log_file}"  # write header when create a new file
+		write_log "${case_dir}" "${job_id}" "${log_file}"
+	fi
 	# output the message to be backwork compatible
 	echo "${_message}"
     elif [[ ${_command} = "remote_test" ]]; then
