@@ -195,6 +195,12 @@ main(){
         local group_name=$(echo "${_info}" | sed -n '2'p)
         # call self
         ./aspect_lib.sh "${project}" 'submit_group' "${group_name}" "${server_info}"
+    elif [[ ${_commend} = 'terminate' ]]; then
+        # todo
+        echo '0'
+    elif [[ ${_commend} = 'remove' ]]; then
+        # todo
+        echo '0'
     elif [[ ${_commend} = 'test' ]]; then
         # do test
         test_aspect_lib "${project}"
