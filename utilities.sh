@@ -225,6 +225,26 @@ write_log(){
     parse_stdout ${_file}  # parse this file
     echo "${job_dir} ${job_id} ${ST} ${last_time_step} ${last_time}" >> "${log_file}"
 }
+
+clean_log(){
+    # remove the record of "${case_dir}" from record
+    # Inputs:
+    #   $1: job directory
+    #   $2: log file name
+    local job_dir=$1
+    local log_file=$2
+    read_log "${log_file}"  # first read file
+    local _find=0
+    local i=2  # i=2 because we are starting from second line of a log file
+    local flag=''
+    for foo in ${return_value0[@]}; do
+	    if [[ "${foo}" = "${job_dir}" ]]; then
+		    [[ ${_find} -eq 0 ]] && { flag="${i}"; _find=1; } || flag="${flag},${i}"
+	    fi
+	    ((i++))
+    done
+    [[ ${_find} -eq 1 ]] && eval "sed -in '${flag}'d ${log_file}"  # eliminate the line of "${case_dir}"
+}
 ################################################################################
 # Test functions
 test_element_in(){
@@ -294,6 +314,22 @@ test_write_log(){
 
 }
 
+test_clean_log(){
+	local log_source_file="${test_fixtures_dir}/test.log"
+	# copy source file to log file
+	local log_file="${test_dir}/test.log"
+	eval "cp ${log_source_file} ${log_file}"
+	# call function
+	clean_log "tests/integration/fixtures" "${log_file}"
+	contents=$(cat "${log_file}")  # debug
+	# todo compare file content
+	if ! [[ "${contents}" = "job_dir job_id ST last_time_step last_time" ]]; then
+		cecho ${BAD} "test_clean_log failed, file contents are not correct"
+		return 1
+	fi
+	cecho ${GOOD} "test_clean_log passed"
+}
+
 test_fix_route() {
     local dir=$(pwd)
     # test1 test for relacing '~'
@@ -319,11 +355,12 @@ main(){
 	if [[ "$1" = "test" ]]; then
 		# run tests by ./utilities.sh test
 		test_parse_stdout
-        test_fix_route
+        	test_fix_route
 		test_element_in
         # these two must be down with a slurm systems, todo_future: fix it
 		test_read_log
 		test_write_log
+		test_clean_log
 	fi
 }
 

@@ -299,6 +299,7 @@ main(){
 	# call write_log from utilities.sh
 	if [[ ${job_id} =~ ^[0-9]*$ && "${log_file}" != '' ]]; then
 		[[ -e "${log_file}" ]] || write_log_header "${log_file}"  # write header when create a new file
+		clean_log "${case_dir}" "${log_file}"  # clean older record of same case
 		write_log "${case_dir}" "${job_id}" "${log_file}"
 	fi
 	# output the message to be backwork compatible
