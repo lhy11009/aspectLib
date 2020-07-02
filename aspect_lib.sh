@@ -118,7 +118,7 @@ test_aspect_lib_remote(){
     # test1 create and submit case ####################################
     case_name="ULV1.000e+02testIAR8"
     case_dir="${local_root}/${case_name}"
-    [[ -d "${case_dir}" ]] && eval "rm -r ${case_dir}"  # remove older dir
+    ./process.sh clean "${case_dir}" "${server_info}"
     # test file
     test_json_file="${dir}/tests/integration/fixtures/config_case.json"
     [[ -e "${test_json_file}" ]] || { cecho ${BAD} "test file ${test_json_file} doesn't exist"; exit 1; }
