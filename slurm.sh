@@ -143,6 +143,10 @@ submit(){
     # compose the sbatch file
     # todo_future: add comment to sbatch file
 
+    # check for filename
+
+    [[ -e "${filename}" ]] || { cecho ${BAD} "${filename} doesn't exit"; exit 1; }
+
     # first cd to the folder
     local previous_dir=$(pwd)
     local case_dir=$(dirname "$filename")
@@ -267,7 +271,7 @@ test_submit(){
 	exit 1
     fi
     # pull out content in the output file
-    _line=$(sed -n '2'p "${_log_file}") 
+    _line=$(sed -n '2'p "${_log_file}")
     # compare with standard ouput
     if ! [[ "${_line}" =~ \.test\ [0-9]+\ [A-Z]+ ]]; then
 	    cecho ${BAD} "output format in the log file is not correct for \"${_test}\"."
@@ -289,7 +293,7 @@ main(){
 	# get job_id
 	local _message=$(submit)  # submit job
     	job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
-	# get case directory, be default it's the same as the prm file 
+	# get case directory, be default it's the same as the prm file
 	local case_dir=$(dirname "${filename}")
 	case_dir=$(fix_route "${case_dir}")  # get a full route
 	# call write_log from utilities.sh

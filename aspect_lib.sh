@@ -50,6 +50,7 @@ submit(){
     local case_name=$(basename "${case_dir}")
     local romote_case_dir="$2"
     local server_info="$3"
+    local flag=''  # a vacant flag for adding optional parameters
     [[ ${RSYNC} = ''  ]] && local RSYNC='rsync'  # replace rsync with rsync1
     local case_prm="${case_dir}/case.prm"
     local remote_case_prm="${remote_case_dir}/case.prm"
@@ -60,16 +61,18 @@ submit(){
     # rsync to remote
     local remote_target=$(dirname "${remote_case_dir}")
     eval "${RSYNC} -avur ${case_dir} ${server_info}:${remote_target}"
+    # add an optional log file
+    [[ "$4" != '' ]] && flag="${flag} -l $4"  # add -l log_file to flag, if $4 given
     # submit using slurm.sh,
     # determine if there is a valid job id, todo
     ssh ${server_info} << EOF > '.temp'
-        eval "slurm.sh -n ${total_tasks} -t ${time_by_hour} -p ${partition} ${remote_case_prm}"
+        eval "slurm.sh -n ${total_tasks} -t ${time_by_hour} -p ${partition} ${remote_case_prm} ${flag}"
 EOF
     # get job_id
     local _info=$(cat '.temp'| sed -n '$'p)
     local job_id=$(echo "${_info}" | sed 's/Submitted\ batch\ job\ //')
     if ! [[ ${job_id} != '' && ${job_id} =~ ^[0-9]*$  ]]; then
-        cecho ${BAD} "submit case: $(case_name) failed"
+        cecho ${BAD} "submit case: ${case_name} failed"
         return 1
     else
         cecho ${GOOD} "submit case: ${case_name} succeeded, job id: ${job_id}"
@@ -121,7 +124,33 @@ test_aspect_lib_remote(){
     # call function
     ./aspect_lib.sh "${project}" 'create_submit' "${server_info}"
     quit_if_fail "test_aspect_lib_remote submit case failed"
-    # test2 create and submit group ####################################
+    # test2 create and submit case with a log file######################
+    case_name="ULV1.000e+02testIAR8"
+    case_dir="${local_root}/${case_name}"
+    local_log_file=".test/test.log"
+    [[ -d "${case_dir}" ]] && eval "rm -r ${case_dir}"  # remove older dir
+    # test file
+    test_json_file="${dir}/tests/integration/fixtures/config_case.json"
+    [[ -e "${test_json_file}" ]] || { cecho ${BAD} "test file ${test_json_file} doesn't exist"; exit 1; }
+    eval "cp ${test_json_file} ${dir}/"
+    # todo clean previous files
+    ./process.sh clean "${local_log_file}" "${server_info}"
+    # call function
+    ./aspect_lib.sh "${project}" 'create_submit' "${server_info}" "${local_log_file}"
+    quit_if_fail "test_aspect_lib_remote submit case with log file failed"
+    # scp log file
+    ./process.sh update_from_server "${local_log_file}" "${server_info}"
+    # check log file
+    if ! [[ -e "${local_log_file}" ]]; then
+        cecho ${BAD} "test_aspect_lib_remote submit case with log file failed log_file ${local_log_file} is not generated"
+        exit 1
+    fi
+    local line2=$(sed -n '2'p "${local_log_file}")  # get second line of the file
+    if ! [[ "${line2}" =~ ^.*ULV1\.000e\+02testIAR8\ [0-9]* ]]; then
+        cecho ${BAD} "test_aspect_lib_remote submit case with log file failed, content in log_file ${local_log_file} is not correct"
+        exit 1
+    fi
+    # test3 create and submit group ####################################
     group_name='test_group'
     group_dir="${local_root}/${group_name}"
     [[ -d "${group_dir}" ]] && eval "rm -r ${group_dir}"  # remove older dir
@@ -142,7 +171,7 @@ main(){
     local local_root=$(eval "echo \${${project}_DIR}")
     local py_script="shilofue.${project}"
     # check project
-    [[ -d ${local_root} ]] || { cecho ${BAD} "Project ${project} is not supported"; exit 1; }
+    [[ -d ${local_root} ]] || { cecho ${BAD} "Project ${project} is not included"; exit 1; }
     # get commend
     _commend="$2"
     if [[ ${_commend} = 'create' ]]; then
@@ -157,7 +186,13 @@ main(){
         get_remote_environment "${server_info}" "${project}_DIR"
         local remote_root=${return_value}
         local remote_case_dir=${case_dir/"${local_root}"/"${remote_root}"} # substitution
-        submit "${case_dir}" "${remote_case_dir}" "${server_info}"
+        local log_file="$5"  # add an optional log_file
+        if [[ "${log_file}" != '' ]]; then
+            # if there is no $5 given, log file is ''
+            log_file=$(fix_route "${log_file}")
+            log_file=${log_file/"${local_root}"/"${remote_root}"} # substitution
+        fi
+        submit "${case_dir}" "${remote_case_dir}" "${server_info}" "${log_file}"
     elif [[ ${_commend} = 'submit_group' ]]; then
         # todo
         local group_name="$3"
@@ -178,13 +213,14 @@ main(){
         return 0
     elif [[ ${_commend} = 'create_submit' ]]; then
         local server_info="$3"
+        local log_file="$4"  # optional log file
         ./aspect_lib.sh "${project}" 'create'
         [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh create failed"; exit 1; }
         # get case name
         local _info=$(cat ".temp")
         local case_name=$(echo "${_info}" | sed -n '2'p)
         # submit to server
-        ./aspect_lib.sh "${project}" 'submit' "${case_name}" "${server_info}"
+        ./aspect_lib.sh "${project}" 'submit' "${case_name}" "${server_info}" "${log_file}"
         [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh submit failed"; exit 1; }
     elif [[ ${_commend} = 'create_submit_group' ]]; then
         local server_info="$3"
@@ -206,6 +242,7 @@ main(){
         test_aspect_lib "${project}"
     elif [[ ${_commend} = 'remote_test' ]]; then
         # do test
+        [[ "$#" -eq 3 ]] || { cecho ${BAD} "for remote_test, server_info must be given"; exit 1; }
         local server_info="$3"
         test_aspect_lib_remote "${project}" "${server_info}"
     else

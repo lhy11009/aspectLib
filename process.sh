@@ -80,6 +80,7 @@ update_outputs_from_server(){
 		eval "${RSYNC} -avur ${server_info}:${job_dir}/* ${target_dir}/"
 	done
 }
+
 ################################################################################
 # test functions
 ################################################################################
@@ -219,6 +220,22 @@ main(){
 		local local_log_file=$2
 		local server_info=$3
         update_outputs_from_server "${server_info}" "${local_log_file}"
+	elif [[ "$1" = "clean" ]]; then
+        # clean log_file
+		if ! [[ $# -eq 3 ]]; then
+			cecho ${BAD} "with \"clean\" command, \$2, \$3 must be given for local log file and server information"
+            exit 1
+		fi
+		local local_log_file=$2
+		local server_info=$3
+        # fix route
+        local_log_file=$(fix_route "${local_log_file}")
+        # figure out remote directory
+        get_remote_environment ${server_info} "ASPECT_LAB_DIR"
+	    remote_log_file=${local_log_file/"${dir}"/"${return_value}"}
+        # remove local and remote files
+        [[ -e "${local_log_file}" ]] && rm "${local_log_file}"
+        ssh "${server_info}" eval "[[ -e "${remote_log_file}" ]] && rm ${remote_log_file}"
 	elif [[ "$1" = '-h' || "$1" = '--help' ]]; then
 		usage
 	else
