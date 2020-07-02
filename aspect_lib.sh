@@ -77,6 +77,7 @@ EOF
         return 1
     else
         cecho ${GOOD} "submit case: ${case_name} succeeded, job id: ${job_id}"
+        echo "${job_id}" > ".temp"  # use .temp to transfer information
         return 0
     fi
 }
@@ -125,6 +126,9 @@ test_aspect_lib_remote(){
     # call function
     ./aspect_lib.sh "${project}" 'create_submit' "${server_info}"
     quit_if_fail "test_aspect_lib_remote submit case failed"
+    local job_id=$(cat ".temp")
+    ssh "${server_info}" eval "${SCANCEL} ${job_id}"  # cancel job after test
+    exit 0  # debug
     # test2 create and submit case with a log file######################
     case_name="ULV1.000e+02testIAR8"
     case_dir="${local_root}/${case_name}"
