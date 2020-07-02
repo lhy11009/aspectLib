@@ -193,6 +193,7 @@ main(){
             log_file=${log_file/"${local_root}"/"${remote_root}"} # substitution
         fi
         submit "${case_dir}" "${remote_case_dir}" "${server_info}" "${log_file}"
+        quit_if_fail "aspect_lib.sh submit failed for case ${case_name}"
     elif [[ ${_commend} = 'submit_group' ]]; then
         # todo
         local group_name="$3"
@@ -208,6 +209,7 @@ main(){
                 local remote_case_dir=${case_dir/"${local_root}"/"${remote_root}"}
                 # call submit functions
                 submit "${case_dir}" "${remote_case_dir}" "${server_info}"
+                quit_if_fail "aspect_lib.sh submit group failed for case ${case_dir}"
             fi
         done
         return 0
@@ -231,6 +233,7 @@ main(){
         local group_name=$(echo "${_info}" | sed -n '2'p)
         # call self
         ./aspect_lib.sh "${project}" 'submit_group' "${group_name}" "${server_info}"
+        quit_if_fail "aspect_lib.sh submit_group failed"
     elif [[ ${_commend} = 'terminate' ]]; then
         # todo
         echo '0'
