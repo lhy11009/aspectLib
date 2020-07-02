@@ -127,7 +127,7 @@ test_aspect_lib_remote(){
     ./aspect_lib.sh "${project}" 'create_submit' "${server_info}"
     quit_if_fail "test_aspect_lib_remote submit case failed"
     local job_id=$(cat ".temp")
-    ssh "${server_info}" eval "${SCANCEL} ${job_id}"  # cancel job after test
+    ssh "${server_info}" eval "\${SCANCEL} ${job_id}"  # cancel job after test
     exit 0  # debug
     # test2 create and submit case with a log file######################
     case_name="ULV1.000e+02testIAR8"
@@ -143,6 +143,8 @@ test_aspect_lib_remote(){
     # call function
     ./aspect_lib.sh "${project}" 'create_submit' "${server_info}" "${local_log_file}"
     quit_if_fail "test_aspect_lib_remote submit case with log file failed"
+    local job_id=$(cat ".temp")
+    ssh "${server_info}" eval "\${SCANCEL} ${job_id}"  # cancel job after test
     # scp log file
     ./process.sh update_from_server "${local_log_file}" "${server_info}"
     # check log file
@@ -166,6 +168,14 @@ test_aspect_lib_remote(){
     # call function
     ./aspect_lib.sh "${project}" 'create_submit_group' "${server_info}"
     quit_if_fail "test_aspect_lib_remote submit group failed"
+    # get job_id and cancel cases
+    local job_ids
+    local job_id
+    IFS=' ' read -r -a job_ids <<< $(cat ".temp")
+    echo "job_ids: ${job_ids[@]}"  # screen output
+    for job_id in ${job_ids[@]}; do
+        ssh "${server_info}" eval "\${SCANCEL} ${job_id}"  # cancel job after test
+    done
     cecho ${GOOD} "test_aspect_lib_remote succeeded"
 }
 
@@ -208,6 +218,7 @@ main(){
         get_remote_environment "${server_info}" "${project}_DIR"
         local remote_root=${return_value}
         # get a list of cases and submit
+        local job_ids=""
         for case_dir in "${group_dir}/"*; do
             if [[ -d "${case_dir}" ]]; then
                 # select directories
@@ -217,9 +228,12 @@ main(){
                     # call submit functions
                     submit "${case_dir}" "${remote_case_dir}" "${server_info}"
                     quit_if_fail "aspect_lib.sh submit group failed for case ${case_dir}"
+                    local job_id=$(cat ".temp")  # get job id
+                    job_ids="${job_ids} ${job_id}"
                 fi
             fi
         done
+        echo "${job_ids}>.temp"
         return 0
     elif [[ ${_commend} = 'create_submit' ]]; then
         local server_info="$3"
