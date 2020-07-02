@@ -2,6 +2,7 @@
 # case manager
 # Usage:
 #   ./aspect_lib.sh + command + options
+# todo_future: use a file to compile remote address
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
 
@@ -203,13 +204,16 @@ main(){
         get_remote_environment "${server_info}" "${project}_DIR"
         local remote_root=${return_value}
         # get a list of cases and submit
-        for case_dir in "${group_dir}/"*/; do
-            local _files=$(ls "${case_dir}")
-            if [[ "${_files[@]}" =~ 'case.prm' ]]; then
-                local remote_case_dir=${case_dir/"${local_root}"/"${remote_root}"}
-                # call submit functions
-                submit "${case_dir}" "${remote_case_dir}" "${server_info}"
-                quit_if_fail "aspect_lib.sh submit group failed for case ${case_dir}"
+        for case_dir in "${group_dir}/"*; do
+            if [[ -d "${case_dir}" ]]; then
+                # select directories
+                local _files=$(ls "${case_dir}")
+                if [[ "${_files[@]}" =~ 'case.prm' ]]; then
+                    local remote_case_dir=${case_dir/"${local_root}"/"${remote_root}"}
+                    # call submit functions
+                    submit "${case_dir}" "${remote_case_dir}" "${server_info}"
+                    quit_if_fail "aspect_lib.sh submit group failed for case ${case_dir}"
+                fi
             fi
         done
         return 0
