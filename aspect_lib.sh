@@ -52,16 +52,15 @@ submit(){
     local romote_case_dir="$2"
     local server_info="$3"
     local flag=''  # a vacant flag for adding optional parameters
-    [[ ${RSYNC} = ''  ]] && local RSYNC='rsync'  # replace rsync with rsync1
     local case_prm="${case_dir}/case.prm"
     local remote_case_prm="${remote_case_dir}/case.prm"
     # get configuration from a file
     total_tasks=$(sed -n '1'p "slurm_config")
     time_by_hour=$(sed -n '2'p "slurm_config")
     partition=$(sed -n '3'p "slurm_config")
-    # rsync to remote
+    # scp to remote
     local remote_target=$(dirname "${remote_case_dir}")
-    eval "${RSYNC} -avur ${case_dir} ${server_info}:${remote_target}"
+    eval "scp -r ${case_dir} ${server_info}:${remote_target}"
     # add an optional log file
     [[ "$4" != '' ]] && flag="${flag} -l $4"  # add -l log_file to flag, if $4 given
     # submit using slurm.sh,
@@ -128,7 +127,6 @@ test_aspect_lib_remote(){
     quit_if_fail "test_aspect_lib_remote submit case failed"
     local job_id=$(cat ".temp")
     ssh "${server_info}" eval "\${SCANCEL} ${job_id}"  # cancel job after test
-    exit 0  # debug
     # test2 create and submit case with a log file######################
     case_name="ULV1.000e+02testIAR8"
     case_dir="${local_root}/${case_name}"
@@ -172,7 +170,6 @@ test_aspect_lib_remote(){
     local job_ids
     local job_id
     IFS=' ' read -r -a job_ids <<< $(cat ".temp")
-    echo "job_ids: ${job_ids[@]}"  # screen output
     for job_id in ${job_ids[@]}; do
         ssh "${server_info}" eval "\${SCANCEL} ${job_id}"  # cancel job after test
     done
@@ -233,7 +230,7 @@ main(){
                 fi
             fi
         done
-        echo "${job_ids}>.temp"
+        echo "${job_ids[@]}" > ".temp"
         return 0
     elif [[ ${_commend} = 'create_submit' ]]; then
         local server_info="$3"
