@@ -257,3 +257,21 @@ def re_count_indent(_pattern):
         else:
             break
     return _indent
+
+
+def UpdateProjectJson(_dir, **kwargs):
+    '''
+    update groups and files information of a project
+    export to a json file
+    todo
+    Inputs:
+        _dir(str): directory of a project
+        kwargs:
+            json: json_file
+    ''''
+    _json = kwargs.get('json')
+    # todo: walk through the directory and look for groups and cases
+    find_json=False
+    find_prm=False
+    # for file_in os.walk()
+    pass

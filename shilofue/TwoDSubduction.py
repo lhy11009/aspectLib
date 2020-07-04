@@ -7,7 +7,7 @@ from shilofue.Parse import ParseFromDealiiInput
 from shilofue.Parse import ParseToDealiiInput
 from shilofue.Parse import CASE, GROUP_CASE
 from shilofue.Rheology import GetLowerMantleRheology
-from shilofue.Utilities import my_assert
+from shilofue.Utilities import my_assert, UpdateProjectJson
 
 
 _ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'query']  # all the possible operations
@@ -211,12 +211,17 @@ def main():
 
         pass
 
+    elif _commend == 'update_doc':
+        # todo_future
+        pass
+
     elif _commend == 'update':
         # update a case
-        # todo
+        UpdateProjectJson(arg.output_dir)
         pass
+
     elif _commend == 'plot':
-        # todo
+        # toda_future
         # plot something
         pass
 
