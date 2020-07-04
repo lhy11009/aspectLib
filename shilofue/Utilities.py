@@ -268,7 +268,7 @@ def UpdateProjectJson(_dir, **kwargs):
         _dir(str): directory of a project
         kwargs:
             json: json_file
-    ''''
+    '''
     _json = kwargs.get('json')
     # todo: walk through the directory and look for groups and cases
     find_json=False

@@ -60,11 +60,9 @@ submit(){
     partition=$(sed -n '3'p "slurm_config")
     # scp to remote
     local remote_target=$(dirname "${remote_case_dir}")
-    echo "scp -r ${case_dir} ${server_info}:${remote_target}"  # screen output
     eval "scp -r ${case_dir} ${server_info}:${remote_target}"
     # add an optional log file
     [[ "$4" != '' ]] && flag="${flag} -l $4"  # add -l log_file to flag, if $4 given
-    echo "flag: ${flag}"  # screen output
     # submit using slurm.sh,
     # determine if there is a valid job id, todo
     ssh ${server_info} << EOF > '.temp'
@@ -224,7 +222,6 @@ main(){
             log_file=$(fix_route "${log_file}")
             log_file=${log_file/"${local_root}"/"${remote_root}"} # substitution
         fi
-        echo "log_file: ${log_file}"  # screen output
         # get a list of cases and submit
         local job_ids=""
         for case_dir in "${group_dir}/"*; do
