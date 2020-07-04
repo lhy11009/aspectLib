@@ -60,9 +60,11 @@ submit(){
     partition=$(sed -n '3'p "slurm_config")
     # scp to remote
     local remote_target=$(dirname "${remote_case_dir}")
+    echo "scp -r ${case_dir} ${server_info}:${remote_target}"  # screen output
     eval "scp -r ${case_dir} ${server_info}:${remote_target}"
     # add an optional log file
     [[ "$4" != '' ]] && flag="${flag} -l $4"  # add -l log_file to flag, if $4 given
+    echo "flag: ${flag}"  # screen output
     # submit using slurm.sh,
     # determine if there is a valid job id, todo
     ssh ${server_info} << EOF > '.temp'
@@ -214,6 +216,15 @@ main(){
         # get remote case directory
         get_remote_environment "${server_info}" "${project}_DIR"
         local remote_root=${return_value}
+        local remote_group_dir=${group_dir/"${local_root}"/"${remote_root}"}
+        ssh "${server_info}" eval "[[ -d ${remote_group_dir} ]] && { rm -r ${remote_group_dir}; mkdir ${remote_group_dir}; }|| mkdir ${remote_group_dir}"
+        local log_file="$5"  # add an optional log_file, todo_future, move this to global settings
+        if [[ "${log_file}" != '' ]]; then
+            # if there is no $5 given, log file is ''
+            log_file=$(fix_route "${log_file}")
+            log_file=${log_file/"${local_root}"/"${remote_root}"} # substitution
+        fi
+        echo "log_file: ${log_file}"  # screen output
         # get a list of cases and submit
         local job_ids=""
         for case_dir in "${group_dir}/"*; do
@@ -223,7 +234,7 @@ main(){
                 if [[ "${_files[@]}" =~ 'case.prm' ]]; then
                     local remote_case_dir=${case_dir/"${local_root}"/"${remote_root}"}
                     # call submit functions
-                    submit "${case_dir}" "${remote_case_dir}" "${server_info}"
+                    submit "${case_dir}" "${remote_case_dir}" "${server_info}" "${log_file}"
                     quit_if_fail "aspect_lib.sh submit group failed for case ${case_dir}"
                     local job_id=$(cat ".temp")  # get job id
                     job_ids="${job_ids} ${job_id}"
@@ -245,13 +256,14 @@ main(){
         [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh submit failed"; exit 1; }
     elif [[ ${_commend} = 'create_submit_group' ]]; then
         local server_info="$3"
+        local log_file="$4"  # optional log file
         ./aspect_lib.sh "${project}" 'create_group'
         [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh create failed"; exit 1; }
         # get group name
         local _info=$(cat ".temp")
         local group_name=$(echo "${_info}" | sed -n '2'p)
         # call self
-        ./aspect_lib.sh "${project}" 'submit_group' "${group_name}" "${server_info}"
+        ./aspect_lib.sh "${project}" 'submit_group' "${group_name}" "${server_info}" "${log_file}"
         quit_if_fail "aspect_lib.sh submit_group failed"
     elif [[ ${_commend} = 'terminate' ]]; then
         # todo

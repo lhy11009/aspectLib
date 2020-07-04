@@ -55,10 +55,21 @@ def MeshRefinement(Inputs, _config):
     change mesh refinement
     '''
     try:
+        # initial_adaptive_refinement
         _initial_adaptive_refinement = int(_config['initial_adaptive_refinement'])
-        Inputs['Mesh refinement']['Initial adaptive refinement'] = str(_initial_adaptive_refinement)
     except KeyError:
         pass
+    else:
+        Inputs['Mesh refinement']['Initial adaptive refinement'] = str(_initial_adaptive_refinement)
+
+    try:
+        # longitude repetitions for chunk geometry
+        _longitude_repetitions = int(_config['longitude_repetitions'])
+    except KeyError:
+        pass
+    else:
+        Inputs['Geometry model']['Chunk']['Longitude repetitions'] = str(_longitude_repetitions)
+
 
 
 def Parse(ifile, ofile):
