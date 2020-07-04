@@ -58,7 +58,7 @@ end
 subsection Mesh refinement
     set Initial global refinement = 6
     set Minimum refinement level		 = 6
-    set Initial adaptive refinement = 11
+    set Initial adaptive refinement = 6
     set Time steps between mesh refinement = 10
     set Strategy = minimum refinement function
     set Refinement fraction 		 = 0.80

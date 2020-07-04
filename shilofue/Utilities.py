@@ -268,10 +268,34 @@ def UpdateProjectJson(_dir, **kwargs):
         _dir(str): directory of a project
         kwargs:
             json: json_file
+    Write:
+        the file by kwargs['json']
     '''
-    _json = kwargs.get('json')
-    # todo: walk through the directory and look for groups and cases
-    find_json=False
-    find_prm=False
-    # for file_in os.walk()
-    pass
+    _json = kwargs.get('json', 'project.json')
+    _cases = []
+    _groups = []
+    # walk through the directory and look for groups and cases
+    for _subname in os.listdir(_dir):
+        # loop in _dir
+        _fullsubname = os.path.join(_dir, _subname)
+        if os.path.isdir(_fullsubname):
+            if 'config.json' in os.listdir(_fullsubname):
+                if 'case.prm' in os.listdir(_fullsubname):
+                    _cases.append(_subname)
+                else:
+                    _groups.append(_subname)
+    # construct a output dictionary
+    _odict = {"cases": _cases}
+    for _group in _groups:
+        _group_dir = os.path.join(_dir, _group)
+        _sub_cases = []  # an array to hold names of sub-cases
+        for _subname in os.listdir(_group_dir):
+            _fullsubname = os.path.join(_group_dir, _subname)
+            if os.path.isdir(_fullsubname):
+                if 'case.prm' in os.listdir(_fullsubname):
+                    _sub_cases.append(_subname)
+        _odict[_group] = _sub_cases
+    # output to a json file
+    _json_file = os.path.join(_dir, _json)
+    with open(_json_file, 'w') as fout:
+        json.dump(_odict, fout)

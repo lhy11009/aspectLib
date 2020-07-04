@@ -122,7 +122,7 @@ def main():
             options
     '''
     # parse commend
-    _available_commends = ['create', 'create_group', 'plot']  # only these commends are available now
+    _available_commends = ['create', 'create_group', 'plot', 'update']  # only these commends are available now
     _commend = sys.argv[1]
     if _commend not in _available_commends:
         raise ValueError('Commend %s is not available.' % _commend)
