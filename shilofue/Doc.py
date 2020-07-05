@@ -119,12 +119,11 @@ class MKDOC():
         imgs(list) - list of images
         new_files(dict) - name: new file
     '''
-    def __init__(self, _dir, _odir):
+    def __init__(self, _odir):
         '''
         Inputs:
-            _dir(str) - directory of case data
+            _odir(str) - directory of mkdocs project
         '''
-        self.dir = _dir
         self.odir = _odir
         self.imgs = []
         self.new_files = {}
@@ -141,7 +140,7 @@ class MKDOC():
         else:
             raise TypeError('img must by a str or a list')
 
-    def __call__(self, _name, **kwargs):
+    def __call__(self, _name, _dir, **kwargs):
         '''
         Call function and write to file that will be used bu mkdoc
         Inputs:
@@ -162,17 +161,19 @@ class MKDOC():
         _index_file = os.path.join(self.odir, 'docs', 'index.md')
         if _type == 'case':
             # a case, todo
-            self.AppendCase(_name, update=update, append_prm=append_prm)
+            _target_dir = os.path.join(self.odir, 'docs', _name)
+            self.AppendCase(_name, _dir, _target_dir, update=update, append_prm=append_prm)
         elif _type == 'group':
             # a group, todo
             pass
         else:
             raise ValueError('Type must be \'case\' or \'group\'')
         
-    def AppendCase(self, _name, **kwargs):
+    def AppendCase(self, _name, _dir, _target_dir, **kwargs):
         '''
         Append a case to doc
         Inputs:
+            _target_dir(str): directory to put outputs
             kwargs:
                 update(bool) - if update an existing case
                 append_prm(bool) - if append a prm file
@@ -181,36 +182,36 @@ class MKDOC():
         update = kwargs.get('update', False)
         append_prm = kwargs.get('append_prm', False)
         _prm = kwargs.get('prm', 'case.prm')
-        _target_dir = os.path.join(self.odir, 'docs', _name)
         if not os.path.isdir(_target_dir):
             os.mkdir(_target_dir)
         # Append a summary.md
         if os.path.isfile(os.path.join(_target_dir, 'summary.md')):
             if update == True:
-                self.GenerateCaseMkd(_target_dir, update=True)
+                self.GenerateCaseMkd(_dir, _target_dir, update=True)
         else:
-            _filename = self.GenerateCaseMkd(_target_dir)
+            _filename = self.GenerateCaseMkd(_dir, _target_dir)
             # in a mkdocs file, files are listed as 'name/_filename'
             self.new_files['Summary'] = os.path.join(_name, os.path.basename(_filename))
         # Append a prm file if the append_prm option is True
         if append_prm:
             if os.path.isfile(os.path.join(_target_dir, _prm)):
                 if update == True:
-                    _prm_source_file = os.path.join(self.dir, _prm)
+                    _prm_source_file = os.path.join(_dir, _prm)
                     assert(os.path.isfile(_prm_source_file))
                     copyfile(_prm_source_file, os.path.join(_target_dir, _prm))
             else:
-                _prm_source_file = os.path.join(self.dir, _prm)
+                _prm_source_file = os.path.join(_dir, _prm)
                 assert(os.path.isfile(_prm_source_file))
                 copyfile(_prm_source_file, os.path.join(_target_dir, _prm))
                 self.new_files['Parameters'] = os.path.join(_name, _prm)
         if self.new_files != {}:
             self.RenewMkdocsYml(_name)
 
-    def GenerateCaseMkd(self, _target_dir, **kwargs):
+    def GenerateCaseMkd(self, _dir, _target_dir, **kwargs):
         '''
         Generate markdown file of a case
         Inputs:
+            _dir(str): directory of case
             _target_dir(str): directory of this case
             kwargs:
                 filename(str): name of the file
@@ -219,8 +220,8 @@ class MKDOC():
         '''
         _filename = kwargs.get('filename', 'summary.md')
         _filename = os.path.join(_target_dir, _filename)
-        _auto_mkd_file = os.path.join(self.dir, 'auto.md')
-        _extra_mkd_file = os.path.join(self.dir, 'extra.md')
+        _auto_mkd_file = os.path.join(_dir, 'auto.md')
+        _extra_mkd_file = os.path.join(_dir, 'extra.md')
         assert (os.path.isfile(_auto_mkd_file))
         copyfile(_auto_mkd_file, _filename)  # copy the auto.mkd file from case directory
         if (os.path.isfile(_extra_mkd_file)):
@@ -356,5 +357,5 @@ def UpdateProjectDoc(_project_dict, _project_dir, **kwargs):
     for key, value in _project_dict.items():
         if key == 'cases':
             for _case in value:
-                myMkdoc = MKDOC(os.path.join(_project_dir, _case), os.path.join(_project_dir, _mkdocs))
-                myMkdoc(_case, append_prm=True, update=True)
+                myMkdoc = MKDOC(os.path.join(_project_dir, _mkdocs))
+                myMkdoc(_case, os.path.join(_project_dir, _case), append_prm=True, update=True)
