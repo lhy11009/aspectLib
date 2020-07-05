@@ -82,6 +82,12 @@ EOF
 }
 
 
+install(){
+    # new mkdocs project
+    echo "mkdocs new mkdocs-project"
+}
+
+
 test_aspect_lib(){
     local project="$1"
     local local_root=$(eval "echo \${${project}_DIR}")

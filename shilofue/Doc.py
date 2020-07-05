@@ -160,8 +160,9 @@ class MKDOC():
         _mcdocs_file = os.path.join(_odir, 'mkdocs.yml')
         assert(os.path.isfile(_mcdocs_file))
         _index_file = os.path.join(_odir, 'docs', 'index.md')
-        _case_dir = os.path.join(_odir, 'docs', 'foo')
-        assert(os.path.isdir(_case_dir))
+        _case_dir = os.path.join(_odir, 'docs', self.case_name)
+        if not os.path.isdir(_case_dir):
+            os.mkdir(_case_dir)
         # Append a summary.md
         if os.path.isfile(os.path.join(_case_dir, 'summary.md')):
             if update == True:
@@ -216,7 +217,7 @@ class MKDOC():
         '''
         _filename = os.path.join(_odir, 'mkdocs.yml')
         _start = None
-        _end = -1
+        _end = None
         with open(_filename, 'r') as fin:
             # read in the old file
             _lines = fin.read().split('\n')
@@ -225,8 +226,9 @@ class MKDOC():
             _line = _lines[i]
             if _start is None and re.match('^nav', _line):
                 _start = i + 1
+                _previous_indent = re_count_indent(_lines[i])
                 _indent = re_count_indent(_lines[i+1])
-            elif _start is not None and re_count_indent(_line) < _indent:
+            elif _start is not None and re_count_indent(_line) == _previous_indent:
                 _end = i
                 break
         my_assert(_start is not None and _end is not None, TypeError, 'Cannot find start and end of the nav part')
@@ -261,8 +263,9 @@ def ExtractNav(_lines, **kwargs):
     '''
     _previous = kwargs.get('previous', 0)
     _at = kwargs.get('at', 0)
-    assert(_at < len(_lines))
+    assert(_at <= len(_lines))
     _odict = {}
+    i = -1
     for i in range(_at, len(_lines)):
         _line = _lines[i]
         my_assert('-' in _line, TypeError, "Each line must start with \'-\'")
@@ -322,3 +325,16 @@ def SeparateNavPattern(_pattern):
     key = re_neat_word(_temp.split(':')[0])
     value = re_neat_word(_temp.split(':')[1])
     return key, value
+
+
+
+def UpdateProjectDoc(_project_dict, _project_dir, **kwargs):
+    '''
+    Update doc for all cases in this project
+    '''
+    _mkdocs = kwargs.get('mkdocs', 'mkdocs_project')
+    for key, value in _project_dict.items():
+        if key == 'cases':
+            for _case in value:
+                myMkdoc = MKDOC(_case, os.path.join(_project_dir, _case))
+                myMkdoc(os.path.join(_project_dir, _mkdocs), append_prm=True, update=True)
