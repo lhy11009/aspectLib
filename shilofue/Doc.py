@@ -119,13 +119,11 @@ class MKDOC():
         imgs(list) - list of images
         new_files(dict) - name: new file
     '''
-    def __init__(self, _name, _dir, _odir):
+    def __init__(self, _dir, _odir):
         '''
         Inputs:
-            _name(str) - case name
             _dir(str) - directory of case data
         '''
-        self.name = _name
         self.dir = _dir
         self.odir = _odir
         self.imgs = []
@@ -143,11 +141,11 @@ class MKDOC():
         else:
             raise TypeError('img must by a str or a list')
 
-    def __call__(self, **kwargs):
+    def __call__(self, _name, **kwargs):
         '''
         Call function and write to file that will be used bu mkdoc
         Inputs:
-            kwargs:
+            kwargs: 
                 update(bool) - if update an existing case
                 append_prm(bool) - if append a prm file
                 prm(str) - name of a prm file
@@ -164,15 +162,14 @@ class MKDOC():
         _index_file = os.path.join(self.odir, 'docs', 'index.md')
         if _type == 'case':
             # a case, todo
-            self.AppendCase(update=update, append_prm=append_prm, prm=_prm)
+            self.AppendCase(_name, update=update, append_prm=append_prm)
         elif _type == 'group':
             # a group, todo
-            # self.AppendGroup(self.odir, update=update, append_prm=append_prm, prm=_prm)
             pass
         else:
-            raise ValueError('type must be \'case\' or \'group\'')
-
-    def AppendCase(self, **kwargs):
+            raise ValueError('Type must be \'case\' or \'group\'')
+        
+    def AppendCase(self, _name, **kwargs):
         '''
         Append a case to doc
         Inputs:
@@ -184,7 +181,7 @@ class MKDOC():
         update = kwargs.get('update', False)
         append_prm = kwargs.get('append_prm', False)
         _prm = kwargs.get('prm', 'case.prm')
-        _target_dir = os.path.join(self.odir, 'docs', self.name)
+        _target_dir = os.path.join(self.odir, 'docs', _name)
         if not os.path.isdir(_target_dir):
             os.mkdir(_target_dir)
         # Append a summary.md
@@ -194,7 +191,7 @@ class MKDOC():
         else:
             _filename = self.GenerateCaseMkd(_target_dir)
             # in a mkdocs file, files are listed as 'name/_filename'
-            self.new_files['Summary'] = os.path.join(self.name, os.path.basename(_filename))
+            self.new_files['Summary'] = os.path.join(_name, os.path.basename(_filename))
         # Append a prm file if the append_prm option is True
         if append_prm:
             if os.path.isfile(os.path.join(_target_dir, _prm)):
@@ -206,9 +203,9 @@ class MKDOC():
                 _prm_source_file = os.path.join(self.dir, _prm)
                 assert(os.path.isfile(_prm_source_file))
                 copyfile(_prm_source_file, os.path.join(_target_dir, _prm))
-                self.new_files['Parameters'] = os.path.join(self.name, _prm)
+                self.new_files['Parameters'] = os.path.join(_name, _prm)
         if self.new_files != {}:
-            self.RenewMkdocsYml()
+            self.RenewMkdocsYml(_name)
 
     def GenerateCaseMkd(self, _target_dir, **kwargs):
         '''
@@ -234,7 +231,7 @@ class MKDOC():
                 fout.write(_contents)
         return _filename
 
-    def RenewMkdocsYml(self):
+    def RenewMkdocsYml(self, _name):
         '''
         Renew the mkdocs.yml file in the project directory
         '''
@@ -259,13 +256,13 @@ class MKDOC():
         assert(_temp == _end - _start - 1)
         try:
             # this case is already in the nav part of the yml file
-            value = _nav_dict[self.name]
+            value = _nav_dict[_name]
             my_assert(type(value) == dict, TypeError,
                       'entry for a case must be a single dict, prepared to include dictionary in the future')
             value = {**value, **self.new_files}  # merge and substitute value in first dict with value in second dict
         except KeyError:
             # this case is new to the yml file
-            _nav_dict[self.name] = self.new_files
+            _nav_dict[_name] = self.new_files
         _new_lines = _lines[0: _start]
         _new_lines += ProduceNav(_nav_dict)
         _new_lines += _lines[_end: -1]
@@ -359,5 +356,5 @@ def UpdateProjectDoc(_project_dict, _project_dir, **kwargs):
     for key, value in _project_dict.items():
         if key == 'cases':
             for _case in value:
-                myMkdoc = MKDOC(_case, os.path.join(_project_dir, _case), os.path.join(_project_dir, _mkdocs))
-                myMkdoc(append_prm=True, update=True)
+                myMkdoc = MKDOC(os.path.join(_project_dir, _case), os.path.join(_project_dir, _mkdocs))
+                myMkdoc(_case, append_prm=True, update=True)

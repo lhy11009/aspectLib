@@ -52,9 +52,9 @@ def test_mkdoc():
     _index_file = os.path.join(test_dir, 'test-project', 'docs', 'index.md')
     _case_file = os.path.join(_mkdocs_case_dir, 'foo.md')
     # call __init__ function
-    myMkdoc = MKDOC('foo', os.path.join(test_source_dir, 'test-project', 'foo'), os.path.join(test_dir, 'test-project'))
+    myMkdoc = MKDOC(os.path.join(test_source_dir, 'test-project', 'foo'), os.path.join(test_dir, 'test-project'))
     # call __call__ function
-    myMkdoc(append_prm=True)
+    myMkdoc('foo', append_prm=True)
     assert(os.path.isfile(os.path.join(_mkdocs_case_dir, 'summary.md')))  # assert summary.md generated
     with open(os.path.join(_mkdocs_case_dir, 'summary.md'), 'r') as fin:
         # assert file has the right content
