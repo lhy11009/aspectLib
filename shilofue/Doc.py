@@ -119,7 +119,7 @@ class MKDOC():
         imgs(list) - list of images
         new_files(dict) - name: new file
     '''
-    def __init__(self, _name, _dir):
+    def __init__(self, _name, _dir, _odir):
         '''
         Inputs:
             _name(str) - case name
@@ -127,6 +127,7 @@ class MKDOC():
         '''
         self.name = _name
         self.dir = _dir
+        self.odir = _odir
         self.imgs = []
         self.new_files = {}
 
@@ -142,7 +143,7 @@ class MKDOC():
         else:
             raise TypeError('img must by a str or a list')
 
-    def __call__(self, _odir, **kwargs):
+    def __call__(self, **kwargs):
         '''
         Call function and write to file that will be used bu mkdoc
         Inputs:
@@ -156,22 +157,22 @@ class MKDOC():
         _prm = kwargs.get('prm', 'case.prm')
         _type = kwargs.get('type', 'case')
         # These directory and files need to be preexist
-        assert(os.path.isdir(_odir))
-        assert(os.path.isdir(os.path.join(_odir, 'docs')))
-        _mcdocs_file = os.path.join(_odir, 'mkdocs.yml')
+        assert(os.path.isdir(self.odir))
+        assert(os.path.isdir(os.path.join(self.odir, 'docs')))
+        _mcdocs_file = os.path.join(self.odir, 'mkdocs.yml')
         assert(os.path.isfile(_mcdocs_file))
-        _index_file = os.path.join(_odir, 'docs', 'index.md')
+        _index_file = os.path.join(self.odir, 'docs', 'index.md')
         if _type == 'case':
             # a case, todo
-            self.AppendCase(_odir, update=update, append_prm=append_prm, prm=_prm)
+            self.AppendCase(update=update, append_prm=append_prm, prm=_prm)
         elif _type == 'group':
             # a group, todo
-            self.AppendGroup(_odir, update=update, append_prm=append_prm, prm=_prm)
+            # self.AppendGroup(self.odir, update=update, append_prm=append_prm, prm=_prm)
             pass
         else:
             raise ValueError('type must be \'case\' or \'group\'')
 
-    def AppendCase(self, _odir, **kwargs):
+    def AppendCase(self, **kwargs):
         '''
         Append a case to doc
         Inputs:
@@ -183,7 +184,7 @@ class MKDOC():
         update = kwargs.get('update', False)
         append_prm = kwargs.get('append_prm', False)
         _prm = kwargs.get('prm', 'case.prm')
-        _target_dir = os.path.join(_odir, 'docs', self.name)
+        _target_dir = os.path.join(self.odir, 'docs', self.name)
         if not os.path.isdir(_target_dir):
             os.mkdir(_target_dir)
         # Append a summary.md
@@ -207,7 +208,7 @@ class MKDOC():
                 copyfile(_prm_source_file, os.path.join(_target_dir, _prm))
                 self.new_files['Parameters'] = os.path.join(self.name, _prm)
         if self.new_files != {}:
-            self.RenewMkdocsYml(_odir)
+            self.RenewMkdocsYml()
 
     def GenerateCaseMkd(self, _target_dir, **kwargs):
         '''
@@ -233,13 +234,11 @@ class MKDOC():
                 fout.write(_contents)
         return _filename
 
-    def RenewMkdocsYml(self, _odir):
+    def RenewMkdocsYml(self):
         '''
         Renew the mkdocs.yml file in the project directory
-        Inputs:
-            _odir(str): project directory
         '''
-        _filename = os.path.join(_odir, 'mkdocs.yml')
+        _filename = os.path.join(self.odir, 'mkdocs.yml')
         _start = None
         _end = None
         with open(_filename, 'r') as fin:
@@ -360,5 +359,5 @@ def UpdateProjectDoc(_project_dict, _project_dir, **kwargs):
     for key, value in _project_dict.items():
         if key == 'cases':
             for _case in value:
-                myMkdoc = MKDOC(_case, os.path.join(_project_dir, _case))
-                myMkdoc(os.path.join(_project_dir, _mkdocs), append_prm=True, update=True)
+                myMkdoc = MKDOC(_case, os.path.join(_project_dir, _case), os.path.join(_project_dir, _mkdocs))
+                myMkdoc(append_prm=True, update=True)
