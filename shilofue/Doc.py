@@ -168,6 +168,8 @@ class MKDOC():
             pass
         else:
             raise ValueError('Type must be \'case\' or \'group\'')
+        if self.new_files != {}:
+            self.RenewMkdocsYml(_name)
         
     def AppendCase(self, _name, _dir, _target_dir, **kwargs):
         '''
@@ -178,10 +180,13 @@ class MKDOC():
                 update(bool) - if update an existing case
                 append_prm(bool) - if append a prm file
                 prm(str) - name of a prm file
+                basename(str) - base name that goes beform path of the case in .yml file,
+                                used to figure out a case of a group
         '''
         update = kwargs.get('update', False)
         append_prm = kwargs.get('append_prm', False)
         _prm = kwargs.get('prm', 'case.prm')
+        _base_name = kwargs.get('basename', None)
         if not os.path.isdir(_target_dir):
             os.mkdir(_target_dir)
         # Append a summary.md
@@ -191,7 +196,13 @@ class MKDOC():
         else:
             _filename = self.GenerateCaseMkd(_dir, _target_dir)
             # in a mkdocs file, files are listed as 'name/_filename'
-            self.new_files['Summary'] = os.path.join(_name, os.path.basename(_filename))
+            _summary = os.path.join(_name, os.path.basename(_filename))
+            if _base_name is None:
+                self.new_files['Summary'] = _summary
+            else:
+                # a subcase of a group
+                self.new_files[_name]['Summary'] = os.path.join(_base_name, _summary)
+
         # Append a prm file if the append_prm option is True
         if append_prm:
             if os.path.isfile(os.path.join(_target_dir, _prm)):
@@ -203,9 +214,12 @@ class MKDOC():
                 _prm_source_file = os.path.join(_dir, _prm)
                 assert(os.path.isfile(_prm_source_file))
                 copyfile(_prm_source_file, os.path.join(_target_dir, _prm))
-                self.new_files['Parameters'] = os.path.join(_name, _prm)
-        if self.new_files != {}:
-            self.RenewMkdocsYml(_name)
+                _parameters = os.path.join(_name, _prm)
+                if _base_name is None:
+                    self.new_files['Parameters'] = _parameters
+                else:
+                    # a subcase of a group
+                    self.new_files[_name]['Parameters'] = os.path.join(_base_name, _parameters)
 
     def GenerateCaseMkd(self, _dir, _target_dir, **kwargs):
         '''
