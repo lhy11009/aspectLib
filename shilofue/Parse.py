@@ -105,9 +105,10 @@ class CASE():
     def Intepret(self, **kwargs):
         '''
         Intepret configuration,
-        Predifined for offsprings
+        to be defined in children class
         '''
         pass
+
 
     def CaseName(self):
         '''
@@ -493,3 +494,135 @@ def ChangeDiscValues(_idict, _names, _values):
         for _key in _name[0: len(_name)-1]:
             _sub_dict = _sub_dict[_key]
         _sub_dict[_name[-1]] = _values[i]
+    
+    
+def AutoMarkdownCase(_case_name, _idict, **kwargs):
+    '''
+    generate a automatic markdown file for a case
+    Inputs:
+        _idict(dict): dictionary that holds configurations for this case
+        _case_name(str): case name
+        kwargs:
+            md: file name of markdown file
+    '''
+    _md = kwargs.get('md', 'auto.md')
+    _dirname = kwargs.get('dirname', '.')
+    _md_file = os.path.join(_dirname, _md)
+    _contents = '# Case %s\n\n' % _case_name  # an string to hold content of file
+    _contents += '### Overview\n\n'
+    _config = _idict['config']  # append configuration part
+    _contents += '### The case is configured with:\n\n'
+    for key, value in sorted(_config.items(), key=lambda item: item[0]):
+        _contents += '%s: %s\n\n' % (key, str(value))
+    _test = _idict['test']  # append test part
+    _contents += '### The case is tested with:\n\n'
+    for key, value in sorted(_test.items(), key=lambda item: item[0]):
+        _contents += '%s: %s\n\n' % (key, str(value))
+    _extra = _idict['extra']  # append extra setting part
+    _contents += '### The case is genearated with extra settings:\n\n'
+    for key, value in sorted(_extra.items(), key=lambda item: item[0]):
+        _contents += '%s: %s\n\n' % (key, str(value))
+    with open(_md_file, 'w') as fout:
+        # output file
+        fout.write(_contents)
+    pass
+
+
+def AutoMarkdownGroup(_group_name, _idict, **kwargs):
+    '''
+    generate a automatic markdown file for a group
+    Inputs:
+        _idict(dict): dictionary that holds configurations for this case
+        _case_name(str): case name
+        kwargs:
+            md: file name of markdown file
+    '''
+    _md = kwargs.get('md', 'auto.md')
+    _dirname = kwargs.get('dirname', '.')
+    _md_file = os.path.join(_dirname, _md)
+    _contents = '# Group %s\n\n' % _group_name  # an string to hold content of file
+    _contents += '### Overview\n\n'
+    _config = _idict['config']  # append configuration part
+    _contents += '### The group is configured with:\n\n'
+    for key, value in sorted(_config.items(), key=lambda item: item[0]):
+        _contents += '%s: %s\n\n' % (key, str(value))
+    _test = _idict['test']  # append test part
+    _contents += '### The group is tested with:\n\n'
+    for key, value in sorted(_test.items(), key=lambda item: item[0]):
+        _contents += '%s: %s\n\n' % (key, str(value))
+    _extra = _idict['extra']  # append extra setting part
+    _contents += '### The group is genearated with extra settings:\n\n'
+    for key, value in sorted(_extra.items(), key=lambda item: item[0]):
+        _contents += '%s: %s\n\n' % (key, str(value))
+    with open(_md_file, 'w') as fout:
+        # output file
+        fout.write(_contents)
+    pass
+        
+        
+def UpdateProjectMd(_project_dict, _project_dir):
+    '''
+    Update auto mkd file for all cases in this project
+    '''
+    for key, value in _project_dict.items():
+        if key == 'cases':
+            _dir = _project_dir
+        else:
+            # groups
+            _dir = os.path.join(_project_dir, key)
+            _group_json = os.path.join(_dir, 'config.json')
+            with open(_group_json, 'r') as fin:
+                _group_config_dict = json.load(fin)
+            AutoMarkdownGroup(key, _group_config_dict, dirname=_dir)
+        for _case in _project_dict[key]:
+            # cases
+            _case_dir = os.path.join(_dir, _case)
+            _case_json = os.path.join(_case_dir, 'config.json')
+            with open(_case_json, 'r') as fin:
+                _case_config_dict = json.load(fin)
+            AutoMarkdownCase(_case, _case_config_dict, dirname=_case_dir)
+
+
+def UpdateProjectJson(_dir, **kwargs):
+    '''
+    update groups and files information of a project
+    export to a json file
+    todo
+    Inputs:
+        _dir(str): directory of a project
+        kwargs:
+            json: json_file
+    Write:
+        the file by kwargs['json']
+    Return:
+        the dictionary generated
+    '''
+    _json = kwargs.get('json', 'project.json')
+    _cases = []
+    _groups = []
+    # walk through the directory and look for groups and cases
+    for _subname in os.listdir(_dir):
+        # loop in _dir
+        _fullsubname = os.path.join(_dir, _subname)
+        if os.path.isdir(_fullsubname):
+            if 'config.json' in os.listdir(_fullsubname):
+                if 'case.prm' in os.listdir(_fullsubname):
+                    _cases.append(_subname)
+                else:
+                    _groups.append(_subname)
+    # construct a output dictionary
+    _odict = {"cases": _cases}
+    for _group in _groups:
+        _group_dir = os.path.join(_dir, _group)
+        _sub_cases = []  # an array to hold names of sub-cases
+        for _subname in os.listdir(_group_dir):
+            _fullsubname = os.path.join(_group_dir, _subname)
+            if os.path.isdir(_fullsubname):
+                if 'case.prm' in os.listdir(_fullsubname):
+                    _sub_cases.append(_subname)
+        _odict[_group] = _sub_cases
+    # output to a json file
+    _json_file = os.path.join(_dir, _json)
+    with open(_json_file, 'w') as fout:
+        json.dump(_odict, fout)
+    return _odict

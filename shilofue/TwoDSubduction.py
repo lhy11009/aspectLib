@@ -5,9 +5,9 @@ import argparse
 from shilofue.Parse import COMPOSITION
 from shilofue.Parse import ParseFromDealiiInput
 from shilofue.Parse import ParseToDealiiInput
-from shilofue.Parse import CASE, GROUP_CASE
+from shilofue.Parse import CASE, GROUP_CASE, UpdateProjectMd, UpdateProjectJson, AutoMarkdownCase, AutoMarkdownGroup
 from shilofue.Rheology import GetLowerMantleRheology
-from shilofue.Utilities import my_assert, UpdateProjectJson
+from shilofue.Utilities import my_assert
 
 
 _ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'query']  # all the possible operations
@@ -171,6 +171,14 @@ def main():
             # take all availale operations
             _operations = _ALL_AVAILABLE_OPERATIONS
         _case_names = MyGroup(_odir, operations=_operations, extra=_extra, basename=_base_name)
+        # generate auto.md
+        AutoMarkdownCase(_group_name, _config, dirname=_odir)
+        for _case_name in _case_names:
+            _case_dir = os.path.join(_odir, _case_name)
+            _case_json_file = os.path.join(_case_dir, 'config.json')
+            with open(_case_json_file, 'r') as fin:
+                _case_config = json.load(_case_json_file)
+            AutoMarkdownCase(_case_name, _case_config, dirname=_case_dir)
         print(_group_name)
         for _case_name in _case_names:
             # ouptut to screen
@@ -195,6 +203,9 @@ def main():
             # take all availale operations
             _operations = _ALL_AVAILABLE_OPERATIONS
         _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations, basename=_base_name)
+        # generate markdown file
+        _case_dir = os.path.join(arg.output_dir, _case_name)
+        AutoMarkdownCase(_case_name, _config, dirname=_case_dir)
         print(_case_name)
     
     elif _commend == 'query':
@@ -217,8 +228,9 @@ def main():
 
     elif _commend == 'update':
         # update a case
-        UpdateProjectJson(arg.output_dir)
-        pass
+        _project_dir = arg.output_dir
+        _project_dict = UpdateProjectJson(_project_dir)  # update project json file
+        UpdateProjectMd(_project_dict, _project_dir)  # update auto.md file for every case
 
     elif _commend == 'plot':
         # toda_future
