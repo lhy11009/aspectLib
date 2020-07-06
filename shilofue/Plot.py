@@ -7,7 +7,7 @@ import numpy as np
 from importlib import resources
 from shilofue.Utilities import JsonOptions
 from shilofue.Utilities import ReadHeader
-from shilofue.Utilities import ReadHeader2
+from shilofue.Utilities import ReadHeader2, UNITCONVERT
 from matplotlib import pyplot as plt
 
 class LINEARPLOT():
@@ -398,3 +398,47 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
             self.header['vertical_heat_flux']['unit'] = 'mw/m'
         elif self.dim == 3:
             self.header['vertical_heat_flux']['unit'] = 'mw/m^2'
+
+
+def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
+    '''
+    Plot figures for all cases in this project
+    Inputs:
+        kwargs:
+            update(True or False): if True, update existing figures
+    '''
+    update = kwargs.get('update', False)
+    # Init the UnitConvert class
+    UnitConvert = UNITCONVERT()
+    # plot statistics ouput #####
+    Statistics = STATISTICS_PLOT('Statistics', unit_convert=UnitConvert)
+    DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert)
+    for key, value in _project_dict.items():
+        if key == 'cases':
+            _dir = _project_dir
+        else:
+            # groups, todo_future
+            _dir = os.path.join(_project_dir, key)
+        for _case in value:
+            # cases
+            _case_dir = os.path.join(_dir, _case)
+            _case_output_dir = os.path.join(_case_dir, 'output')
+            _case_img_dir = os.path.join(_case_dir, 'img')
+            if not os.path.isdir(_case_img_dir):
+                # make img folder if not exists
+                os.mkdir(_case_img_dir)
+            # plot statistic
+            _statistic_file = os.path.join(_case_output_dir, 'statistics')
+            _ofile = os.path.join(_case_img_dir, 'Statistics.'+ _file_type)
+            if os.path.isfile(_statistic_file) and (not os.path.isfile(_ofile) or update is True):
+                Statistics(_statistic_file, fileout=_ofile)
+                print('Plot has been generated: ', _ofile)  # screen output
+            # plot depth-average
+            _depth_average_file = os.path.join(_case_output_dir, 'depth_average.txt')
+            _time = 0.0
+            _ofile_route = os.path.join(_case_img_dir, 'DepthAverage.%s' % _file_type)
+            _ofile = os.path.join(_case_img_dir, 'DepthAverage_t%.8e.%s' % (_time, _file_type))  # ofile has the exact time
+            if os.path.isfile(_depth_average_file) and (not os.path.isfile(_ofile) or update is True):
+                # check for ofile here is not precist, not intuitive. todo_future: change the implementation
+                _ofile_exact = DepthAverage(_depth_average_file, fileout=_ofile_route, time=_time)
+                print('Plot has been generated: ', _ofile_exact)  # screen output

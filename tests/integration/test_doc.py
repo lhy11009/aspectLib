@@ -54,7 +54,7 @@ def test_mkdoc():
     _index_file = os.path.join(_docs_dir, 'index.md')
     _case_file = os.path.join(_mkdocs_case_dir, 'foo.md')
     # call __init__ function
-    myMkdoc = MKDOC(_mkdocs_dir)
+    myMkdoc = MKDOC(_mkdocs_dir, images='DepthAverage')
     ############# call __call__ function for a case ###############
     myMkdoc('foo', os.path.join(test_source_dir, 'test-project', 'foo'), append_prm=True)
     _case_summary_file = os.path.join(_mkdocs_case_dir, 'summary.md')

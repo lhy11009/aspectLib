@@ -9,6 +9,7 @@ from shilofue.Parse import CASE, GROUP_CASE, UpdateProjectMd, UpdateProjectJson,
 from shilofue.Rheology import GetLowerMantleRheology
 from shilofue.Utilities import my_assert
 from shilofue.Doc import UpdateProjectDoc
+from shilofue.Plot import ProjectPlot
 
 _ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'query']  # all the possible operations
 
@@ -231,10 +232,11 @@ def main():
         _project_dir = arg.output_dir
         _project_dict = UpdateProjectJson(_project_dir)  # update project json file
         UpdateProjectMd(_project_dict, _project_dir)  # update auto.md file for every case
-        UpdateProjectDoc(_project_dict, _project_dir)
+        ProjectPlot(_project_dict, _project_dir, 'png', update=False)  # plot figures for every case
+        UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage'])
 
     elif _commend == 'plot':
-        # toda_future
+        # todo_future
         # plot something
         pass
 

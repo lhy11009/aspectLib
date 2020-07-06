@@ -5,6 +5,7 @@ import re
 import shilofue.json
 from importlib import resources
 from shutil import copyfile
+from pathlib import Path
 from shilofue.Utilities import my_assert, re_neat_word, re_count_indent
 
 
@@ -119,13 +120,13 @@ class MKDOC():
         imgs(list) - list of images
         new_files(dict) - name: new file
     '''
-    def __init__(self, _odir):
+    def __init__(self, _odir, **kwargs):
         '''
         Inputs:
             _odir(str) - directory of mkdocs project
         '''
         self.odir = _odir
-        self.imgs = []
+        self.imgs = kwargs.get('images', [])
         self.new_files = {}
 
     def AttachImage(self, _img):
@@ -191,12 +192,15 @@ class MKDOC():
         _base_name = kwargs.get('basename', None)
         if not os.path.isdir(_target_dir):
             os.mkdir(_target_dir)
+        # get images
+        _img_dir = os.path.join(_dir, 'img')
+        _imgs = ReturnFileList(_img_dir, self.imgs)
         # Append a summary.md
         if os.path.isfile(os.path.join(_target_dir, 'summary.md')):
             if update == True:
-                self.GenerateCaseMkd(_dir, _target_dir, update=True)
+                self.GenerateCaseMkd(_dir, _target_dir, update=True, images=_imgs)
         else:
-            _filename = self.GenerateCaseMkd(_dir, _target_dir)
+            _filename = self.GenerateCaseMkd(_dir, _target_dir, images=_imgs)
             # in a mkdocs file, files are listed as 'name/_filename'
             _summary = os.path.join(_name, os.path.basename(_filename))
             if _base_name is None:
@@ -260,10 +264,12 @@ class MKDOC():
             _target_dir(str): directory of this case
             kwargs:
                 filename(str): name of the file
+                images(list of str): images to append
         Returns:
             _filename(str): file generated
         '''
         _filename = kwargs.get('filename', 'summary.md')
+        _imgs = kwargs.get('images', [])
         _filename = os.path.join(_target_dir, _filename)
         _auto_mkd_file = os.path.join(_dir, 'auto.md')
         _extra_mkd_file = os.path.join(_dir, 'extra.md')
@@ -274,8 +280,31 @@ class MKDOC():
             with open(_extra_mkd_file, 'r') as fin:
                 _contents = fin.read()
             with open(_filename, 'a') as fout:
+                fout.write('\n')
+                fout.write(_contents)
+        if _imgs != []:
+            # append images
+            _contents = self.GenerateImageMkd(_dir, _imgs)
+            with open(_filename, 'a') as fout:
+                fout.write('\n')
                 fout.write(_contents)
         return _filename
+
+    def GenerateImageMkd(self, _dir, _files, **kwargs):
+        '''
+        Generate markdown file content for figures
+        Inputs:
+            _dir(str): directory of case
+            _files(list of str): files to be included
+        Return:
+            _contents: contents of markdown file
+        '''
+        _contents = '# Plots\n\n'
+        for _file in _files:
+            _relative_route = os.path.join('img', _file)
+            _line = '![%s](%s)' %  (_file, _relative_route)
+            _contents += '%s\n\n' % (_line)
+        return _contents
     
     def GenerateGroupMkd(self, _dir, _target_dir, **kwargs):
         '''
@@ -426,7 +455,8 @@ def UpdateProjectDoc(_project_dict, _project_dir, **kwargs):
     Update doc for all cases in this project
     '''
     _mkdocs = kwargs.get('mkdocs', 'mkdocs_project')
-    myMkdoc = MKDOC(os.path.join(_project_dir, _mkdocs))
+    _imgs = kwargs.get('images', [])
+    myMkdoc = MKDOC(os.path.join(_project_dir, _mkdocs), images=_imgs)
     for key, value in _project_dict.items():
         if key == 'cases':
             for _case in value:
@@ -434,3 +464,22 @@ def UpdateProjectDoc(_project_dict, _project_dir, **kwargs):
         else:
             my_assert(type(value) == list and value != [], TypeError, 'Input group must have a \'case\' list and it cannot be []')
             myMkdoc(key, os.path.join(_project_dir, key), append_prm=True, update=True, type='group', case_names=value)
+
+
+def ReturnFileList(_dir, _names):
+    '''
+    match file starts with _name in a directory and return a list
+    Inputs:
+        _dir(str): target directory
+        _names(list of str): names to match
+    '''
+    if not os.path.isdir(_dir):
+        return []
+    else:
+        _files = []
+        for _name in _names:
+            _pathlist = Path(_dir).rglob(_name+'*')
+            for _path in _pathlist:
+                _base_name = os.path.basename(str(_path))
+                _files.append(_base_name)
+        return _files
