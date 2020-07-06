@@ -59,7 +59,9 @@ def test_mkdoc():
     myMkdoc('foo', os.path.join(test_source_dir, 'test-project', 'foo'), append_prm=True)
     _case_summary_file = os.path.join(_mkdocs_case_dir, 'summary.md')
     _case_prm_file = os.path.join(_mkdocs_case_dir, 'case.prm')
+    _case_img_file = os.path.join(_mkdocs_case_dir, 'img', 'DepthAverage_t0.00000000e+00.pdf')
     assert(os.path.isfile(_case_summary_file))  # assert summary.md generated
+    assert(os.path.isfile(_case_img_file))  # assert hard link for image generated
     # assert file has the right content
     with open(_case_summary_file, 'r') as fin:
         _case_summary_contents = fin.read()

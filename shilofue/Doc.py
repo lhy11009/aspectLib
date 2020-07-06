@@ -195,6 +195,15 @@ class MKDOC():
         # get images
         _img_dir = os.path.join(_dir, 'img')
         _imgs = ReturnFileList(_img_dir, self.imgs)
+        # create hard links in target_dir
+        _target_img_dir = os.path.join(_target_dir, 'img')
+        if not os.path.isdir(_target_img_dir):
+            os.mkdir(_target_img_dir)
+        for _img in _imgs:
+            _file = os.path.join(_img_dir, _img)
+            _target_file = os.path.join(_target_img_dir, _img)
+            if not os.path.isfile(_target_file):
+                os.link(_file, _target_file)
         # Append a summary.md
         if os.path.isfile(os.path.join(_target_dir, 'summary.md')):
             if update == True:
@@ -301,6 +310,7 @@ class MKDOC():
         '''
         _contents = '# Plots\n\n'
         for _file in _files:
+            _contents += '## %s\n\n' % _file
             _relative_route = os.path.join('img', _file)
             _line = '![%s](%s)' %  (_file, _relative_route)
             _contents += '%s\n\n' % (_line)
