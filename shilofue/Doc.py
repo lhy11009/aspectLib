@@ -149,10 +149,12 @@ class MKDOC():
                 append_prm(bool) - if append a prm file
                 prm(str) - name of a prm file
         '''
+        self.new_files = {}
         update = kwargs.get('update', False)
         append_prm = kwargs.get('append_prm', False)
         _prm = kwargs.get('prm', 'case.prm')
         _type = kwargs.get('type', 'case')
+        _case_names = kwargs.get('case_names', None)
         # These directory and files need to be preexist
         assert(os.path.isdir(self.odir))
         assert(os.path.isdir(os.path.join(self.odir, 'docs')))
@@ -160,12 +162,12 @@ class MKDOC():
         assert(os.path.isfile(_mcdocs_file))
         _index_file = os.path.join(self.odir, 'docs', 'index.md')
         if _type == 'case':
-            # a case, todo
             _target_dir = os.path.join(self.odir, 'docs', _name)
             self.AppendCase(_name, _dir, _target_dir, update=update, append_prm=append_prm)
         elif _type == 'group':
-            # a group, todo
-            pass
+            my_assert(_case_names is not None, ValueError, 'For a group, case names cannot be None. Valid names must be given')
+            _target_dir = os.path.join(self.odir, 'docs', _name)
+            self.AppendGroup(_name, _dir, _case_names, _target_dir, update=update, append_prm=append_prm)
         else:
             raise ValueError('Type must be \'case\' or \'group\'')
         if self.new_files != {}:
@@ -202,7 +204,6 @@ class MKDOC():
             else:
                 # a subcase of a group
                 self.new_files[_name]['Summary'] = os.path.join(_base_name, _summary)
-
         # Append a prm file if the append_prm option is True
         if append_prm:
             if os.path.isfile(os.path.join(_target_dir, _prm)):
@@ -220,10 +221,65 @@ class MKDOC():
                 else:
                     # a subcase of a group
                     self.new_files[_name]['Parameters'] = os.path.join(_base_name, _parameters)
+    
+    def AppendGroup(self, _name, _dir, _case_names, _target_dir, **kwargs):
+        '''
+        Append a group to doc
+        Inputs:
+            _case_names(list): names of cases within this group
+            _target_dir(str): directory to put outputs
+            kwargs:
+                update(bool) - if update an existing case
+                append_prm(bool) - if append a prm file
+                prm(str) - name of a prm file
+        '''
+        update = kwargs.get('update', False)
+        append_prm = kwargs.get('append_prm', False)
+        _prm = kwargs.get('prm', 'case.prm')
+        if not os.path.isdir(_target_dir):
+            os.mkdir(_target_dir)
+        # Append a summary.md
+        if os.path.isfile(os.path.join(_target_dir, 'summary.md')):
+            if update == True:
+                self.GenerateGroupMkd(_dir, _target_dir, update=True)
+        else:
+            _filename = self.GenerateGroupMkd(_dir, _target_dir)
+            # in a mkdocs file, files are listed as 'name/_filename'
+            self.new_files['Summary'] = os.path.join(_name, os.path.basename(_filename))
+        for _case_name in _case_names:
+            self.new_files[_case_name] = {}
+            _case_dir = os.path.join(_dir, _case_name)
+            _case_target_dir = os.path.join(_target_dir, _case_name)
+            self.AppendCase(_case_name, _case_dir, _case_target_dir, update=update, append_prm=append_prm, basename=_name)
 
     def GenerateCaseMkd(self, _dir, _target_dir, **kwargs):
         '''
         Generate markdown file of a case
+        Inputs:
+            _dir(str): directory of case
+            _target_dir(str): directory of this case
+            kwargs:
+                filename(str): name of the file
+        Returns:
+            _filename(str): file generated
+        '''
+        _filename = kwargs.get('filename', 'summary.md')
+        _filename = os.path.join(_target_dir, _filename)
+        _auto_mkd_file = os.path.join(_dir, 'auto.md')
+        _extra_mkd_file = os.path.join(_dir, 'extra.md')
+        assert (os.path.isfile(_auto_mkd_file))
+        copyfile(_auto_mkd_file, _filename)  # copy the auto.mkd file from case directory
+        if (os.path.isfile(_extra_mkd_file)):
+            # apppend contents of extra.mkd at the end of case.mkd
+            with open(_extra_mkd_file, 'r') as fin:
+                _contents = fin.read()
+            with open(_filename, 'a') as fout:
+                fout.write(_contents)
+        return _filename
+    
+    def GenerateGroupMkd(self, _dir, _target_dir, **kwargs):
+        '''
+        Generate markdown file of a group
         Inputs:
             _dir(str): directory of case
             _target_dir(str): directory of this case
@@ -316,7 +372,9 @@ def ExtractNav(_lines, **kwargs):
             key, value = SeparateNavPattern(_line)
             if value == '':
                 # going to the next level, call iteration
-                _odict[key], i = ExtractNav(_lines, previous=re_count_indent(_lines[i+1]), at=i+1)
+                _next = re_count_indent(_lines[i+1])
+                my_assert(_next > _now, ValueError, 'A group with no cases or a Case with no files are not supported')
+                _odict[key], i = ExtractNav(_lines, previous=_next, at=i+1)
             else:
                 # add key and value 
                 _odict[key] = value
@@ -368,8 +426,11 @@ def UpdateProjectDoc(_project_dict, _project_dir, **kwargs):
     Update doc for all cases in this project
     '''
     _mkdocs = kwargs.get('mkdocs', 'mkdocs_project')
+    myMkdoc = MKDOC(os.path.join(_project_dir, _mkdocs))
     for key, value in _project_dict.items():
         if key == 'cases':
             for _case in value:
-                myMkdoc = MKDOC(os.path.join(_project_dir, _mkdocs))
                 myMkdoc(_case, os.path.join(_project_dir, _case), append_prm=True, update=True)
+        else:
+            my_assert(type(value) == list and value != [], TypeError, 'Input group must have a \'case\' list and it cannot be []')
+            myMkdoc(key, os.path.join(_project_dir, key), append_prm=True, update=True, type='group', case_names=value)

@@ -40,30 +40,64 @@ def test_mkdoc():
     '''
     test class MKDOC from shilofue.doc
     '''
-    if os.path.isdir(os.path.join(test_dir, 'test-project')):
-        rmtree(os.path.join(test_dir, 'test-project'))
-    os.mkdir(os.path.join(test_dir, 'test-project'))
-    os.mkdir(os.path.join(test_dir, 'test-project', 'docs'))
-    _mkdocs_case_dir = os.path.join(test_dir, 'test-project', 'docs', 'foo')  # this should be generate by the code
+    _mkdocs_dir = os.path.join(test_dir, 'test-project')
+    _docs_dir = os.path.join(_mkdocs_dir, 'docs')
+    _mkdocs_case_dir = os.path.join(_docs_dir, 'foo')  # this should be generate by the code
+    if os.path.isdir(_mkdocs_dir):
+        rmtree(_mkdocs_dir)
+    os.mkdir(_mkdocs_dir)
+    os.mkdir(_docs_dir)
     os.mkdir(_mkdocs_case_dir)
     # files that will be used in this test
-    _mkdocs_file = os.path.join(test_dir, 'test-project', 'mkdocs.yml')
+    _mkdocs_file = os.path.join(_mkdocs_dir, 'mkdocs.yml')
     copyfile(os.path.join(test_source_dir, 'test-project', 'mkdocs.yml'), _mkdocs_file)
-    _index_file = os.path.join(test_dir, 'test-project', 'docs', 'index.md')
+    _index_file = os.path.join(_docs_dir, 'index.md')
     _case_file = os.path.join(_mkdocs_case_dir, 'foo.md')
     # call __init__ function
-    myMkdoc = MKDOC(os.path.join(test_dir, 'test-project'))
-    # call __call__ function
+    myMkdoc = MKDOC(_mkdocs_dir)
+    ############# call __call__ function for a case ###############
     myMkdoc('foo', os.path.join(test_source_dir, 'test-project', 'foo'), append_prm=True)
-    assert(os.path.isfile(os.path.join(_mkdocs_case_dir, 'summary.md')))  # assert summary.md generated
-    with open(os.path.join(_mkdocs_case_dir, 'summary.md'), 'r') as fin:
-        # assert file has the right content
-        with open(os.path.join(test_source_dir, 'test-project', 'standard_foo_summary.md')) as standard_fin:
-            assert(fin.read() == standard_fin.read())
-    assert(os.path.isfile(os.path.join(_mkdocs_case_dir, 'case.prm')))  # assert case.prm generated
+    _case_summary_file = os.path.join(_mkdocs_case_dir, 'summary.md')
+    _case_prm_file = os.path.join(_mkdocs_case_dir, 'case.prm')
+    assert(os.path.isfile(_case_summary_file))  # assert summary.md generated
+    # assert file has the right content
+    with open(_case_summary_file, 'r') as fin:
+        _case_summary_contents = fin.read()
+    with open(os.path.join(test_source_dir, 'test-project', 'standard_foo_summary.md')) as standard_fin:
+        assert(_case_summary_contents == standard_fin.read())
+    assert(os.path.isfile(_case_prm_file))  # assert case.prm generated
+    ############# call __call__ function for a group ##############
+    _mkdocs_group_dir = os.path.join(_docs_dir, 'foo_group')  # this should be generate by the code
+    myMkdoc('foo_group', os.path.join(test_source_dir, 'test-project', 'foo_group'), append_prm=True, type='group', case_names=['foo1', 'foo2'])
+    _group_summary_file = os.path.join(_mkdocs_group_dir, 'summary.md')
+    # check group summary, todo
+    # check for foo1
+    _mkdocs_subcase_dir = os.path.join(_mkdocs_group_dir, 'foo1')
+    _case_summary_file = os.path.join(_mkdocs_subcase_dir, 'summary.md')
+    _case_prm_file = os.path.join(_mkdocs_subcase_dir, 'case.prm')
+    assert(os.path.isfile(_case_summary_file))  # assert summary.md generated
+    # assert file has the right content
+    with open(_case_summary_file, 'r') as fin:
+        _case_summary_contents = fin.read()
+    with open(os.path.join(test_source_dir, 'test-project', 'standard_foo1_summary.md')) as standard_fin:
+        assert(_case_summary_contents == standard_fin.read())
+    assert(os.path.isfile(_case_prm_file))  # assert case.prm generated
+    # check for foo2
+    _mkdocs_subcase_dir = os.path.join(_mkdocs_group_dir, 'foo2')
+    _case_summary_file = os.path.join(_mkdocs_subcase_dir, 'summary.md')
+    _case_prm_file = os.path.join(_mkdocs_subcase_dir, 'case.prm')
+    assert(os.path.isfile(_case_summary_file))  # assert summary.md generated
+    # assert file has the right content
+    with open(_case_summary_file, 'r') as fin:
+        _case_summary_contents = fin.read()
+    with open(os.path.join(test_source_dir, 'test-project', 'standard_foo2_summary.md')) as standard_fin:
+        assert(_case_summary_contents == standard_fin.read())
+    assert(os.path.isfile(_case_prm_file))  # assert case.prm generated
+    ############ assert mkdocs.yml file has the right contents ########3
     with open(os.path.join(test_dir, 'test-project', 'mkdocs.yml')) as fin:
-        with open(os.path.join(test_source_dir, 'test-project', 'standard_mkdocs.yml')) as standard_fin:
-            assert(fin.read() == standard_fin.read())
-    # todo: test the update option
+        _yml_contents = fin.read()
+    with open(os.path.join(test_source_dir, 'test-project', 'standard_mkdocs.yml')) as standard_fin:
+        assert(_yml_contents == standard_fin.read())
+    # todo_future: test the update option
             
 
