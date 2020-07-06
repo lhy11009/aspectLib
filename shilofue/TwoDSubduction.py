@@ -178,7 +178,7 @@ def main():
             _case_dir = os.path.join(_odir, _case_name)
             _case_json_file = os.path.join(_case_dir, 'config.json')
             with open(_case_json_file, 'r') as fin:
-                _case_config = json.load(_case_json_file)
+                _case_config = json.load(fin)
             AutoMarkdownCase(_case_name, _case_config, dirname=_case_dir)
         print(_group_name)
         for _case_name in _case_names:
@@ -233,7 +233,7 @@ def main():
         _project_dict = UpdateProjectJson(_project_dir)  # update project json file
         UpdateProjectMd(_project_dict, _project_dir)  # update auto.md file for every case
         ProjectPlot(_project_dict, _project_dir, 'png', update=False)  # plot figures for every case
-        UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage'])
+        UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'PvMesh'])
 
     elif _commend == 'plot':
         # todo_future
