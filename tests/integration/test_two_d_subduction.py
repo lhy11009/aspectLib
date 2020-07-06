@@ -3,7 +3,7 @@ import json
 from shutil import rmtree
 from shilofue.TwoDSubduction import MYCASE
 from shilofue.Parse import ParseFromDealiiInput, GROUP_CASE
-from shilofue.Utilities import UpdateProjectJson
+from shilofue.Parse import UpdateProjectJson
 
 test_source_dir = os.path.join(os.path.dirname(__file__), 'fixtures')
 test_dir = '.test'

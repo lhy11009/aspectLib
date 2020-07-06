@@ -59,4 +59,4 @@ def test_plot_depth_average():
     assert(DepthAverage.time_step_indexes[-1][-1] == 376)
     assert(abs(DepthAverage.time_step_times[0]-0.0) < 1e-6)
     assert(abs(DepthAverage.time_step_times[-1]-2.63571e+06)/2.63571e+06 < 1e-6)
-    assert(os.path.isfile('DepthAverage_t0.00000000e+00.pdf'))  # assert that the file is generated successfully
+    assert(os.path.isfile(_ofile))  # assert that the file is generated successfully
