@@ -423,16 +423,25 @@ def GetGroupCaseFromDict1(_idict):
             # derive index number by mod
             _ind = j
             _ind = int(_ind // _totals[i])
-            _ind = _ind % len(value)
-            # indexing by _ind and append value to key
-            _config_test['config'][key] = value[_ind]
+            try:
+                _ind = _ind % len(value)
+                # indexing by _ind and append value to key
+                _config_test['config'][key] = value[_ind]
+            except TypeError:
+                # only one value
+                _config_test['config'][key] = value
             i += 1
         for key, value in sorted(_tests.items(), key=lambda item: item[0]):
             # loop for tests
             _ind = j
             _ind = int(_ind // _totals[i])
-            _ind = _ind % len(value)
-            _config_test['test'][key] = value[_ind]
+            try:
+                _ind = _ind % len(value)
+                # indexing by _ind and append value to key
+                _config_test['test'][key] = value[_ind]
+            except TypeError:
+                # only one value
+                _config_test['test'][key] = value
             i += 1
         _config_tests.append(_config_test)
     return _config_tests

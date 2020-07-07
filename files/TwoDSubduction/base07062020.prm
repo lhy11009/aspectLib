@@ -77,7 +77,7 @@ subsection Mesh refinement
                                     ((phi>=PHIC)&&(Ro-r<=ST*frac)&& \
                                     (phi*Ro<=PHIC*Ro+min(frac*RC,sqrt(abs(2.0*frac*RC*(Ro-r)-(Ro-r)^2.0))))&& \
                                     (RC-sqrt(abs(((phi-PHIC)*Ro)^2.0+((Ro-r)-RC)^2.0))<=DCS*frac+DHS*frac)) ? \
-                                  8: 6):0)
+                                  10: 8):0)
     end
 end
 
