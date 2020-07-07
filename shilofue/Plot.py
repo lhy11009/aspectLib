@@ -69,6 +69,10 @@ class LINEARPLOT():
         '''
         assert(os.access(_filename, os.R_OK))  # read in data
         self.data = np.genfromtxt(_filename, comments='#')
+        if len(self.data.shape) == 1:
+            # only one row, expand it too 2-d array
+            self.data = np.array([self.data])
+        
 
     def ManageData(self):
         '''
@@ -268,9 +272,12 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
     '''
     def __init__(self, _name, **kwargs):
         LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
-        self.time_step_times = []  # time step information
-        self.time_step_indexes = []
         self.time_step_length = None
+        # both these two arrays have the length of total time steps
+        # the first records the time for each time step
+        # the second points to the actual step within data
+        self.time_step_times = None
+        self.time_step_indexes = None
 
     def __call__(self, _filename, **kwargs):
         '''
@@ -355,6 +362,9 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
                 _time_step_times.append(_time)
                 i += 1
             _time_step_indexes[i].append(j)
+        # both these two arrays have the length of total time steps
+        # the first records the time for each time step
+        # the second points to the actual step within data
         self.time_step_times = np.array(_time_step_times)
         self.time_step_indexes = _time_step_indexes
     
@@ -370,7 +380,11 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
         _data_list = []
         _time_step = np.argmin(abs(self.time_step_times - _time))  # time_step
         _index0 = self.time_step_indexes[_time_step][-1] * self.time_step_length
-        _index1 = self.time_step_indexes[_time_step + 1][0] * self.time_step_length
+        if _time_step == len(self.time_step_times) - 1:
+            # this is the last step
+            _index1 = self.data.shape[0]
+        else:
+            _index1 = self.time_step_indexes[_time_step + 1][0] * self.time_step_length
         for i in range(self.data.shape[1]):
             _data_list.append(self.data[_index0 : _index1, i])
         # get the super adiabatic temperature
@@ -431,8 +445,13 @@ def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
             _statistic_file = os.path.join(_case_output_dir, 'statistics')
             _ofile = os.path.join(_case_img_dir, 'Statistics.'+ _file_type)
             if os.path.isfile(_statistic_file) and (not os.path.isfile(_ofile) or update is True):
-                Statistics(_statistic_file, fileout=_ofile)
-                print('Plot has been generated: ', _ofile)  # screen output
+                try:
+                    Statistics(_statistic_file, fileout=_ofile)
+                except Exception as e:
+                    raise Exception("Plot statistics file failed for %s, please chech file content.\
+One option is to delete incorrect file before running again" % _statistic_file) from e
+                else:
+                    print('Plot has been generated: ', _ofile)  # screen output
             # plot depth-average
             _depth_average_file = os.path.join(_case_output_dir, 'depth_average.txt')
             _time = 0.0
@@ -440,5 +459,10 @@ def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
             _ofile = os.path.join(_case_img_dir, 'DepthAverage_t%.8e.%s' % (_time, _file_type))  # ofile has the exact time
             if os.path.isfile(_depth_average_file) and (not os.path.isfile(_ofile) or update is True):
                 # check for ofile here is not precist, not intuitive. todo_future: change the implementation
-                _ofile_exact = DepthAverage(_depth_average_file, fileout=_ofile_route, time=_time)
-                print('Plot has been generated: ', _ofile_exact)  # screen output
+                try:
+                    _ofile_exact = DepthAverage(_depth_average_file, fileout=_ofile_route, time=_time)
+                except Exception as e:
+                    raise Exception("Plot DepthAverage file failed for %s, please chech file content.\
+One option is to delete incorrect file before running again" % _depth_average_file) from e
+                else:
+                    print('Plot has been generated: ', _ofile_exact)  # screen output
