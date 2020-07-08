@@ -40,6 +40,30 @@ update(){
 	# updata log file
 }
 
+clean_NA(){
+	local log_file=$1
+	local job_dirs
+	local job_ids
+	local job_dir
+	local job_id
+	local job_ST
+	# look into log file
+	read_log "${log_file}"
+	# write log file
+	write_log_header "${log_file}"
+	IFS=' ' read -r -a job_dirs <<< ${return_value0}
+	IFS=' ' read -r -a job_ids <<< ${return_value1}
+	IFS=' ' read -r -a job_STs <<< ${return_value2}
+	i=0
+	for job_id in ${job_ids[@]}; do
+		job_dir="${job_dirs[i]}"
+		job_ST="${job_STs[i]}"
+		[[ "${job_ST}" = 'NA' ]] || write_log "${job_dir}" "${job_id}" "${log_file}"
+		((i++))
+	done
+	# updata log file
+}
+
 
 update_from_server(){
 	# update log file from remote
@@ -48,6 +72,17 @@ update_from_server(){
 	local local_log_file=$3
     # use ssh to update log file on server side, \$ escapes '$' so that it is called on the remote side
     ssh "$server_info" eval "\${ASPECT_LAB_DIR}/process.sh update ${remote_log_file}"
+    # use scp to update log file on local side
+    eval "scp ${server_info}:${remote_log_file} ${local_log_file}"
+}
+
+clean_NA_from_server(){
+	# update log file from remote
+	local server_info=$1
+	local remote_log_file=$2
+	local local_log_file=$3
+    # use ssh to update log file on server side, \$ escapes '$' so that it is called on the remote side
+    ssh "$server_info" eval "\${ASPECT_LAB_DIR}/process.sh clean ${remote_log_file}"
     # use scp to update log file on local side
     eval "scp ${server_info}:${remote_log_file} ${local_log_file}"
 }
@@ -100,6 +135,21 @@ test_update(){
 	cecho ${GOOD} "test_update passed"
 }
 
+test_clean_NA(){
+	local log_file="${test_dir}/test.log"
+	local correct_output_file="${test_fixtures_dir}/outputs/process_sh_test_clean_NA.output"
+	eval "cp ${test_fixtures_dir}/test.log ${log_file}"
+	clean_NA "${log_file}"
+	if [[ $? -eq 1 ]]; then
+		cecho ${BAD} "test_update failed, error reading log file ${log_file}"
+		exit 1
+	fi
+	if ! [[ $(diff "${log_file}" "${correct_output_file}") = '' ]]; then
+		cecho ${BAD} "test_update failed, output format is wrong"
+		exit 1
+	fi
+	cecho ${GOOD} "test_clean_NA passed"
+}
 
 test_update_from_server(){
     # todo_future: have a function to check all the environmental variables on server
@@ -169,6 +219,7 @@ test_update_outputs_from_server(){
 main(){
 	if [[ "$1" = "test" ]]; then
 		test_update
+		test_clean_NA
 	elif [[ "$1" = "remote_test" ]]; then
         # test run script on remote
 		if ! [[ $# -eq 2 ]]; then
@@ -195,6 +246,14 @@ main(){
             exit 1
 		fi
 	       	update "${log_file}"
+	elif [[ "$1" = "clean" ]]; then
+        # todo_future, strip root dir from output dir
+		local log_file=$2
+		if [[ "${log_file}" = '' ]]; then
+			cecho ${BAD} "with \"clean\" command, a \$2 must be given for the log_file variable"
+            exit 1
+		fi
+	       	clean_NA "${log_file}"
 	elif [[ "$1" = "update_from_server" ]]; then
         # download new log file from server
         # todo_future, use a config file for configration
@@ -211,6 +270,22 @@ main(){
 	    remote_log_file=${local_log_file/"${dir}"/"${return_value}"}
         # call function to transfer file
 		update_from_server "${server_info}" "${local_log_file}" "${remote_log_file}"
+	elif [[ "$1" = "clean_from_server" ]]; then
+        # download new log file from server
+        # todo_future, use a config file for configration
+		if ! [[ $# -eq 3 ]]; then
+			cecho ${BAD} "with \"clean_from_server\" command, \$2, \$3 must be given for server information, local log file"
+            exit 1
+		fi
+		local local_log_file=$2
+		local server_info=$3
+        # fix route
+        local_log_file=$(fix_route "${local_log_file}")
+        # figure out remote directory
+        get_remote_environment ${server_info} "ASPECT_LAB_DIR"
+	    remote_log_file=${local_log_file/"${dir}"/"${return_value}"}
+        # call function to transfer file
+	    clean_NA_from_server "${server_info}" "${local_log_file}" "${remote_log_file}"
 	elif [[ "$1" = "update_outputs_from_server" ]]; then
         # test update_outputs_from_server
 		if ! [[ $# -eq 3 ]]; then

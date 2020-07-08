@@ -174,6 +174,7 @@ read_log(){
 	local i=0
 	unset return_value0
 	unset return_value1
+	unset return_value2
 	local line
 	local foo
 	while IFS= read -r line; do
@@ -182,9 +183,11 @@ read_log(){
 		if [[ $i -eq 1 ]]; then
 			return_value0="${foo[0]}"
 			return_value1="${foo[1]}"
+			return_value2="${foo[2]}"
 		elif [[ $i -gt 1 ]]; then
 			return_value0="${return_value0} ${foo[0]}"
 			return_value1="${return_value1} ${foo[1]}"
+			return_value2="${return_value2} ${foo[2]}"
 		fi
         ((i++))
 	done < "${log_file}"
