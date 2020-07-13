@@ -83,8 +83,37 @@ EOF
 
 
 install(){
-    # new mkdocs project
+    local project="$1"
+    local server_info="$2"
+
+    # new folder
+    local project_dir="${ASPECT_PROJECT_DIR}/${project}"
+    [[ -d "${project_dir}" ]]  || mkdir "${project_dir}"
+
+    # on server side, todo
+    get_remote_environment "${server_info}" "${ASPECT_PROJECT_DIR}"
+    local remote_project_dir="${return_value}/${project}"
+    ssh ${server_info} << EOF
+        eval "[[ -d \"\${remote_project_dir}\" ]]  || mkdir \"\${remote_project_dir}\" "
+EOF
+
+    # set alias
+    if ! [[ -z "${project}_DIR" ]]; then
+        eval "echo \"${project}_DIR=${project_dir}\" >> ${dir}/env/enable.sh";
+        eval "echo \"${project}_DIR=${remote_project_dir}\" >> ${dir}/env/enable_peloton.sh";
+    fi
+
+    # new mkdocs project, todo
     echo "mkdocs new mkdocs-project"
+    previous=$(pwd)
+    cd "${project_dir}"
+    if ! [[ -d "mkdocs_project" ]]; then
+        eval "mkdocs new mkdocs_project"
+        yml_file="${project_dir}/mkdocs-project/mkdocs.yml"  # make a .yml file
+        cat "site_name: ${project}\nnav:\n    - Home: index.md\ntheme: readthedocs"\
+            > "${yml_file}"
+    fi
+    cd "${previous}"
 }
 
 
@@ -188,14 +217,22 @@ main(){
     local project="$1"
     local local_root=$(eval "echo \${${project}_DIR}")
     local py_script="shilofue.${project}"
-    # check project
-    [[ -d ${local_root} ]] || { cecho ${BAD} "Project ${project} is not included"; exit 1; }
-    # get commend
     _commend="$2"
-    if [[ ${_commend} = 'create' ]]; then
+    # check project
+    [[ -d ${local_root} || ${_commend} = 'install' ]] || { cecho ${BAD} "Project ${project} is not included"; exit 1; }
+
+    # execute
+    if [[ ${_commend} = 'install' ]]; then
+        [[ "$#" -eq 3 ]] || { cecho ${BAD} "for install, server_info must be given"; exit 1; }
+        local server_info="$3"
+        install "${project}" ${server_info}
+
+    elif [[ ${_commend} = 'create' ]]; then
         create_case "${py_script}" "${local_root}"
+
     elif [[ ${_commend} = 'create_group' ]]; then
         create_group "${py_script}" "${local_root}"
+
     elif [[ ${_commend} = 'submit' ]]; then
         local case_name="$3"
         local server_info="$4"
@@ -212,6 +249,7 @@ main(){
         fi
         submit "${case_dir}" "${remote_case_dir}" "${server_info}" "${log_file}"
         quit_if_fail "aspect_lib.sh submit failed for case ${case_name}"
+
     elif [[ ${_commend} = 'submit_group' ]]; then
         # todo
         local group_name="$3"
@@ -246,6 +284,7 @@ main(){
         done
         echo "${job_ids[@]}" > ".temp"
         return 0
+
     elif [[ ${_commend} = 'create_submit' ]]; then
         local server_info="$3"
         local log_file="$4"  # optional log file
@@ -257,6 +296,7 @@ main(){
         # submit to server
         ./aspect_lib.sh "${project}" 'submit' "${case_name}" "${server_info}" "${log_file}"
         [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh submit failed"; exit 1; }
+
     elif [[ ${_commend} = 'create_submit_group' ]]; then
         local server_info="$3"
         local log_file="$4"  # optional log file
@@ -268,20 +308,25 @@ main(){
         # call self
         ./aspect_lib.sh "${project}" 'submit_group' "${group_name}" "${server_info}" "${log_file}"
         quit_if_fail "aspect_lib.sh submit_group failed"
+
     elif [[ ${_commend} = 'terminate' ]]; then
         # todo
         echo '0'
+
     elif [[ ${_commend} = 'remove' ]]; then
         # todo
         echo '0'
+
     elif [[ ${_commend} = 'test' ]]; then
         # do test
         test_aspect_lib "${project}"
+
     elif [[ ${_commend} = 'remote_test' ]]; then
         # do test
         [[ "$#" -eq 3 ]] || { cecho ${BAD} "for remote_test, server_info must be given"; exit 1; }
         local server_info="$3"
         test_aspect_lib_remote "${project}" "${server_info}"
+
     else
         cecho ${BAD} "Bad commend: ${_commend}"
     fi
