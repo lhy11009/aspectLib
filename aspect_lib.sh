@@ -90,28 +90,27 @@ install(){
     local project_dir="${ASPECT_PROJECT_DIR}/${project}"
     [[ -d "${project_dir}" ]]  || mkdir "${project_dir}"
 
-    # on server side, todo
-    get_remote_environment "${server_info}" "${ASPECT_PROJECT_DIR}"
+    # on server side
+    get_remote_environment "${server_info}" "ASPECT_PROJECT_DIR"
     local remote_project_dir="${return_value}/${project}"
     ssh ${server_info} << EOF
-        eval "[[ -d \"\${remote_project_dir}\" ]]  || mkdir \"\${remote_project_dir}\" "
+        eval "[[ -d \"${remote_project_dir}\" ]]  || mkdir \"${remote_project_dir}\" "
 EOF
 
-    # set alias
-    if ! [[ -z "${project}_DIR" ]]; then
-        eval "echo \"${project}_DIR=${project_dir}\" >> ${dir}/env/enable.sh";
-        eval "echo \"${project}_DIR=${remote_project_dir}\" >> ${dir}/env/enable_peloton.sh";
-    fi
+    # set alias, add a line every time it executes, todo_future: fix this bug
+    echo "export ${project}_DIR=\"${project_dir}\"" >> "${dir}/env/enable.sh"
+    echo "export ${project}_DIR=\"${remote_project_dir}\"" >> "${dir}/env/enable_peloton.sh";
 
-    # new mkdocs project, todo
-    echo "mkdocs new mkdocs-project"
+    # new mkdocs project
     previous=$(pwd)
     cd "${project_dir}"
     if ! [[ -d "mkdocs_project" ]]; then
         eval "mkdocs new mkdocs_project"
-        yml_file="${project_dir}/mkdocs-project/mkdocs.yml"  # make a .yml file
-        cat "site_name: ${project}\nnav:\n    - Home: index.md\ntheme: readthedocs"\
-            > "${yml_file}"
+        yml_file="${project_dir}/mkdocs_project/mkdocs.yml"  # make a .yml file
+        echo "site_name: ${project}" > "${yml_file}"
+        echo "nav:" >> "${yml_file}"
+        echo "    - Home: index.md" >> "${yml_file}"
+        echo "theme: readthedocs" >> "${yml_file}"
     fi
     cd "${previous}"
 }
