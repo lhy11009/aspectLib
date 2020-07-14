@@ -288,6 +288,8 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
         Returns:
             _fileout(string or list):
                 filename for output figure
+        todo_future:
+            add in option for unit
         '''
         _fileout = kwargs.get('fileout', _filename + '.pdf')
         _time = kwargs.get('time', 'last')  # default is 'last' which means the last step
@@ -347,8 +349,11 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
         # get the lenght of a single time step
         for i in range(1, _depths.size):
             if _depths[i] < _depths[i-1]:
+                self.time_step_length = i
                 break
-        self.time_step_length = i
+            elif i == _depths.size - 1:
+                # as the exiting value from python is simply _depths.size - 1
+                self.time_step_length = i + 1
         # make a ndarray of different value of time
         _step_times = [_times[_idx] for _idx in range(0, _times.size, self.time_step_length)]
         i = 0  # first sub list for first step

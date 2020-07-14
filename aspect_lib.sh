@@ -13,7 +13,7 @@ create_case(){
     # create a case locally
     local py_script="$1"
     local local_root="$2"
-    eval "python -m ${py_script} create -j config_case.json 2>&1 > .temp"
+    eval "python -m ${py_script} create -j config_case.json >.temp 2>&1"  # debug
     [[ $? -eq 1 ]] && { cecho ${BAD} "${py_script} failed"; exit 1; }
     # get case name
     _info=$(cat ".temp")

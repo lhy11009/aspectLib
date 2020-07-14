@@ -2,6 +2,7 @@ import numpy
 import json
 import os
 import re
+import filecmp
 import shilofue.json
 from importlib import resources
 from shutil import copyfile
@@ -203,6 +204,9 @@ class MKDOC():
             _file = os.path.join(_img_dir, _img)
             _target_file = os.path.join(_target_img_dir, _img)
             if not os.path.isfile(_target_file):
+                os.link(_file, _target_file)
+            elif filecmp.cmp(_file, _target_file) is False:
+                os.remove(_target_file)
                 os.link(_file, _target_file)
         # Append a summary.md
         if os.path.isfile(os.path.join(_target_dir, 'summary.md')):

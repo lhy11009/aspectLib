@@ -197,7 +197,7 @@ class UNITCONVERT():
             try:
                 _unit_from_alias = self.alias[_unit_from]
             except KeyError:
-                raise KeyError('unit_from is neither a recorded unit or an alias for a unit')
+                raise KeyError('unit_from: %s is neither a recorded unit or an alias for a unit' % _unit_from)
             try:
                 _unit_from_magnitude = self.units[_unit_from_alias][0]
             except KeyError:
