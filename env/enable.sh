@@ -10,5 +10,5 @@ alias plt_submit='aspect_lib.sh TwoDSubduction create_submit lochy@peloton.cse.u
 alias plt_submit_group='aspect_lib.sh TwoDSubduction create_submit_group lochy@peloton.cse.ucdavis.edu .output/job.log'
 export LearnAspect_DIR="/home/lochy/ASPECT_PROJECT/LearnAspect"
 alias plt_submit1='aspect_lib.sh LearnAspect create_submit lochy@peloton.cse.ucdavis.edu .output/job.log'
-alias plt_submit_group='aspect_lib.sh LearnAspect create_submit_group lochy@peloton.cse.ucdavis.edu .output/job.log'
+alias plt_submit_group1='aspect_lib.sh LearnAspect create_submit_group lochy@peloton.cse.ucdavis.edu .output/job.log'
 alias project_update1="python -m shilofue.LearnAspect update -o /home/lochy/ASPECT_PROJECT/LearnAspect"

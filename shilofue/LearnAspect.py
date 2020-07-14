@@ -56,6 +56,14 @@ def MeshRefinement(Inputs, _config):
     change mesh refinement
     '''
     try:
+        # Initial global refinement
+        _initial_global_refinement = int(_config['initial_global_refinement'])
+    except KeyError:
+        pass
+    else:
+        Inputs['Mesh refinement']['Initial global refinement'] = str(_initial_global_refinement)
+
+    try:
         # initial_adaptive_refinement
         _initial_adaptive_refinement = int(_config['initial_adaptive_refinement'])
     except KeyError:
@@ -233,7 +241,7 @@ def main():
         _project_dict = UpdateProjectJson(_project_dir)  # update project json file
         UpdateProjectMd(_project_dict, _project_dir)  # update auto.md file for every case
         ProjectPlot(_project_dict, _project_dir, 'png', update=False)  # plot figures for every case
-        UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'PvMesh'])
+        UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'visit'])
 
     elif _commend == 'plot':
         # todo_future
