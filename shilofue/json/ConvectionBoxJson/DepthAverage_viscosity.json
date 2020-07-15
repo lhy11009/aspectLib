@@ -1,0 +1,11 @@
+{
+    "name": "viscosity",
+    "xname": "viscosity",
+    "log_x": 1,
+    "yname": "depth",
+    "yunit": "km",
+    "invert_y": 1,
+    "color": "k",
+    "line": ".-",
+    "label": "Viscosity"
+}

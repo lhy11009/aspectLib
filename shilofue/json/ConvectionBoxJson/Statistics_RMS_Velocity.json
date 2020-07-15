@@ -1,0 +1,8 @@
+{
+    "name": "RMS_Velocity", 
+    "xname": "Time", 
+    "yname": "RMS_velocity", 
+    "color": "r", 
+    "line": ".",
+    "label": "RMS Velocity"
+}

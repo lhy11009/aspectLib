@@ -113,7 +113,7 @@ class LINEARPLOT():
         assert(type(_canvas) is list and len(_canvas) == 2)
         _types = self.configs['types']  # types of plotting
         assert(type(_types) is list and
-            _canvas[0] * _canvas[1] == len(_types))  # size of canvas match size of _types
+            _canvas[0] * _canvas[1] >= len(_types))  # size of canvas match size of _types
         _size = self.configs.get('size', (12, 12))  # size of the plot
         _title = kwargs.get('title', None)  # get title
         # plot

@@ -1,0 +1,8 @@
+{
+    "name": "Max_Velocity", 
+    "xname": "Time", 
+    "yname": "Max._velocity", 
+    "color": "b", 
+    "line": ".",
+    "label": "Max Velocity"
+}
