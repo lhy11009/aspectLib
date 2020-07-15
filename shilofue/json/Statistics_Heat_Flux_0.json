@@ -1,0 +1,8 @@
+{
+    "name": "Statistics_Heat_Flux_0",
+    "xname": "Time_step_number",
+    "yname": "Outward_heat_flux_through_boundary_with_indicator_0",
+    "color": "y",
+    "line": ".",
+    "label": "Heat Flux 0"
+}

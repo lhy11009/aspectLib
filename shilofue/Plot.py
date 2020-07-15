@@ -97,12 +97,6 @@ class LINEARPLOT():
                 some variable
             _fileout(str):
                 name of the output file
-            _configs(dict):
-                canvas(ndarray):
-                    layout of canvas
-                types(list):
-                    types of ploting, should have the 
-                    same size with canvas
             **kwargs:
                 title(str):
                     title of the ploting
