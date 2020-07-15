@@ -11,7 +11,7 @@ from shilofue.Utilities import my_assert
 from shilofue.Doc import UpdateProjectDoc
 from shilofue.Plot import ProjectPlot
 
-_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'query']  # all the possible operations
+_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'Gravity', 'query']  # all the possible operations
 
 
 def LowerMantle(Inputs, jump, T, P, V1):
@@ -79,6 +79,18 @@ def MeshRefinement(Inputs, _config):
     else:
         Inputs['Geometry model']['Chunk']['Longitude repetitions'] = str(_longitude_repetitions)
 
+def Gravity(Inputs, _config):
+    '''
+    change the gravity properties
+    '''
+    try:
+        # Initial global refinement
+        _gravity_magnitude = int(_config['gravity_magnitude'])
+    except KeyError:
+        pass
+    else:
+        # todo
+        Inputs['Gravity model']['Vertical']['Magnitude'] = str(_gravity_magnitude)
 
 
 def Parse(ifile, ofile):
@@ -119,6 +131,9 @@ class MYCASE(CASE):
             # change initial mesh refinement
             # check the key exists in the dict: fixed in the function
             MeshRefinement(self.idict, _config)
+        if 'Gravity' in _operations:
+            Gravity(self.idict, _config)
+
 
 
 def main():
