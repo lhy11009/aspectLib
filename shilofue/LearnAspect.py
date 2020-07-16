@@ -70,6 +70,14 @@ def MeshRefinement(Inputs, _config):
         pass
     else:
         Inputs['Mesh refinement']['Initial adaptive refinement'] = str(_initial_adaptive_refinement)
+    
+    try:
+        # refinement_fraction
+        _refinement_fraction = float(_config['refinement_fraction'])
+    except KeyError:
+        pass
+    else:
+        Inputs['Mesh refinement']['Refinement fraction'] = str(_refinement_fraction)
 
     try:
         # longitude repetitions for chunk geometry

@@ -10,7 +10,7 @@ set Dimension                              = 2
 # also designate an output directory.
 set Use years in output instead of seconds = false
 set End time                               = 0.5
-set Output directory                       = output-convection-box
+set Output directory                       = output
 
 # Then there are variables that describe how the pressure should
 # be normalized. Here, we choose a zero average pressure
@@ -149,7 +149,7 @@ end
 # our start time (zero) and final time (0.5) this means that
 # we will obtain 50 output files.
 subsection Postprocess
-  set List of postprocessors = velocity statistics, temperature statistics, heat flux statistics, visualization
+  set List of postprocessors = velocity statistics, temperature statistics, heat flux statistics, visualization, depth average
 
   subsection Visualization
     set Time between graphical output = 0.01
