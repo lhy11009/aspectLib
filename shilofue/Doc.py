@@ -457,7 +457,7 @@ def SeparateNavPattern(_pattern):
         Inputs:
             _pattern(str): a nav patter, "- key: value"
     '''
-    _temp = _pattern.split('-')[1]
+    _temp = _pattern.split('-', maxsplit=1)[1]
     key = re_neat_word(_temp.split(':')[0])
     value = re_neat_word(_temp.split(':')[1])
     return key, value

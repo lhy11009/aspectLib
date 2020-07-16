@@ -1,0 +1,8 @@
+{
+    "name": "Number_of_Cells",
+    "xname": "Time_step_number",
+    "yname": "Number_of_mesh_cells",
+    "color": "b",
+    "line": ".",
+    "label": "Number of Mesh Cell"
+}

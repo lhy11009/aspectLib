@@ -4,9 +4,10 @@ import os
 import shilofue.json
 import numpy as np
 from importlib import resources
+from pathlib import Path
 
 
-def JsonOptions(prefix):
+def JsonOptions(prefix, _dir=None):
     '''
     JsonOptions(prefix) 
     Read format options for plotting from json files
@@ -22,17 +23,28 @@ def JsonOptions(prefix):
             'Number_of_Cells' in this dictionary.
     '''
     _options = {}  # options is a dictionary
-    for _filename in resources.contents(shilofue.json):
-        # this resources.contents return a interable from a sub-package,
-        # entries in this interable are filenames
-        if re.match("^" + prefix + '_', _filename):
-            # the following two lines eliminate the words before the first '_'
-            # with that '_' as well as the '.json' in the end.
-            # so that if filename is 'Statistics_Number_of_Cells.json',
-            # _name is 'Number_of_Cells'
-            _name = re.sub("^.*?_", '', _filename) # when 
-            _name = re.sub(r".json", '', _name)
-            with resources.open_text(shilofue.json, _filename) as fin:
+    if _dir == None:
+        # default option
+        for _filename in resources.contents(shilofue.json):
+            # this resources.contents return a interable from a sub-package,
+            # entries in this interable are filenames
+            if re.match("^" + prefix + '_', _filename):
+                # the following two lines eliminate the words before the first '_'
+                # with that '_' as well as the '.json' in the end.
+                # so that if filename is 'Statistics_Number_of_Cells.json',
+                # _name is 'Number_of_Cells'
+                _name = _filename.split('_', maxsplit=1)[1]
+                _name = _name.rsplit(".", maxsplit=1)[0]
+                with resources.open_text(shilofue.json, _filename) as fin:
+                    _options[_name] = json.load(fin)  # values are entries in this file
+    else:
+        pathlist = Path(_dir).rglob('*_*.json')
+        for path in pathlist:
+            _filename = str(path)
+            _base_name = os.path.basename(_filename)
+            _name = _base_name.split('_', maxsplit=1)[1] 
+            _name = _name.rsplit(".", maxsplit=1)[0]
+            with open(_filename, 'r') as fin:
                 _options[_name] = json.load(fin)  # values are entries in this file
     assert(_options is not {})  # assert not vacant
     return _options

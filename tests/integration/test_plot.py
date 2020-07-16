@@ -8,6 +8,8 @@ from shilofue.Utilities import UNITCONVERT
 _test_dir = '.test'
 if not os.path.isdir(_test_dir):
     os.mkdir(_test_dir)
+_test_source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test-plot')
+assert(os.path.isdir(_test_source_dir))
 
 def test_plot_statistics():
     '''
@@ -17,13 +19,13 @@ def test_plot_statistics():
     if(os.path.isfile(_ofile)):
         # remove previous files
         os.remove(_ofile)
-    # test_file = 'fixtures/statistics'
-    test_file = os.path.join(os.path.dirname(__file__), 'fixtures', 'statistics')
+    test_file = os.path.join(_test_source_dir, 'statistics')
     assert(os.access(test_file, os.R_OK))
     # Init the UnitConvert class
     UnitConvert = UNITCONVERT()
     # plot statistics ouput #####
-    Statistics = Plot.STATISTICS_PLOT('Statistics', unit_convert=UnitConvert)
+    json_dir = os.path.join(_test_source_dir, 'json')
+    Statistics = Plot.STATISTICS_PLOT('Statistics', unit_convert=UnitConvert, json_dir=json_dir)
     Statistics(test_file, fileout=_ofile)
     assert(os.path.isfile(_ofile))  # assert that the file is generated successfully
     # os.remove('Statistics.pdf')  # remove this file after finished
@@ -39,7 +41,7 @@ def test_plot_depth_average():
         # remove previous files
         os.remove(_ofile)
     # test_file = 'fixtures/statistics'
-    test_file = os.path.join(os.path.dirname(__file__), 'fixtures', 'depth_average.txt')
+    test_file = os.path.join(_test_source_dir, 'depth_average.txt')
     assert(os.access(test_file, os.R_OK))
     # Init the UnitConvert class
     UnitConvert = UNITCONVERT()

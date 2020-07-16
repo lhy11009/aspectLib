@@ -26,13 +26,15 @@ class LINEARPLOT():
                 a unit_convert function, default is None
         '''
         self.name = _name
-        self.options = JsonOptions(_name)
+        _json_dir = kwargs.get('json_dir', None)
+        self.options = JsonOptions(_name, _json_dir)
         self.UnitConvert = kwargs.get('unit_convert', None)
         self.dim = kwargs.get('dim', 2)  # dimension
         assert(self.dim in [1, 2, 3])  # dimension must be 1, 2, 3
         # Read plot options from a json file
         _jsonfile = kwargs.get('json', None)
-        if _jsonfile is not None:
+        if _json_dir is not None:
+            _jsonfile = os.path.join(_json_dir, self.name + '.json')
             with open(_jsonfile, 'r') as fin:
                 self.configs = json.load(fin)
         else:
