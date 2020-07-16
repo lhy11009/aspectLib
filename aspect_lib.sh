@@ -326,6 +326,9 @@ main(){
         local server_info="$3"
         test_aspect_lib_remote "${project}" "${server_info}"
 
+    elif [[ ${_commend} = 'todo_future' ]]; then
+        # add update project in the future
+
     else
         cecho ${BAD} "Bad commend: ${_commend}"
     fi
