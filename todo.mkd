@@ -15,3 +15,11 @@ creat a test folder, and a 'test.sh' file on top to run all tests
 # add configuration
 
 add configuration of server, git account
+
+# layout of doc
+
+## a single file for a case
+
+## sequece of pictures, sort them before attached
+
+## an option for including addtional files for case and group

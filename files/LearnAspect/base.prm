@@ -138,6 +138,12 @@ subsection Mesh refinement
   set Additional refinement times = 0.2, 0.3, 0.4
   set Refinement fraction = 1.0
   set Coarsening fraction = 0.0
+  set Strategy = minimum refinement function
+  subsection Minimum refinement function
+        set Coordinate system = cartesian
+        set Variable names = x, y
+        set Function constants = Xmin=0.2 Xmax=0.8, Ymin=0.2, Ymax=0.8
+        set Function expression = ((x<Xmin)||(x>Xmax)||(y<Ymin)||(y>Ymax)) ? 2:0
 end
 
 
