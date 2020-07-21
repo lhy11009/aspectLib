@@ -1,6 +1,26 @@
+# enhance the procedures
+
+update after submit, and cat the file conent of job.log
+
+# fix path
+
+run script under any folder
+
 # put all configurations in a json file
 
 make use of the json.sh on github
+
+# layout of doc
+
+## a single file for a case
+
+## sequece of pictures, sort them before attached
+
+## an option for including addtional files for case and group
+
+## add configuration
+
+add configuration of server, git account
 
 # writing the installation part
 
@@ -12,14 +32,4 @@ make use of the json.sh on github
 
 creat a test folder, and a 'test.sh' file on top to run all tests
 
-# add configuration
 
-add configuration of server, git account
-
-# layout of doc
-
-## a single file for a case
-
-## sequece of pictures, sort them before attached
-
-## an option for including addtional files for case and group
