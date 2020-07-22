@@ -12,15 +12,17 @@ make use of the json.sh on github
 
 # layout of doc
 
+## sequece of pictures, sort them before attached
+
 ## a single file for a case
 
-## sequece of pictures, sort them before attached
 
 ## an option for including addtional files for case and group
 
 ## add configuration
 
 add configuration of server, git account
+
 
 # writing the installation part
 

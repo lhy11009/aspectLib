@@ -78,6 +78,22 @@ def MeshRefinement(Inputs, _config):
         pass
     else:
         Inputs['Mesh refinement']['Refinement fraction'] = str(_refinement_fraction)
+    _complement_refine_coarse = _config.get('complement_refine_coarse', 0)
+    if _complement_refine_coarse == 1:
+        # make the sum of Refinement fraction and Coarsening fraction to 1.0
+        try:
+            Inputs['Mesh refinement']['Coarsening fraction'] = str(1.0 - float(Inputs['Mesh refinement']['Refinement fraction']))
+        except KeyError:
+            # there is no such settings in the inputs
+            pass
+    else:
+        # import coarsening_fraction from file
+        try:
+            _coarsening_fraction = float(_config['coarsening_fraction'])
+        except KeyError:
+            pass
+        else:
+            Inputs['Mesh refinement']['Coarsening fraction'] = str(_coarsening_fraction)
 
     try:
         # longitude repetitions for chunk geometry
