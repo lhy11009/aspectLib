@@ -15,10 +15,10 @@ end
 
 
 subsection Solver parameters
-    set Composition solver tolerance = 1e-12
-    set Temperature solver tolerance = 1e-12
+    set Composition solver tolerance = 1e-5
+    set Temperature solver tolerance = 1e-5
     subsection Stokes solver parameters
-        set Linear solver tolerance = 1e-7
+        set Linear solver tolerance = 1e-5
     end
 end
 
@@ -60,9 +60,9 @@ subsection Mesh refinement
     set Minimum refinement level		 = 6
     set Initial adaptive refinement = 6
     set Time steps between mesh refinement = 10
-    set Strategy = minimum refinement function
-    set Refinement fraction 		 = 0.80
-    set Coarsening fraction		 = 0.20
+    set Strategy = minimum refinement function, composition approximate gradient, viscosity, strain rate
+    set Refinement fraction 		 = 0.90
+    set Coarsening fraction		 = 0.10
     set Refinement criteria merge operation = plus
     set Run postprocessors on initial refinement = true
     set Skip solvers on initial refinement = false
@@ -71,13 +71,13 @@ subsection Mesh refinement
         set Variable names = r,phi,t
         set Function constants = PHIC=0.628319, Ro=6.371e6, RC=4.000e+05, \
                 ST=2.000e+05, DCS=7.500e+03, DHS=3.520e+04, DCO=7.500e+03, DHO=3.520e+04, \
-                DD=1e6, frac=1.5
+                DD=1e6, frac=1.1
         set Function expression = ((Ro-r<DD) ? \
                                   ((Ro-r<=DCS*frac+DHS*frac)|| \
                                     ((phi>=PHIC)&&(Ro-r<=ST*frac)&& \
                                     (phi*Ro<=PHIC*Ro+min(frac*RC,sqrt(abs(2.0*frac*RC*(Ro-r)-(Ro-r)^2.0))))&& \
                                     (RC-sqrt(abs(((phi-PHIC)*Ro)^2.0+((Ro-r)-RC)^2.0))<=DCS*frac+DHS*frac)) ? \
-                                  6: 4):0)
+                                  10: 8):0)
     end
 end
 

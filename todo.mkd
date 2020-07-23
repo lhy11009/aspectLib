@@ -2,7 +2,14 @@
 
 update after submit, and cat the file conent of job.log
 
+
 # fix path
+
+## code path
+
+traking branch with project name
+
+## script path
 
 run script under any folder
 
