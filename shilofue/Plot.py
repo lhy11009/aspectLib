@@ -3,6 +3,7 @@ import os
 import json
 import re
 import shilofue.json
+import warnings
 import numpy as np
 from importlib import resources
 from shilofue.Utilities import JsonOptions
@@ -46,6 +47,11 @@ class LINEARPLOT():
         '''
         todo
         '''
+        pass
+
+    class DataNotFoundWarning(UserWarning):
+        # handle the circumstance that one data field is not found,
+        # but continue the plot
         pass
 
     def ReadHeader(self, _filename):
@@ -182,7 +188,15 @@ class LINEARPLOT():
         # then column is determined
         # by header information
         _colx = self.header[_xname]['col']
-        _coly = self.header[_yname]['col']
+        try:
+            _coly = self.header[_yname]['col']
+        except KeyError:
+            # there is no such field in the file
+            # give out a warning, continue with the next plot
+            warnings.warn('The field %s doesn\'t exist. We will keep ploting,\
+but you will get a blank one for this field name' % _yname,
+                           self.DataNotFoundWarning)
+            return
         _unitx = self.header[_xname]['unit']
         _unity = self.header[_yname]['unit']
         _x = _data_list[_colx]
