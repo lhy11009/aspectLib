@@ -95,6 +95,16 @@ def MeshRefinement(Inputs, _config):
             Inputs['Mesh refinement']['Coarsening fraction'] = str(_coarsening_fraction)
 
     try:
+        # only use minimum_refinement_function
+        _only_refinement_function = int(_config['only_refinement_function'])
+    except KeyError:
+        pass
+    else:
+        if _only_refinement_function == 1:
+            # todo
+            Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function'
+    
+    try:
         # longitude repetitions for chunk geometry
         _longitude_repetitions = int(_config['longitude_repetitions'])
     except KeyError:
@@ -263,7 +273,7 @@ def main():
         _project_dict = UpdateProjectJson(_project_dir)  # update project json file
         UpdateProjectMd(_project_dict, _project_dir)  # update auto.md file for every case
         ProjectPlot(_project_dict, _project_dir, 'png', update=False)  # plot figures for every case
-        UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'PvMesh'])
+        UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'PvMesh', 'visit'])
 
     elif _commend == 'plot':
         # todo_future

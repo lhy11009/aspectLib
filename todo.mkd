@@ -1,6 +1,11 @@
 # enhance the procedures
 
-update after submit, and cat the file conent of job.log
+## submit cases
+
+* update after submit, and cat the file conent of job.log
+* for submit use the stdout of python seems to be a bad idea. We could specifically print that to a file.
+* if the creat fails, delete the related files
+* look for base file based on basename
 
 
 # fix path
@@ -17,14 +22,34 @@ run script under any folder
 
 make use of the json.sh on github
 
+## add a 'para_group' with list of parameters and a list of value
+
+so that we can create a group with assigned parameter groups instead of looping each parameters
+
+## separate the configuration of projects
+
+prm files to use
+
+json files to use
+
+source code directory "build_${project_name}"
+
 # layout of doc
 
-## sequece of pictures, sort them before attached
+## statistic plot
 
-## a single file for a case
+* include the total time
+* set x axis as time
+* attach a line of step/time and a 'step' axis in addition to the y-axis
 
+# layout of pages
 
-## an option for including addtional files for case and group
+* a single file for a case
+
+## content of page
+
+* sequece of pictures, sort them before attached
+* an option for including addtional files for case and group
 
 ## add configuration
 
@@ -32,6 +57,14 @@ add configuration of server, git account
 
 
 # writing the installation part
+
+## note down the conda environment of python
+
+## check version of bash
+
+## fix all environmental varibles
+
+## solution for mac
 
 # fix color of multiple lines automatically
 

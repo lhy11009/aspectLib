@@ -296,7 +296,8 @@ def ParseFromDealiiInput(fin):
             temp = re.sub('^(\t| )*set ', '', line, count=1)
             temp = temp.split('=', maxsplit=1)
             key = temp[0]
-            key = key.strip(' ')
+            key = re.sub('(\t| )*$', '', key)
+            # key = key.strip(' ')
             value = temp[1]
             value = re.sub('^ *', '', value)
             value = re.sub(' *(#.*)?\n$', '', value)
