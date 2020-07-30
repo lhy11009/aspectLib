@@ -2,10 +2,17 @@
 
 ## submit cases
 
+* look for base file by 'basename'
+working on it
 * update after submit, and cat the file conent of job.log
 * for submit use the stdout of python seems to be a bad idea. We could specifically print that to a file.
 * if the creat fails, delete the related files
 * look for base file based on basename
+
+## update
+
+* include the machine time, and save that in a file
+* show a status NA even if the return string from slurm is ' ' or CG
 
 
 # fix path
@@ -41,6 +48,7 @@ source code directory "build_${project_name}"
 * include the total time
 * set x axis as time
 * attach a line of step/time and a 'step' axis in addition to the y-axis
+* attach a plot of dofs
 
 # layout of pages
 

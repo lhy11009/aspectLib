@@ -11,7 +11,7 @@ from shilofue.Utilities import my_assert
 from shilofue.Doc import UpdateProjectDoc
 from shilofue.Plot import ProjectPlot
 
-_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'query']  # all the possible operations
+_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'query', 'Termination']  # all the possible operations
 
 
 def LowerMantle(Inputs, jump, T, P, V1):
@@ -101,9 +101,18 @@ def MeshRefinement(Inputs, _config):
         pass
     else:
         if _only_refinement_function == 1:
-            # todo
+            # only use minimum refinement function
             Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function'
-    
+        if _only_refinement_function == 2:
+            # include compositional gradient
+            Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function, composition approximate gradient'
+        if _only_refinement_function == 3:
+            # include viscosity
+            Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function, composition approximate gradient, viscosity'
+        if _only_refinement_function == 4:
+            # include strain rate
+            Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function, composition approximate gradient, strain rate'
+
     try:
         # longitude repetitions for chunk geometry
         _longitude_repetitions = int(_config['longitude_repetitions'])
@@ -111,6 +120,23 @@ def MeshRefinement(Inputs, _config):
         pass
     else:
         Inputs['Geometry model']['Chunk']['Longitude repetitions'] = str(_longitude_repetitions)
+
+
+def Termination(Inputs, _config):
+    """
+    Different termination strategy
+    """
+    try:
+        # Initial global refinement
+        _only_one_step = int(_config['only_one_step'])
+    except KeyError:
+        pass
+    else:
+        if _only_one_step == 1:
+            Inputs['Termination criteria']['Termination criteria'] = 'end step'
+            Inputs['Termination criteria']['End step'] = '1'
+    
+
 
 
 def Parse(ifile, ofile):
@@ -151,6 +177,9 @@ class MYCASE(CASE):
             # change initial mesh refinement
             # check the key exists in the dict: fixed in the function
             MeshRefinement(self.idict, _config)
+        if 'Termination' in _operations:
+            # change termination strategy
+            Termination(self.idict, _config)
 
 
 def main():

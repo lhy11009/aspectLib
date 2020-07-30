@@ -155,7 +155,7 @@ class CASE():
             my_assert(os.path.isdir(_case_dir) is False, ValueError, 'The script doesn\'t support updating a pr-exiting group')
             os.mkdir(_case_dir)
             # write configs to _json
-            _json_outputs = {'config': self.config, 'test': self.test, 'extra': _extra} # todo
+            _json_outputs = {'basename': _basename, 'config': self.config, 'test': self.test, 'extra': _extra} # todo
             _json_ofile = os.path.join(_case_dir, 'config.json')
             with open(_json_ofile, 'w') as fout:
                 json.dump(_json_outputs, fout)
