@@ -36,7 +36,7 @@ def LowerMantle(Inputs, jump, T, P, V1):
     backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
     backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0] 
     backgroud_lower_mantle_diffusion = GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='d')
-    # todo: add in choice of phases
+    # todo_future: add in choice of phases
     prefactors_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['A'], backgroud_lower_mantle_diffusion['A']]
     grain_size.data['background'] = [backgroud_upper_mantle_diffusion['d'], backgroud_lower_mantle_diffusion['d']]
     grain_size_exponents_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['m'], backgroud_lower_mantle_diffusion['m']]
@@ -144,12 +144,9 @@ def Parse(ifile, ofile):
     todo
     """
     assert(os.access(ifile, os.R_OK))
-    # todo
     with open(ifile, 'r') as fin:
         inputs = ParseFromDealiiInput(fin)
-    # todo
     LowerMantle(inputs, 30.0, 1663.0, 21e9, 1.5e-6)
-    # todo
     with open(ofile, 'w') as fout:
         ParseToDealiiInput(fout, inputs)
 
@@ -201,6 +198,9 @@ def main():
     parser.add_argument('-b', '--base_file', type=str,
                         default='./files/TwoDSubduction/base.prm',
                         help='Filename for base file')
+    parser.add_argument('-U', '--use_basename_as_base_file', type=int,
+                        default=1,
+                        help='Whether we use basename as base file')
     parser.add_argument('-j', '--json_file', type=str,
                         default='./config_case.json',
                         help='Filename for json file')
@@ -221,10 +221,17 @@ def main():
         print('Now we create a group of cases:')  # screen output
         # create a group of cases
         # read files
-        with open(arg.base_file, 'r') as fin:
-            _inputs = ParseFromDealiiInput(fin)
+        # read configuration
         with open(arg.json_file, 'r') as fin:
             _config = json.load(fin)
+        _base_name = _config.get('basename', '')
+        # read base file
+        if arg.use_basename_as_base_file == 1:
+            _filename = './files/TwoDSubduction/%s.prm' % _base_name
+        else:
+            _filename = arg.base_file
+        with open(_filename, 'r') as fin:
+            _inputs = ParseFromDealiiInput(fin)
         if not os.path.isdir(arg.output_dir):
             os.mkdir(arg.output_dir)
         # create a directory under the name of the group
@@ -236,7 +243,6 @@ def main():
         MyGroup = GROUP_CASE(MYCASE, _inputs, _config)
         # call __call__ function to generate
         _extra = _config.get('extra', {})
-        _base_name = _config.get('basename', '')
         if arg.operations_file is None:
             # take all availale operations
             _operations = _ALL_AVAILABLE_OPERATIONS
@@ -258,17 +264,23 @@ def main():
         print('Now we create a single case:')  # screen output
         # create a case
         # read files
-        with open(arg.base_file, 'r') as fin:
-            _inputs = ParseFromDealiiInput(fin)
+        # read configuration
         with open(arg.json_file, 'r') as fin:
             _config = json.load(fin)
+        _base_name = _config.get('basename', '')
+        # read base file
+        if arg.use_basename_as_base_file == 1:
+            _filename = './files/TwoDSubduction/%s.prm' % _base_name
+        else:
+            _filename = arg.base_file
+        with open(_filename, 'r') as fin:
+            _inputs = ParseFromDealiiInput(fin)
         if not os.path.isdir(arg.output_dir):
             os.mkdir(arg.output_dir)
         # Initial a case
         MyCase = MYCASE(_inputs, config=_config['config'], test=_config['test'])
         # call __call__ function to generate
         _extra = _config.get('extra', {})
-        _base_name = _config.get('basename', '')
         if arg.operations_file is None:
             # take all availale operations
             _operations = _ALL_AVAILABLE_OPERATIONS

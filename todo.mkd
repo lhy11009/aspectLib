@@ -82,4 +82,27 @@ add configuration of server, git account
 
 creat a test folder, and a 'test.sh' file on top to run all tests
 
+# change to code
 
+## update plugins
+
+### temperature plugin
+include age of slabs
+
+### viscosity plugin
+include width and value
+
+### include tests for plugins
+
+## complete phase functions
+include a phase diagram instead of a clapayron
+
+# general plugin adapted from Menno's
+
+include strategy of composition and temperature and viscosity and phases in potential
+
+## change input file using the 'parse map method'
+
+## change .cc file accordingly
+
+add a assertion for all possible entries, like the one for the 'Strategy'
