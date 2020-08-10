@@ -1,0 +1,91 @@
+#### World Builder parameters which can be used by ASPECT ####
+set World builder file = 2dslab_sph.wb
+
+subsection Initial temperature model
+    set Model name = world builder
+end
+
+subsection Initial composition model
+    set Model name = world builder
+end
+
+subsection Boundary temperature model
+    set Fixed temperature boundary indicators = bottom, top
+    set List of model names = spherical constant
+    subsection Spherical constant
+        set Inner temperature = 1673
+        set Outer temperature = 273
+    end
+end
+
+subsection Boundary composition model
+    set Fixed composition boundary indicators = west,east
+    set List of model names = initial composition
+    subsection Initial composition
+        set Minimal composition = 0
+        set Maximal composition = 1
+    end
+end
+
+subsection Discretization
+    set Composition polynomial degree = 2
+    set Stokes velocity polynomial degree = 2
+    set Temperature polynomial degree = 2
+    set Use discontinuous composition discretization = true
+    subsection Stabilization parameters
+        set Use limiter for discontinuous composition solution = true
+        set Global composition maximum = 1, 1, 1, 1, 1
+        set Global composition minimum = 0, 0, 0, 0, 0
+    end
+end
+
+#### parameters needed by ASPECT when using compositions ####
+subsection Compositional fields
+   set Number of fields = 5
+end
+
+#### parameteres needed to actually output temperature and compostion ####
+set Output directory = output
+subsection Postprocess
+  set List of postprocessors = visualization
+  subsection Visualization
+    set List of output variables = depth
+  end
+end 
+
+#### increasing the mesh refinement ####
+subsection Mesh refinement
+  set Initial global refinement = 4
+  set Minimum refinement level  = 4
+  set Initial adaptive refinement = 6
+  set Strategy = composition approximate gradient
+  set Refinement fraction 		 = 0.60
+  set Coarsening fraction		 = 0.10
+end
+#### other parameters needed by ASPECT #####
+set Dimension = 2
+set End time = 0
+set Nonlinear solver scheme = no Advection, no Stokes
+
+subsection Geometry model
+    set Model name = chunk
+    subsection Chunk
+        set Chunk inner radius = 5.371e6
+        set Chunk outer radius = 6.371e6
+        set Chunk minimum longitude = 0.0
+        set Chunk maximum longitude = 45.0      
+        set Longitude repetitions = 4
+    end
+end
+
+subsection Gravity model
+    set Model name = radial constant
+    subsection Radial constant
+    	set Magnitude = 9.81	
+    end
+end
+
+
+subsection Material model
+  set Model name = simpler
+end

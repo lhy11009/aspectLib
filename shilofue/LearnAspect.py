@@ -265,7 +265,9 @@ def main():
         if arg.operations_file is None:
             # take all availale operations
             _operations = _ALL_AVAILABLE_OPERATIONS
-        _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations, basename=_base_name)
+        # also get extra files
+        _extra_files = _config.get('extra_file', {})
+        _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations, basename=_base_name, extra_files=_extra_files)
         # generate markdown file
         _case_dir = os.path.join(arg.output_dir, _case_name)
         AutoMarkdownCase(_case_name, _config, dirname=_case_dir)

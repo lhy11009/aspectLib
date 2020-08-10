@@ -1,5 +1,6 @@
 import re
 import os
+import shutil
 import json
 from shilofue.Utilities import my_assert, re_neat_word
 
@@ -164,6 +165,12 @@ class CASE():
             with open(_filename, 'w') as fout:
                 ParseToDealiiInput(fout, self.idict)
             pass
+            # also copy the extra files
+            _extra_files = kwargs.get('extra_files', {})  # extra dictionary, pass to intepret
+            if type(_extra_files) is str:
+                _extra_files = [_extra_files]
+            for _extra_file in _extra_files:
+                shutil.copy2(_extra_file, _case_dir)
         elif _method == 'manual':
             # export a .prm file
             _filename = kwargs.get('filename', None)

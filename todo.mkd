@@ -14,6 +14,10 @@ working on it
 * include the machine time, and save that in a file
 * show a status NA even if the return string from slurm is ' ' or CG
 
+## copy case to a project
+
+* copy case, especially test cases into this project, write some scripts that take the name of project and the case to fix the rest.
+
 
 # fix path
 
