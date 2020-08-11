@@ -72,8 +72,8 @@ update_from_server(){
 	local local_log_file=$3
     # use ssh to update log file on server side, \$ escapes '$' so that it is called on the remote side
     ssh "$server_info" eval "\${ASPECT_LAB_DIR}/process.sh update ${remote_log_file}"
-    # use scp to update log file on local side
-    eval "scp ${server_info}:${remote_log_file} ${local_log_file}"
+    # use rsync to update log file on local side
+    eval "${RSYNC} ${server_info}:${remote_log_file} ${local_log_file}"
 }
 
 clean_NA_from_server(){
@@ -83,8 +83,8 @@ clean_NA_from_server(){
 	local local_log_file=$3
     # use ssh to update log file on server side, \$ escapes '$' so that it is called on the remote side
     ssh "$server_info" eval "\${ASPECT_LAB_DIR}/process.sh clean ${remote_log_file}"
-    # use scp to update log file on local side
-    eval "scp ${server_info}:${remote_log_file} ${local_log_file}"
+    # use rsync to update log file on local side
+    eval "${RSYNC} ${server_info}:${remote_log_file} ${local_log_file}"
 }
 
 

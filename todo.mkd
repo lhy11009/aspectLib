@@ -2,12 +2,11 @@
 
 ## submit cases
 
-* look for base file by 'basename'
-working on it
 * update after submit, and cat the file conent of job.log
 * for submit use the stdout of python seems to be a bad idea. We could specifically print that to a file.
 * if the creat fails, delete the related files
 * look for base file based on basename
+* add the option to submit to local
 
 ## update
 
@@ -17,6 +16,10 @@ working on it
 ## copy case to a project
 
 * copy case, especially test cases into this project, write some scripts that take the name of project and the case to fix the rest.
+
+## debug option
+
+* add debug option to print all command used
 
 
 # fix path
