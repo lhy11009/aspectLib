@@ -145,6 +145,7 @@ class CASE():
             _basename = kwargs.get('basename', '')
             _extra = kwargs.get('extra', {})  # extra dictionary, pass to intepret
             _operations = kwargs.get('operations', [])  # operations to do, pass to intepret
+            _extra_files = kwargs.get('extra_file', {})  # extra dictionary, pass to intepret
             # First intepret the configurations and update prm
             my_assert(self.config != None, ValueError,
                       'With the \'auto\' method, the config must exist')
@@ -156,7 +157,7 @@ class CASE():
             my_assert(os.path.isdir(_case_dir) is False, ValueError, 'The script doesn\'t support updating a pr-exiting group')
             os.mkdir(_case_dir)
             # write configs to _json
-            _json_outputs = {'basename': _basename, 'config': self.config, 'test': self.test, 'extra': _extra} # todo
+            _json_outputs = {'basename': _basename, 'config': self.config, 'test': self.test, 'extra': _extra, 'extra_file': _extra_files} # todo
             _json_ofile = os.path.join(_case_dir, 'config.json')
             with open(_json_ofile, 'w') as fout:
                 json.dump(_json_outputs, fout)
@@ -166,7 +167,6 @@ class CASE():
                 ParseToDealiiInput(fout, self.idict)
             pass
             # also copy the extra files
-            _extra_files = kwargs.get('extra_files', {})  # extra dictionary, pass to intepret
             if type(_extra_files) is str:
                 _extra_files = [_extra_files]
             for _extra_file in _extra_files:

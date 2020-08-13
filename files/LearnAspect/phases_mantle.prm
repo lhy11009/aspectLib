@@ -57,7 +57,14 @@ subsection Gravity model
   end
 end
 
+# we set a composition for the slab
+subsection Compositional fields
+  set Number of fields = 1
+  set Names of fields = slab
+end
+
 # we set phases to the backgroud composition
+# To simplify, density is only for forsterite, taken from Stacy & Davis
 subsection Material model
   set Model name = visco plastic
   set Material averaging = harmonic average
@@ -66,21 +73,21 @@ subsection Material model
     set Reference viscosity = 1e20
     set Minimum viscosity = 1e19
     set Maximum viscosity = 1e24
-    set Phase transition depths = background:660e3
-    set Phase transition widths = background:5e3
-    set Phase transition temperatures = background:1673.0
-    set Phase transition Clapeyron slopes = background:-2e6
+    set Phase transition depths = background:410e3|520e3|660e3, slab:410e3|520e3|660e3
+    set Phase transition widths = background:5e3, slab:5e3
+    set Phase transition temperatures = background:1673.0, slab:1673.0
+    set Phase transition Clapeyron slopes = background:4e6|4e6|-2e6, slab:4e6|4e6|-2e6
     set Thermal diffusivities = 1.0e-6
     set Heat capacities = 1250.0
-    set Densities = background:3400.0|4000.0
+    set Densities = background:3227.0|3473.0|3548.0|3943.0, slab:3227.0|3473.0|3548.0|3943.0
     set Thermal expansivities = 3.1e-5
     set Viscosity averaging scheme = harmonic
     set Viscous flow law = diffusion
     set Grain size = 1.0000e-02
-    set Prefactors for diffusion creep = background:1.4250e-15|1.0657e-18
+    set Prefactors for diffusion creep = background:1.4250e-15|1.4250e-15|1.4250e-15|1.0657e-18, slab:1.4250e-15|1.4250e-15|1.4250e-15|1.0657e-18
     set Grain size exponents for diffusion creep = 3.0000e+00
     set Activation energies for diffusion creep = 3.1700e+05
-    set Activation volumes for diffusion creep = background:4.0000e-06|1.5000e-06
+    set Activation volumes for diffusion creep = background:4.0000e-06|4.0000e-06|4.0000e-06|1.5000e-06, slab:4.0000e-06|4.0000e-06|4.0000e-06|1.5000e-06
   end
 end
 
@@ -89,7 +96,19 @@ subsection Initial temperature model
   subsection Function
     set Coordinate system = cartesian
     set Variable names = x, y
-    set Function expression = 1673.0
+    set Function constants = Xtr=5.371e6, Dsl=200e3, Ymax=6.371e6, D0=15e3, Xmax=6.371e6
+    set Function expression = (x > Xtr + D0) ? ((y + Dsl > Ymax + D0)? 1200.0 : 1673.0):\
+                              (((y > x + Xmax - Xtr - Dsl) && (y < x + Xmax - Xtr))? 1200.0 : 1673.0)
+  end
+end
+
+subsection Initial composition model
+  set Model name = function
+  subsection Function
+    set Variable names = x, y
+    set Function constants = Xtr=5.371e6, Dsl=200e3, Ymax=6.371e6, D0=15e3, Xmax=6.371e6
+    set Function expression = (x > Xtr + D0) ? ((y + Dsl > Ymax + D0)? 1.0 : 0.0):\
+                              (((y > x + Xmax - Xtr - Dsl) && (y < x + Xmax - Xtr))? 1.0 : 0.0)
   end
 end
 

@@ -2,6 +2,7 @@
 
 ## submit cases
 
+* fix the but that files arrive at the cluster later than it's tranfered
 * update after submit, and cat the file conent of job.log
 * for submit use the stdout of python seems to be a bad idea. We could specifically print that to a file.
 * if the creat fails, delete the related files
@@ -65,6 +66,7 @@ source code directory "build_${project_name}"
 
 * sequece of pictures, sort them before attached
 * an option for including addtional files for case and group
+* Insert the comment in the .json file to page
 
 ## add configuration
 

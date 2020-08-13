@@ -61,7 +61,7 @@ submit(){
     # scp to remote
     local remote_target=$(dirname "${remote_case_dir}")
     eval "${RSYNC} -r ${case_dir} ${server_info}:${remote_target}"
-    sleep 2s
+    sleep 25s
     # add an optional log file
     [[ "$4" != '' ]] && flag="${flag} -l $4"  # add -l log_file to flag, if $4 given
     # submit using slurm.sh,

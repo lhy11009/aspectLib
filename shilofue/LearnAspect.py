@@ -11,7 +11,7 @@ from shilofue.Utilities import my_assert
 from shilofue.Doc import UpdateProjectDoc
 from shilofue.Plot import ProjectPlot
 
-_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'Gravity', 'query']  # all the possible operations
+_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'Gravity', 'query', 'SinkingBlob']  # all the possible operations
 
 
 def LowerMantle(Inputs, jump, T, P, V1):
@@ -116,6 +116,22 @@ def Gravity(Inputs, _config):
         # todo
         Inputs['Gravity model']['Vertical']['Magnitude'] = str(_gravity_magnitude)
 
+def SinkingBlob(Inputs, _config):
+    '''
+    change model width of sinking blob test case
+    '''
+    _cell_width = 0.1  # width of each cell in the model
+    try:
+        _sinking_blob_model_width = float(_config['sinking_blob_model_width'])
+    except KeyError:
+        pass
+    else:
+        Inputs['Geometry model']['Box']['X extent'] = str(_sinking_blob_model_width)
+        Inputs['Geometry model']['Box']['X repetitions'] = str(int(_sinking_blob_model_width/_cell_width))
+        Inputs['Mesh refinement']['Minimum refinement function']['Function constants'] = 'Xc=%s, Yc=0.8, Rc=0.1' % (_sinking_blob_model_width / 2.0)
+        Inputs['Initial composition model']['Function']['Function constants'] = 'Xc=%s, Yc=0.8, Rc=0.1' % (_sinking_blob_model_width / 2.0)
+                                                                        
+
 
 def Parse(ifile, ofile):
     """
@@ -157,6 +173,9 @@ class MYCASE(CASE):
             MeshRefinement(self.idict, _config)
         if 'Gravity' in _operations:
             Gravity(self.idict, _config)
+        if 'SinkingBlob' in _operations:
+            # change model width for sinking blob model
+            SinkingBlob(self.idict, _config)
 
 
 
@@ -267,7 +286,7 @@ def main():
             _operations = _ALL_AVAILABLE_OPERATIONS
         # also get extra files
         _extra_files = _config.get('extra_file', {})
-        _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations, basename=_base_name, extra_files=_extra_files)
+        _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations, basename=_base_name, extra_file=_extra_files)
         # generate markdown file
         _case_dir = os.path.join(arg.output_dir, _case_name)
         AutoMarkdownCase(_case_name, _config, dirname=_case_dir)
