@@ -66,8 +66,9 @@ submit(){
     [[ "$4" != '' ]] && flag="${flag} -l $4"  # add -l log_file to flag, if $4 given
     # submit using slurm.sh,
     # determine if there is a valid job id, todo
+    # also add -P option for project name
     ssh ${server_info} << EOF > '.temp'
-        eval "slurm.sh -n ${total_tasks} -t ${time_by_hour} -p ${partition} ${remote_case_prm} ${flag}"
+        eval "slurm.sh -n ${total_tasks} -t ${time_by_hour} -p ${partition} -P ${project} ${remote_case_prm} ${flag}"
 EOF
     # get job_id
     local _info=$(cat '.temp'| sed -n '$'p)

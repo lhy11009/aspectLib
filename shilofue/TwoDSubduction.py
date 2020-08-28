@@ -23,28 +23,26 @@ def LowerMantle(Inputs, jump, T, P, V1):
     # parse from input
     visco_plastic = Inputs["Material model"]['Visco Plastic']
     prefactors_for_diffusion_creep = COMPOSITION(visco_plastic["Prefactors for diffusion creep"])
-    grain_size = COMPOSITION(visco_plastic["Grain size"])
+    grain_size = float(visco_plastic["Grain size"])
     grain_size_exponents_for_diffusion_creep  = COMPOSITION(visco_plastic["Grain size exponents for diffusion creep"])
     activation_energies_for_diffusion_creep = COMPOSITION(visco_plastic["Activation energies for diffusion creep"])
     activation_volumes_for_diffusion_creep  = COMPOSITION(visco_plastic["Activation volumes for diffusion creep"])
     # call GetLowerMantleRheology to derive parameters for lower mantle flow law 
     backgroud_upper_mantle_diffusion = {}
     backgroud_upper_mantle_diffusion['A'] = prefactors_for_diffusion_creep.data['background'][0] 
-    backgroud_upper_mantle_diffusion['d'] = grain_size.data['background'][0]
+    backgroud_upper_mantle_diffusion['d'] = grain_size
     backgroud_upper_mantle_diffusion['n'] = 1.0 
     backgroud_upper_mantle_diffusion['m'] = grain_size_exponents_for_diffusion_creep.data['background'][0] 
     backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
     backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0] 
-    backgroud_lower_mantle_diffusion = GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='d')
+    backgroud_lower_mantle_diffusion = GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='A')
     # todo_future: add in choice of phases
     prefactors_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['A'], backgroud_lower_mantle_diffusion['A']]
-    grain_size.data['background'] = [backgroud_upper_mantle_diffusion['d'], backgroud_lower_mantle_diffusion['d']]
     grain_size_exponents_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['m'], backgroud_lower_mantle_diffusion['m']]
     activation_energies_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['E'], backgroud_lower_mantle_diffusion['E']]
     activation_volumes_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['V'], backgroud_lower_mantle_diffusion['V']] 
     # parse back
     visco_plastic["Prefactors for diffusion creep"] = prefactors_for_diffusion_creep.parse_back()
-    visco_plastic["Grain size"] = grain_size.parse_back()
     visco_plastic["Grain size exponents for diffusion creep"] = grain_size_exponents_for_diffusion_creep.parse_back()
     visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
     visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
@@ -284,7 +282,9 @@ def main():
         if arg.operations_file is None:
             # take all availale operations
             _operations = _ALL_AVAILABLE_OPERATIONS
-        _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations, basename=_base_name)
+        # also add extra files, todo
+        _extra_files = _config.get('extra_file', {})
+        _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations, basename=_base_name, extra_file=_extra_files)
         # generate markdown file
         _case_dir = os.path.join(arg.output_dir, _case_name)
         AutoMarkdownCase(_case_name, _config, dirname=_case_dir)

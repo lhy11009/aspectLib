@@ -126,6 +126,16 @@ parse_options(){
           local temp="${param#*=}"
 	  log_file=$(fix_route "${temp}")
         ;;
+        #####################################
+        # project
+        #####################################
+        -P)
+          shift
+          project="${1}"
+        ;;
+        -P=*|--project=*)
+          project="${param#*=}"
+        ;;
       esac
       shift
     done
@@ -137,8 +147,12 @@ submit(){
     export OMP_NUM_THREADS=$SLURM_NTASKS
 
     # Aspect executable
+    # add project_dir after aspect_dir, like 'build_master'
 
-    Aspect_executable="${Aspect_DIR}/aspect"
+    Aspect_project_DIR="${Aspect_DIR}_${project}"
+    Aspect_executable="${Aspect_project_DIR}/aspect"
+
+    # Aspect_executable="${Aspect_DIR}/aspect"
 
     # compose the sbatch file
     # todo_future: add comment to sbatch file
