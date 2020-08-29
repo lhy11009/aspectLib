@@ -6,7 +6,7 @@ set Output directory = output
 set Additional shared libraries = /home/lochy/ASPECT_PROJECT/aspect_plugins/subduction_temperature2d/libsubduction_temperature2d.so, /home/lochy/ASPECT_PROJECT/aspect_plugins/prescribe_field/libprescribed_temperature.so
 set Pressure normalization = surface
 set Surface pressure = 0
-set Adiabatic surface temperature 	 = 273
+set Adiabatic surface temperature = 273
 set Nonlinear solver scheme = single Advection, single Stokes
 
 subsection Termination criteria
@@ -56,13 +56,13 @@ end
 
 subsection Mesh refinement
     set Initial global refinement = 6
-    set Minimum refinement level		 = 6
+    set Minimum refinement level = 6
     set Initial adaptive refinement = 8
     set Time steps between mesh refinement = 10
     set Strategy = minimum refinement function, composition approximate gradient,\
                     viscosity, strain rate
-    set Refinement fraction 		 = 0.80
-    set Coarsening fraction		 = 0.20
+    set Refinement fraction = 0.80
+    set Coarsening fraction = 0.20
     set Refinement criteria merge operation = plus
     set Run postprocessors on initial refinement = true
     set Skip solvers on initial refinement = false
@@ -158,8 +158,8 @@ subsection Material model
         set Viscosity averaging scheme = harmonic
         set Viscous flow law = diffusion
         set Yield mechanism = drucker
-        set Grain size = background:1.0000e-02|1.6457e-01, spcrust:1.0000e-02, spharz:1.0000e-02, opcrust:1.0000e-02, opharz:1.0000e-02
-        set Prefactors for diffusion creep = background:1.4250e-15|1.4250e-15, spcrust:5.0000e-20, spharz:1.4250e-15, opcrust:1.4250e-15, opharz:1.4250e-15
+        set Grain size = 1.0000e-02
+        set Prefactors for diffusion creep = background:1.4250e-15|3.1970e-19, spcrust:5.0000e-20, spharz:1.4250e-15, opcrust:1.4250e-15, opharz:1.4250e-15
         set Grain size exponents for diffusion creep = background:3.0000e+00|3.0000e+00, spcrust:0.0000e+00, spharz:3.0000e+00, opcrust:3.0000e+00, opharz:3.0000e+00
         set Activation energies for diffusion creep = background:3.1700e+05|3.1700e+05, spcrust:0.0000e+00, spharz:3.1700e+05, opcrust:3.1700e+05, opharz:3.1700e+05
         set Activation volumes for diffusion creep = background:4.0000e-06|1.5000e-06, spcrust:0.0000e+00, spharz:4.0000e-06, opcrust:4.0000e-06, opharz:4.0000e-06

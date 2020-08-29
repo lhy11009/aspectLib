@@ -119,10 +119,14 @@ EOF
 
 
 test_aspect_lib(){
+    # This test test creating cases and groups under a project
+    # Cases are generated relative to the 'base.prm' file in the
+    # directory of "files/${project}". Cases are removed automatically
+    # after the tests succeed
     local project="$1"
     local local_root=$(eval "echo \${${project}_DIR}")
     # test1 create a case #############################################
-    case_name="ULV1.000e+02testIAR8"
+    case_name="baseULV1.000e+02testIAR8"
     case_dir="${local_root}/${case_name}"
     [[ -d "${case_dir}" ]] && eval "rm -r ${case_dir}"  # remove older dir
     # test file
@@ -132,6 +136,7 @@ test_aspect_lib(){
     # call function
     ./aspect_lib.sh "${project}" 'create'
     quit_if_fail "test_aspect_lib: create case failed"
+    eval "rm -r ${case_dir}" # remove dir after test suceed
     # test2 create a group ############################################
     group_name='test_group'
     group_dir="${local_root}/${group_name}"
@@ -144,6 +149,7 @@ test_aspect_lib(){
     ./aspect_lib.sh "${project}" 'create_group'
     quit_if_fail "test_aspect_lib: create group failed"
     cecho ${GOOD} "test_aspect_lib succeeded"
+    eval "rm -r ${group_dir}" # remove dir after test succeeded
 }
 
 test_aspect_lib_remote(){

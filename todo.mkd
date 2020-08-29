@@ -96,10 +96,17 @@ creat a test folder, and a 'test.sh' file on top to run all tests
 ## update plugins
 
 ### temperature plugin
+
+add thermal boundary layer
+
 include age of slabs
 
 ### viscosity plugin
 include width and value
+
+### prescribe field
+
+also prescribe composition in ridge area
 
 ### include tests for plugins
 

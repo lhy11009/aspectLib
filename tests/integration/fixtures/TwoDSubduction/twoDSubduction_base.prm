@@ -158,7 +158,7 @@ subsection Material model
         set Viscosity averaging scheme = harmonic
         set Viscous flow law = diffusion
         set Yield mechanism = drucker
-        set Grain size = background:1.0000e-02|1.1017e-01,  spcrust:1.0000e-02,  spharz:1.0000e-02,  opcrust:1.0000e-02,  opharz:1.0000e-02
+        set Grain size = 1.0000e-02
         set Prefactors for diffusion creep = background:1.4250e-15|1.4250e-15,  spcrust:5.0000e-20,  spharz:1.4250e-15,  opcrust:1.4250e-15,  opharz:1.4250e-15
         set Grain size exponents for diffusion creep = background:3.0000e+00|3.0000e+00,  spcrust:0.0000e+00,  spharz:3.0000e+00,  opcrust:3.0000e+00,  opharz:3.0000e+00
         set Activation energies for diffusion creep = background:3.1700e+05|3.1700e+05,  spcrust:0.0000e+00,  spharz:3.1700e+05,  opcrust:3.1700e+05,  opharz:3.1700e+05

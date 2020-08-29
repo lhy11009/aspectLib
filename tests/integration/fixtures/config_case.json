@@ -4,6 +4,7 @@
         "Todo add some comments about operations",
         "T660, P660, lowerV(avtivation volume)are used for computing upper/lower mantle viscosity. The grain size of the lower mantle is what I change"
     ],
+    "basename": "base",
     "config":
     {
         "upper_lower_viscosity": 100.0
