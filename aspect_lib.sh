@@ -157,9 +157,10 @@ test_aspect_lib_remote(){
     local local_root=$(eval "echo \${${project}_DIR}")
     local server_info="$2"
     # test1 create and submit case ####################################
-    case_name="ULV1.000e+02testIAR8"
+    [[ -d "${case_dir}" ]] && eval "rm -r ${case_dir}"  # remove older dir
+    case_name="baseULV1.000e+02testIAR8"
     case_dir="${local_root}/${case_name}"
-    ./process.sh clean "${case_dir}" "${server_info}"
+    # ./process.sh clean "${case_dir}" "${server_info}"
     # test file
     test_json_file="${dir}/tests/integration/fixtures/config_case.json"
     [[ -e "${test_json_file}" ]] || { cecho ${BAD} "test file ${test_json_file} doesn't exist"; exit 1; }
@@ -168,9 +169,11 @@ test_aspect_lib_remote(){
     ./aspect_lib.sh "${project}" 'create_submit' "${server_info}"
     quit_if_fail "test_aspect_lib_remote submit case failed"
     local job_id=$(cat ".temp")
-    ssh "${server_info}" eval "\${SCANCEL} ${job_id}"  # cancel job after test
+    # cancel job and delete case folder when done
+    ssh "${server_info}" eval "\${SCANCEL} ${job_id}"
+    eval "rm -r ${case_dir}"
     # test2 create and submit case with a log file######################
-    case_name="ULV1.000e+02testIAR8"
+    case_name="baseULV1.000e+02testIAR8"
     case_dir="${local_root}/${case_name}"
     local_log_file=".test/test.log"
     [[ -d "${case_dir}" ]] && eval "rm -r ${case_dir}"  # remove older dir
@@ -179,12 +182,15 @@ test_aspect_lib_remote(){
     [[ -e "${test_json_file}" ]] || { cecho ${BAD} "test file ${test_json_file} doesn't exist"; exit 1; }
     eval "cp ${test_json_file} ${dir}/"
     # todo clean previous files
-    ./process.sh clean "${local_log_file}" "${server_info}"
+    ./process.sh remove "${local_log_file}" "${server_info}"
     # call function
+    # todo: delete the 'clean' part
     ./aspect_lib.sh "${project}" 'create_submit' "${server_info}" "${local_log_file}"
     quit_if_fail "test_aspect_lib_remote submit case with log file failed"
     local job_id=$(cat ".temp")
-    ssh "${server_info}" eval "\${SCANCEL} ${job_id}"  # cancel job after test
+    # cancel job and delete case folder when done
+    ssh "${server_info}" eval "\${SCANCEL} ${job_id}"
+    eval "rm -r ${case_dir}"
     # scp log file
     ./process.sh update_from_server "${local_log_file}" "${server_info}"
     # check log file
@@ -193,7 +199,7 @@ test_aspect_lib_remote(){
         exit 1
     fi
     local line2=$(sed -n '2'p "${local_log_file}")  # get second line of the file
-    if ! [[ "${line2}" =~ ^.*ULV1\.000e\+02testIAR8\ [0-9]* ]]; then
+    if ! [[ "${line2}" =~ ^.*baseULV1\.000e\+02testIAR8\ [0-9]* ]]; then
         cecho ${BAD} "test_aspect_lib_remote submit case with log file failed, content in log_file ${local_log_file} is not correct"
         exit 1
     fi

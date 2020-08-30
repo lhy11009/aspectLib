@@ -1,0 +1,191 @@
+set Dimension = 2
+set Use years in output instead of seconds = true
+set Start time = 0
+set End time = 20e6
+set Output directory = output
+set Additional shared libraries = /home/lochy/software/aspect/plugins/subduction_temperature2d/libsubduction_temperature2d.so
+set Pressure normalization = surface
+set Surface pressure = 0
+set Adiabatic surface temperature = 273
+set Nonlinear solver scheme = single Advection, single Stokes
+
+
+subsection Solver parameters
+    set Composition solver tolerance = 1e-5
+    set Temperature solver tolerance = 1e-5
+    subsection Stokes solver parameters
+        set Linear solver tolerance = 1e-5
+    end
+end
+
+
+subsection Discretization
+    set Composition polynomial degree = 2
+    set Stokes velocity polynomial degree = 2
+    set Temperature polynomial degree = 2
+    set Use discontinuous composition discretization = true
+    subsection Stabilization parameters
+        set Use limiter for discontinuous composition solution = true
+        set Global composition maximum = 1, 1, 1, 1
+        set Global composition minimum = 0, 0, 0, 0
+    end
+end
+
+
+subsection Formulation
+    set Formulation = custom
+    set Mass conservation = incompressible
+    set Temperature equation = reference density profile
+end
+
+
+subsection Geometry model
+    set Model name = chunk
+    subsection Chunk
+        set Chunk inner radius = 3.481e6
+        set Chunk outer radius = 6.371e6
+        set Chunk maximum longitude = 61.0
+        set Chunk minimum longitude = 0.0
+        set Longitude repetitions = 2
+    end
+end
+
+
+subsection Mesh refinement
+    set Initial global refinement = 5
+    set Initial adaptive refinement = 6
+    set Minimum refinement level = 5
+    set Strategy = isosurfaces, minimum refinement function, viscosity, composition approximate gradient
+    set Refinement fraction 		 = 0.70
+    set Coarsening fraction		 = 0.20
+    set Time steps between mesh refinement = 10
+    set Run postprocessors on initial refinement = true
+    set Skip solvers on initial refinement = true
+    subsection Isosurfaces
+        set Isosurfaces = 10, 12, spcrust: 0.5 | 1.0;  10, 12, spharz: 0.5 | 1.0;  10, 12, opcrust: 0.5 | 1.0;
+    end
+    subsection Minimum refinement function
+  	set Coordinate system = spherical
+	set Variable names = r,phi,t
+	set Function constants = Ro=6.371e6, UM=670e3, DD=100e3
+	set Function expression = ((Ro-r<UM)? \
+                                   ((Ro-r<DD)? 8: 6): 0.0)
+    end
+end
+
+
+subsection Boundary velocity model
+    set Tangential velocity boundary indicators = west, east, bottom, top
+end
+
+
+subsection Initial temperature model
+    set Model name = subduction 2d temperature
+end
+
+
+subsection Boundary temperature model
+    set Fixed temperature boundary indicators = bottom, top
+    set List of model names = spherical constant
+    subsection Spherical constant
+        set Inner temperature = 1673
+        set Outer temperature = 273
+    end
+end
+
+
+subsection Compositional fields
+    set Number of fields = 4
+    set Names of fields = spcrust,spharz,opcrust,opharz
+    set Compositional field methods = field,field,field,field
+end
+
+
+subsection Initial composition model
+    set List of model names = function
+    set List of model operators = add
+    subsection Function
+        set Coordinate system = spherical
+        set Variable names = r, phi
+        set Function constants = PHIC=0.628319, Ro=6.371e6, RC=4.000e+05, \
+                ST=2.000e+05, DCS=7.500e+03, DHS=3.520e+04, DCO=7.500e+03, DHO=3.520e+04
+        set Function expression = (((phi<PHIC)&&(Ro-r<=DCS)) ? 1.0 : \
+                (((phi>=PHIC)&&(Ro-r<=ST)&&(phi*Ro<=PHIC*Ro+min(RC,sqrt(abs(2.0*RC*(Ro-r)-(Ro-r)^2.0)))) && \
+                   (RC-sqrt(abs(((phi-PHIC)*Ro)^2.0+((Ro-r)-RC)^2.0))<=DCS) ) ? 1 : 0)); \
+                (((phi<PHIC)&&(Ro-r>DCS)&&(Ro-r<=DHS)) ? 1.0 : \
+                (((phi>=PHIC)&&(Ro-r<=ST)&&(phi*Ro<=PHIC*Ro+min(RC,sqrt(abs(2.0*RC*(Ro-r)-(Ro-r)^2.0)))) \
+                   &&(RC-sqrt(abs(((phi-PHIC)*Ro)^2.0+((Ro-r)-RC)^2.0))>DCS) \
+                   &&(RC-sqrt(abs(((phi-PHIC)*Ro)^2.0+((Ro-r)-RC)^2.0))<=DHS))? 1.0 : 0));\
+                (((Ro-r<=DCO)&&(phi*Ro>PHIC*Ro+min(RC,sqrt(abs(2.0*RC*(Ro-r)-(Ro-r)^2.0))))) ? 1.0 : 0);\
+                (((Ro-r>DCO)&&(Ro-r<=DHO)&&(phi*Ro>PHIC*Ro+min(RC,sqrt(abs(2.0*RC*(Ro-r)-(Ro-r)^2.0))))) ? 1.0 : 0)
+    end
+end
+
+
+subsection Boundary composition model
+    set Fixed composition boundary indicators = west,east
+    set List of model names = initial composition
+    subsection Initial composition
+        set Minimal composition = 0
+        set Maximal composition = 1
+    end
+end
+
+
+subsection Material model
+    set Model name = visco plastic
+    set Material averaging = harmonic average
+    subsection Visco Plastic
+        set Reference temperature = 273
+        set Reference viscosity = 1e20
+        set Adiabat temperature gradient for viscosity = 7.7075e-09
+        set Minimum strain rate = 1.e-20
+        set Reference strain rate = 1.e-15
+        set Minimum viscosity = 1e19
+        set Maximum viscosity = 1e24
+        set Phase transition depths = background:670e3
+        set Phase transition widths = background:5e3
+        set Phase transition temperatures = background:1662.0
+        set Phase transition Clapeyron slopes = background:-2e6
+        set Thermal diffusivities = 1.0e-6, 1.0e-6, 1.0e-6, 1.0e-6,1.0e-6
+        set Heat capacities = background:1250.0|1250.0, spcrust:1250, spharz:1250, opcrust:1250, opharz:1250
+        set Densities = background:3300.0|3300.0, spcrust:3000, spharz:3235, opcrust:3000, opharz:3235
+        set Thermal expansivities = background:3.1e-5|3.1e-5, spcrust:3.1e-5, spharz:3.1e-5, opcrust:3.1e-5, opharz:3.1e-5
+        set Viscosity averaging scheme = harmonic
+        set Viscous flow law = diffusion
+        set Yield mechanism = drucker
+        set Grain size = 1.0000e-02
+        set Prefactors for diffusion creep = background:1.4250e-15|1.0657e-18, spcrust:5.0000e-20, spharz:1.4250e-15, opcrust:1.4250e-15, opharz:1.4250e-15
+        set Grain size exponents for diffusion creep = background:3.0000e+00|3.0000e+00, spcrust:0.0000e+00, spharz:3.0000e+00, opcrust:3.0000e+00, opharz:3.0000e+00
+        set Activation energies for diffusion creep = background:3.1700e+05|3.1700e+05, spcrust:0.0000e+00, spharz:3.1700e+05, opcrust:3.1700e+05, opharz:3.1700e+05
+        set Activation volumes for diffusion creep = background:4.0000e-06|1.5000e-06, spcrust:0.0000e+00, spharz:4.0000e-06, opcrust:4.0000e-06, opharz:4.0000e-06
+        set Prefactors for dislocation creep = background:6.859e-15, spcrust:6.859e-15, spharz:6.859e-15, opcrust:6.859e-15, opharz:6.859e-15
+        set Stress exponents for dislocation creep = background:3.5, spcrust:3.5, spharz:3.5, opcrust:3.5, opharz:3.5
+        set Activation energies for dislocation creep = background:480.0e3, spcrust:480.0e3, spharz:480.0e3, opcrust:480.0e3, opharz:480.0e3
+        set Activation volumes for dislocation creep = background:11.0e-6, spcrust:11.0e-6, spharz:11.0e-6, opcrust:11.0e-6, opharz:11.0e-6
+        set Angles of internal friction = 25.0,     25.00,     25.00,     25.00,     25.00
+        set Cohesions = 50.e6,     50.e6,     50.e6,     50.e6,     50.e6
+    end
+end
+
+
+subsection Gravity model
+    set Model name = ascii data
+end
+
+
+subsection Postprocess
+    set List of postprocessors = visualization, velocity statistics, temperature statistics, depth average
+    subsection Depth average
+        set Number of zones = 50
+        set Output format = txt
+        set Time between graphical output = 0
+    end
+    subsection Visualization
+        set List of output variables = density, viscosity, error indicator
+        set Output format = vtu
+        set Time between graphical output = 0.1e6
+        set Number of grouped files = 0
+    end
+end
+

@@ -2,7 +2,7 @@
 
 ## submit cases
 
-* fix the but that files arrive at the cluster later than it's tranfered
+* fix the bug that files arrive at the cluster later than it's tranfered, write a seperature file to use port
 * update after submit, and cat the file conent of job.log
 * for submit use the stdout of python seems to be a bad idea. We could specifically print that to a file.
 * if the creat fails, delete the related files
@@ -36,6 +36,10 @@ run script under any folder
 # put all configurations in a json file
 
 make use of the json.sh on github
+
+done, add a json_parse function,
+
+todo: finish it thereafter
 
 ## add a 'para_group' with list of parameters and a list of value
 
@@ -90,6 +94,10 @@ add configuration of server, git account
 # fix tests for bash
 
 creat a test folder, and a 'test.sh' file on top to run all tests
+
+done, copy 2 tests from aspect_lib.sh to there
+
+add support to json file there after
 
 # change to code
 

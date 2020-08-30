@@ -1,0 +1,102 @@
+# This input file tests the box geometry in
+# combination with the isolines plugin to refine a 2D slab
+
+set Dimension = 2
+set CFL number                             = 1.0
+set End time                               = 0
+set Start time                             = 0
+set Adiabatic surface temperature          = 1.0
+set Surface pressure                       = 0
+set Use years in output instead of seconds = false
+
+# We take a box geometry and increase the repetitions
+# of the coarse mesh
+subsection Geometry model
+  set Model name = box
+  subsection Box
+    set X extent = 1.0
+    set Y extent = 1.0
+    set X repetitions = 10
+    set Y repetitions = 10
+  end
+end
+
+subsection Mesh refinement
+  set Initial global refinement          = 2
+  set Initial adaptive refinement          = 3
+  set Strategy = composition, minimum refinement function
+  set Refinement fraction  = 0.60
+  set Coarsening fraction  = 0.20
+  subsection Minimum refinement function
+    set Variable names = x, y
+    set Function constants = Xc=0.5, Yc=0.8, Rc=0.1
+    set Function expression = ((x - Xc)^2.0 + (y - Yc)^2.0 < Rc^2.0)? 4 : 0
+  end
+
+end
+
+subsection Boundary temperature model
+  set Fixed temperature boundary indicators   = bottom, top
+  set List of model names = box
+  subsection Box
+    set Bottom temperature = 1.0
+    set Top temperature    = 1.0
+  end
+end
+
+subsection Boundary velocity model
+  set Tangential velocity boundary indicators       = 0,1,2,3
+end
+
+
+subsection Gravity model
+  set Model name = vertical
+  subsection Vertical
+    set Magnitude = 1e4
+  end
+end
+  
+subsection Material model
+  set Model name = simple
+  subsection Simple model
+    set Reference density             = 1
+    set Reference specific heat       = 1
+    set Reference temperature         = 1.0
+    set Thermal conductivity          = 1
+    set Thermal expansion coefficient = 1
+    set Viscosity                     = 1
+    set Density differential for compositional field 1 = 1.0
+  end
+end
+
+# we set temperature to 1.0 here
+subsection Initial temperature model
+  set Model name = function
+  subsection Function
+    set Coordinate system = cartesian
+    set Function expression = 1.0
+  end
+end
+
+# we set a blob of heavier composition to sink in the background field
+subsection Compositional fields
+  set Number of fields = 1
+  set Names of fields = blob
+end
+
+subsection Initial composition model
+  set Model name = function
+  subsection Function
+    set Variable names = x, y
+    set Function constants = Xc=0.5, Yc=0.8, Rc=0.1
+    set Function expression = ((x - Xc)^2.0 + (y - Yc)^2.0 < Rc^2.0)? 1.0 : 0.0
+  end
+end
+
+subsection Postprocess
+  set List of postprocessors = visualization, composition statistics
+  subsection Visualization
+    set Output format            = vtu
+    set List of output variables = material properties
+  end
+end

@@ -295,8 +295,8 @@ main(){
 		local local_log_file=$2
 		local server_info=$3
         update_outputs_from_server "${server_info}" "${local_log_file}"
-	elif [[ "$1" = "clean_all" ]]; then
-        # clean log_file
+	elif [[ "$1" = "remove" ]]; then
+        # remove both local and remote log file
 		if ! [[ $# -eq 3 ]]; then
 			cecho ${BAD} "with \"clean\" command, \$2, \$3 must be given for local log file and server information"
             exit 1
