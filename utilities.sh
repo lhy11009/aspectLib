@@ -139,6 +139,8 @@ get_job_info(){
     for element in ${_headers[@]}; do
 	    if [[ "$element" = "$2" ]]; then
 	        return_value="${_infos[i]}"
+		[[ "${return_value}" =~ ^( )+$ ]] && return_value='NA'  # to be tested
+# inorder to fix the status of the job when it just finished
 	        return 0
 	    fi
         ((i++))

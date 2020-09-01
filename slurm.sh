@@ -10,6 +10,7 @@ time_by_hour=24
 partition="med2"
 name="task"
 mem_per_cpu=2000  # 2000M
+project="TwoDSubduction"
 
 test_dir="${dir}/.test"  # do test in this directory
 if ! [[ -d ${test_dir} ]]; then
@@ -170,7 +171,10 @@ submit(){
     	eval "rm job.sh"
     fi
 
+    # create slurm script
     eval "touch job.sh"
+
+    # write slurm messages
     echo "#!/bin/bash -l" >> job.sh
     echo "#SBATCH -J $name" >> job.sh
     echo "#SBATCH -N $nnode" >> job.sh
@@ -181,8 +185,14 @@ submit(){
     echo "#SBATCH --partition=$partition" >> job.sh
     echo "#SBATCH --mem-per-cpu=$mem_per_cpu" >> job.sh
     echo "" >> job.sh
-    echo "export OMP_NUM_THREADS=\$SLURM_NTASKS" >> job.sh
-    echo "" >> job.sh
+
+    # unload module openmpi and load Max Rudolph's version
+    if [[ $(hostname) = "peloton.cse.ucdavis.edu" ]]; then
+      echo "module unload openmpi" >> job.sh
+      echo "export PATH=/home/rudolph/sw/openmpi-4.0.5/bin:\$PATH" >> job.sh
+      echo "" >> job.sh
+    fi
+
     echo "srun ${Aspect_executable} ${filename}" >> job.sh
 
     # submit the job

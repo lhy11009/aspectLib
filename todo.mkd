@@ -1,5 +1,8 @@
 # enhance the procedures
 
+* change 'echo' to 'printf'
+* fix 'usage' function and help message
+
 ## submit cases
 
 * fix the bug that files arrive at the cluster later than it's tranfered, write a seperature file to use port
@@ -8,6 +11,7 @@
 * if the creat fails, delete the related files
 * look for base file based on basename
 * add the option to submit to local
+* include the 'module unload' line in the job.sh file produced for peloton, done
 
 ## update
 
@@ -101,15 +105,26 @@ add support to json file there after
 
 # change to code
 
+## compile
+
+* add a out-of-source build script
+
 ## update plugins
 
 ### temperature plugin
 
-add thermal boundary layer
+* add thermal boundary layer, done.
 
-include age of slabs
+* include age of slabs
+
+* use the transform function defined in aspect
+
+### composition
+
+attach it to the temperature plugin
 
 ### viscosity plugin
+
 include width and value
 
 ### prescribe field
