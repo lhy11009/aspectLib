@@ -2,16 +2,18 @@ import os
 import sys
 import json
 import argparse
+import re
+import numpy as np
 from shilofue.Parse import COMPOSITION
 from shilofue.Parse import ParseFromDealiiInput
 from shilofue.Parse import ParseToDealiiInput
 from shilofue.Parse import CASE, GROUP_CASE, UpdateProjectMd, UpdateProjectJson, AutoMarkdownCase, AutoMarkdownGroup
 from shilofue.Rheology import GetLowerMantleRheology
-from shilofue.Utilities import my_assert
+from shilofue.Utilities import my_assert, ggr2cart2
 from shilofue.Doc import UpdateProjectDoc
 from shilofue.Plot import ProjectPlot
 
-_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'query', 'Termination']  # all the possible operations
+_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'query', 'Termination', 'Particle']  # all the possible operations
 
 
 def LowerMantle(Inputs, jump, T, P, V1):
@@ -47,6 +49,7 @@ def LowerMantle(Inputs, jump, T, P, V1):
     visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
     visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
     return Inputs
+
 
 def MeshRefinement(Inputs, _config):
     '''
@@ -133,8 +136,28 @@ def Termination(Inputs, _config):
         if _only_one_step == 1:
             Inputs['Termination criteria']['Termination criteria'] = 'end step'
             Inputs['Termination criteria']['End step'] = '1'
-    
 
+
+def Particle(Inputs):
+    """
+    Define a particle section in the .prm file
+    """
+    # List of postprocessors
+    list_postproc = Inputs['Postprocess']['List of postprocessors']
+    if re.match('particles', list_postproc) is None:
+        list_postproc += ', particles'
+    Inputs['Postprocess']['List of postprocessors'] = list_postproc
+    # initiate a dictionary for particle settings
+    p_dict = {}
+    p_dict['Particle generator name'] = 'ascii file'
+    p_dict['Data output format'] = 'vtu'
+    p_dict['List of particle properties'] = 'initial position, pT path'  # particle properties
+    # initiate a new dictionary for the generator subsection
+    p_generator_dict = {}
+    p_generator_dict['Ascii file'] = {'Data directory': './', 'Data file name': 'particle.dat'}
+    p_dict['Generator'] = p_generator_dict
+    # assign it to Inputs
+    Inputs['Postprocess']['Particles'] = p_dict
 
 
 def Parse(ifile, ofile):
@@ -175,8 +198,46 @@ class MYCASE(CASE):
         if 'Termination' in _operations:
             # change termination strategy
             Termination(self.idict, _config)
+        if 'Particle' in _operations and self.particle_data is not None:
+            # add Particle subsection in Postprogress
+            Particle(self.idict)
+    
+ 
+    def process_particle_data(self):
+        '''
+        process the coordinates of particle, doing nothing here.
+        Reload here to add particles in the crust
+        '''
+        # all configurations
+        _config = { **self.config, **self.test, **self.extra }
+        # import values
+        slab_phi_c = _config.get("slab_phi_c", 0.628319)
+        R0 = _config.get("R0", 6.371e6)
+        Rc = _config.get("Rc", 4.0e5)
+        slab_to = _config.get("slab_to", 2.0e5)
+        depth_particle_in_slab = _config.get("depth_particle_in_slab", 100.0)
+        number_particle_in_slab = _config.get("number_particle_in_slab", 1000)
+        my_assert(type(number_particle_in_slab)==int, TypeError, "number_particle_in_slab must be an int value")
+        # initiate particle_data
+        self.particle_data = np.zeros((number_particle_in_slab, 2))
+        # get phi value at the tip of initial slab
+        phi_st = slab_phi_c + (2 * Rc * slab_to - slab_to**2.0)**0.5 / R0
+        for i in range(number_particle_in_slab):
+            # get particle coordinates
+            # First, angle is divided uniformly.
+            # Then, radius is computed accordingly.
+            phi = i * phi_st / number_particle_in_slab
+            if phi < slab_phi_c:
+                r = R0 - depth_particle_in_slab
+            else:
+                r = R0 + (Rc**2.0 - R0**2.0 * (phi - slab_phi_c)**2.0)**0.5  - Rc - depth_particle_in_slab
+            # apply transform to cartisian coordinates
+            x, y = ggr2cart2(phi, r)
+            # assign value in particle_data
+            self.particle_data[i, 0] = x
+            self.particle_data[i, 1] = y
 
-
+    
 def main():
     '''
     main function of this module
@@ -282,7 +343,7 @@ def main():
         if arg.operations_file is None:
             # take all availale operations
             _operations = _ALL_AVAILABLE_OPERATIONS
-        # also add extra files, todo
+        # also add extra files
         _extra_files = _config.get('extra_file', {})
         _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations, basename=_base_name, extra_file=_extra_files)
         # generate markdown file

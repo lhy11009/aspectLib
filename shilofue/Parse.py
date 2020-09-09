@@ -2,6 +2,7 @@ import re
 import os
 import shutil
 import json
+import numpy as np
 from shilofue.Utilities import my_assert, re_neat_word
 
 '''
@@ -73,12 +74,14 @@ class CASE():
             dictionary of parameters
         config(dict):
             dictionary of configuration for the parameters
+        particle_data(list):
+            list of particle coordinates
     '''
+    # todo add interface for extra
     def __init__(self, _idict, **kwargs):
         '''
         initiate from a dictionary
         Inputs:
-            case_name(str): case name of the model
             _idict(dict):
                 dictionary import from a base file
             kwargs:
@@ -89,9 +92,14 @@ class CASE():
         self.case_name = ''
         self.idict = _idict
         self.config = kwargs.get('config', {})
+        # configurations
         my_assert(type(self.config)==dict, TypeError, 'Config must be a dictionary')
+        self.extra = kwargs.get('extra', {})
+        my_assert(type(self.extra)==dict, TypeError, 'extra must be a dictionary')
         self.test = kwargs.get('test', {})
         my_assert(type(self.test)==dict, TypeError, 'Test must be a dictionary')
+        # list of particle coordinates
+        self.particle_data = None
         
     def UpdatePrmDict(self, _names, _values):
         '''
@@ -109,7 +117,13 @@ class CASE():
         to be defined in children class
         '''
         pass
-
+    
+    def process_particle_data(self):
+        '''
+        process the coordinates of particle, doing nothing here.
+        Future class that inherit this one need to reload this method.
+        '''
+        pass
 
     def CaseName(self):
         '''
@@ -117,16 +131,40 @@ class CASE():
         '''
         _case_name = ''
         for key, value in sorted(self.config.items(), key=lambda item: item[0]):
+            if re.match("^_", key):
+                # skip keys start with '_'
+                continue
             _pattern = PatternFromStr(key)
             _pattern_value = PatternFromValue(value)
             _case_name += (_pattern + _pattern_value)
         if self.test != {}:
             _case_name += 'test'
             for key, value in sorted(self.test.items(), key=lambda item: item[0]):
+                if re.match("^_", key):
+                    # skip keys start with '_'
+                    continue
                 _pattern = PatternFromStr(key)
                 _pattern_value = PatternFromValue(value)
                 _case_name += (_pattern + _pattern_value)
         return _case_name
+    
+    def output_particle_ascii(self, fout):
+        '''
+        Output to a ascii file that contains Particle coordinates, containing the coordinates of each particle
+        '''
+        # header information
+        _header = '# Ascii file for particle coordinates\n'
+        # output particle file
+        fout.write(_header)
+        for i in range(self.particle_data.shape[0]):
+            _string = ''
+            for j in range(self.particle_data.shape[1]):
+                if j == self.particle_data.shape[1] - 1:
+                    _string += '%.4e\n' % self.particle_data[i, j]
+                else:
+                    _string += '%.4e ' % self.particle_data[i, j]
+            fout.write(_string)
+        pass
 
     def __call__(self, **kwargs):
         '''
@@ -146,6 +184,8 @@ class CASE():
             _extra = kwargs.get('extra', {})  # extra dictionary, pass to intepret
             _operations = kwargs.get('operations', [])  # operations to do, pass to intepret
             _extra_files = kwargs.get('extra_file', {})  # extra dictionary, pass to intepret
+            # Process particle data
+            self.process_particle_data()
             # First intepret the configurations and update prm
             my_assert(self.config != None, ValueError,
                       'With the \'auto\' method, the config must exist')
@@ -157,7 +197,7 @@ class CASE():
             my_assert(os.path.isdir(_case_dir) is False, ValueError, 'The script doesn\'t support updating a pr-exiting group')
             os.mkdir(_case_dir)
             # write configs to _json
-            _json_outputs = {'basename': _basename, 'config': self.config, 'test': self.test, 'extra': _extra, 'extra_file': _extra_files} # todo
+            _json_outputs = {'basename': _basename, 'config': self.config, 'test': self.test, 'extra': _extra, 'extra_file': _extra_files}
             _json_ofile = os.path.join(_case_dir, 'config.json')
             with open(_json_ofile, 'w') as fout:
                 json.dump(_json_outputs, fout)
@@ -165,7 +205,11 @@ class CASE():
             _filename = os.path.join(_case_dir, 'case.prm')
             with open(_filename, 'w') as fout:
                 ParseToDealiiInput(fout, self.idict)
-            pass
+            # output particle data to an ascii file
+            if self.particle_data is not None:
+                _filename = os.path.join(_case_dir, 'particle.dat')
+                with open(_filename, 'w') as fout:
+                    self.output_particle_ascii(fout)
             # also copy the extra files
             if type(_extra_files) is str:
                 _extra_files = [_extra_files]

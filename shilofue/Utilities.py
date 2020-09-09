@@ -1,6 +1,7 @@
 import json
 import re
 import os
+import math
 import shilofue.json
 import numpy as np
 from importlib import resources
@@ -269,3 +270,40 @@ def re_count_indent(_pattern):
         else:
             break
     return _indent
+
+
+def ggr2cart(lat,lon,r):
+
+    # transform spherical lat,lon,r geographical coordinates 
+    # to global cartesian xyz coordinates
+    # 
+    # input:  lat,lon,r in radians, meters
+    # output: x,y,z in meters 3 x M
+    
+    
+    sla = math.sin(lat)  
+    cla = math.cos(lat) 
+    slo = math.sin(lon)
+    clo = math.cos(lon)
+
+    x = r * cla * clo
+    y = r * cla * slo 
+    z = r * sla
+
+    return x,y,z
+
+def ggr2cart2(lon, r):
+
+    # transform spherical lon, r geographical coordinates 
+    # to global cartesian xy coordinates
+    # 
+    # input:  phi, r in radians, meters
+    # output: x,y in meters 2 x M
+    
+    slo = math.sin(lon)
+    clo = math.cos(lon)
+
+    x = r * clo
+    y = r * slo 
+
+    return x, y
