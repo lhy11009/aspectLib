@@ -111,11 +111,17 @@ class CASE():
         '''
         ChangeDiscValues(self.idict, _names, _values)  # change values in idict accordingly
 
-    def Intepret(self, **kwargs):
+    def Intepret(self, parse_operations, **kwargs):
         '''
-        Intepret configuration,
-        to be defined in children class
+        Intepret configuration by calling function from the parse_operations class
+        kwargs:
+            extra(dict) - extra configuration
         '''
+        _extra = kwargs.get('extra', {})
+        _operations = kwargs.get('operations', [])
+        _config = { **self.config, **self.test, **_extra }  # append _extra to self.config
+        for operation in parse_operations.ALL_OPERATIONS:
+            getattr(parse_operations, operation)(self.idict, _config)
         pass
     
     def process_particle_data(self):
@@ -166,10 +172,11 @@ class CASE():
             fout.write(_string)
         pass
 
-    def __call__(self, **kwargs):
+    def __call__(self, parse_operations, **kwargs):
         '''
         Create a .prm file
         inputs:
+            parse_operations(class): operations to do
             kwargs:
                 method: (str) - method of generate files
                 dirname: (str) - output directory, in use with 'auto' method
@@ -182,14 +189,13 @@ class CASE():
             _dirname = kwargs.get('dirname', '.')
             _basename = kwargs.get('basename', '')
             _extra = kwargs.get('extra', {})  # extra dictionary, pass to intepret
-            _operations = kwargs.get('operations', [])  # operations to do, pass to intepret
             _extra_files = kwargs.get('extra_file', {})  # extra dictionary, pass to intepret
             # Process particle data
             self.process_particle_data()
             # First intepret the configurations and update prm
             my_assert(self.config != None, ValueError,
                       'With the \'auto\' method, the config must exist')
-            self.Intepret(extra=_extra, operations=_operations)
+            self.Intepret(parse_operations, extra=_extra)
             # Next generate a case name
             self.case_name = _basename + self.CaseName()
             # After that, make a directory with case name
@@ -296,9 +302,10 @@ class GROUP_CASE():
         '''
         pass
     
-    def __call__(self, _odir, **kwargs):
+    def __call__(self, parse_operations, _odir, **kwargs):
         '''
         Inputs:
+            parse_operations(class): operations to do
             _odir(str):
                 name of the target directory
             kwargs:
@@ -307,7 +314,6 @@ class GROUP_CASE():
                 basename(str): base name for cases
         '''
         _extra = kwargs.get('extra', {})
-        _operations = kwargs.get('operations', [])
         _base_name = kwargs.get('basename', '')
         # write configs to _json
         _json_outputs = self.configs
@@ -316,9 +322,108 @@ class GROUP_CASE():
         with open(_json_ofile, 'w') as fout:
             json.dump(_json_outputs, fout)
         for _case in self.cases:
-            _case_name = _case(dirname=_odir, extra=_extra, operations=_operations, basename=_base_name)
+            _case_name = _case(parse_operations, dirname=_odir, extra=_extra, basename=_base_name)
             self.case_names.append(_case_name)
         return self.case_names
+
+
+class PARSE_OPERATIONS():
+    """
+    put global parse operations in a single class
+    Attributes:
+        ALL_OPERATIONS(list):
+            all avalable operations
+    """
+    def __init__(self):
+        """
+        Initiation
+        """
+        self.ALL_OPERATIONS = ['MeshRefinement', 'Termination']
+        pass
+
+    def MeshRefinement(self, Inputs, _config):
+        '''
+        change mesh refinement
+        '''
+        try:
+            # Initial global refinement
+            _initial_global_refinement = int(_config['initial_global_refinement'])
+        except KeyError:
+            pass
+        else:
+            Inputs['Mesh refinement']['Initial global refinement'] = str(_initial_global_refinement)
+    
+        try:
+            # initial_adaptive_refinement
+            _initial_adaptive_refinement = int(_config['initial_adaptive_refinement'])
+        except KeyError:
+            pass
+        else:
+            Inputs['Mesh refinement']['Initial adaptive refinement'] = str(_initial_adaptive_refinement)
+        
+        try:
+            # refinement_fraction
+            _refinement_fraction = float(_config['refinement_fraction'])
+        except KeyError:
+            pass
+        else:
+            Inputs['Mesh refinement']['Refinement fraction'] = str(_refinement_fraction)
+        _complement_refine_coarse = _config.get('complement_refine_coarse', 0)
+        if _complement_refine_coarse == 1:
+            # make the sum of Refinement fraction and Coarsening fraction to 1.0
+            try:
+                Inputs['Mesh refinement']['Coarsening fraction'] = str(1.0 - float(Inputs['Mesh refinement']['Refinement fraction']))
+            except KeyError:
+                # there is no such settings in the inputs
+                pass
+        else:
+            # import coarsening_fraction from file
+            try:
+                _coarsening_fraction = float(_config['coarsening_fraction'])
+            except KeyError:
+                pass
+            else:
+                Inputs['Mesh refinement']['Coarsening fraction'] = str(_coarsening_fraction)
+    
+        try:
+            # only use minimum_refinement_function
+            _only_refinement_function = int(_config['only_refinement_function'])
+        except KeyError:
+            pass
+        else:
+            if _only_refinement_function == 1:
+                # only use minimum refinement function
+                Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function'
+            if _only_refinement_function == 2:
+                # include compositional gradient
+                Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function, composition approximate gradient'
+            if _only_refinement_function == 3:
+                # include viscosity
+                Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function, composition approximate gradient, viscosity'
+            if _only_refinement_function == 4:
+                # include strain rate
+                Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function, composition approximate gradient, strain rate'
+        try:
+            # longitude repetitions for chunk geometry
+            _longitude_repetitions = int(_config['longitude_repetitions'])
+        except KeyError:
+            pass
+        else:
+            Inputs['Geometry model']['Chunk']['Longitude repetitions'] = str(_longitude_repetitions)
+
+    def Termination(self, Inputs, _config):
+        """
+        Different termination strategy
+        """
+        try:
+            # Initial global refinement
+            _only_one_step = int(_config['only_one_step'])
+        except KeyError:
+            pass
+        else:
+            if _only_one_step == 1:
+                Inputs['Termination criteria']['Termination criteria'] = 'end step'
+                Inputs['Termination criteria']['End step'] = '1'
 
 
 def ParseFromDealiiInput(fin):
@@ -648,7 +753,6 @@ def UpdateProjectJson(_dir, **kwargs):
     '''
     update groups and files information of a project
     export to a json file
-    todo
     Inputs:
         _dir(str): directory of a project
         kwargs:

@@ -7,202 +7,95 @@ import numpy as np
 from shilofue.Parse import COMPOSITION
 from shilofue.Parse import ParseFromDealiiInput
 from shilofue.Parse import ParseToDealiiInput
-from shilofue.Parse import CASE, GROUP_CASE, UpdateProjectMd, UpdateProjectJson, AutoMarkdownCase, AutoMarkdownGroup
+from shilofue.Parse import CASE, GROUP_CASE, PARSE_OPERATIONS,\
+                           UpdateProjectMd, UpdateProjectJson, AutoMarkdownCase, AutoMarkdownGroup
 from shilofue.Rheology import GetLowerMantleRheology
 from shilofue.Utilities import my_assert, ggr2cart2
 from shilofue.Doc import UpdateProjectDoc
 from shilofue.Plot import ProjectPlot
 
-_ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'query', 'Termination', 'Particle']  # all the possible operations
 
-
-def LowerMantle(Inputs, jump, T, P, V1):
+class MY_PARSE_OPERATIONS(PARSE_OPERATIONS):
     """
-    LowerMantle(Inputs)
-
-    calculate flow law parameters
+    put parse operations in a single class
+    inherit from the general class
+    Attributes:
+        ALL_OPERATIONS(list):
+            all avalable operations
     """
-    # parse from input
-    visco_plastic = Inputs["Material model"]['Visco Plastic']
-    prefactors_for_diffusion_creep = COMPOSITION(visco_plastic["Prefactors for diffusion creep"])
-    grain_size = float(visco_plastic["Grain size"])
-    grain_size_exponents_for_diffusion_creep  = COMPOSITION(visco_plastic["Grain size exponents for diffusion creep"])
-    activation_energies_for_diffusion_creep = COMPOSITION(visco_plastic["Activation energies for diffusion creep"])
-    activation_volumes_for_diffusion_creep  = COMPOSITION(visco_plastic["Activation volumes for diffusion creep"])
-    # call GetLowerMantleRheology to derive parameters for lower mantle flow law 
-    backgroud_upper_mantle_diffusion = {}
-    backgroud_upper_mantle_diffusion['A'] = prefactors_for_diffusion_creep.data['background'][0] 
-    backgroud_upper_mantle_diffusion['d'] = grain_size
-    backgroud_upper_mantle_diffusion['n'] = 1.0 
-    backgroud_upper_mantle_diffusion['m'] = grain_size_exponents_for_diffusion_creep.data['background'][0] 
-    backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
-    backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0] 
-    backgroud_lower_mantle_diffusion = GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='A')
-    # todo_future: add in choice of phases
-    prefactors_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['A'], backgroud_lower_mantle_diffusion['A']]
-    grain_size_exponents_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['m'], backgroud_lower_mantle_diffusion['m']]
-    activation_energies_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['E'], backgroud_lower_mantle_diffusion['E']]
-    activation_volumes_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['V'], backgroud_lower_mantle_diffusion['V']] 
-    # parse back
-    visco_plastic["Prefactors for diffusion creep"] = prefactors_for_diffusion_creep.parse_back()
-    visco_plastic["Grain size exponents for diffusion creep"] = grain_size_exponents_for_diffusion_creep.parse_back()
-    visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
-    visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
-    return Inputs
+    def __init__(self):
+        """
+        Initiation
+        """
+        PARSE_OPERATIONS.__init__(self)
+        self.ALL_OPERATIONS += ["LowerMantle", "Particle"]
 
+    def LowerMantle(self, Inputs, _config):
+        """
+        calculate flow law parameters
+        """
+        # parse from input
+        jump = _config['upper_lower_viscosity']
+        T = _config['T660']
+        P = _config['P660']
+        V1 = _config['LowerV']
+        visco_plastic = Inputs["Material model"]['Visco Plastic']
+        prefactors_for_diffusion_creep = COMPOSITION(visco_plastic["Prefactors for diffusion creep"])
+        grain_size = float(visco_plastic["Grain size"])
+        grain_size_exponents_for_diffusion_creep  = COMPOSITION(visco_plastic["Grain size exponents for diffusion creep"])
+        activation_energies_for_diffusion_creep = COMPOSITION(visco_plastic["Activation energies for diffusion creep"])
+        activation_volumes_for_diffusion_creep  = COMPOSITION(visco_plastic["Activation volumes for diffusion creep"])
+        # call GetLowerMantleRheology to derive parameters for lower mantle flow law 
+        backgroud_upper_mantle_diffusion = {}
+        backgroud_upper_mantle_diffusion['A'] = prefactors_for_diffusion_creep.data['background'][0] 
+        backgroud_upper_mantle_diffusion['d'] = grain_size
+        backgroud_upper_mantle_diffusion['n'] = 1.0 
+        backgroud_upper_mantle_diffusion['m'] = grain_size_exponents_for_diffusion_creep.data['background'][0] 
+        backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
+        backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0] 
+        backgroud_lower_mantle_diffusion = GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='A')
+        # todo_future: add in choice of phases
+        prefactors_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['A'], backgroud_lower_mantle_diffusion['A']]
+        grain_size_exponents_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['m'], backgroud_lower_mantle_diffusion['m']]
+        activation_energies_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['E'], backgroud_lower_mantle_diffusion['E']]
+        activation_volumes_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['V'], backgroud_lower_mantle_diffusion['V']] 
+        # parse back
+        visco_plastic["Prefactors for diffusion creep"] = prefactors_for_diffusion_creep.parse_back()
+        visco_plastic["Grain size exponents for diffusion creep"] = grain_size_exponents_for_diffusion_creep.parse_back()
+        visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
+        visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
+        return Inputs
 
-def MeshRefinement(Inputs, _config):
-    '''
-    change mesh refinement
-    '''
-    try:
-        # Initial global refinement
-        _initial_global_refinement = int(_config['initial_global_refinement'])
-    except KeyError:
-        pass
-    else:
-        Inputs['Mesh refinement']['Initial global refinement'] = str(_initial_global_refinement)
-
-    try:
-        # initial_adaptive_refinement
-        _initial_adaptive_refinement = int(_config['initial_adaptive_refinement'])
-    except KeyError:
-        pass
-    else:
-        Inputs['Mesh refinement']['Initial adaptive refinement'] = str(_initial_adaptive_refinement)
-    
-    try:
-        # refinement_fraction
-        _refinement_fraction = float(_config['refinement_fraction'])
-    except KeyError:
-        pass
-    else:
-        Inputs['Mesh refinement']['Refinement fraction'] = str(_refinement_fraction)
-    _complement_refine_coarse = _config.get('complement_refine_coarse', 0)
-    if _complement_refine_coarse == 1:
-        # make the sum of Refinement fraction and Coarsening fraction to 1.0
-        try:
-            Inputs['Mesh refinement']['Coarsening fraction'] = str(1.0 - float(Inputs['Mesh refinement']['Refinement fraction']))
-        except KeyError:
-            # there is no such settings in the inputs
-            pass
-    else:
-        # import coarsening_fraction from file
-        try:
-            _coarsening_fraction = float(_config['coarsening_fraction'])
-        except KeyError:
-            pass
-        else:
-            Inputs['Mesh refinement']['Coarsening fraction'] = str(_coarsening_fraction)
-
-    try:
-        # only use minimum_refinement_function
-        _only_refinement_function = int(_config['only_refinement_function'])
-    except KeyError:
-        pass
-    else:
-        if _only_refinement_function == 1:
-            # only use minimum refinement function
-            Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function'
-        if _only_refinement_function == 2:
-            # include compositional gradient
-            Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function, composition approximate gradient'
-        if _only_refinement_function == 3:
-            # include viscosity
-            Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function, composition approximate gradient, viscosity'
-        if _only_refinement_function == 4:
-            # include strain rate
-            Inputs['Mesh refinement']['Strategy'] = 'minimum refinement function, composition approximate gradient, strain rate'
-
-    try:
-        # longitude repetitions for chunk geometry
-        _longitude_repetitions = int(_config['longitude_repetitions'])
-    except KeyError:
-        pass
-    else:
-        Inputs['Geometry model']['Chunk']['Longitude repetitions'] = str(_longitude_repetitions)
-
-
-def Termination(Inputs, _config):
-    """
-    Different termination strategy
-    """
-    try:
-        # Initial global refinement
-        _only_one_step = int(_config['only_one_step'])
-    except KeyError:
-        pass
-    else:
-        if _only_one_step == 1:
-            Inputs['Termination criteria']['Termination criteria'] = 'end step'
-            Inputs['Termination criteria']['End step'] = '1'
-
-
-def Particle(Inputs):
-    """
-    Define a particle section in the .prm file
-    """
-    # List of postprocessors
-    list_postproc = Inputs['Postprocess']['List of postprocessors']
-    if re.match('particles', list_postproc) is None:
-        list_postproc += ', particles'
-    Inputs['Postprocess']['List of postprocessors'] = list_postproc
-    # initiate a dictionary for particle settings
-    p_dict = {}
-    p_dict['Particle generator name'] = 'ascii file'
-    p_dict['Data output format'] = 'vtu'
-    p_dict['List of particle properties'] = 'initial position, pT path'  # particle properties
-    # initiate a new dictionary for the generator subsection
-    p_generator_dict = {}
-    p_generator_dict['Ascii file'] = {'Data directory': './', 'Data file name': 'particle.dat'}
-    p_dict['Generator'] = p_generator_dict
-    # assign it to Inputs
-    Inputs['Postprocess']['Particles'] = p_dict
-
-
-def Parse(ifile, ofile):
-    """
-    todo
-    """
-    assert(os.access(ifile, os.R_OK))
-    with open(ifile, 'r') as fin:
-        inputs = ParseFromDealiiInput(fin)
-    LowerMantle(inputs, 30.0, 1663.0, 21e9, 1.5e-6)
-    with open(ofile, 'w') as fout:
-        ParseToDealiiInput(fout, inputs)
+    def Particle(self, Inputs, _config):
+        """
+        Define a particle section in the .prm file
+        """
+        # First, check the option in json file
+        if_particle_in_slab = _config.get("if_particle_in_slab", 0)
+        if if_particle_in_slab == 0:
+            return
+        # List of postprocessors
+        list_postproc = Inputs['Postprocess']['List of postprocessors']
+        if re.match('particles', list_postproc) is None:
+            list_postproc += ', particles'
+        Inputs['Postprocess']['List of postprocessors'] = list_postproc
+        # initiate a dictionary for particle settings
+        p_dict = {}
+        p_dict['Particle generator name'] = 'ascii file'
+        p_dict['Data output format'] = 'vtu'
+        p_dict['List of particle properties'] = 'initial position, pT path'  # particle properties
+        # initiate a new dictionary for the generator subsection
+        p_generator_dict = {}
+        p_generator_dict['Ascii file'] = {'Data directory': './', 'Data file name': 'particle.dat'}
+        p_dict['Generator'] = p_generator_dict
+        # assign it to Inputs
+        Inputs['Postprocess']['Particles'] = p_dict
 
 
 class MYCASE(CASE):
     '''
     Inherit from class CASE in Parse.py
     '''
-    def Intepret(self, **kwargs):
-        '''
-        Intepret configuration for my TwoDSubduction Cases
-        kwargs:
-            extra(dict) - extra configuration
-        '''
-        _extra = kwargs.get('extra', {})
-        _operations = kwargs.get('operations', [])
-        _config = { **self.config, **self.test, **_extra }  # append _extra to self.config
-        if 'LowerMantle' in _operations:
-            # change lower mantle viscosity
-            try:
-                LowerMantle(self.idict, _config['upper_lower_viscosity'], _config['T660'], _config['P660'], _config['LowerV'])
-            except KeyError:
-                pass
-        if 'MeshRefinement' in _operations:
-            # change initial mesh refinement
-            # check the key exists in the dict: fixed in the function
-            MeshRefinement(self.idict, _config)
-        if 'Termination' in _operations:
-            # change termination strategy
-            Termination(self.idict, _config)
-        if 'Particle' in _operations and self.particle_data is not None:
-            # add Particle subsection in Postprogress
-            Particle(self.idict)
-    
- 
     def process_particle_data(self):
         '''
         process the coordinates of particle, doing nothing here.
@@ -302,10 +195,9 @@ def main():
         MyGroup = GROUP_CASE(MYCASE, _inputs, _config)
         # call __call__ function to generate
         _extra = _config.get('extra', {})
-        if arg.operations_file is None:
-            # take all availale operations
-            _operations = _ALL_AVAILABLE_OPERATIONS
-        _case_names = MyGroup(_odir, operations=_operations, extra=_extra, basename=_base_name)
+        # add an entry for parse_operations
+        parse_operations = MY_PARSE_OPERATIONS()
+        _case_names = MyGroup(parse_operations, _odir, extra=_extra, basename=_base_name)
         # generate auto.md
         AutoMarkdownCase(_group_name, _config, dirname=_odir)
         for _case_name in _case_names:
@@ -340,12 +232,11 @@ def main():
         MyCase = MYCASE(_inputs, config=_config['config'], test=_config['test'])
         # call __call__ function to generate
         _extra = _config.get('extra', {})
-        if arg.operations_file is None:
-            # take all availale operations
-            _operations = _ALL_AVAILABLE_OPERATIONS
         # also add extra files
         _extra_files = _config.get('extra_file', {})
-        _case_name = MyCase(dirname=arg.output_dir, extra=_config['extra'], operations=_operations, basename=_base_name, extra_file=_extra_files)
+        # add an entry for parse_operations
+        parse_operations = MY_PARSE_OPERATIONS()
+        _case_name = MyCase(parse_operations, dirname=arg.output_dir, extra=_config['extra'], basename=_base_name, extra_file=_extra_files)
         # generate markdown file
         _case_dir = os.path.join(arg.output_dir, _case_name)
         AutoMarkdownCase(_case_name, _config, dirname=_case_dir)

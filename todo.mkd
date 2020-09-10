@@ -51,6 +51,8 @@ so that we can create a group with assigned parameter groups instead of looping 
 
 ## separate the configuration of projects
 
+change to the python script, use simplest interfaces as possible
+
 prm files to use
 
 json files to use

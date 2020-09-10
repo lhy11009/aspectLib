@@ -52,7 +52,8 @@ def test_parse_to_new_case():
     if os.path.isfile(_ofile):
         # remove older file
         os.remove(_ofile)
-    Case(method='manual', filename=_ofile)
+    parse_operations = Parse.PARSE_OPERATIONS()
+    Case(parse_operations, method='manual', filename=_ofile)
     assert(os.path.isfile(_ofile))
     # test usage1: 
     #   step a: read a parameter file
@@ -68,5 +69,6 @@ def test_parse_to_new_case():
     with open(test_file, 'r') as fin:
         inputs = Parse.ParseFromDealiiInput(fin)
     Case = Parse.CASE(inputs, config={})
-    Case(dirname='.test', basename='test_case_by_auto')
+    parse_operations = Parse.PARSE_OPERATIONS()
+    Case(parse_operations, dirname='.test', basename='test_case_by_auto')
     assert(os.path.isfile(_ofile))

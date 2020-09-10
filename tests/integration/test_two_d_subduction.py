@@ -1,7 +1,7 @@
 import os
 import json
 from shutil import rmtree
-from shilofue.TwoDSubduction import MYCASE
+from shilofue.TwoDSubduction import MYCASE, MY_PARSE_OPERATIONS
 from shilofue.Parse import ParseFromDealiiInput, GROUP_CASE
 from shilofue.Parse import UpdateProjectJson
 
@@ -28,8 +28,9 @@ def test_generate_case():
     MyCase = MYCASE(_inputs, config=_config)
     # call __call__ function
     _extra = {'T660': 1663.0, 'P660': 21e9, 'LowerV': 1.5e-6}  # extra configuration
-    _operations = ['LowerMantle']  # operations to do
-    MyCase(dirname='.test', extra=_extra, operations=_operations)
+    # add operations
+    parse_operations = MY_PARSE_OPERATIONS()
+    MyCase(parse_operations, dirname='.test', extra=_extra)
     # Assertions
     assert(os.path.isfile(_prm_file))
     with open(_standard_prm_file, 'r') as standard_fin:
@@ -57,8 +58,8 @@ def test_generate_case():
     MyCase = MYCASE(_inputs, config=_config, test=_test)
     # call __call__ function
     _extra = {'T660': 1663.0, 'P660': 21e9, 'LowerV': 1.5e-6}  # extra configuration
-    _operations = ['LowerMantle', "MeshRefinement"]  # operations to do
-    MyCase(dirname='.test', extra=_extra, operations=_operations)
+    parse_operations = MY_PARSE_OPERATIONS()
+    MyCase(parse_operations, dirname='.test', extra=_extra)
     # Assertions
     assert(os.path.isfile(_prm_file))
     with open(_standard_prm_file, 'r') as standard_fin:
@@ -86,7 +87,8 @@ def test_generate_group():
     # Call __call__ to generate cases
     _extra = {'T660': 1663.0, 'P660': 21e9, 'LowerV': 1.5e-6}  # extra configuration
     _operations = ['LowerMantle', "MeshRefinement"]  # operations to do
-    MyGroup(_odir, operations=_operations, extra=_extra)
+    parse_operations = MY_PARSE_OPERATIONS()
+    MyGroup(parse_operations, _odir, operations=_operations, extra=_extra)
     # Assertions
     _case_names = ['ULV1.000e+02testIAR6', 'ULV1.000e+02testIAR8', 'ULV3.000e+01testIAR6','ULV3.000e+01testIAR8']
     for _case_name in _case_names:
