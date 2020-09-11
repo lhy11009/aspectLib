@@ -11,7 +11,7 @@ from shilofue.Utilities import my_assert, re_neat_word, re_count_indent
 
 
 
-class DOC():
+class DDOC():
     '''
     class for documentation
     Attributes:

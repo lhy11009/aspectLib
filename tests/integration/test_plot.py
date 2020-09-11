@@ -1,7 +1,7 @@
 import os
 import pytest
 import numpy as np
-from shilofue import Plot
+import shilofue.Plot as Plot
 from shilofue.Utilities import UNITCONVERT
 
 
@@ -10,6 +10,7 @@ if not os.path.isdir(_test_dir):
     os.mkdir(_test_dir)
 _test_source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test-plot')
 assert(os.path.isdir(_test_source_dir))
+
 
 def test_plot_statistics():
     '''

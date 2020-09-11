@@ -4,18 +4,14 @@ import json
 import argparse
 import re
 import numpy as np
-from shilofue.Parse import COMPOSITION
-from shilofue.Parse import ParseFromDealiiInput
-from shilofue.Parse import ParseToDealiiInput
-from shilofue.Parse import CASE, GROUP_CASE, PARSE_OPERATIONS,\
-                           UpdateProjectMd, UpdateProjectJson, AutoMarkdownCase, AutoMarkdownGroup
-from shilofue.Rheology import GetLowerMantleRheology
+import shilofue.Parse as Parse
+import shilofue.Doc as Doc
+import shilofue.Plot as Plot
+import shilofue.Rheology as Rheology
 from shilofue.Utilities import my_assert, ggr2cart2
-from shilofue.Doc import UpdateProjectDoc
-from shilofue.Plot import ProjectPlot
 
 
-class MY_PARSE_OPERATIONS(PARSE_OPERATIONS):
+class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
     """
     put parse operations in a single class
     inherit from the general class
@@ -27,7 +23,7 @@ class MY_PARSE_OPERATIONS(PARSE_OPERATIONS):
         """
         Initiation
         """
-        PARSE_OPERATIONS.__init__(self)
+        Parse.PARSE_OPERATIONS.__init__(self)
         self.ALL_OPERATIONS += ["LowerMantle", "Particle"]
 
     def LowerMantle(self, Inputs, _config):
@@ -40,11 +36,11 @@ class MY_PARSE_OPERATIONS(PARSE_OPERATIONS):
         P = _config['P660']
         V1 = _config['LowerV']
         visco_plastic = Inputs["Material model"]['Visco Plastic']
-        prefactors_for_diffusion_creep = COMPOSITION(visco_plastic["Prefactors for diffusion creep"])
+        prefactors_for_diffusion_creep = Parse.COMPOSITION(visco_plastic["Prefactors for diffusion creep"])
         grain_size = float(visco_plastic["Grain size"])
-        grain_size_exponents_for_diffusion_creep  = COMPOSITION(visco_plastic["Grain size exponents for diffusion creep"])
-        activation_energies_for_diffusion_creep = COMPOSITION(visco_plastic["Activation energies for diffusion creep"])
-        activation_volumes_for_diffusion_creep  = COMPOSITION(visco_plastic["Activation volumes for diffusion creep"])
+        grain_size_exponents_for_diffusion_creep  = Parse.COMPOSITION(visco_plastic["Grain size exponents for diffusion creep"])
+        activation_energies_for_diffusion_creep = Parse.COMPOSITION(visco_plastic["Activation energies for diffusion creep"])
+        activation_volumes_for_diffusion_creep  = Parse.COMPOSITION(visco_plastic["Activation volumes for diffusion creep"])
         # call GetLowerMantleRheology to derive parameters for lower mantle flow law 
         backgroud_upper_mantle_diffusion = {}
         backgroud_upper_mantle_diffusion['A'] = prefactors_for_diffusion_creep.data['background'][0] 
@@ -53,7 +49,7 @@ class MY_PARSE_OPERATIONS(PARSE_OPERATIONS):
         backgroud_upper_mantle_diffusion['m'] = grain_size_exponents_for_diffusion_creep.data['background'][0] 
         backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
         backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0] 
-        backgroud_lower_mantle_diffusion = GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='A')
+        backgroud_lower_mantle_diffusion = Rheology.GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='A')
         # todo_future: add in choice of phases
         prefactors_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['A'], backgroud_lower_mantle_diffusion['A']]
         grain_size_exponents_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['m'], backgroud_lower_mantle_diffusion['m']]
@@ -92,7 +88,7 @@ class MY_PARSE_OPERATIONS(PARSE_OPERATIONS):
         Inputs['Postprocess']['Particles'] = p_dict
 
 
-class MYCASE(CASE):
+class MYCASE(Parse.CASE):
     '''
     Inherit from class CASE in Parse.py
     '''
@@ -183,7 +179,7 @@ def main():
         else:
             _filename = arg.base_file
         with open(_filename, 'r') as fin:
-            _inputs = ParseFromDealiiInput(fin)
+            _inputs = Parse.ParseFromDealiiInput(fin)
         if not os.path.isdir(arg.output_dir):
             os.mkdir(arg.output_dir)
         # create a directory under the name of the group
@@ -192,20 +188,20 @@ def main():
         my_assert(not os.path.isdir(_odir), ValueError, "The script doesn't support updating a pr-exiting group")
         os.mkdir(_odir)
         # initialte a class instance
-        MyGroup = GROUP_CASE(MYCASE, _inputs, _config)
+        MyGroup = Parse.GROUP_CASE(MYCASE, _inputs, _config)
         # call __call__ function to generate
         _extra = _config.get('extra', {})
         # add an entry for parse_operations
         parse_operations = MY_PARSE_OPERATIONS()
         _case_names = MyGroup(parse_operations, _odir, extra=_extra, basename=_base_name)
         # generate auto.md
-        AutoMarkdownCase(_group_name, _config, dirname=_odir)
+        Parse.AutoMarkdownCase(_group_name, _config, dirname=_odir)
         for _case_name in _case_names:
             _case_dir = os.path.join(_odir, _case_name)
             _case_json_file = os.path.join(_case_dir, 'config.json')
             with open(_case_json_file, 'r') as fin:
                 _case_config = json.load(fin)
-            AutoMarkdownCase(_case_name, _case_config, dirname=_case_dir)
+            Parse.AutoMarkdownCase(_case_name, _case_config, dirname=_case_dir)
         print(_group_name)
         for _case_name in _case_names:
             # ouptut to screen
@@ -225,7 +221,7 @@ def main():
         else:
             _filename = arg.base_file
         with open(_filename, 'r') as fin:
-            _inputs = ParseFromDealiiInput(fin)
+            _inputs = Parse.ParseFromDealiiInput(fin)
         if not os.path.isdir(arg.output_dir):
             os.mkdir(arg.output_dir)
         # Initial a case
@@ -239,7 +235,7 @@ def main():
         _case_name = MyCase(parse_operations, dirname=arg.output_dir, extra=_config['extra'], basename=_base_name, extra_file=_extra_files)
         # generate markdown file
         _case_dir = os.path.join(arg.output_dir, _case_name)
-        AutoMarkdownCase(_case_name, _config, dirname=_case_dir)
+        Parse.AutoMarkdownCase(_case_name, _config, dirname=_case_dir)
         print(_case_name)
     
     elif _commend == 'query':
@@ -263,10 +259,10 @@ def main():
     elif _commend == 'update':
         # update a case
         _project_dir = arg.output_dir
-        _project_dict = UpdateProjectJson(_project_dir)  # update project json file
-        UpdateProjectMd(_project_dict, _project_dir)  # update auto.md file for every case
-        ProjectPlot(_project_dict, _project_dir, 'png', update=False)  # plot figures for every case
-        UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'PvMesh', 'visit'])
+        _project_dict = Parse.UpdateProjectJson(_project_dir)  # update project json file
+        Parse.UpdateProjectMd(_project_dict, _project_dir)  # update auto.md file for every case
+        Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False)  # plot figures for every case
+        Doc.UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'PvMesh', 'visit'])
 
     elif _commend == 'plot':
         # todo_future

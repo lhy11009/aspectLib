@@ -1,5 +1,5 @@
 import os
-from shilofue import Parse
+import shilofue.Parse as Parse
 from shutil import rmtree
 
 _test_dir = ".test"

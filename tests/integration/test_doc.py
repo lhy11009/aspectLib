@@ -1,7 +1,7 @@
 import pytest
 import os
+import shilofue.Doc as Doc
 from shutil import rmtree, copyfile
-from shilofue.Doc import DOC, MKDOC
 
 
 # test files are in this directory
@@ -12,7 +12,7 @@ test_dir = './.test'
 
 def test_doc():
     '''
-    test class DOC from shilofue.doc
+    test class DDOC from shilofue.Doc
     '''
     # files that will be used in this test
     _ofile = os.path.join(test_dir, 'auto.md')
@@ -22,13 +22,13 @@ def test_doc():
         # remove old files
         os.remove(_ofile)
     with pytest.raises(TypeError) as excinfo:
-        Doc = DOC('foo', os.path.join(test_source_dir, 'foo'), layout='foo')
+        Ddoc = Doc.DDOC('foo', os.path.join(test_source_dir, 'foo'), layout='foo')
     assert('layout' in str(excinfo.value))
-    Doc = DOC('foo', os.path.join(test_source_dir, 'foo'))
-    Doc.append_media({'depth_average': _depth_average_file})
-    _contents = Doc.GenerateOutput
+    Ddoc = Doc.DDOC('foo', os.path.join(test_source_dir, 'foo'))
+    Ddoc.append_media({'depth_average': _depth_average_file})
+    _contents = Ddoc.GenerateOutput
     assert(True)  # assert the output contents of test case
-    Doc(test_dir)
+    Ddoc(test_dir)
     assert(os.path.isfile(_ofile))  # assert file generated successfully
     with open(_ofile, 'r') as fin:
         # assert file has the right content
@@ -54,7 +54,7 @@ def test_mkdoc():
     _index_file = os.path.join(_docs_dir, 'index.md')
     _case_file = os.path.join(_mkdocs_case_dir, 'foo.md')
     # call __init__ function
-    myMkdoc = MKDOC(_mkdocs_dir, images='DepthAverage')
+    myMkdoc = Doc.MKDOC(_mkdocs_dir, images='DepthAverage')
     ############# call __call__ function for a case ###############
     myMkdoc('foo', os.path.join(test_source_dir, 'test-project', 'foo'), append_prm=True)
     _case_summary_file = os.path.join(_mkdocs_case_dir, 'summary.md')

@@ -1,9 +1,9 @@
-import numpy as np
-from matplotlib import pyplot as plt
 import json
 import os
 import sys
 import math
+import numpy as np
+from matplotlib import pyplot as plt
 
 R = 8.314
 

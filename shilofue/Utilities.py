@@ -49,6 +49,7 @@ def JsonOptions(prefix, _dir=None):
                 _options[_name] = json.load(fin)  # values are entries in this file
     assert(_options is not {})  # assert not vacant
     return _options
+
     
 def ReadHeader(_texts):
     '''

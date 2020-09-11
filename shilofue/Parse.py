@@ -2,7 +2,6 @@ import re
 import os
 import shutil
 import json
-import numpy as np
 from shilofue.Utilities import my_assert, re_neat_word
 
 '''

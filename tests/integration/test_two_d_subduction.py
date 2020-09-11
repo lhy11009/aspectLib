@@ -1,9 +1,9 @@
 import os
 import json
+import shilofue.TwoDSubduction as TwoDSubduction
+import shilofue.Parse as Parse
 from shutil import rmtree
-from shilofue.TwoDSubduction import MYCASE, MY_PARSE_OPERATIONS
-from shilofue.Parse import ParseFromDealiiInput, GROUP_CASE
-from shilofue.Parse import UpdateProjectJson
+
 
 test_source_dir = os.path.join(os.path.dirname(__file__), 'fixtures')
 test_dir = '.test'
@@ -21,15 +21,15 @@ def test_generate_case():
     _standard_prm_file = os.path.join(test_source_dir, 'TwoDSubduction', 'standard_case.prm')
     # Read files
     with open(_test_prm_file, 'r') as fin:
-        _inputs = ParseFromDealiiInput(fin)
+        _inputs = Parse.ParseFromDealiiInput(fin)
     with open(_config_file, 'r') as fin:
         _config = json.load(fin)
     # Initiate Class MyCase
-    MyCase = MYCASE(_inputs, config=_config)
+    MyCase = TwoDSubduction.MYCASE(_inputs, config=_config)
     # call __call__ function
     _extra = {'T660': 1663.0, 'P660': 21e9, 'LowerV': 1.5e-6}  # extra configuration
     # add operations
-    parse_operations = MY_PARSE_OPERATIONS()
+    parse_operations = TwoDSubduction.MY_PARSE_OPERATIONS()
     MyCase(parse_operations, dirname='.test', extra=_extra)
     # Assertions
     assert(os.path.isfile(_prm_file))
@@ -49,16 +49,16 @@ def test_generate_case():
     _standard_prm_file = os.path.join(test_source_dir, 'TwoDSubduction', 'standard_case2.prm')
     # Read files
     with open(_test_prm_file, 'r') as fin:
-        _inputs = ParseFromDealiiInput(fin)
+        _inputs = Parse.ParseFromDealiiInput(fin)
     with open(_config_file, 'r') as fin:
         _json_inputs = json.load(fin)
         _config = _json_inputs['config']
         _test = _json_inputs.get('test', {})
     # Initiate Class MyCase
-    MyCase = MYCASE(_inputs, config=_config, test=_test)
+    MyCase = TwoDSubduction.MYCASE(_inputs, config=_config, test=_test)
     # call __call__ function
     _extra = {'T660': 1663.0, 'P660': 21e9, 'LowerV': 1.5e-6}  # extra configuration
-    parse_operations = MY_PARSE_OPERATIONS()
+    parse_operations = TwoDSubduction.MY_PARSE_OPERATIONS()
     MyCase(parse_operations, dirname='.test', extra=_extra)
     # Assertions
     assert(os.path.isfile(_prm_file))
@@ -79,15 +79,15 @@ def test_generate_group():
     os.mkdir(_odir)
     # Read files
     with open(_test_prm_file, 'r') as fin:
-        _inputs = ParseFromDealiiInput(fin)
+        _inputs = Parse.ParseFromDealiiInput(fin)
     with open(_config_file, 'r') as fin:
         _json_inputs = json.load(fin)
     # Initial test group
-    MyGroup = GROUP_CASE(MYCASE, _inputs, _json_inputs)
+    MyGroup = Parse.GROUP_CASE(TwoDSubduction.MYCASE, _inputs, _json_inputs)
     # Call __call__ to generate cases
     _extra = {'T660': 1663.0, 'P660': 21e9, 'LowerV': 1.5e-6}  # extra configuration
     _operations = ['LowerMantle', "MeshRefinement"]  # operations to do
-    parse_operations = MY_PARSE_OPERATIONS()
+    parse_operations = TwoDSubduction.MY_PARSE_OPERATIONS()
     MyGroup(parse_operations, _odir, operations=_operations, extra=_extra)
     # Assertions
     _case_names = ['ULV1.000e+02testIAR6', 'ULV1.000e+02testIAR8', 'ULV3.000e+01testIAR6','ULV3.000e+01testIAR8']

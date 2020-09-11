@@ -6,9 +6,7 @@ import shilofue.json
 import warnings
 import numpy as np
 from importlib import resources
-from shilofue.Utilities import JsonOptions
-from shilofue.Utilities import ReadHeader
-from shilofue.Utilities import ReadHeader2, UNITCONVERT
+from shilofue.Utilities import JsonOptions, ReadHeader, ReadHeader2, UNITCONVERT
 from matplotlib import pyplot as plt
 
 class LINEARPLOT():
