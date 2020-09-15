@@ -11,7 +11,6 @@
 * if the creat fails, delete the related files
 * look for base file based on basename
 * add the option to submit to local
-* include the 'module unload' line in the job.sh file produced for peloton, done
 
 ## update
 
@@ -40,10 +39,6 @@ run script under any folder
 # put all configurations in a json file
 
 make use of the json.sh on github
-
-done, add a json_parse function,
-
-todo: finish it thereafter
 
 ## add a 'para_group' with list of parameters and a list of value
 
@@ -101,8 +96,6 @@ add configuration of server, git account
 
 creat a test folder, and a 'test.sh' file on top to run all tests
 
-done, copy 2 tests from aspect_lib.sh to there
-
 add support to json file there after
 
 # change to code
@@ -114,8 +107,6 @@ add support to json file there after
 ## update plugins
 
 ### temperature plugin
-
-* add thermal boundary layer, done.
 
 * include age of slabs
 

@@ -168,6 +168,34 @@ parse_stdout(){
 }
 
 
+################################################################################
+# read keys and values from a file
+# Inputs:
+#   $1: input file, contents for this file is:
+#               key0    value0
+#               key1    value1
+#               ...
+# Outputs:
+#   keys: keys in that file
+#   values: values in that file
+read_keys_values(){
+	local filein=$1
+    # check file exist
+    # check_file_exist "${filein}"
+    unset keys
+    unset values
+	local line
+	local foo
+
+    # read in keys and values from file
+	while IFS= read line; do
+        IFS=' ' read -r -a foo<<< "${line}"  # construct an array from line
+	    [[ -z ${keys} ]] && keys=(${foo[0]}) || keys+=(${foo[0]})
+	    [[ -z ${values} ]] && values=(${foo[1]}) || values+=(${foo[1]})
+    done < "${filein}"
+}
+
+
 read_log(){
 	# read a log file
 	# Inputs:
@@ -250,6 +278,34 @@ clean_log(){
     done
     [[ ${_find} -eq 1 ]] && eval "sed -in '${flag}'d ${log_file}"  # eliminate the line of "${case_dir}"
 }
+
+
+################################################################################
+# check a variable exists
+# Inputs:
+#   $1: name of variable
+# Operations:
+#   exit if variable doesn't exist
+check_variable(){
+    # future, should be one line
+    # check variable
+    echo '0'
+}
+
+
+################################################################################
+# check a file exists
+# Inputs:
+#   $1: name of file
+# Operations:
+#   exit if file doesn't exist
+check_file(){
+    # future, should be one line
+    # check_file
+    echo '0'
+}
+
+
 ################################################################################
 # Test functions
 test_element_in(){

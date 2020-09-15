@@ -117,6 +117,34 @@ EOF
     cd "${previous}"
 }
 
+################################################################################
+# Translate a visit script
+# Inputs:
+#    filein: name of the script
+#    keys: keys to translate
+#    values: values to translate
+tranlate_visit_script(){
+    # check variable
+    # check_variable 'keys'
+    # check_variable 'values'
+    # check_variable 'filein'
+    # check_variable 'fileout'
+
+    # read file
+    contents=$(cat ${filein})
+
+    # do substutions
+    local i=0
+    for key in ${keys[@]}; do
+        value=${values[i]}
+        contents=${contents//$key/$value}  # substitute key with value
+        ((i++))
+    done
+
+    # output
+    printf "${contents}" > "${fileout}"
+}
+
 
 test_aspect_lib(){
     # This test test creating cases and groups under a project
@@ -323,12 +351,23 @@ main(){
         quit_if_fail "aspect_lib.sh submit_group failed"
 
     elif [[ ${_commend} = 'terminate' ]]; then
-        # todo
+        # future
         echo '0'
 
     elif [[ ${_commend} = 'remove' ]]; then
-        # todo
+        # future
         echo '0'
+
+    elif [[ ${_commend} = 'translate_visit' ]]; then
+        # translate visit scripts
+        filein="$3"
+        fileout="${dir}/translate_visit_output.py"
+
+        # get keys
+        read_keys_values "visit_keys_values"
+
+        # call function
+        tranlate_visit_script
 
     elif [[ ${_commend} = 'test' ]]; then
         # do test
