@@ -177,6 +177,9 @@ plot_visit_case(){
     visit_script_bases=("initial_slab.py")
     visit_script_dir="${dir}/visit_scripts/${project}"
         
+    # call python module to generate visit_keys_values file
+    eval "python -m shilofue.${project} bash_options -i ${case_dir}"
+    
     # get keys and values
     keys_values_file="${dir}/visit_keys_values"
     [ -r "${keys_values_file}" ] || { cecho ${BAD} "plot_visit_case: Files containing keys and values - ${keys_values_file} cannot be read"; exit 1; }
@@ -420,7 +423,11 @@ main(){
         tranlate_visit_script
     
     elif [[ ${_commend} = 'plot_visit_case' ]]; then
+        # plot visit for a case
+        # example command line:
+        # ./aspect_lib.sh TwoDSubduction plot_visit_case $TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12
         case_dir="/home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12"
+
         # call function
         plot_visit_case
 

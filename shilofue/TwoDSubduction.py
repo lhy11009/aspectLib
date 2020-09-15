@@ -269,7 +269,7 @@ def main():
         # check this group exist
         my_assert(os.path.isdir(arg.output_dir), FileExistsError, "%s doesn't exist" % arg.output_dir)
         my_assert(os.path.isdir(_config_file), FileExistsError, "%s doesn't exist" % arg._config_file)
-        # initial class instance, todo
+        # initial class instance, future
         # MyCase = MYCASE(_inputs, config=_config['config'], test=_config['test'])
         # call function to return case names
         # check that these cases exit
@@ -277,7 +277,7 @@ def main():
         pass
 
     elif _commend == 'update_doc':
-        # todo_future
+        # future
         pass
 
     elif _commend == 'update':
@@ -289,12 +289,11 @@ def main():
         Doc.UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'PvMesh', 'visit'])
 
     elif _commend == 'plot':
-        # todo_future
+        # future
         # plot something
         pass
 
     elif _commend == 'bash_options':
-        # todo
         # output bash options to a file that could be
         # read by bash script
         # initiate class object

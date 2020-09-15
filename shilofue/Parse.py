@@ -295,7 +295,7 @@ class GROUP_CASE():
 
     def get_case_names(self):
         '''
-        return case names, todo
+        return case names
         Return:
             _case_names(list)
         '''
