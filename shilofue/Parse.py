@@ -428,8 +428,61 @@ class PARSE_OPERATIONS():
 class BASH_OPTIONS():
     """
     parse .prm file to a option file that bash can easily read
+    Attributes:
+        _case_dir(str): path of this case
+        _output_dir(str): path of the output
+        _visit_file(str): path of the visit file
+        odict(dict): dictionary of key and value to output
     """
-    pass
+    def __init__(self, case_dir):
+        """
+        Initiation
+        Args:
+            case_dir(str): directory of case
+        """
+        # check directory
+        self._case_dir = case_dir
+        my_assert(os.path.isdir(self._case_dir), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case directory - %s doesn\'t exist' % self._case_dir)
+        self._output_dir = os.path.join(case_dir, 'output')
+        my_assert(os.path.isdir(self._output_dir), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case output directory - %s doesn\'t exist' % self._output_dir)
+        self._visit_file = os.path.join(self._output_dir, 'solution.visit')
+        my_assert(os.access(self._visit_file, os.R_OK), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case visit file - %s cannot be read' % self._visit_file)
+        
+        # get inputs from .prm file
+        prm_file = os.path.join(self._case_dir, 'case.prm')
+        my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case prm file - %s cannot be read' % prm_file)
+        with open(prm_file, 'r') as fin:
+            self.idict = ParseFromDealiiInput(fin)
+
+        # initiate a dictionary
+        self.odict = {}
+    
+    def Interpret(self):
+        """
+        Interpret the inputs, to be reloaded in children
+        """
+        self.odict["VISIT_FILE"] = self._visit_file
+        pass
+
+    def __call__(self, ofile):
+        """
+        Call function
+        Args:
+            ofile(str): path of output
+        """
+        # interpret
+        self.Interpret()
+
+        # open ofile for output
+        # write outputs by keys and values
+        with open(ofile, 'w') as fout:
+            for key, value in self.odict.items():
+                fout.write("%s       %s\n" % (key, value))
+        pass
 
 
 def ParseFromDealiiInput(fin):
@@ -450,7 +503,7 @@ def ParseFromDealiiInput(fin):
         if re.match('^(\t| )*#', line):
             # Skip comment lines, mark by '#' in file
             pass
-        elif re.match('^.*set', line):
+        elif re.match('^(\t| )*set', line):
             # Parse key and value
             # from format in file as 'set key = val'
             # to a dictionary inputs

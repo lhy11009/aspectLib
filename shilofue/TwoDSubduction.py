@@ -11,6 +11,14 @@ import shilofue.Rheology as Rheology
 from shilofue.Utilities import my_assert, ggr2cart2
 
 
+# global varibles
+# directory to the aspect Lab
+ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+
+# directory to shilofue
+shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+
+
 class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
     """
     put parse operations in a single class
@@ -126,6 +134,23 @@ class MYCASE(Parse.CASE):
             self.particle_data[i, 0] = x
             self.particle_data[i, 1] = y
 
+
+class BASH_OPTIONS(Parse.BASH_OPTIONS):
+    """
+    parse .prm file to a option file that bash can easily read
+    """
+    def Interpret(self):
+        """
+        Interpret the inputs, to be reloaded in children
+        """
+        # call function from parent
+        Parse.BASH_OPTIONS.Interpret(self)
+
+        # own implementations
+        # initial adaptive refinement
+        self.odict['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
+    
+
     
 def main():
     '''
@@ -136,11 +161,7 @@ def main():
         sys.arg[2, :](str):
             options
     '''
-    # parse commend
-    _available_commends = ['create', 'create_group', 'plot', 'update']  # only these commends are available now
     _commend = sys.argv[1]
-    if _commend not in _available_commends:
-        raise ValueError('Commend %s is not available.' % _commend)
     # parse options
     parser = argparse.ArgumentParser(description='TwoDSubdunction Project')
     parser.add_argument('-b', '--base_file', type=str,
@@ -158,6 +179,9 @@ def main():
     parser.add_argument('-e', '--operations_file', type=str,
                         default=None,
                         help='A file that has a list of operations, if not given, do all the available operations')
+    parser.add_argument('-i', '--input_dir', type=str,
+                        default=shilofue_DIR,
+                        help='A directory that contains the input')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -268,6 +292,22 @@ def main():
         # todo_future
         # plot something
         pass
+
+    elif _commend == 'bash_options':
+        # todo
+        # output bash options to a file that could be
+        # read by bash script
+        # initiate class object
+        case_dir = arg.input_dir
+        Base_Options = BASH_OPTIONS(case_dir)
+
+        # call function
+        ofile = os.path.join(ASPECT_LAB_DIR, 'visit_keys_values')
+        Base_Options(ofile)
+        pass
+    
+    else:
+        raise ValueError('Commend %s is not available.' % _commend)
 
 
 # run script

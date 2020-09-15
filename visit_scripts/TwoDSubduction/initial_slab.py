@@ -1,13 +1,13 @@
 # variable to substitute
-# DATA_BASE_FILE:
+# VISIT_FILE:
 #   vts file
 # INITIAL_ADAPTIVE_REFINEMENT:
 #   initial adaptive refinement level
-OpenDatabase("localhost:DATA_BASE_FILE", 0)
+OpenDatabase("localhost:VISIT_FILE", 0)
 AddPlot("Mesh", "mesh", 1, 1)
 AddPlot("Pseudocolor", "spcrust", 1, 1)
 DrawPlots()
-for i in range(INITIAL_ADAPTIVE_REFINEMENT):
+for _ in range(INITIAL_ADAPTIVE_REFINEMENT):
     TimeSliderNextState()
 DrawPlots()
 # Begin spontaneous state

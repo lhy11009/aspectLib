@@ -160,16 +160,12 @@ plot_visit_scripts(){
 ################################################################################
 # Generate visit plots for a single case
 # Inputs
-#    case_name: case name
 #    case_dir: case directory
-#    data_sub_dir: path that hold data
-#    json_file: json file for the case
 plot_visit_case(){
-    # todo
     # check folders
-    [ -d "${case_dir}" ] || { cecho ${BAD} "plot_visit_case: Case folder - ${case_dir} doesn't exist"; return 1; }
+    [ -d "${case_dir}" ] || { cecho ${BAD} "plot_visit_case: Case folder - ${case_dir} doesn't exist"; exit 1; }
     data_sub_dir="${case_dir}/output"
-    [ -d "${data_sub_dir}" ] || { cecho ${BAD} "plot_visit_case: Data folder - ${data_sub_dir} doesn't exist"; return 1; }
+    [ -d "${data_sub_dir}" ] || { cecho ${BAD} "plot_visit_case: Data folder - ${data_sub_dir} doesn't exist"; exit 1; }
     # dir for transfered visit scripts
     local visit_temp_dir="${dir}/visit_scripts_temp"
     [ -d "${visit_temp_dir}" ] || mkdir "${visit_temp_dir}" ]
@@ -178,18 +174,17 @@ plot_visit_case(){
     [ -d "${img_dir}" ] || mkdir "${img_dir}" ]
 
     # get a list of scripts to plot
-    visit_scripts=()
-    visit_scripts+=("${dir}/visit_scripts/${project}/initial_slab.py")
+    visit_script_bases=("initial_slab.py")
+    visit_script_dir="${dir}/visit_scripts/${project}"
         
     # get keys and values
     keys_values_file="${dir}/visit_keys_values"
-    [ -r "${keys_values_file}" ] || { cecho ${BAD} "plot_visit_case: Files containing keys and values - ${keys_values_file} cannot be read"; return 1; }
+    [ -r "${keys_values_file}" ] || { cecho ${BAD} "plot_visit_case: Files containing keys and values - ${keys_values_file} cannot be read"; exit 1; }
     read_keys_values "visit_keys_values"
     
     # do substitution and run
-    for visit_script in ${visit_scripts[@]}; do
-        visit_script_base=$(basename ${visit_script})
-        filein="${visit_script}"
+    for visit_script_base in ${visit_script_bases[@]}; do
+        filein="${visit_script_dir}/${visit_script_base}"
         fileout="${visit_temp_dir}/${visit_script_base}"
 
         # translate script

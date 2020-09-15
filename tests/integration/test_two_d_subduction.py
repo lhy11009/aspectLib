@@ -95,3 +95,10 @@ def test_generate_group():
         _case_dir = os.path.join(_odir, _case_name)  # case name is 'ULV3.000e+01_testIAR8'
         _prm_file = os.path.join(_case_dir, 'case.prm')
         assert(os.path.isfile(_prm_file))
+
+
+def test_bash_options():
+    """
+    test BASH_OPTIONS class
+    """
+    pass
