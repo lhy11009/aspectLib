@@ -21,3 +21,10 @@ View2DAtts.yScale = View2DAtts.LINEAR  # LINEAR, LOG
 View2DAtts.windowValid = 1
 SetView2D(View2DAtts)
 # End spontaneous state
+# Same Plot
+SaveWindowAtts = SaveWindowAttributes()
+SaveWindowAtts.outputDirectory = "."
+SaveWindowAtts.fileName = "visit_initial_slab"
+SaveWindowAtts.format = SaveWindowAtts.PNG
+SetSaveWindowAttributes(SaveWindowAtts)
+SaveWindow()

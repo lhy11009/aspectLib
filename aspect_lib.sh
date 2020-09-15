@@ -146,6 +146,61 @@ tranlate_visit_script(){
 }
 
 
+################################################################################
+# Translate a visit script, run it and generate plots
+# Inputs:
+#    fileins: list name of the script
+#    file_keys_values: file that holds keys and values to substitute
+plot_visit_scripts(){
+    # future
+    echo '0'
+}
+
+
+################################################################################
+# Generate visit plots for a single case
+# Inputs
+#    case_name: case name
+#    case_dir: case directory
+#    data_sub_dir: path that hold data
+#    json_file: json file for the case
+plot_visit_case(){
+    # todo
+    # check folders
+    [ -d "${case_dir}" ] || { cecho ${BAD} "plot_visit_case: Case folder - ${case_dir} doesn't exist"; return 1; }
+    data_sub_dir="${case_dir}/output"
+    [ -d "${data_sub_dir}" ] || { cecho ${BAD} "plot_visit_case: Data folder - ${data_sub_dir} doesn't exist"; return 1; }
+    # dir for transfered visit scripts
+    local visit_temp_dir="${dir}/visit_scripts_temp"
+    [ -d "${visit_temp_dir}" ] || mkdir "${visit_temp_dir}" ]
+    # dir for image output
+    local img_dir="${case_dir}/img"
+    [ -d "${img_dir}" ] || mkdir "${img_dir}" ]
+
+    # get a list of scripts to plot
+    visit_scripts=()
+    visit_scripts+=("${dir}/visit_scripts/${project}/initial_slab.py")
+        
+    # get keys and values
+    keys_values_file="${dir}/visit_keys_values"
+    [ -r "${keys_values_file}" ] || { cecho ${BAD} "plot_visit_case: Files containing keys and values - ${keys_values_file} cannot be read"; return 1; }
+    read_keys_values "visit_keys_values"
+    
+    # do substitution and run
+    for visit_script in ${visit_scripts[@]}; do
+        visit_script_base=$(basename ${visit_script})
+        filein="${visit_script}"
+        fileout="${visit_temp_dir}/${visit_script_base}"
+
+        # translate script
+        tranlate_visit_script
+
+        # run
+        echo "exit()" | eval "visit -nowin -cli -s ${fileout}"
+    done
+}
+
+
 test_aspect_lib(){
     # This test test creating cases and groups under a project
     # Cases are generated relative to the 'base.prm' file in the
@@ -368,6 +423,11 @@ main(){
 
         # call function
         tranlate_visit_script
+    
+    elif [[ ${_commend} = 'plot_visit_case' ]]; then
+        case_dir="/home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12"
+        # call function
+        plot_visit_case
 
     elif [[ ${_commend} = 'test' ]]; then
         # do test

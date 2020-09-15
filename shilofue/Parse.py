@@ -425,6 +425,13 @@ class PARSE_OPERATIONS():
                 Inputs['Termination criteria']['End step'] = '1'
 
 
+class BASH_OPTIONS():
+    """
+    parse .prm file to a option file that bash can easily read
+    """
+    pass
+
+
 def ParseFromDealiiInput(fin):
     """
     ParseFromDealiiInput(fin)
