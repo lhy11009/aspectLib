@@ -1,17 +1,17 @@
 {
     "_commemnts": [
+        "name is used to mark this group. By default, my python script will first create a sub-folder called this name, and then put all cases inside",
         "Todo add some comments about operations",
         "T660, P660, lowerV(avtivation volume)are used for computing upper/lower mantle viscosity. The grain size of the lower mantle is what I change"
     ],
-    "name": "test_group",
-    "basename": "base",
+    "basename": "test0",
     "config":
     {
-        "upper_lower_viscosity": [30.0, 100.0]
+        "upper_lower_viscosity": 100.0
     },
     "test":
     {
-        "initial_adaptive_refinement": [6, 8]
+        "initial_adaptive_refinement": 8
     },
     "extra":
     {   

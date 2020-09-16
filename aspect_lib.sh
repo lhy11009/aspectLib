@@ -155,6 +155,26 @@ plot_visit_scripts(){
     # future
     echo '0'
 }
+        
+
+################################################################################
+# Run tests
+# Inputs:
+run_tests(){
+    current_dir=$(pwd)
+
+    # run python tests
+    cd ${ASPECT_LAB_DIR}
+    # eval "python -m pytest tests -v --cov"
+
+    cd ${current_dir}
+
+    # run bash tests
+    bash_tests_dir="${ASPECT_LAB_DIR}/bash_tests"
+    for file in ${bash_tests_dir}/* ; do
+        [[ ${file} =~ /test.*\.sh$ && -x ${file} ]] && eval "${file} ${project} ${server_info}"
+    done
+}
 
 
 ################################################################################
@@ -414,10 +434,11 @@ main(){
     elif [[ ${_commend} = 'translate_visit' ]]; then
         # translate visit scripts
         filein="$3"
-        fileout="${dir}/translate_visit_output.py"
+        filein_base=$(basename ${filein})
+        fileout="${ASPECT_LAB_DIR}/visit_scripts_temp/${filein_base}"
 
         # get keys
-        read_keys_values "visit_keys_values"
+        read_keys_values "${ASPECT_LAB_DIR}/visit_keys_values"
 
         # call function
         tranlate_visit_script
@@ -430,6 +451,19 @@ main(){
 
         # call function
         plot_visit_case
+
+    elif [[ ${_commend} = 'test' ]]; then
+        # run tests
+        # example command line:
+        #   local test:
+        #       ./aspect_lib.sh TwoDSubduction test
+        #   server test:
+        #       ./aspect_lib.sh TwoDSubduction test lochy@peloton.cse.ucdavis.edu
+        # get server info
+        server_info="$3"
+
+        # call scripts in bash_tests folder
+        run_tests
     
     else
         cecho ${BAD} "Bad commend: ${_commend}"

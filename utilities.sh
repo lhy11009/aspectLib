@@ -281,6 +281,21 @@ clean_log(){
 
 
 ################################################################################
+# generate message for a tests
+# Inputs:
+#   $1: name of function
+#   $2: number of passed tests
+#   $3: number of failed tests
+final_message(){
+    if [[ "$3" -eq 0 ]]; then
+        cecho ${GOOD} "$1: $2 tests passed"
+    else
+        cecho ${BAD} "$1: $2 tests passed, $3 tests failed"
+    fi
+}
+
+
+################################################################################
 # check a variable exists
 # Inputs:
 #   $1: name of variable
@@ -294,15 +309,25 @@ check_variable(){
 
 
 ################################################################################
-# check a file exists
+# compare the contents of two files
 # Inputs:
-#   $1: name of file
+#   $1: function
+#   $2: standard file
+#   $3: output file
 # Operations:
 #   exit if file doesn't exist
-check_file(){
-    # future, should be one line
+compare_files(){
+    # check file existence
+    [[ -e $2 ]] || { cecho ${BAD} "${FUNCNAME[0]}: file $2 doesn't exist"; exit 1; }
+    [[ -e $3 ]] || { cecho ${BAD} "${FUNCNAME[0]}: file $3 doesn't exist"; exit 1; }
+    
     # check_file
-    echo '0'
+    difference=$(diff $2 $3)
+    if [[ -n ${difference} ]]; then
+        cecho ${BAD} "$1 failed: output file - ${3} is different from standard one - ${2}"
+        return 1
+    fi
+    return 0
 }
 
 

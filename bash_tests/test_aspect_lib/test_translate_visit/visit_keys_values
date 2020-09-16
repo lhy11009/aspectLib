@@ -1,0 +1,3 @@
+VISIT_FILE      /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12/output1/solution.visit
+INITIAL_ADAPTIVE_REFINEMENT     6
+IMG_OUTPUT_DIR      /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12/img
