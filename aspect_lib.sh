@@ -174,7 +174,7 @@ plot_visit_case(){
     [ -d "${img_dir}" ] || mkdir "${img_dir}" ]
 
     # get a list of scripts to plot
-    visit_script_bases=("initial_slab.py")
+    visit_script_bases=("initial_slab.py" "export_particles.py")
     visit_script_dir="${dir}/visit_scripts/${project}"
         
     # call python module to generate visit_keys_values file
@@ -430,17 +430,7 @@ main(){
 
         # call function
         plot_visit_case
-
-    elif [[ ${_commend} = 'test' ]]; then
-        # do test
-        test_aspect_lib "${project}"
-
-    elif [[ ${_commend} = 'remote_test' ]]; then
-        # do test
-        [[ "$#" -eq 3 ]] || { cecho ${BAD} "for remote_test, server_info must be given"; exit 1; }
-        local server_info="$3"
-        test_aspect_lib_remote "${project}" "${server_info}"
-
+    
     else
         cecho ${BAD} "Bad commend: ${_commend}"
     fi

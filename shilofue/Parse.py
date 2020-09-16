@@ -450,6 +450,14 @@ class BASH_OPTIONS():
         self._visit_file = os.path.join(self._output_dir, 'solution.visit')
         my_assert(os.access(self._visit_file, os.R_OK), FileNotFoundError,
                   'BASH_OPTIONS.__init__: case visit file - %s cannot be read' % self._visit_file)
+        # additonal output dir
+        self._output1_dir = os.path.join(case_dir, 'output1')
+        if not os.path.isdir(self._output1_dir):
+            os.mkdir(self._output1_dir)
+        # img dir
+        self._img_dir = os.path.join(case_dir, 'img')
+        if not os.path.isdir(self._img_dir):
+            os.mkdir(self._img_dir)
         
         # get inputs from .prm file
         prm_file = os.path.join(self._case_dir, 'case.prm')
@@ -465,8 +473,19 @@ class BASH_OPTIONS():
         """
         Interpret the inputs, to be reloaded in children
         """
+        # visit file
         self.odict["VISIT_FILE"] = self._visit_file
-        pass
+
+        # particle file
+        particle_file = os.path.join(self._output_dir, 'particles.visit')
+        if os.access(particle_file, os.R_OK):
+            self.odict["VISIT_PARTICLE_FILE"] = particle_file
+
+        # directory to output data 
+        self.odict["DATA_OUTPUT_DIR"] = self._output1_dir
+
+        # directory to output images
+        self.odict["IMG_OUTPUT_DIR"] = self._img_dir
 
     def __call__(self, ofile):
         """

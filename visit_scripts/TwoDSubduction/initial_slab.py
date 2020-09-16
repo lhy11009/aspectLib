@@ -3,6 +3,8 @@
 #   vts file
 # INITIAL_ADAPTIVE_REFINEMENT:
 #   initial adaptive refinement level
+# IMG_OUTPUT_DIR
+#   directory for images
 OpenDatabase("localhost:VISIT_FILE", 0)
 AddPlot("Mesh", "mesh", 1, 1)
 AddPlot("Pseudocolor", "spcrust", 1, 1)
@@ -23,8 +25,8 @@ SetView2D(View2DAtts)
 # End spontaneous state
 # Same Plot
 SaveWindowAtts = SaveWindowAttributes()
-SaveWindowAtts.outputDirectory = "."
-SaveWindowAtts.fileName = "visit_initial_slab"
+SaveWindowAtts.outputDirectory = "IMG_OUTPUT_DIR"
+SaveWindowAtts.fileName = "IMG_OUTPUT_DIR/visit_initial_slab"
 SaveWindowAtts.format = SaveWindowAtts.PNG
 SetSaveWindowAttributes(SaveWindowAtts)
 SaveWindow()
