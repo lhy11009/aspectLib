@@ -226,7 +226,7 @@ main(){
     local py_script="shilofue.${project}"
     _commend="$2"
     # check project
-    [[ -d ${local_root} || ${_commend} = 'install' || ${_commend} = 'write_time_log' ]] || { cecho ${BAD} "Project ${project} is not included"; exit 1; }
+    [[ -d ${local_root} || ${_commend} = 'install' || ${_commend} = 'write_time_log' || ${_commend} = 'keep_write_time_log' ]] || { cecho ${BAD} "Project ${project} is not included"; exit 1; }
 
     # execute
     if [[ ${_commend} = 'install' ]]; then
@@ -355,6 +355,23 @@ main(){
         [[ -n $4 && $4=~^[0-9]+$ ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$4 must be a valid job id"; exit 1; }
         [[ -n $5 ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$5 must be a valid path of a file"; exit 1; }
         write_time_log $3 $4 $5
+    
+    
+    elif [[ ${_commend} = 'keep_write_time_log' ]]; then
+        # write time and machine time output to a file
+        # example command line:
+        # ./aspect_lib.sh foo keep_write_time_log /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13\
+        # 2537585 /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13/output/machine_time
+        [[ -n $3 && -d $3 ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$3 must be a valid directory"; exit 1; }
+        [[ -n $4 && $4=~^[0-9]+$ ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$4 must be a valid job id"; exit 1; }
+        [[ -n $5 ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$5 must be a valid path of a file"; exit 1; }
+
+        while true
+        do
+            write_time_log $3 $4 $5
+            [[ $? -eq 0 ]] || { printf "${FUNCNAME[0]}: stop writing time log\n"; exit 0; }
+            sleep 1h
+        done
 
 
     elif [[ ${_commend} = 'test' ]]; then
