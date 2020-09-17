@@ -219,6 +219,74 @@ plot_visit_case(){
 }
 
 
+################################################################################
+# todo
+# build a project in aspect
+# usage of this is to bind up source code and plugins
+# Inputs:
+#   project: name of the project
+#   $1: release or debug, default is debug following aspect's routine
+build_aspect_project(){
+    build_dir="${ASPECT_SOURCE_DIR}/build_${project}"
+    [[ -d ${build_dir} ]] || mkdir ${build_dir}
+    local mode
+    if [[ -n $1 ]]; then
+        [[ $1="debug" || $1="release" ]] || { cecho ${BAD} "${FUNCNAME[0]}: mode is either \'debug\' or \'release\'"; exit 1; }
+        mode=$1
+    else
+        mode="debug"
+    fi
+
+    # get the project json file
+    json="${ASPECT_LAB_DIR}/files/${project}/project.json"
+    [[ -e ${json} ]] || cecho ${WARN} "${FUNCNAME[0]}: json file of project(i.e. ${json}) doesn't exist"
+
+    # get the list of plugins
+    plugins=("prescribe_field" "subduction_temperature2d")
+
+    # copy plugins
+    plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
+    for plugin in ${plugins[@]}; do
+        # check plugin existence
+        plugin_dir="${plugins_dir}/${plugin}"
+        [[ -d ${plugin_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: plugin(i.e. ${plugin_dir}) doesn't exist"; exit 1; }
+
+        # remove old ones
+        plugin_to_dir="${build_dir}/${plugin}"
+        [[ -d ${plugin_to_dir} ]] && rm -r ${plugin_to_dir}
+
+        # copy new ones
+        eval "cp -r ${plugin_dir} ${build_dir}/"
+        cecho ${GOOD} "${FUNCNAME[0]}: copyied plugin(i.e. ${plugin})"
+    done
+
+    # build
+    local current_dir=$(pwd)
+    # Here we pick nproc - 1, this make sure that we don't use up all resources. 
+    # But this will cause problem when nproc = 1
+    local nproc=$(($(nproc)-1))
+    cd ${build_dir}
+    # build source code
+    eval "cmake .."
+    quit_if_fail "${FUNCNAME[0]}: cmake inside ${build_dir} failed"
+    eval "make ${mode}"
+    quit_if_fail "${FUNCNAME[0]}: \"make ${mode}\" inside ${build_dir} failed"
+    eval "make -j ${nproc}"
+    quit_if_fail "${FUNCNAME[0]}: make inside ${build_dir} failed"
+    # build plugins
+    for plugin in ${plugins[@]}; do
+        plugin_to_dir="${build_dir}/${plugin}"
+        cd ${plugin_to_dir}
+        # remove cache before compling
+        [[ -e "${plugin_to_dir}/CMakeCache.txt" ]] && eval "rm ${plugin_to_dir}/CMakeCache.txt"
+        eval "cmake -DAspect_DIR=${build_dir}"
+        quit_if_fail "${FUNCNAME[0]}: cmake inside ${plugin_to_dir} failed"
+        eval "make"
+        quit_if_fail "${FUNCNAME[0]}: make inside ${plugin_to_dir} failed"
+    done
+}
+
+
 main(){
     # parameter list, todo
     local project="$1"
@@ -372,7 +440,27 @@ main(){
             [[ $? -eq 0 ]] || { printf "${FUNCNAME[0]}: stop writing time log\n"; exit 0; }
             sleep 1h
         done
-
+    
+    elif [[ ${_commend} = 'build' ]]; then
+        # build a project in aspect
+        # usage of this is to bind up source code and plugins
+        # example command line:
+        #   local build:
+        #       ./aspect_lib.sh TwoDSubduction build
+        #       ./aspect_lib.sh TwoDSubduction build debug
+        #       ./aspect_lib.sh TwoDSubduction build release
+        build_aspect_project $3
+    
+    elif [[ ${_commend} = 'build_remote' ]]; then
+        #   server build(add a server_info):
+        #   example command lines:
+        #       ./aspect_lib.sh TwoDSubduction build lochy@peloton.cse.ucdavis.edu
+        #       ./aspect_lib.sh TwoDSubduction build lochy@peloton.cse.ucdavis.edu debug
+        #       ./aspect_lib.sh TwoDSubduction build lochy@peloton.cse.ucdavis.edu release
+        server_info="$3"
+        ssh ${server_info} << EOF
+            eval "\${ASPECT_LAB_DIR}/aspect_lib.sh ${project} build $4"
+EOF
 
     elif [[ ${_commend} = 'test' ]]; then
         # run tests
