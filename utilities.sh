@@ -237,9 +237,9 @@ write_log_header(){
 write_log(){
     # write to a log file
     # Inputs:
-    #   $1: job id
-    #   $2: job directory
-    #   $3: log file name
+    #   $1: job directory
+    #   $2: job id
+    #   $3: log file
     local job_dir=$1
     local job_id=$2
     local log_file=$3
@@ -247,7 +247,8 @@ write_log(){
     get_job_info ${job_id} 'ST'
     quit_if_fail "get_job_info: invalid id number ${job_id} or no such stat 'ST'" 
     local ST=${return_value}
-    # parse stdout file
+
+    # find the stdout file  
     for _file in ${job_dir}/*
     do
         # look for stdout file
@@ -255,9 +256,12 @@ write_log(){
             break
 	fi
     done
+    
+    # parse stdout file
     parse_stdout ${_file}  # parse this file
     echo "${job_dir} ${job_id} ${ST} ${last_time_step} ${last_time}" >> "${log_file}"
 }
+
 
 clean_log(){
     # remove the record of "${case_dir}" from record
@@ -277,6 +281,56 @@ clean_log(){
 	    ((i++))
     done
     [[ ${_find} -eq 1 ]] && eval "sed -in '${flag}'d ${log_file}"  # eliminate the line of "${case_dir}"
+}
+
+
+################################################################################
+# write time and machine time output to a file
+# Inputs:
+    #   $1: job directory
+    #   $2: job id
+    #   $3: log file
+write_time_log(){
+    local job_dir=$1
+    local job_id=$2
+    local log_file=$3
+
+    # get machine time 
+    get_job_info ${job_id} 'TIME'
+    quit_if_fail "get_job_info: invalid id number ${job_id} or no such stat 'TIME'" 
+    local TIME=${return_value}
+    [[ -n ${TIME} ]] || { cehco ${BAD} "${FUNCNAME[0]}: cannot get valid TIME for job ${job_id}"; exit 1; }
+
+    # get CPU
+    get_job_info ${job_id} 'CPU'
+    quit_if_fail "get_job_info: invalid id number ${job_id} or no such stat 'CPU'" 
+    local CPU=${return_value}
+    [[ -n ${CPU} ]] || { cehco ${BAD} "${FUNCNAME[0]}: cannot get valid CPU for job ${job_id}"; exit 1; }
+
+    # find the stdout file  
+    for _file in ${job_dir}/*
+    do
+        # look for stdout file
+        if [[ "${_file}" =~ ${job_id}.stdout ]]; then
+            break
+	fi
+    done
+    
+    # parse stdout file
+    parse_stdout ${_file}  # parse this file
+
+    # output header if file doesn't exist
+    if ! [[ -e ${log_file} ]]; then 
+        printf "# 1: Time step number\n" >> ${log_file}
+        printf "# 2: Time\n" >> ${log_file}
+        printf "# 3: Machine time\n" >> ${log_file}
+        printf "# 4: CPU number\n" >> ${log_file}
+    fi
+    
+    # output to file 
+    printf "%-10s %-15s %-10s %s\n" ${last_time_step} ${last_time} ${TIME} ${CPU} >> ${log_file}
+
+    return 0
 }
 
 
