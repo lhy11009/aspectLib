@@ -299,13 +299,13 @@ write_time_log(){
     get_job_info ${job_id} 'TIME'
     quit_if_fail "get_job_info: invalid id number ${job_id} or no such stat 'TIME'" 
     local TIME=${return_value}
-    [[ -n ${TIME} ]] || { cehco ${BAD} "${FUNCNAME[0]}: cannot get valid TIME for job ${job_id}"; exit 1; }
+    [[ -n ${TIME} && ! ${TIME} = 'NA' ]] || { cehco ${BAD} "${FUNCNAME[0]}: cannot get valid TIME for job ${job_id}"; exit 1; }
 
     # get CPU
     get_job_info ${job_id} 'CPU'
     quit_if_fail "get_job_info: invalid id number ${job_id} or no such stat 'CPU'" 
     local CPU=${return_value}
-    [[ -n ${CPU} ]] || { cehco ${BAD} "${FUNCNAME[0]}: cannot get valid CPU for job ${job_id}"; exit 1; }
+    [[ -n ${CPU} && ! ${CPU} = 'NA' ]] || { cehco ${BAD} "${FUNCNAME[0]}: cannot get valid CPU for job ${job_id}"; exit 1; }
 
     # find the stdout file  
     for _file in ${job_dir}/*

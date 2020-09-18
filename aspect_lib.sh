@@ -428,8 +428,8 @@ main(){
     elif [[ ${_commend} = 'keep_write_time_log' ]]; then
         # write time and machine time output to a file
         # example command line:
-        # ./aspect_lib.sh foo keep_write_time_log /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13\
-        # 2537585 /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13/output/machine_time
+        # nohup ./aspect_lib.sh foo keep_write_time_log /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13\
+        # 2537585 /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13/output/machine_time &
         [[ -n $3 && -d $3 ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$3 must be a valid directory"; exit 1; }
         [[ -n $4 && $4=~^[0-9]+$ ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$4 must be a valid job id"; exit 1; }
         [[ -n $5 ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$5 must be a valid path of a file"; exit 1; }
