@@ -408,7 +408,8 @@ main(){
         # plot visit for a case
         # example command line:
         # ./aspect_lib.sh TwoDSubduction plot_visit_case $TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12
-        case_dir="/home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12"
+        case_dir="$3"
+        [[ -d ${case_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: case directory(i.e. ${case_dir}) doesn't exist"; exit 1; }
 
         # call function
         plot_visit_case
