@@ -14,8 +14,12 @@ AddPlot("Mesh", "mesh", 1, 1)
 idxs['mesh'] = 0
 AddPlot("Pseudocolor", "spcrust", 1, 1)
 idxs['spcrust'] = 1
+AddPlot("Pseudocolor", "spharz", 1, 1)
+idxs['spharz'] = 2
+AddPlot("Pseudocolor", "T", 1, 1)
+idxs['T'] = 3
 AddPlot("Pseudocolor", "viscosity", 1, 1)
-idxs['viscosity'] = 2
+idxs['viscosity'] = 4
 all_idxs = tuple([ item[1] for item in idxs.items() ])
 
 # shift to the initial timestep
@@ -43,6 +47,18 @@ DrawPlots()
 HideActivePlots()
 SetActivePlots((idxs['mesh'], idxs['spcrust']))
 HideActivePlots()
+# set min and max value
+PseudocolorAtts = PseudocolorAttributes()
+PseudocolorAtts.limitsMode = PseudocolorAtts.OriginalData  # OriginalData, CurrentPlot
+PseudocolorAtts.minFlag = 1
+PseudocolorAtts.min = 0
+PseudocolorAtts.useBelowMinColor = 0
+PseudocolorAtts.belowMinColor = (0, 0, 0, 255)
+PseudocolorAtts.maxFlag = 1
+PseudocolorAtts.max = 1
+PseudocolorAtts.useAboveMaxColor = 0
+PseudocolorAtts.aboveMaxColor = (0, 0, 0, 255)
+SetPlotOptions(PseudocolorAtts)
 
 # Save Plot
 SaveWindowAtts = SaveWindowAttributes()

@@ -9,6 +9,58 @@ dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
 source "${dir}/utilities.sh"
 source "${dir}/extra_configurations.sh"
 
+
+################################################################################
+# parse parameters from command line
+# Inputs:
+#   $1: options
+#        formate of options should be "-a val1 --b=valb ..."
+parse_options(){
+
+    # parse options
+    while [ -n "$1" ]; do
+      param="$1"
+      case $param in
+        -h|--help)
+          usage  # help information
+          exit 0
+        ;;
+        #####################################
+        # bool value
+        #####################################
+        -b)
+          shift
+          bool="${1}"
+        ;;
+        -b=*|--bool=*)
+          bool="${param#*=}"
+        ;;
+      esac
+      shift
+    done
+
+    # check values
+    [[ -z ${bool} || ${bool} = "true" || ${bool} = "false" ]] || { cecho ${BAD} "${FUNCNAME[0]}: bool value must be true or false"; exit 1; }
+}
+
+
+################################################################################
+# help message
+usage()
+{
+    printf "\
+Submit a job to cluster with a slurm system
+
+Usage:
+  %s [options] [server_name] [file_name]
+
+Options:
+    --bool -b       A bool value that is either 'true' or 'false'
+"
+}
+
+
+
 create_case(){
     # create a case locally
     local py_script="$1"
@@ -181,6 +233,8 @@ run_tests(){
 # Generate visit plots for a single case
 # Inputs
 #    case_dir: case directory
+#    bool: whether to plot
+#       if this option is 'false', this function will just translate the scripts without plotting
 plot_visit_case(){
     # check folders
     [ -d "${case_dir}" ] || { cecho ${BAD} "plot_visit_case: Case folder - ${case_dir} doesn't exist"; exit 1; }
@@ -214,7 +268,7 @@ plot_visit_case(){
         tranlate_visit_script
 
         # run
-        echo "exit()" | eval "visit -nowin -cli -s ${fileout}"
+        [[ -z ${bool} || ${bool} = "true" ]] && echo "exit()" | eval "visit -nowin -cli -s ${fileout}"
     done
 }
 
@@ -292,7 +346,13 @@ main(){
     local project="$1"
     local local_root=$(eval "echo \${${project}_DIR}")
     local py_script="shilofue.${project}"
+
+    # parse commend
     _commend="$2"
+
+    # parse options
+    parse_options $@
+
     # check project
     [[ -d ${local_root} || ${_commend} = 'install' || ${_commend} = 'write_time_log' || ${_commend} = 'keep_write_time_log' ]] || { cecho ${BAD} "Project ${project} is not included"; exit 1; }
 
@@ -408,6 +468,8 @@ main(){
         # plot visit for a case
         # example command line:
         # ./aspect_lib.sh TwoDSubduction plot_visit_case $TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12
+        # no plot so that we could run in gui later:
+        #   ./aspect_lib.sh TwoDSubduction plot_visit_case $TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12 -b false
         case_dir="$3"
         [[ -d ${case_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: case directory(i.e. ${case_dir}) doesn't exist"; exit 1; }
 
