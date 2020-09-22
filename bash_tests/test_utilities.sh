@@ -11,6 +11,34 @@
 source "${ASPECT_LAB_DIR}/utilities.sh"
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+
+################################################################################
+# todo
+# test bash_to_python_array()
+# Inputs:
+#   local_passed_tests: number of passed tests
+#   local_failed_tests: number of failed tests
+test_bash_to_python_array()
+{
+    local_passed_tests=0
+    local_failed_tests=0
+    
+    # test 0
+    bash_array=(0 100 200)
+    bash_to_python_array
+    compare_outputs "${FUNCNAME[0]}" "[0, 100, 200]" "${python_array_like}"
+    if [[ $? = 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+    
+    # message
+    final_message ${FUNCNAME[0]} ${local_passed_tests} ${local_failed_tests}
+    return 0
+}
+
+
 ################################################################################
 # Test functions
 test_element_in(){
@@ -120,6 +148,7 @@ test_fix_route() {
 ################################################################################
 # main function
 # do all tests
+# todo
 main(){
     # parse
     project=$1
@@ -128,8 +157,8 @@ main(){
     passed_tests=0
     failed_tests=0
 
-    # Test translating visit scripts
-    # test_translate_visit
+    # Test bash_to_python_array
+    test_bash_to_python_array
     ((passed_tests+=local_passed_tests))
     ((failed_tests+=local_failed_tests))
 

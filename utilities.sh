@@ -363,6 +363,21 @@ check_variable(){
 
 
 ################################################################################
+# compare the contents of two outputs
+# Inputs:
+#   $1: function
+#   $2: standard output
+#   $3: output
+compare_outputs(){
+    if ! [[ $2 = "$3" ]]; then
+        cecho ${BAD} "$1 failed: output - ${3} is different from standard one - ${2}"
+        return 1
+    fi
+    return 0
+}
+
+
+################################################################################
 # compare the contents of two files
 # Inputs:
 #   $1: function
@@ -381,6 +396,33 @@ compare_files(){
         cecho ${BAD} "$1 failed: output file - ${3} is different from standard one - ${2}"
         return 1
     fi
+    return 0
+}
+
+
+################################################################################
+# todo
+# translate from a bash array to a python array-like output
+# Inputs:
+#   bash_array
+# Output
+#   python_array_like
+bash_to_python_array()
+{
+    # fisrt append a '['
+    python_array_like="["
+
+    # append members in 'bash_array'
+    i=0
+    for member in ${bash_array[@]}; do
+        # append a ',' before all but the first one
+        (( i > 0 )) && python_array_like="${python_array_like}, "
+        python_array_like="${python_array_like}${member}"
+        ((i++))
+    done
+
+    # at last, append a ']'
+    python_array_like="${python_array_like}]"
     return 0
 }
 
