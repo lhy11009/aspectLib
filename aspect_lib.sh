@@ -2,7 +2,7 @@
 # case manager
 # Usage:
 #   ./aspect_lib.sh + command + options
-# todo_future: use a file to compile remote address
+# future: use a file to compile remote address
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
 
@@ -117,7 +117,7 @@ submit(){
     # add an optional log file
     [[ "$4" != '' ]] && flag="${flag} -l $4"  # add -l log_file to flag, if $4 given
     # submit using slurm.sh,
-    # determine if there is a valid job id, todo
+    # determine if there is a valid job id, future
     # also add -P option for project name
     ssh ${server_info} << EOF > '.temp'
         eval "slurm.sh -n ${total_tasks} -t ${time_by_hour} -p ${partition} -P ${project} ${remote_case_prm} ${flag}"
@@ -151,7 +151,7 @@ install(){
         eval "[[ -d \"${remote_project_dir}\" ]]  || mkdir \"${remote_project_dir}\" "
 EOF
 
-    # set alias, add a line every time it executes, todo_future: fix this bug
+    # set alias, add a line every time it executes, future: fix this bug
     echo "export ${project}_DIR=\"${project_dir}\"" >> "${dir}/env/enable.sh"
     echo "export ${project}_DIR=\"${remote_project_dir}\"" >> "${dir}/env/enable_peloton.sh";
 
@@ -274,7 +274,7 @@ plot_visit_case(){
 
 
 ################################################################################
-# todo
+# future
 # build a project in aspect
 # usage of this is to bind up source code and plugins
 # Inputs:
@@ -342,7 +342,7 @@ build_aspect_project(){
 
 
 main(){
-    # parameter list, todo
+    # parameter list, future
     local project="$1"
     local local_root=$(eval "echo \${${project}_DIR}")
     local py_script="shilofue.${project}"
@@ -386,7 +386,6 @@ main(){
         quit_if_fail "aspect_lib.sh submit failed for case ${case_name}"
 
     elif [[ ${_commend} = 'submit_group' ]]; then
-        # todo
         local group_name="$3"
         local server_info="$4"
         local group_dir="${local_root}/${group_name}"
@@ -395,7 +394,7 @@ main(){
         local remote_root=${return_value}
         local remote_group_dir=${group_dir/"${local_root}"/"${remote_root}"}
         ssh "${server_info}" eval "[[ -d ${remote_group_dir} ]] && { rm -r ${remote_group_dir}; mkdir ${remote_group_dir}; }|| mkdir ${remote_group_dir}"
-        local log_file="$5"  # add an optional log_file, todo_future, move this to global settings
+        local log_file="$5"  # add an optional log_file, future, move this to global settings
         if [[ "${log_file}" != '' ]]; then
             # if there is no $5 given, log file is ''
             log_file=$(fix_route "${log_file}")

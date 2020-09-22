@@ -462,7 +462,7 @@ test_clean_log(){
 	# call function
 	clean_log "tests/integration/fixtures" "${log_file}"
 	contents=$(cat "${log_file}")  # debug
-	# todo compare file content
+	# future compare file content
 	if ! [[ "${contents}" = "job_dir job_id ST last_time_step last_time" ]]; then
 		cecho ${BAD} "test_clean_log failed, file contents are not correct"
 		return 1
@@ -497,7 +497,7 @@ main(){
 		test_parse_stdout
         	test_fix_route
 		test_element_in
-        # these two must be down with a slurm systems, todo_future: fix it
+        # these two must be down with a slurm systems, future: fix it
 		test_read_log
 		test_write_log
 		test_clean_log

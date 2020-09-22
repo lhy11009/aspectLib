@@ -88,7 +88,7 @@ test_clean_log(){
 	# call function
 	clean_log "tests/integration/fixtures" "${log_file}"
 	contents=$(cat "${log_file}")  # debug
-	# todo compare file content
+	# compare file content
 	if ! [[ "${contents}" = "job_dir job_id ST last_time_step last_time" ]]; then
 		cecho ${BAD} "test_clean_log failed, file contents are not correct"
 		return 1
@@ -119,7 +119,6 @@ test_fix_route() {
 
 ################################################################################
 # main function
-# todo
 # do all tests
 main(){
     # parse
