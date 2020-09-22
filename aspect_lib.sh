@@ -194,7 +194,7 @@ tranlate_visit_script(){
     done
 
     # output
-    printf "${contents}" > "${fileout}"
+    echo "${contents}" > "${fileout}"
 }
 
 
@@ -248,7 +248,7 @@ plot_visit_case(){
     [ -d "${img_dir}" ] || mkdir "${img_dir}" ]
 
     # get a list of scripts to plot
-    visit_script_bases=("initial_slab.py" "export_particles.py")
+    visit_script_bases=("initial_slab.py" "export_particles.py" "slab.py")
     visit_script_dir="${dir}/visit_scripts/${project}"
         
     # call python module to generate visit_keys_values file
