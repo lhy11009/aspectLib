@@ -401,7 +401,6 @@ compare_files(){
 
 
 ################################################################################
-# todo
 # translate from a bash array to a python array-like output
 # Inputs:
 #   bash_array
@@ -426,6 +425,77 @@ bash_to_python_array()
     return 0
 }
 
+
+################################################################################
+# translate from a a python array-like string to a bash array
+# currently no ' ', '[' and ']'is allowed to exist in values
+# Inputs:
+#   python_array_like
+# Output:
+#   bash_array
+python_to_bash_array()
+{
+    # unset output
+    unset bash_array
+
+    # string substitution
+    local altered_string=${python_array_like//[\[\]\ ]/}
+    IFS="," read -r -a bash_array <<< "${altered_string}"
+}
+
+
+################################################################################
+# todo
+# read options from a json file
+# Inputs:
+#   filein: a json file
+#   keys: an array of keys in json file
+#   is_array: whether we want to parse an array
+# Outputs:
+#   value: value recorded in json file
+read_json_file()
+{
+    # unset output variables
+    unset value
+
+    # check inputs
+    [[ -e ${filein} && ${filein} =~ ".json" ]] || { cecho ${BAD} "${FUNCNAME[0]} filein must be a json file"; exit 1; }
+    [[ -z ${keys} ]] && { cecho ${BAD} "${FUNCNAME[0} keys cannot be vacant"; exit 1; }
+    [[ -z ${is_array} ]] && is_array="false"
+    [[ ${is_array} = "true" || ${is_array} = "false" ]] || { cecho ${BAD} "${FUNCNAME[0]}: is_araay must be true or false"; exit 1; }
+
+    # set IFS, so that we split string by " "
+    IFS=" "
+
+    # read from file
+    # sed is used to get rid of "
+    eval "cat ${filein} | JSON.sh | sed 's/\"//g' > ./temp"
+
+    # construct pattern
+    local i=0
+    local pattern=""
+    for key in ${keys[@]}; do
+        (( i > 0 )) && pattern="${pattern},"
+        pattern="${pattern}${key}"
+        ((i++))
+    done
+
+    # grep for pattern
+    local second_part=$(grep -F "[${pattern}]" temp | sed -E "s/\[${pattern}\](\t|\ )*//g")
+    if [[ ${is_array} = "true" ]]; then
+        python_array_like=${second_part}
+        python_to_bash_array
+        value=("${bash_array[@]}")
+    else
+        # find pattern, then split the line
+        value=${second_part}
+    fi
+
+    # unset input variables
+    unset is_array
+
+    return 0
+}
 
 ################################################################################
 # Test functions

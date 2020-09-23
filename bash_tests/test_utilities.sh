@@ -13,7 +13,6 @@ dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 
 ################################################################################
-# todo
 # test bash_to_python_array()
 # Inputs:
 #   local_passed_tests: number of passed tests
@@ -28,6 +27,75 @@ test_bash_to_python_array()
     bash_to_python_array
     compare_outputs "${FUNCNAME[0]}" "[0, 100, 200]" "${python_array_like}"
     if [[ $? = 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+    
+    # message
+    final_message ${FUNCNAME[0]} ${local_passed_tests} ${local_failed_tests}
+    return 0
+}
+
+################################################################################
+# todo
+# test python_to_bash_array
+# Inputs:
+#   local_passed_tests: number of passed tests
+#   local_failed_tests: number of failed tests
+test_python_to_bash_array()
+{
+    local_passed_tests=0
+    local_failed_tests=0
+    
+    # test 0
+    python_array_like="[0, 100, 200]"
+    python_to_bash_array
+    compare_outputs "${FUNCNAME[0]}" "0 100 200" "${bash_array[*]}"
+    if [[ $? = 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+    
+    # message
+    final_message ${FUNCNAME[0]} ${local_passed_tests} ${local_failed_tests}
+    return 0
+}
+
+
+################################################################################
+# todo
+# test read_json_file
+# read_json_file()
+# Inputs:
+#   local_passed_tests: number of passed tests
+#   local_failed_tests: number of failed tests
+test_read_json_file()
+{
+    local_passed_tests=0
+    local_failed_tests=0
+
+    # test 0
+    local unmatched_output=0
+    filein="./test1.json"
+    # first key
+    keys=("project")
+    read_json_file
+    compare_outputs "${FUNCNAME[0]}" "TwoDSubduction" "${value}"
+    ((unmatched_output+=$?))
+    # second key
+    keys=("slurm" "nodes")
+    read_json_file
+    compare_outputs "${FUNCNAME[0]}" "1" "${value}"
+    ((unmatched_output+=$?))
+    # third key, this time an array
+    keys=("slurm" "modules_to_unload")
+    is_array='true'
+    read_json_file
+    compare_outputs "${FUNCNAME[0]}" "openmpi openmpi1" "${value[*]}"
+    ((unmatched_output+=$?))
+    if [[ ${unmatched_output} = 0 ]]; then
         ((local_passed_tests++))
     else
         ((local_failed_tests++))
@@ -157,11 +225,20 @@ main(){
     passed_tests=0
     failed_tests=0
 
-    # Test bash_to_python_array
+    # test python_to_bash_array
+    test_python_to_bash_array
+    ((passed_tests+=local_passed_tests))
+    ((failed_tests+=local_failed_tests))
+
+    # test bash_to_python_array
     test_bash_to_python_array
     ((passed_tests+=local_passed_tests))
     ((failed_tests+=local_failed_tests))
 
+    # test read_json_file
+    test_read_json_file
+    ((passed_tests+=local_passed_tests))
+    ((failed_tests+=local_failed_tests))
 
     # Test creating case and group with aspect_lib and submit to server
     if [[ -n $server_info ]]; then
