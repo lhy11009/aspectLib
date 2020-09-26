@@ -1,7 +1,6 @@
 import json
 import re
 import os
-import math
 import shilofue.json
 import numpy as np
 from importlib import resources
@@ -241,7 +240,7 @@ class UNITCONVERT():
 def re_neat_word(_pattern):
     '''
     Eliminate ' ', '\\t', '\\n' in front of and at the back of _pattern
-    todo: add test function
+    future: add test function
     Inputs:
         _pattern(str): input
     Outputs:
@@ -255,7 +254,7 @@ def re_neat_word(_pattern):
 def re_count_indent(_pattern):
     '''
     conunt indentation at the start of a string
-    todo: use system ts for tab space
+    future: use system ts for tab space
     Inputs:
         _pattern(str): input
     Outputs:
@@ -274,18 +273,15 @@ def re_count_indent(_pattern):
 
 
 def ggr2cart(lat,lon,r):
-
     # transform spherical lat,lon,r geographical coordinates 
     # to global cartesian xyz coordinates
     # 
     # input:  lat,lon,r in radians, meters
     # output: x,y,z in meters 3 x M
-    
-    
-    sla = math.sin(lat)  
-    cla = math.cos(lat) 
-    slo = math.sin(lon)
-    clo = math.cos(lon)
+    sla = np.sin(lat)  
+    cla = np.cos(lat) 
+    slo = np.sin(lon)
+    clo = np.cos(lon)
 
     x = r * cla * clo
     y = r * cla * slo 
@@ -294,17 +290,70 @@ def ggr2cart(lat,lon,r):
     return x,y,z
 
 def ggr2cart2(lon, r):
-
     # transform spherical lon, r geographical coordinates 
     # to global cartesian xy coordinates
     # 
     # input:  phi, r in radians, meters
     # output: x,y in meters 2 x M
-    
-    slo = math.sin(lon)
-    clo = math.cos(lon)
+    slo = np.sin(lon)
+    clo = np.cos(lon)
 
     x = r * clo
     y = r * slo 
 
     return x, y
+
+
+def cart2sph(x,y,z):
+    """
+    A function that transfers cartisen geometry to spherical geometry
+    """
+    r = (x**2+y**2+z**2)**0.5
+    th = np.arctan2((x**2+y**2)**0.5,z)
+    ph = np.arctan2(y,x)
+    return r, th, ph
+
+
+def cart2sph2(x,y):
+    """
+    A function that transfers cartisen geometry to spherical geometry in 2d
+    """
+    r = (x**2+y**2)**0.5
+    ph = np.arctan2(y,x)
+    return r, ph
+
+
+def Make2dArray(x):
+    """
+    A function that returns 2d nparray, this could be useful to generate uniform output
+    """
+    if type(x) in [int, float]:
+        array_ = Make2dArray([x])
+    elif type(x) is list:
+        array_ = np.array(x)
+        array_ = array_.reshape((1, -1)) 
+    elif type(x) is np.array and x.ndix == 1:
+        array_ = x.reshape((1, -1))
+    else:
+        raise TypeError("Make2dArray, x must be int, float, list or 1d ndarray")
+    return array_
+            
+
+def WriteFileHeader(ofile, header):
+    """
+    A function that writes statistic-like file header
+    Inputs:
+        ofile(str): file to output
+        header(dict): dictionary of header to output
+    """
+    # assert file not existing
+    with open(ofile, 'w') as fout:
+        output = ''
+        for key, value in header.items():
+            col = value['col']
+            unit = value.get('unit', None)
+            output += '# %d: %s' % (col, key)
+            if unit is not None:
+                output += ' (%s)' % unit 
+            output += '\n'
+        fout.write(output)

@@ -8,7 +8,8 @@ import shilofue.Parse as Parse
 import shilofue.Doc as Doc
 import shilofue.Plot as Plot
 import shilofue.Rheology as Rheology
-from shilofue.Utilities import my_assert, ggr2cart2
+from numpy import linalg as LA
+from shilofue.Utilities import my_assert, ggr2cart2, cart2sph2, Make2dArray
 
 
 # global varibles
@@ -149,7 +150,103 @@ class BASH_OPTIONS(Parse.BASH_OPTIONS):
         # own implementations
         # initial adaptive refinement
         self.odict['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
+
+
+class VISIT_XYZ(Parse.VISIT_XYZ):
+    """
+    todo
+    Read .xyz file exported from visit and do analysis
+    Attributes:
+        max_depth: max_depth of slab
+
+    """
+    def __init__(self):
+        """
+        initiation
+        """
+        # call parental function
+        Parse.VISIT_XYZ.__init__(self)
+
+    def Analyze(self, kwargs):
+        """
+        analyze data
+        Args:
+            kwargs(dict): options
+                radius(float): radius of the earth
+                depth_ranges(float): ranges of depth to compute dip angle
+        """
+        # get options
+        col_x = self.column_indexes['x']
+        col_y = self.column_indexes['y']
+        col_id = self.column_indexes['id']
+        radius = kwargs.get("radius", 6371e3)
+
+        # sort by id
+        self.data = self.data[self.data[:, col_id].argsort()]
+
+        # transfer to sph
+        x = self.data[:, col_x]
+        y = self.data[:, col_y]
+        r, ph = cart2sph2(x, y)
+        depth = radius - r
+
+        # get maximum depth
+        max_depth = np.max(depth)
+
+        # get trench position
+        # a depth for trench, in m
+        trench_depth = kwargs.get('trench_depth', 1e3)
+        mask_slab = (depth > trench_depth)
+        trench_position = ph[mask_slab][0]
+
+        # get length of slab
+        # both length and dip has n-1 component because they are computed on the intervals between 2 points
+        length = ((r[0: -1] - r[1:])**2.0 + r[0: -1]**2.0*(ph[0: -1] - ph[1:])**2.0)**0.5
+        slab_length = LA.norm(length, 1)
+
+        # get dip angle
+        dip = SlabDip(r[0: -1], ph[0: -1], r[1:], ph[1:])
+
+        # get average curvature in depth range
+        depth_ranges = kwargs.get('depth_ranges', [[0.0, 6371e3]])
+        my_assert(type(depth_ranges) is list, TypeError, "VISIT_XYZ.Analyze: depth_ranges must be a list")
+        dips_in_ranges = np.zeros(len(depth_ranges))
+        limit = 1e-6
+        for i in range(len(depth_ranges)):
+            depth_range = depth_ranges[i]
+            mask_range = (dip > depth_range[0]) * (dip < depth_range[1])
+            total = dip[mask_range].dot(length[mask_range])
+            weight = LA.norm(length[mask_range], 1)
+            if weight < limit:
+                # i.e. max_depth < depth_range[1]
+                dips_in_ranges[i] = 0.0
+            else:
+                dips_in_ranges[i] = total / weight
     
+        # construct header
+        self.output_header = {
+            'Maximum depth': {'col': 0, 'unit': self.header['x']['unit']},
+            'Trench position': {'col': 1},
+            'Slab length': {'col': 2, 'unit': self.header['x']['unit']}
+        }
+        total_cols = 2
+        for i in range(len(depth_ranges)):
+            key = 'Dip angle %d_%d' % (int(depth_ranges[i][0]), int(depth_ranges[i][1]))
+            self.output_header[key] = {'col': i+total_cols}
+
+        # manage output
+        output_data_temp = [max_depth, trench_position, slab_length]
+        for i in range(len(depth_ranges)):
+            output_data_temp.append(dips_in_ranges[i])
+        self.output_data = Make2dArray(output_data_temp)
+
+
+def SlabDip(r0, ph0, r1, ph1):
+    """
+    compute the dip angle between 2 adjacent point
+    """
+    alpha = np.arctan2((r0 - r1), (r1 * (ph1 - ph0)))
+    return alpha
 
     
 def main():

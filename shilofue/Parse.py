@@ -2,12 +2,13 @@ import re
 import os
 import shutil
 import json
-from shilofue.Utilities import my_assert, re_neat_word
+import numpy as np
+from shilofue.Utilities import my_assert, re_neat_word, WriteFileHeader
 
 '''
 For now, my strategy is first defining a method to parse inputs for every key word,
 then defining a class to parse different type of inputs.
-Todo:
+Future:
     a. put them in a bigger class
     b. add method for functions
 '''
@@ -76,7 +77,7 @@ class CASE():
         particle_data(list):
             list of particle coordinates
     '''
-    # todo add interface for extra
+    # future: add interface for extra
     def __init__(self, _idict, **kwargs):
         '''
         initiate from a dictionary
@@ -502,6 +503,97 @@ class BASH_OPTIONS():
             for key, value in self.odict.items():
                 fout.write("%s       %s\n" % (key, value))
         pass
+
+
+class VISIT_XYZ():
+    """
+    Read .xyz file exported from visit and do analysis
+    Attributes:
+        data(nparray): data
+        header(dict): headers in file
+        output_data(nparray): data to output
+        output_header(dict): output headers in file
+        self.column_indexes(dict): record index of col in self.data
+    """
+    def __init__(self):
+        """
+        initiation
+        """
+        self.data = []
+        self.output_data = np.array([])
+        self.header = {}
+        self.output_header = {}
+        self.column_indexes = {}
+        pass
+
+    def ReadData(self, filein):
+        """
+        read date form file
+        Args:
+            filein(str): file input
+        """
+        # assert file
+        my_assert(os.access(filein, os.R_OK), FileNotFoundError,
+                  'VISIT_XYZ.__init__: visit xyz file - %s cannot be read' % filein)
+
+        # construct cols
+        cols = []
+        i = 0
+        for key, value in self.header.items():
+            cols.append(value['col'])
+            # record column in self.data
+            self.column_indexes[key] = i
+            i += 1
+
+        # read data
+        self.data = np.loadtxt(filein, usecols=(cols), skiprows=2)
+
+    def Analyze(self, kwargs):
+        """
+        analyze data
+        """
+        pass
+
+    def Output(self, ofile):
+        """
+        output data
+        Inputs:
+            kwargs(dict): options
+                ofile(str): file to output
+        """
+        # create a new file and write header
+        if not os.path.isfile(ofile):
+            WriteFileHeader(ofile, self.output_header)
+
+        with open(ofile, 'a') as fout:
+            np.savetxt(fout, self.output_data, fmt='%-20.8e')
+
+    def __call__(self, filein, **kwargs):
+        """
+        call function
+        Args:
+            filein(str): file input
+            kwarg(dict): options
+                cols(tuple): columns to import
+        """
+        # options
+        default_header = {
+            'x': {'col': 1 },
+            'y': {'col': 2 },
+            'id': {'col': 3 }
+        }
+        self.header = kwargs.get("header", default_header)
+
+        # read data 
+        self.ReadData(filein)
+
+        # analyze
+        self.Analyze(kwargs)
+
+        # output if file given 
+        ofile = kwargs.get('ofile', None)
+        if ofile is not None:
+            self.Output(ofile)
 
 
 def ParseFromDealiiInput(fin):

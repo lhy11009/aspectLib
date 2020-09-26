@@ -102,3 +102,33 @@ def test_bash_options():
     test BASH_OPTIONS class
     """
     pass
+
+
+def test_visit_xyz():
+    """
+    test VISIT_XYZ class
+    """
+    # test 1
+    test_file = os.path.join(test_source_dir, 'TwoDSubduction', 'visit_xyz', 'visit_particles.xyz')
+    Visit_Xyz = TwoDSubduction.VISIT_XYZ()
+    # call function
+    ofile = os.path.join(test_dir, 'visit_xyz.txt')
+    if os.path.isfile(ofile):
+        # remove previous output
+        os.remove(ofile)
+    # a header for interpreting file format
+    # note that 'col' starts form 0
+    header = {
+        'x': {'col': 1, 'unit': 'm'},
+        'y': {'col': 2, 'unit': 'm' },
+        'id': {'col': 4}
+    }
+    # depth range
+    # this is for computing dip angles with different ranges
+    depth_ranges = [[0, 100e3], [100e3, 400e3], [400e3, 6371e3]]
+    Visit_Xyz(test_file, header=header, ofile=ofile, depth_ranges=depth_ranges)
+    # compare output
+    standard_output = os.path.join(test_source_dir, 'TwoDSubduction', 'visit_xyz', 'standard_output1')
+    with open(standard_output, 'r') as standard_fin:
+        with open(ofile, 'r') as fin:
+            assert(fin.read() == standard_fin.read())
