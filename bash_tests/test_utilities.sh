@@ -10,6 +10,7 @@
 
 source "${ASPECT_LAB_DIR}/utilities.sh"
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+test_dir="${dir}/test_utilities"
 
 
 ################################################################################
@@ -38,7 +39,6 @@ test_bash_to_python_array()
 }
 
 ################################################################################
-# todo
 # test python_to_bash_array
 # Inputs:
 #   local_passed_tests: number of passed tests
@@ -65,7 +65,6 @@ test_python_to_bash_array()
 
 
 ################################################################################
-# todo
 # test read_json_file
 # read_json_file()
 # Inputs:
@@ -96,6 +95,35 @@ test_read_json_file()
     compare_outputs "${FUNCNAME[0]}" "openmpi openmpi1" "${value[*]}"
     ((unmatched_output+=$?))
     if [[ ${unmatched_output} = 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+    
+    # message
+    final_message ${FUNCNAME[0]} ${local_passed_tests} ${local_failed_tests}
+    return 0
+}
+
+
+#################################################################################
+# test parse_stdout1
+# Inputs:
+#   local_passed_tests: number of passed tests
+#   local_failed_tests: number of failed tests
+test_parse_stdout1()
+{
+    local_passed_tests=0
+    local_failed_tests=0
+    
+    # test1
+    filein="${test_dir}/test_parse_stdout1/task.stdout"
+    timestep=0
+    parse_stdout1 "${filein}" "${timestep}"
+    # compare to standard output
+    local standard_content="*** Timestep 0:  t=0 years"
+    compare_outputs "${FUNCNAME[0]}" "$standard_content" "${content}"
+    if [[ $? = 0 ]]; then
         ((local_passed_tests++))
     else
         ((local_failed_tests++))
@@ -216,7 +244,6 @@ test_fix_route() {
 ################################################################################
 # main function
 # do all tests
-# todo
 main(){
     # parse
     project=$1
@@ -237,6 +264,11 @@ main(){
 
     # test read_json_file
     test_read_json_file
+    ((passed_tests+=local_passed_tests))
+    ((failed_tests+=local_failed_tests))
+
+    # test parse_stdout1
+    test_parse_stdout1
     ((passed_tests+=local_passed_tests))
     ((failed_tests+=local_failed_tests))
 

@@ -1,0 +1,91 @@
+==========================================
+SLURM_JOB_ID = 2542290
+SLURM_NODELIST = c8-[87-90]
+CUDA_VISIBLE_DEVICES = 
+==========================================
+-----------------------------------------------------------------------------
+-- This is ASPECT, the Advanced Solver for Problems in Earth's ConvecTion.
+--     . version 2.3.0-pre (TwoDSubduction, d9338ac6d)
+--     . using deal.II 9.3.0-pre (master, 6c57c0e6fc)
+--     .       with 32 bit indices and vectorization level 1 (128 bits)
+--     . using Trilinos 12.10.1
+--     . using p4est 2.0.0
+--     . running in OPTIMIZED mode
+--     . running with 128 MPI processes
+-----------------------------------------------------------------------------
+
+Loading shared library </home/lochy/software/aspect/plugins/subduction_temperature2d/libsubduction_temperature2d.so>
+Loading shared library </home/lochy/software/aspect/plugins/prescribe_field/libprescribed_temperature.so>
+
+
+   Loading Ascii data initial file /home/lochy/software/aspect/data/initial-temperature/ascii-data/test/box_2d_Vs_YT16.txt.
+
+-----------------------------------------------------------------------------
+-- For information on how to cite ASPECT, see:
+--   https://aspect.geodynamics.org/citing.html?ver=2.3.0-pre&NewtonSolver=1&dg=1&particles=1&sha=d9338ac6d&src=code
+-----------------------------------------------------------------------------
+Number of active cells: 2,048 (on 6 levels)
+Number of degrees of freedom: 101,028 (16,770+2,145+8,385+18,432+18,432+18,432+18,432)
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00000
+     RMS, max velocity:        0 m/year, 0 m/year
+     Temperature min/avg/max:  273 K, 1641 K, 1673 K
+     Writing depth average:    output/depth_average
+     Writing particle output:  output/particles/particles-00000
+
+Number of active cells: 3,584 (on 7 levels)
+Number of degrees of freedom: 176,988 (29,474+3,753+14,737+32,256+32,256+32,256+32,256)
+
+   Postprocessing:
+     Writing graphical output:     output/solution/solution-00001
+     RMS, max velocity:            0 m/year, 0 m/year
+     Temperature min/avg/max:      273 K, 1641 K, 1673 K
+     Writing depth average:        output/depth_average
+     Number of advected particles: 1000
+
+Number of active cells: 4,763 (on 8 levels)
+Number of degrees of freedom: 236,099 (39,710+5,066+19,855+42,867+42,867+42,867+42,867)
+
+   Postprocessing:
+     Writing graphical output:     output/solution/solution-00002
+     RMS, max velocity:            0 m/year, 0 m/year
+     Temperature min/avg/max:      273 K, 1641 K, 1673 K
+     Writing depth average:        output/depth_average
+     Number of advected particles: 1000
+
+Number of active cells: 8,702 (on 9 levels)
+Number of degrees of freedom: 431,796 (72,834+9,273+36,417+78,318+78,318+78,318+78,318)
+
+   Postprocessing:
+     Writing graphical output:     output/solution/solution-00003
+     RMS, max velocity:            0 m/year, 0 m/year
+     Temperature min/avg/max:      273 K, 1641 K, 1707 K
+     Writing depth average:        output/depth_average
+     Number of advected particles: 1000
+
+Number of active cells: 15,416 (on 10 levels)
+Number of degrees of freedom: 766,346 (129,890+16,535+64,945+138,744+138,744+138,744+138,744)
+
+   Postprocessing:
+     Writing graphical output:     output/solution/solution-00004
+     RMS, max velocity:            0 m/year, 0 m/year
+     Temperature min/avg/max:      273 K, 1641 K, 1682 K
+     Writing depth average:        output/depth_average
+     Number of advected particles: 1000
+
+Number of active cells: 32,879 (on 11 levels)
+Number of degrees of freedom: 1,633,364 (276,408+35,108+138,204+295,911+295,911+295,911+295,911)
+
+   Postprocessing:
+     Writing graphical output:     output/solution/solution-00005
+     RMS, max velocity:            0 m/year, 0 m/year
+     Temperature min/avg/max:      273 K, 1641 K, 1679 K
+     Writing depth average:        output/depth_average
+     Number of advected particles: 1000
+
+Number of active cells: 45,377 (on 12 levels)
+Number of degrees of freedom: 2,260,036 (384,984+48,988+192,492+408,393+408,393+408,393+408,393)
+
+*** Timestep 0:  t=0 years
+*** Timestep 1:  t=1317.88 years

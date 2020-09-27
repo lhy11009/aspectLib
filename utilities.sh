@@ -445,7 +445,6 @@ python_to_bash_array()
 
 
 ################################################################################
-# todo
 # read options from a json file
 # Inputs:
 #   filein: a json file
@@ -496,6 +495,46 @@ read_json_file()
 
     return 0
 }
+
+
+################################################################################
+# parse from a stdout file from aspect
+# Inputs:
+#   $1(str): filename
+#   $2(int): time step number
+# Outputs:
+#   content: content of timestep
+parse_stdout1()
+{
+    # unset output variables
+    unset content
+    
+    # find lines in file
+    local grep_output; local grep_output_array; local next_step;
+    local index0; local index1
+    IFS=":"
+    # find start line
+    grep_output=$(grep -n "Timestep $2" "$1")
+    grep_output_array=(${grep_output})
+    index0=${grep_output_array[0]}
+    [[ -z ${index0} ]] && { cecho ${BAD} "${FUNCNAME[0]}: cannot find start line."; exit 1; }
+    # find end line
+    ((next_step=$2+1))
+    grep_output=$(grep -n "Timestep ${next_step}" "$1")
+    grep_output_array=(${grep_output})
+    index1=${grep_output_array[0]}
+    [[ -z ${index1} ]] && cecho ${WARN} "${FUNCNAME[0]}: cannot find end line, will take end of the file" || ((index1-=1))
+    
+    # read file
+    if [[ -n ${index1} ]]; then
+        content=$(sed -n "${index0},${index1}"p  $1)
+    else
+        content=$(sed -n "${index0}"p  $1)
+    fi
+
+    return 0
+}
+
 
 ################################################################################
 # Test functions
@@ -597,7 +636,7 @@ test_fix_route() {
     fixed_route=$(fix_route ".")
     [[ "${fixed_route}" = "${dir}" ]] || { cecho ${BAD} "test_fix_route failed for test 4"; exit 1; }
     # test5, test for relative address starts with .'
-    fixed_route=$(fix_route ".test")
+    fixed_route=$(fix_route ".test"*** Timestep 1:  t=1317.88 years)
     [[ "${fixed_route}" = "${dir}/.test" ]] || { cecho ${BAD} "test_fix_route failed for test 5"; exit 1; }
     cecho ${GOOD} "test_fix_route passed"
 }
