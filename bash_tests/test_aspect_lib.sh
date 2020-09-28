@@ -199,7 +199,7 @@ test_aspect_create_server1(){
     [[ -e "${test_json_file}" ]] || { cecho ${BAD} "test file ${test_json_file} doesn't exist"; exit 1; }
     cp ${test_json_file} "${ASPECT_LAB_DIR}/config_case.json"
     
-    # todo clean previous files
+    # clean previous files
     eval "${ASPECT_LAB_DIR}/process.sh remove ${local_log_file} ${server_info}"
 
     # call function
@@ -245,7 +245,7 @@ test_aspect_lib_remote(){
     test_json_file="${dir}/tests/integration/fixtures/config_case.json"
     [[ -e "${test_json_file}" ]] || { cecho ${BAD} "test file ${test_json_file} doesn't exist"; exit 1; }
     eval "cp ${test_json_file} ${dir}/"
-    # todo clean previous files
+    # clean previous files
     ./process.sh remove "${local_log_file}" "${server_info}"
     # call function
     ./aspect_lib.sh "${project}" 'create_submit' "${server_info}" "${local_log_file}"
@@ -314,7 +314,6 @@ test_translate_visit()
 # Test translating a visit script: test 0
 test_translate_visit0()
 {
-    # todo
     # A standard interface to do integration
     source_dir="${dir}/test_aspect_lib/test_translate_visit"
 
@@ -333,6 +332,33 @@ test_translate_visit0()
     compare_files "${FUNCNAME[0]}" "${file_out_std}" "${file_out}"
     [[ $? -eq 0 ]] || return 1
     return 0
+}
+
+################################################################################
+# test parse_solver_output
+test_parse_solver_output()
+{
+    local_passed_tests=0
+    local_failed_tests=0
+
+    source_dir="${dir}/test_aspect_lib/test_parse_solver_output"
+    # test1
+    local filein="${source_dir}/task.stdout"
+    local fileout_std="${source_dir}/output_std"
+    # remove old file
+    local fileout="${test_dir}/test_parse_solver_output"
+    [[ -e ${fileout} ]] && rm "${fileout}"
+    local timestep=0
+    ./aspect_lib.sh "${project}" "parse_solver_output" "${filein}" "${fileout}" "${timestep}"
+    compare_files "${FUNCNAME[0]}" "${fileout_std}" "${fileout}"
+    if [[ $? -eq 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+
+    # message
+    final_message ${FUNCNAME[0]} ${local_passed_tests} ${local_failed_tests}
 }
 
 
@@ -354,6 +380,11 @@ main(){
 
     # Test creating case and group with aspect_lib
     test_aspect_create
+    ((passed_tests+=local_passed_tests))
+    ((failed_tests+=local_failed_tests))
+
+    # Test parsing solver output from stdout file
+    test_parse_solver_output
     ((passed_tests+=local_passed_tests))
     ((failed_tests+=local_failed_tests))
 

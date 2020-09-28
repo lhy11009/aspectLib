@@ -517,7 +517,7 @@ parse_stdout1()
     grep_output=$(grep -n "Timestep $2" "$1")
     grep_output_array=(${grep_output})
     index0=${grep_output_array[0]}
-    [[ -z ${index0} ]] && { cecho ${BAD} "${FUNCNAME[0]}: cannot find start line."; exit 1; }
+    [[ -z ${index0} ]] && { echo "${FUNCNAME[0]}: hit end of the file - $1"; return 1; }
     # find end line
     ((next_step=$2+1))
     grep_output=$(grep -n "Timestep ${next_step}" "$1")
@@ -532,6 +532,78 @@ parse_stdout1()
         content=$(sed -n "${index0}"p  $1)
     fi
 
+    return 0
+}
+
+
+################################################################################
+# parse blocks of outputs, start with a key word and end with vacant line
+# Inputs:
+#   $1(str): content
+#   $2(str): key word
+# Outputs:
+#   block_outputs(array): an array of blocks of content
+# e.g.:
+#   parse_block_outputs "${content}" "Rebuilding Stokes"
+parse_block_outputs()
+{
+    local content=$1
+    local key=$2
+
+    # unset outputs
+    block_outputs=()
+
+    # parse
+    local output=''
+    local start=0
+    while IFS= read -r line; do
+        if [[ ${start} -eq 0 ]]; then
+            # hit next info
+            # start to read
+            # read line to output
+            [[ ${line} =~ "${key}" ]] && { start=1; output="${output} ${line}"; }
+        else
+            if [[ ${line} = '' ]]; then
+                # hit vacant line
+                # append to outputs and reset output
+                # undo start, wait for next info
+                block_outputs+=("${output}")
+                output=''
+                start=0
+            else
+                # read to output
+                output="${output} ${line}"
+            fi
+        fi
+    done <<< "${content}"
+    return 0
+}
+        
+
+################################################################################
+# Parse value in output with a key and a pair of diliminiter
+# Inputs:
+#   $1(str): content
+#   $2(str): key
+#   $3(str): deliminiter in front, default is ,
+#   $4(str): deliminiter at the back, default is ,
+parse_output_value(){
+    local content=$1
+    local key=$2
+    local dlm; local dlm1
+    [[ -n $3 ]] && dlm=$3 || dlm=","
+    [[ -n $4 ]] && dlm1=$4 || dlm1=","
+
+    # reset output
+    unset value
+
+    # get value
+    # return vacant string if key not found
+    [[ ${content} =~ ${key} ]] || { value=""; return 0; }
+    # get value otherwise
+    local temp
+    temp=${content#*"${key}"*"${dlm}"[ ]*}
+    value=${temp%%["${dlm1}"]**}
     return 0
 }
 

@@ -135,6 +135,45 @@ test_parse_stdout1()
 }
 
 
+
+#################################################################################
+# test parse_output_value
+# Inputs:
+#   local_passed_tests: number of passed tests
+#   local_failed_tests: number of failed tests
+test_parse_output_value()
+{
+    local_passed_tests=0
+    local_failed_tests=0
+
+    # test1
+    local content="Rebuilding Stokes preconditioner...\
+    Solving Stokes system... 200+39 iterations.\
+       Relative nonlinear residual (total Newton system) after nonlinear iteration 1: 1,\
+ norm of the rhs: 2.26396e+14"
+    parse_output_value "${content}" "nonlinear iteration" ":" ","
+    compare_outputs "${FUNCNAME[0]}" "1" "${value}"
+    if [[ $? = 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+
+    # test2
+    parse_output_value "${content}" "norm of the rhs" ":" ","
+    compare_outputs "${FUNCNAME[0]}" "2.26396e+14" "${value}"
+    if [[ $? = 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+
+    # message
+    final_message ${FUNCNAME[0]} ${local_passed_tests} ${local_failed_tests}
+    return 0
+}
+
+
 ################################################################################
 # Test functions
 test_element_in(){
@@ -269,6 +308,11 @@ main(){
 
     # test parse_stdout1
     test_parse_stdout1
+    ((passed_tests+=local_passed_tests))
+    ((failed_tests+=local_failed_tests))
+
+    # test parse_output_value
+    test_parse_output_value
     ((passed_tests+=local_passed_tests))
     ((failed_tests+=local_failed_tests))
 

@@ -35,6 +35,18 @@ parse_options(){
         -b=*|--bool=*)
           bool="${param#*=}"
         ;;
+        #####################################
+        # list
+        #####################################
+        -l)
+          shift
+          vlist=()
+          while [[ true ]]; do
+            [[ -z "$1" ]] && { cecho ${BAD} "${FUNCNAME[0]}: no value given for list"; exit 1; }
+            vlist+=("$1")
+            [[ -z "$2" || "$2" = -* ]] && break || shift
+          done
+        ;;
       esac
       shift
     done
@@ -56,6 +68,10 @@ Usage:
 
 Options:
     --bool -b       A bool value that is either 'true' or 'false'
+    
+    -l              a lisl of value
+                    for example:
+                        -l 1.0 2.0 3.0
 "
 }
 
@@ -274,6 +290,121 @@ plot_visit_case(){
 
 
 ################################################################################
+# outputs from solver
+# Inputs:
+#   filein: file to read from
+#   fileout: file to output to
+#   
+parse_solver_output(){
+    # parse in options
+    # assert the list of value
+    local start; local interval; local end;
+    if [[ -n ${vlist} ]]; then
+        if [[ ${#vlist[@]} -eq 3 ]]; then
+            start=${vlist[0]}
+            interval=${vlist[1]}
+            end=${vlist[2]}
+        else
+            cecho ${BAD} "${FUNCNAME[0]}: If vlist exists, it must be a list of length of 3"; exit 1;
+        fi
+    else
+        start=0
+        interval=1
+        # set a max number to avoid dead loop
+        end=1000000
+    fi
+
+    # loop for timesteps
+    timestep=${start}
+    while ((timestep<end)); do
+        parse_solver_output_timestep
+        
+        # check if this is successful
+        # we take for granted that any non-zero state
+        # indicates that we reach the EOF
+        [[ $? -eq 0 ]] || break
+
+        ((timestep+=interval))
+    done
+    return 0
+}
+
+
+################################################################################
+# outputs from solver for a timestep
+# Inputs:
+#   filein: file to read from
+#   fileout: file to output to
+#   timestep(int): time step
+# Returns:
+#   0
+#   1: reach end of the file
+#   2: no such outputs presented
+parse_solver_output_timestep(){
+    # read input 
+    [[ -z ${filein} ]] && { cecho ${BAD} "${FUNCNAME[0]}: filein must be given"; exit 1; }
+    [[ -z ${fileout} ]] && { cecho ${BAD} "${FUNCNAME[0]}: fileout must be given"; exit 1; }
+    [[ -z ${timestep} ]] && { cecho ${BAD} "${FUNCNAME[0]}: timestep must be given"; exit 1; }
+    
+    # parse content from stdout file 
+    parse_stdout1 "${filein}" "${timestep}"
+    [[ $? -eq 0 ]] || { echo "${FUNCNAME[0]}: timestep ${timestep} seems to hit end of the file ${filein}"; return 1; }
+
+    # parse one time step
+    local solver_outputs=()
+    local output=''
+    local start=0
+    parse_block_outputs "${content}" "Rebuilding Stokes"
+
+    # get useful information
+    # number of nonlinear solver
+    local nnl="${#block_outputs[@]}"
+    # Relative nonlinear residual (total Newton system)
+    local rnrs=()
+    # norm of the rhs
+    local nors=()
+    # newton_derivative_scaling_factor
+    local ndsfs=()
+    local temp; local temp1
+    for block_output in "${block_outputs[@]}"; do
+        # get rnr
+        parse_output_value "${block_output}" "nonlinear iteration" ":" ","
+        [[ -z ${value} ]] && { cecho ${WARN} "${FUNCNAME[0]}: ${filein} doens't have solver outputs"; return 2; } 
+        rnrs+=("${value}")
+        # get nors
+        parse_output_value "${block_output}" "norm of the rhs" ":" ","
+        nors+=("${value}")
+        # get ndrsf
+        parse_output_value "${block_output}" "newton_derivative_scaling_factor" ":" ","
+        # if value is not present, append by 0
+        [[ -n ${value} ]] && ndsfs+=("${value}") || ndsfs+=("0")
+    done
+
+    # output header if file doesn't exist
+    if ! [[ -e ${fileout} ]]; then 
+        printf "# 1: Time step number\n" >> "${fileout}"
+        printf "# 2: Index of nonlinear iteration\n" >> "${fileout}"
+        printf "# 3: Relative nonlinear residual\n" >> "${fileout}"
+        printf "# 4: Norms of the rhs\n" >> "${fileout}"
+        printf "# 5: Newton Derivative Scaling Factor\n" >> "${fileout}"
+    fi
+
+    # get length of array
+    local length=${#rnrs[@]}
+ 
+    # output
+    local i=0
+    while ((i<length)); do
+        # output to file 
+        printf "%-15s %-15s %-15s %-15s %s\n" "${timestep}" "${i}" "${rnrs[$i]}" "${nors[$i]}" "${ndsfs[$i]}" >> "${fileout}"
+        ((i++))
+    done
+    
+    return 0
+}
+
+
+################################################################################
 # future
 # build a project in aspect
 # usage of this is to bind up source code and plugins
@@ -475,6 +606,17 @@ main(){
         # call function
         plot_visit_case
 
+    elif [[ ${_commend} = 'parse_solver_output' ]]; then
+        # parse solver information from stdout file
+        # example command line:
+        # ./aspect_lib.sh TwoDSubduction parse_solver_output $TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12/task.stdout ./solver_output
+        # only output first 20 steps:
+        # ./aspect_lib.sh TwoDSubduction parse_solver_output $TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12/task.stdout ./solver_output -l 0 1 20
+        filein="$3"
+        fileout="$4"
+        
+        # call function
+        parse_solver_output
 
     elif [[ ${_commend} = 'write_time_log' ]]; then
         # write time and machine time output to a file
