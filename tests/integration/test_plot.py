@@ -63,3 +63,35 @@ def test_plot_depth_average():
     assert(abs(DepthAverage.time_step_times[0]-0.0) < 1e-6)
     assert(abs(DepthAverage.time_step_times[-1]-2.63571e+06)/2.63571e+06 < 1e-6)
     assert(os.path.isfile(_ofile))  # assert that the file is generated successfully
+
+
+def test_plot_newton_solver():
+    '''
+    todo
+    A test on ploting newton solver results
+    '''
+    test_file = os.path.join(_test_source_dir, 'newton_solver')
+    assert(os.access(test_file, os.R_OK))
+    
+    # plot stepwise ouput
+    _ofile_route = os.path.join(_test_dir, 'NewtonSolverStep.pdf')
+    _ofile = os.path.join(_test_dir, 'NewtonSolverStep_s0000000.pdf')
+    if(os.path.isfile(_ofile)):
+        # remove previous files
+        os.remove(_ofile)
+    json_dir = os.path.join(_test_source_dir, 'json')
+    NewtonSolverStep = Plot.NEWTON_SOLVER_PLOT('NewtonSolverStep', json_dir=json_dir)
+    # plot step0
+    NewtonSolverStep.GetStep(0)
+    NewtonSolverStep(test_file, fileout=_ofile_route)
+    assert(os.path.isfile(_ofile))  # assert that the file is generated successfully
+    
+    # plot for all steps
+    _ofile = os.path.join(_test_dir, 'NewtonSolver.pdf')
+    if(os.path.isfile(_ofile)):
+        # remove previous files
+        os.remove(_ofile)
+    json_dir = os.path.join(_test_source_dir, 'json')
+    NewtonSolver = Plot.NEWTON_SOLVER_PLOT('NewtonSolver', json_dir=json_dir)
+    NewtonSolver(test_file, fileout=_ofile)
+    assert(os.path.isfile(_ofile))  # assert that the file is generated successfully

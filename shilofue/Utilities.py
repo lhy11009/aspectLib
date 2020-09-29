@@ -38,7 +38,7 @@ def JsonOptions(prefix, _dir=None):
                 with resources.open_text(shilofue.json, _filename) as fin:
                     _options[_name] = json.load(fin)  # values are entries in this file
     else:
-        pathlist = Path(_dir).rglob('*_*.json')
+        pathlist = Path(_dir).rglob('%s_*.json' % prefix)
         for path in pathlist:
             _filename = str(path)
             _base_name = os.path.basename(_filename)

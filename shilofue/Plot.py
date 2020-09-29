@@ -43,7 +43,6 @@ class LINEARPLOT():
     
     def __call__(self):
         '''
-        todo
         '''
         pass
 
@@ -243,9 +242,7 @@ class STATISTICS_PLOT(LINEARPLOT):
     This is an inheritage of the LINEARPLOT class
 
     Attributes:
-        todo
     Args:
-        todo
     '''
     def __init__(self, _name, **kwargs):
         LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
@@ -274,9 +271,7 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
     This is an inheritage of the LINEARPLOT class
 
     Attributes:
-        todo
     Args:
-        todo
     '''
     def __init__(self, _name, **kwargs):
         LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
@@ -296,7 +291,7 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
         Returns:
             _fileout(string or list):
                 filename for output figure
-        todo_future:
+        future:
             add in option for unit
         '''
         _fileout = kwargs.get('fileout', _filename + '.pdf')
@@ -427,6 +422,109 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
             self.header['vertical_heat_flux']['unit'] = 'mw/m^2'
 
 
+class NEWTON_SOLVER_PLOT(LINEARPLOT):
+    '''
+    todo
+    Class for plotting depth average file.
+    This is an inheritage of the LINEARPLOT class
+
+    Attributes:
+    Args:
+    '''
+    def __init__(self, _name, **kwargs):
+        LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
+
+        # initiate
+        # if step is None, then plot for all steps, otherwise plot for a step
+        self.step = None
+    
+    def __call__(self, _filename, **kwargs):
+        '''
+        Read and plot
+        Attributes:
+            _filename(string):
+                filename for data file
+        Returns:
+            _fileout(string):
+                filename for output figure
+        '''
+        _fileout = kwargs.get('fileout', _filename + '.pdf')
+        self.ReadHeader(_filename)  # inteprate header information
+        self.ReadData(_filename)  # read data
+        _data_list = self.ManageData()  # manage output data
+
+        # figure out name of file 
+        if self.step is None:
+            # plot for all
+            _fname = _fileout
+        else:
+            _fname_base = _fileout.rpartition('.')[0]
+            _fname_type = _fileout.rpartition('.')[2]
+            _fname = "%s_s%07d.%s" % (_fname_base, self.step, _fname_type)
+
+        # plot
+        _fileout = self.PlotCombine(_data_list, _fname)
+        return _fileout
+    
+    def GetStep(self, step):
+        '''
+        Get time step
+        Inputs:
+            step(int): index of time step
+        '''
+        self.step = step
+    
+    def ManageData(self):
+        '''
+        manage data, get new data for this class
+        Returns:
+            _data_list(list):
+                list of data for ploting
+        '''
+        if self.step is None:
+            _data_list = self.ManageDataAll()
+        else:
+            _data_list = self.ManageDataStep()
+        return _data_list
+
+    def ManageDataStep(self):
+        '''
+        manage data for a single step
+        Returns:
+            _data_list(list):
+                list of data for ploting
+        ''' 
+        _data_list = []
+
+        # get list of step        
+        col_step = self.header['Time_step_number']['col']
+        mask_step = (self.data[:, col_step] == self.step)
+        for i in range(self.data.shape[1]):
+            _data_list.append(self.data[mask_step, i])
+        return _data_list
+    
+    def ManageDataAll(self):
+        '''
+        manage data for a single step
+        Returns:
+            _data_list(list):
+                list of data for ploting
+        ''' 
+        _data_list = []
+        for i in range(self.data.shape[1]):
+            _data_list.append(self.data[:, i])
+        
+        # get number of nonlinear iteration
+        nni = np.array([i for i in range(self.data.shape[0])])
+        _data_list.append(nni)
+        # mend header
+        self.header['Number_of_nonlinear_iteration'] = {}
+        self.header['Number_of_nonlinear_iteration']['col'] = self.header['total_col']
+        self.header['Number_of_nonlinear_iteration']['unit'] = None
+        self.header['total_col'] += 1
+        return _data_list
+
+
 def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
     '''
     Plot figures for all cases in this project
@@ -444,7 +542,7 @@ def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
         if key == 'cases':
             _dir = _project_dir
         else:
-            # groups, todo_future
+            # groups, future
             _dir = os.path.join(_project_dir, key)
         for _case in value:
             # cases
@@ -471,7 +569,7 @@ One option is to delete incorrect file before running again" % _statistic_file) 
             _ofile_route = os.path.join(_case_img_dir, 'DepthAverage.%s' % _file_type)
             _ofile = os.path.join(_case_img_dir, 'DepthAverage_t%.8e.%s' % (_time, _file_type))  # ofile has the exact time
             if os.path.isfile(_depth_average_file) and (not os.path.isfile(_ofile) or update is True):
-                # check for ofile here is not precist, not intuitive. todo_future: change the implementation
+                # check for ofile here is not precist, not intuitive. future: change the implementation
                 try:
                     _ofile_exact = DepthAverage(_depth_average_file, fileout=_ofile_route, time=_time)
                 except Exception as e:

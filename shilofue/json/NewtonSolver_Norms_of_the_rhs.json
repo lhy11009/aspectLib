@@ -1,0 +1,9 @@
+{
+    "name": "Norms of the rhs",
+    "xname": "Number_of_nonlinear_iteration",
+    "yname": "Norms_of_the_rhs",
+    "log_y": 1,
+    "color": "r",
+    "line": ".-",
+    "label": "nor"
+}

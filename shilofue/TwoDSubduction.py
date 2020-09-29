@@ -279,6 +279,9 @@ def main():
     parser.add_argument('-i', '--input_dir', type=str,
                         default=shilofue_DIR,
                         help='A directory that contains the input')
+    parser.add_argument('-s', '--step', type=int,
+                        default=0,
+                        help='timestep')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -384,6 +387,37 @@ def main():
         Parse.UpdateProjectMd(_project_dict, _project_dir)  # update auto.md file for every case
         Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False)  # plot figures for every case
         Doc.UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'PvMesh', 'visit'])
+
+    elif _commend == 'plot_newton_solver_step':
+        # Plot one step from Newton solver
+        # use -i option as input and -o option as output dir
+        # example usage:
+        #   python -m shilofue.TwoDSubduction plot_newton_solver_step -i tests/integration/fixtures/test-plot/newton_solver -o .test -s 1  
+        filein = arg.input_dir
+        output_dir = arg.output_dir
+        step = arg.step
+        ofile_route = os.path.join(output_dir, 'NewtonSolverStep.pdf')
+        # plot newton solver output
+        NewtonSolverStep = Plot.NEWTON_SOLVER_PLOT('NewtonSolverStep')
+        # plot step0
+        NewtonSolverStep.GetStep(step)
+        NewtonSolverStep(filein, fileout=ofile_route)
+        pass
+    
+    elif _commend == 'plot_newton_solver':
+        # plot the whole history outputs from Newton solver
+        # use -i option as input and -o option as output dir
+        # example usages:
+        #   python -m shilofue.TwoDSubduction plot_newton_solver -i tests/integration/fixtures/test-plot/newton_solver -o .test
+        filein = arg.input_dir
+        output_dir = arg.output_dir
+        step = arg.step
+        ofile_route = os.path.join(output_dir, 'NewtonSolver.pdf')
+        # plot newton solver output
+        NewtonSolverStep = Plot.NEWTON_SOLVER_PLOT('NewtonSolver')
+        # plot step0
+        NewtonSolverStep(filein, fileout=ofile_route)
+        pass
 
     elif _commend == 'plot':
         # future

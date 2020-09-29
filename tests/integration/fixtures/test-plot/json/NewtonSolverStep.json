@@ -1,0 +1,9 @@
+{
+    "canvas": [1, 3],
+    "types": [
+        "Relative_nonlinear_residual",
+        "Norms_of_the_rhs",
+        "Newton_Derivative_Scaling_Factor"
+    ],
+    "size": [15, 5]
+}
