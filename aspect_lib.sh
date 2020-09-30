@@ -129,7 +129,15 @@ submit(){
     # scp to remote
     local remote_target=$(dirname "${remote_case_dir}")
     eval "${RSYNC} -r ${case_dir} ${server_info}:${remote_target}"
-    sleep 25s
+    # todo check file arrival
+    local status_
+    while [[ true ]]; do
+        ssh ${server_info} << EOF > '.temp'
+            eval "[[ -e ${remote_case_prm} ]] && echo \"0\" || echo \"1\""
+EOF
+        status_=$(cat '.temp'| sed -n '$'p)
+        ((status_==0)) && break || { cecho ${WARN} "Files haven't arrived yet, sleep for 2s"; sleep 2s; }
+    done
     # add an optional log file
     [[ "$4" != '' ]] && flag="${flag} -l $4"  # add -l log_file to flag, if $4 given
     # submit using slurm.sh,
