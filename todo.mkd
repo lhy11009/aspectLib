@@ -8,13 +8,13 @@
 * fix the bug that files arrive at the cluster later than it's tranfered, write a seperature file to use port
 * update after submit, and cat the file conent of job.log
 * for submit use the stdout of python seems to be a bad idea. We could specifically print that to a file.
-* if the creat fails, delete the related files
+* if the create fails, delete the related files
 * look for base file based on basename
 * add the option to submit to local
+* link to a log file automatically
 
 ## update
 
-* include the machine time, and save that in a file
 * show a status NA even if the return string from slurm is ' ' or CG
 
 ## copy case to a project
@@ -35,10 +35,6 @@ traking branch with project name
 ## script path
 
 run script under any folder
-
-# put all configurations in a json file
-
-make use of the json.sh on github
 
 ## add a 'para_group' with list of parameters and a list of value
 

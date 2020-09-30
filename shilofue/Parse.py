@@ -338,7 +338,7 @@ class PARSE_OPERATIONS():
         """
         Initiation
         """
-        self.ALL_OPERATIONS = ['MeshRefinement', 'Termination']
+        self.ALL_OPERATIONS = ['MeshRefinement', 'Termination', 'Solver']
         pass
 
     def MeshRefinement(self, Inputs, _config):
@@ -424,6 +424,19 @@ class PARSE_OPERATIONS():
             if _only_one_step == 1:
                 Inputs['Termination criteria']['Termination criteria'] = 'end step'
                 Inputs['Termination criteria']['End step'] = '1'
+    
+    def Solver(self, Inputs, _config):
+        """
+        todo
+        solver parameters
+        """
+        # change the CFL number
+        try:
+            CFL_number = _config['CFL']
+        except KeyError:
+            pass
+        else:
+            Inputs['CFL number'] = str(CFL_number)
 
 
 class BASH_OPTIONS():

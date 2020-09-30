@@ -2,18 +2,19 @@ set Dimension = 2
 set Use years in output instead of seconds = true
 set Start time = 0
 set End time = 10e6
-set Output directory = output1
+set Output directory = output
 set Additional shared libraries = /home/lochy/software/aspect/plugins/subduction_temperature2d/libsubduction_temperature2d.so, /home/lochy/software/aspect/plugins/prescribe_field/libprescribed_temperature.so
 set Pressure normalization = surface
 set Surface pressure = 0
 set Adiabatic surface temperature = 273
+set Prescribe internal temperatures = true
+set Resume computation = false
+
 set Nonlinear solver scheme = single Advection, iterated Newton Stokes
 set CFL number                             = 0.25
 set Max nonlinear iterations = 25
 set Max nonlinear iterations in pre-refinement = 0
 set Nonlinear solver tolerance = 1e-6
-set Prescribe internal temperatures = true
-set Resume computation = false
 
 subsection Discretization
     set Composition polynomial degree = 2
@@ -165,7 +166,7 @@ subsection Material model
         set Viscous flow law = composite
         set Yield mechanism = drucker
         set Grain size = 1.0000e-02
-        set Prefactors for diffusion creep = background:1.4250e-15|1.0657e-18, spcrust:5.0000e-20, spharz:1.4250e-15, opcrust:1.4250e-15, opharz:1.4250e-15
+        set Prefactors for diffusion creep = background:1.4250e-15|1.0657e-18, spcrust:5.0000e-21, spharz:1.4250e-15, opcrust:1.4250e-15, opharz:1.4250e-15
         set Grain size exponents for diffusion creep = background:3.0000e+00|3.0000e+00, spcrust:0.0000e+00, spharz:3.0000e+00, opcrust:3.0000e+00, opharz:3.0000e+00
         set Activation energies for diffusion creep = background:3.1700e+05|3.1700e+05, spcrust:0.0000e+00, spharz:3.1700e+05, opcrust:3.1700e+05, opharz:3.1700e+05
         set Activation volumes for diffusion creep = background:4.0000e-06|1.5000e-06, spcrust:0.0000e+00, spharz:4.0000e-06, opcrust:4.0000e-06, opharz:4.0000e-06
@@ -247,6 +248,7 @@ end
 
 subsection Termination criteria
     set Checkpoint on termination = true
+    set End step = 20
 end
 
 
