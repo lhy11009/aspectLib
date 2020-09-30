@@ -7,7 +7,7 @@ filename="test.prm"
 nnode=1
 total_tasks=1
 time_by_hour=24
-partition="med2"
+partition="high2"
 name="task"
 mem_per_cpu=2000  # 2000M
 project="TwoDSubduction"
@@ -51,7 +51,7 @@ parse_command(){
 
 parse_options(){
     # parse parameters from command line
-    # todo pass in name of case
+    # future pass in name of case
     while [ -n "$1" ]; do
       param="$1"
       case $param in
@@ -128,6 +128,18 @@ parse_options(){
 	  log_file=$(fix_route "${temp}")
         ;;
         #####################################
+        # log file for time
+        #####################################
+        -lt)
+          shift
+          local temp="${1}"
+	  log_file_time=$(fix_route "${temp}")
+        ;;
+        -lt=*|--log_file_time=*)
+          local temp="${param#*=}"
+	  log_file_time=$(fix_route "${temp}")
+        ;;
+        #####################################
         # project
         #####################################
         -P)
@@ -136,6 +148,16 @@ parse_options(){
         ;;
         -P=*|--project=*)
           project="${param#*=}"
+        ;;
+        #####################################
+        # bool value
+        #####################################
+        -b)
+          shift
+          bool="${1}"
+        ;;
+        -b=*|--bool=*)
+          bool="${param#*=}"
         ;;
       esac
       shift
@@ -156,7 +178,7 @@ submit(){
     # Aspect_executable="${Aspect_DIR}/aspect"
 
     # compose the sbatch file
-    # todo_future: add comment to sbatch file
+    # future: add comment to sbatch file
 
     # check for filename
 
@@ -179,6 +201,9 @@ submit(){
     echo "#SBATCH -J $name" >> job.sh
     echo "#SBATCH -N $nnode" >> job.sh
     echo "#SBATCH -n $total_tasks" >> job.sh
+    # tasks per node
+    ((tasks_per_nodes=total_tasks/nnode))
+    echo "#SBATCH --tasks-per-node=${tasks_per_nodes}" >> job.sh
     echo "#SBATCH -o $name-%j.stdout" >> job.sh
     echo "#SBATCH -e $name-%j.stderr" >> job.sh
     echo "#SBATCH -t $time_by_hour:00:00" >> job.sh
@@ -312,6 +337,7 @@ main(){
     if [[ ${_command} = "test" ]]; then
         test_parse_command
 	test_submit
+
     elif [[ ${_command} = "submit" ]]; then
     	parse_options "$@"  # parse option with '-'
 	# get job_id
@@ -328,6 +354,15 @@ main(){
 	fi
 	# output the message to be backwork compatible
 	echo "${_message}"
+	# todo
+	# bind this with aspect_lib.sh to pullout machine time
+	if [[ -n ${log_file_time} ]]; then
+		local log_file_time_dir=$(dirname "${log_file_time}")
+		[[ -d ${log_file_time_dir} ]] || mkdir "${log_file_time_dir}"
+        	eval "nohup ${dir}/aspect_lib.sh foo keep_write_time_log ${case_dir} ${job_id} ${log_file_time} &"
+		return 0
+	fi
+
     elif [[ ${_command} = "remote_test" ]]; then
 	# test submit to cluster
         local server_info="$2"  # user@server
@@ -337,8 +372,8 @@ main(){
             cecho ${BAD} "with 'remote' command, '\$2' needs to be 'user@server'"
         fi
         # submit job
-        # todo, drag down results and compare
-        # todo reset the scheme of output characters on server
+        # future, drag down results and compare
+        # future: reset the scheme of output characters on server
         ssh ${server_info} << EOF
     	    eval "slurm.sh test"
 EOF

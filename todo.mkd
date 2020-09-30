@@ -134,3 +134,8 @@ include strategy of composition and temperature and viscosity and phases in pote
 ## change .cc file accordingly
 
 add a assertion for all possible entries, like the one for the 'Strategy'
+
+
+# slurm.sh
+
+* set default value when use them
