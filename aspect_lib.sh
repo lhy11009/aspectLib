@@ -129,7 +129,7 @@ submit(){
     # scp to remote
     local remote_target=$(dirname "${remote_case_dir}")
     eval "${RSYNC} -r ${case_dir} ${server_info}:${remote_target}"
-    # todo check file arrival
+    # check file arrival
     local status_
     while [[ true ]]; do
         ssh ${server_info} << EOF > '.temp'
@@ -302,7 +302,8 @@ plot_visit_case(){
 # Inputs:
 #   filein: file to read from
 #   fileout: file to output to
-#   
+#   vlist: [start step, interval, end step].
+#       If this is none, take all steps   
 parse_solver_output(){
     # parse in options
     # assert the list of value
@@ -334,6 +335,48 @@ parse_solver_output(){
 
         ((timestep+=interval))
     done
+    return 0
+}
+
+
+################################################################################
+# outputs from solver by giving a case directory
+# Before converting result, we check if there is already results presented and we
+# check the relative time of that file to the new output file.
+# Inputs:
+#   case_dir: directory to parse from
+#   vlist: [start step, interval, end step].
+#       If this is none, take all steps   
+# Returns:
+#   0: normal
+#   -1: no operation needed
+parse_case_solver_output()
+{
+    # unset
+    unset filein
+    
+    # find newest .stdout file
+    local temp; local id; local filename
+    local idin=0
+    for file_ in "${case_dir}"/*"stdout"; do
+        # get id
+        filename=$(basename "${file_}")
+        temp=${filename#*"-"}
+        id=${temp%%".stdout"}
+        ((id>idin)) && { filein="${file_}"; ((idin=id)); }
+    done
+    [[ -z "${filein}" ]] && { cecho ${BAD} "${FUNCNAME[0]}: fail to get file in dir ${case_dir}"; return 1; }
+
+    # check output dir 
+    local output_dir="${case_dir}/output"
+    [[ -d ${output_dir} ]] || mkdir "${output_dir}"
+
+    # check results existence and compare time
+    fileout="${output_dir}/solver_output"
+    [[ -e "${fileout}" && "${fileout}" -nt ${filein} ]] && return -1
+
+    # call parse_solver_output function
+    parse_solver_output
     return 0
 }
 
@@ -625,6 +668,19 @@ main(){
         
         # call function
         parse_solver_output
+    
+    elif [[ ${_commend} = 'parse_case_solver_output' ]]; then
+        # parse solver information from stdout file by giving a case directory
+        # the .stdout file must be placed under this directory
+        # and the output file 'solver_output' goes into the 'output' directory
+        # example command line:
+        # ./aspect_lib.sh TwoDSubduction parse_case_solver_output $TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12
+        # only output first 20 steps:
+        # ./aspect_lib.sh TwoDSubduction parse_case_solver_output $TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12 -l 0 1 20
+        case_dir="$3"
+        
+        # call function
+        parse_case_solver_output
 
     elif [[ ${_commend} = 'write_time_log' ]]; then
         # write time and machine time output to a file
