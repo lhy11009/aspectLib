@@ -424,7 +424,6 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
 
 class NEWTON_SOLVER_PLOT(LINEARPLOT):
     '''
-    todo
     Class for plotting depth average file.
     This is an inheritage of the LINEARPLOT class
 
@@ -535,9 +534,17 @@ def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
     update = kwargs.get('update', False)
     # Init the UnitConvert class
     UnitConvert = UNITCONVERT()
-    # plot statistics ouput #####
+
+    # plot statistics ouput
     Statistics = STATISTICS_PLOT('Statistics', unit_convert=UnitConvert)
+    # depth average output
     DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert)
+    # newton solver output
+    # This is a little bit confusing to myself.
+    # But yes, we need two of them to do different type of plot.
+    NewtonSolverStep = NEWTON_SOLVER_PLOT('NewtonSolverStep')
+    NewtonSolver = NEWTON_SOLVER_PLOT('NewtonSolver')
+
     for key, value in _project_dict.items():
         if key == 'cases':
             _dir = _project_dir
@@ -552,6 +559,7 @@ def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
             if not os.path.isdir(_case_img_dir):
                 # make img folder if not exists
                 os.mkdir(_case_img_dir)
+
             # plot statistic
             _statistic_file = os.path.join(_case_output_dir, 'statistics')
             _ofile = os.path.join(_case_img_dir, 'Statistics.'+ _file_type)
@@ -563,6 +571,7 @@ def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
 One option is to delete incorrect file before running again" % _statistic_file) from e
                 else:
                     print('Plot has been generated: ', _ofile)  # screen output
+
             # plot depth-average
             _depth_average_file = os.path.join(_case_output_dir, 'depth_average.txt')
             _time = 0.0
@@ -577,3 +586,34 @@ One option is to delete incorrect file before running again" % _statistic_file) 
 One option is to delete incorrect file before running again" % _depth_average_file) from e
                 else:
                     print('Plot has been generated: ', _ofile_exact)  # screen output
+            
+            # todo add solver output
+            # plot newton solver output
+            _solver_file = os.path.join(_case_output_dir, 'solver_output')
+            _ofile_route = os.path.join(_case_img_dir, 'NewtonSolverStep.%s' % _file_type)
+            # plot step0
+            _step = 0
+            NewtonSolverStep.GetStep(_step)
+            _ofile = os.path.join(_case_img_dir, 'NewtonSolverStep_s%07d.%s' % (_step, _file_type))
+            if os.path.isfile(_solver_file) and (not os.path.isfile(_ofile) or update is True):
+                # check for ofile here is not precist, not intuitive. future: change the implementation
+                try:
+                    _ofile_exact = NewtonSolverStep(_solver_file, fileout=_ofile_route)
+                except Exception as e:
+                    raise Exception("Plot NewtonSolver file failed for %s, please chech file content.\
+    One option is to delete incorrect file before running again" % _solver_file) from e
+                else:
+                    print('Plot has been generated: ', _ofile_exact)  # screen output
+            # plot whole history
+            _ofile = os.path.join(_case_img_dir, 'NewtonSolver.%s' % _file_type)
+            if os.path.isfile(_solver_file) and (not os.path.isfile(_ofile) or update is True):
+                # check for ofile here is not precist, not intuitive. future: change the implementation
+                try:
+                    _ofile_exact = NewtonSolver(_solver_file, fileout=_ofile)
+                except Exception as e:
+                    raise Exception("Plot NewtonSolver file failed for %s, please chech file content.\
+    One option is to delete incorrect file before running again" % _solver_file) from e
+                else:
+                    print('Plot has been generated: ', _ofile_exact)  # screen output
+        pass
+    

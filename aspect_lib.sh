@@ -359,13 +359,15 @@ parse_case_solver_output()
     local temp; local id; local filename
     local idin=0
     for file_ in "${case_dir}"/*"stdout"; do
+        # fix bug
+        [[ -e "${file_}" ]] || break
         # get id
         filename=$(basename "${file_}")
         temp=${filename#*"-"}
         id=${temp%%".stdout"}
         ((id>idin)) && { filein="${file_}"; ((idin=id)); }
     done
-    [[ -z "${filein}" ]] && { cecho ${BAD} "${FUNCNAME[0]}: fail to get file in dir ${case_dir}"; return 1; }
+    [[ -z "${filein}" ]] && { cecho ${WARN} "${FUNCNAME[0]}: fail to get file in dir ${case_dir}"; return 1; }
 
     # check output dir 
     local output_dir="${case_dir}/output"

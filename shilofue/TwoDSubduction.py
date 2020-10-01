@@ -382,11 +382,13 @@ def main():
 
     elif _commend == 'update':
         # update a case
+        # example usage:
+        #   python -m shilofue.TwoDSubduction update -o /home/lochy/ASPECT_PROJECT/TwoDSubduction
         _project_dir = arg.output_dir
         _project_dict = Parse.UpdateProjectJson(_project_dir)  # update project json file
         Parse.UpdateProjectMd(_project_dict, _project_dir)  # update auto.md file for every case
         Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False)  # plot figures for every case
-        Doc.UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'PvMesh', 'visit'])
+        Doc.UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'NewtonSolver', 'PvMesh', 'visit'])
 
     elif _commend == 'plot_newton_solver_step':
         # Plot one step from Newton solver

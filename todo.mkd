@@ -139,3 +139,7 @@ add a assertion for all possible entries, like the one for the 'Strategy'
 # slurm.sh
 
 * set default value when use them
+
+# Plot.py
+
+* inprove the interface of ProjectPlot
