@@ -59,7 +59,7 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
         backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
         backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0] 
         backgroud_lower_mantle_diffusion = Rheology.GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='A')
-        # todo_future: add in choice of phases
+        # future: add in choice of phases
         prefactors_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['A'], backgroud_lower_mantle_diffusion['A']]
         grain_size_exponents_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['m'], backgroud_lower_mantle_diffusion['m']]
         activation_energies_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['E'], backgroud_lower_mantle_diffusion['E']]
@@ -154,7 +154,6 @@ class BASH_OPTIONS(Parse.BASH_OPTIONS):
 
 class VISIT_XYZ(Parse.VISIT_XYZ):
     """
-    todo
     Read .xyz file exported from visit and do analysis
     Attributes:
         max_depth: max_depth of slab
@@ -386,9 +385,23 @@ def main():
         #   python -m shilofue.TwoDSubduction update -o /home/lochy/ASPECT_PROJECT/TwoDSubduction
         _project_dir = arg.output_dir
         _project_dict = Parse.UpdateProjectJson(_project_dir)  # update project json file
-        Parse.UpdateProjectMd(_project_dict, _project_dir)  # update auto.md file for every case
-        Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False)  # plot figures for every case
-        Doc.UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'NewtonSolver', 'PvMesh', 'visit'])
+        
+        # todo append analysis
+        analysis_file = os.path.join(ASPECT_LAB_DIR, 'analysis.json')
+        if os.path.isfile(analysis_file):
+            with open(analysis_file, 'r') as fin:
+                analysis_dict = json.load(fin)
+        else:
+            analysis_dict = {}
+
+        # update auto.md file for every case
+        Parse.UpdateProjectMd(_project_dict, _project_dir)
+
+        # plot figures for every case
+        Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False)
+
+        # update mkdocs
+        Doc.UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'NewtonSolver', 'PvMesh', 'visit'], analysis=analysis_dict)
 
     elif _commend == 'plot_newton_solver_step':
         # Plot one step from Newton solver

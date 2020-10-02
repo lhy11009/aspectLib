@@ -587,7 +587,7 @@ One option is to delete incorrect file before running again" % _depth_average_fi
                 else:
                     print('Plot has been generated: ', _ofile_exact)  # screen output
             
-            # todo add solver output
+            # add solver output
             # plot newton solver output
             _solver_file = os.path.join(_case_output_dir, 'solver_output')
             _ofile_route = os.path.join(_case_img_dir, 'NewtonSolverStep.%s' % _file_type)

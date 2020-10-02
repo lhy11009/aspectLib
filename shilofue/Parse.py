@@ -913,24 +913,27 @@ def UpdateProjectMd(_project_dict, _project_dir):
     '''
     Update auto mkd file for all cases in this project
     '''
+    # deal with cases and groups
     for key, value in _project_dict.items():
         if key == 'cases':
+            # cases, handled afterwards
             _dir = _project_dir
         else:
-            # groups
+            # groups, first handle the group level
             _dir = os.path.join(_project_dir, key)
             _group_json = os.path.join(_dir, 'config.json')
             with open(_group_json, 'r') as fin:
                 _group_config_dict = json.load(fin)
             AutoMarkdownGroup(key, _group_config_dict, dirname=_dir)
         for _case in _project_dict[key]:
-            # cases
+            # cases, as there are the value related to the key 'cases'
+            # or related to the name of a group
             _case_dir = os.path.join(_dir, _case)
             _case_json = os.path.join(_case_dir, 'config.json')
             with open(_case_json, 'r') as fin:
                 _case_config_dict = json.load(fin)
             AutoMarkdownCase(_case, _case_config_dict, dirname=_case_dir)
-
+    
 
 def UpdateProjectJson(_dir, **kwargs):
     '''

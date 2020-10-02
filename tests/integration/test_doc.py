@@ -1,5 +1,6 @@
 import pytest
 import os
+import filecmp
 import shilofue.Doc as Doc
 from shutil import rmtree, copyfile
 
@@ -48,31 +49,31 @@ def test_mkdoc():
     os.mkdir(_mkdocs_dir)
     os.mkdir(_docs_dir)
     os.mkdir(_mkdocs_case_dir)
+
     # files that will be used in this test
     _mkdocs_file = os.path.join(_mkdocs_dir, 'mkdocs.yml')
     copyfile(os.path.join(test_source_dir, 'test-project', 'mkdocs.yml'), _mkdocs_file)
     _index_file = os.path.join(_docs_dir, 'index.md')
     _case_file = os.path.join(_mkdocs_case_dir, 'foo.md')
+
     # call __init__ function
-    myMkdoc = Doc.MKDOC(_mkdocs_dir, images='DepthAverage')
-    ############# call __call__ function for a case ###############
-    myMkdoc('foo', os.path.join(test_source_dir, 'test-project', 'foo'), append_prm=True)
+    myMkdoc = Doc.MKDOC(_mkdocs_dir)
+
+    #call __call__ function for a case
+    myMkdoc('foo', os.path.join(test_source_dir, 'test-project', 'foo'), append_prm=True, images='DepthAverage')
     _case_summary_file = os.path.join(_mkdocs_case_dir, 'summary.md')
     _case_prm_file = os.path.join(_mkdocs_case_dir, 'case.prm')
     _case_img_file = os.path.join(_mkdocs_case_dir, 'img', 'DepthAverage_t0.00000000e+00.pdf')
     assert(os.path.isfile(_case_summary_file))  # assert summary.md generated
     assert(os.path.isfile(_case_img_file))  # assert hard link for image generated
     # assert file has the right content
-    with open(_case_summary_file, 'r') as fin:
-        _case_summary_contents = fin.read()
-    with open(os.path.join(test_source_dir, 'test-project', 'standard_foo_summary.md')) as standard_fin:
-        assert(_case_summary_contents == standard_fin.read())
-    assert(os.path.isfile(_case_prm_file))  # assert case.prm generated
-    ############# call __call__ function for a group ##############
+    _case_summary_file_std = os.path.join(test_source_dir, 'test-project', 'standard_foo_summary.md')
+    assert(filecmp.cmp(_case_summary_file, _case_summary_file_std))
+    
+    # call __call__ function for a group
     _mkdocs_group_dir = os.path.join(_docs_dir, 'foo_group')  # this should be generate by the code
     myMkdoc('foo_group', os.path.join(test_source_dir, 'test-project', 'foo_group'), append_prm=True, type='group', case_names=['foo1', 'foo2'])
     _group_summary_file = os.path.join(_mkdocs_group_dir, 'summary.md')
-    # check group summary, todo
     # check for foo1
     _mkdocs_subcase_dir = os.path.join(_mkdocs_group_dir, 'foo1')
     _case_summary_file = os.path.join(_mkdocs_subcase_dir, 'summary.md')
@@ -95,11 +96,18 @@ def test_mkdoc():
     with open(os.path.join(test_source_dir, 'test-project', 'standard_foo2_summary.md')) as standard_fin:
         assert(_case_summary_contents == standard_fin.read())
     assert(os.path.isfile(_case_prm_file))  # assert case.prm generated
-    ############ assert mkdocs.yml file has the right contents ########3
-    with open(os.path.join(test_dir, 'test-project', 'mkdocs.yml')) as fin:
-        _yml_contents = fin.read()
-    with open(os.path.join(test_source_dir, 'test-project', 'standard_mkdocs.yml')) as standard_fin:
-        assert(_yml_contents == standard_fin.read())
-    # todo_future: test the update option
+
+    # call __call__ function for a analysis
+    # todo
+    case_dirs = ['foo', 'foo_group/foo1']
+    images = ['DepthAverage']
+    myMkdoc('test_analysis', os.path.join(test_source_dir, 'test-project'), append_prm=True, update=True, type='analysis', case_dirs=case_dirs, images=images)
+    # assertions
+
+    # assert mkdocs.yml file has the right contents
+    # todo fix content
+    mkdocs_file = os.path.join(test_dir, 'test-project', 'mkdocs.yml')
+    mkdocs_file_std = os.path.join(test_source_dir, 'test-project', 'standard_mkdocs.yml')
+    assert(filecmp.cmp(mkdocs_file, mkdocs_file_std))
             
 

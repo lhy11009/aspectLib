@@ -48,7 +48,7 @@ class DDOC():
 
     def append_media(self, _media):
         '''
-        Inputs:
+        Inputs: 
             _media(dict) - name of media: route
         '''
         for key, value in _media.items():
@@ -112,6 +112,19 @@ def ConvertMediaMKD(_name, _filename):
     return _output
 
 
+def ConvertLinkMKD(_name, _filename):
+    '''
+    return a link string in markdown
+    Inputs:
+        _name(str): name of media
+        _filename(str): filename of media
+    Outputs:
+        _output(str): media string
+    '''
+    _output = "[%s](%s)" % (_name, _filename)
+    return _output
+
+
 class MKDOC():
     '''
     A class to use with mkdocs
@@ -127,7 +140,6 @@ class MKDOC():
             _odir(str) - directory of mkdocs project
         '''
         self.odir = _odir
-        self.imgs = kwargs.get('images', [])
         self.new_files = {}
 
     def AttachImage(self, _img):
@@ -150,28 +162,39 @@ class MKDOC():
                 update(bool) - if update an existing case
                 append_prm(bool) - if append a prm file
                 prm(str) - name of a prm file
+                extra_images(list) - names of extra images to append
         '''
         self.new_files = {}
+        self.imgs = kwargs.get('images', [])
         update = kwargs.get('update', False)
         append_prm = kwargs.get('append_prm', False)
         _prm = kwargs.get('prm', 'case.prm')
         _type = kwargs.get('type', 'case')
-        _case_names = kwargs.get('case_names', None)
+
         # These directory and files need to be preexist
         assert(os.path.isdir(self.odir))
         assert(os.path.isdir(os.path.join(self.odir, 'docs')))
         _mcdocs_file = os.path.join(self.odir, 'mkdocs.yml')
         assert(os.path.isfile(_mcdocs_file))
         _index_file = os.path.join(self.odir, 'docs', 'index.md')
+
+        # deal with different types of entry
+        _target_dir = os.path.join(self.odir, 'docs', _name)
         if _type == 'case':
-            _target_dir = os.path.join(self.odir, 'docs', _name)
+            # append a case
             self.AppendCase(_name, _dir, _target_dir, update=update, append_prm=append_prm)
         elif _type == 'group':
+            # append a group
+            _case_names = kwargs.get('case_names', None)
             my_assert(_case_names is not None, ValueError, 'For a group, case names cannot be None. Valid names must be given')
-            _target_dir = os.path.join(self.odir, 'docs', _name)
             self.AppendGroup(_name, _dir, _case_names, _target_dir, update=update, append_prm=append_prm)
+        elif _type == 'analysis':
+            # append a analysis
+            _case_dirs = kwargs.get('case_dirs', [])
+            # here the _dir is the project directory and case_dirs are relative directories to that
+            self.AppendAnalysis(_name, _dir, _case_dirs, _target_dir)
         else:
-            raise ValueError('Type must be \'case\' or \'group\'')
+            raise ValueError("Type must be 'case', 'group', 'analysis' ")
         if self.new_files != {}:
             self.RenewMkdocsYml(_name)
         
@@ -268,6 +291,80 @@ class MKDOC():
             _case_dir = os.path.join(_dir, _case_name)
             _case_target_dir = os.path.join(_target_dir, _case_name)
             self.AppendCase(_case_name, _case_dir, _case_target_dir, update=update, append_prm=append_prm, basename=_name)
+    
+    def AppendAnalysis(self, _name, _project_dir, _case_dirs, _target_dir, **kwargs):
+        '''
+        Append a analysis to doc
+        Inputs:
+            _name(str): name of analysis
+            _case_dirs(list): list of directory of cases to include
+            _target_dir(str): directory to put outputs
+        '''
+        update = kwargs.get('update', False)
+
+        # check on target directory 
+        if not os.path.isdir(_target_dir):
+            os.mkdir(_target_dir)
+        
+        # create hard link for images
+        _target_img_dir = os.path.join(_target_dir, 'img')
+        if not os.path.isdir(_target_img_dir):
+            os.mkdir(_target_img_dir)
+        # todo loop imgs first
+        _imgs_list = [[]]*len(self.imgs)
+        for i in range(len(self.imgs)):
+            img = self.imgs[i]
+            for _dir in _case_dirs:
+                _img_dir = os.path.join(_project_dir, _dir, 'img')
+                _imgs = ReturnFileList(_img_dir, [img])
+                # transfer _dir to a name to append
+                _dir_transfered = os.path.basename(_dir)
+                # create hard links in target_dir
+                for _img in _imgs:
+                    _file = os.path.join(_img_dir, _img)
+                    _target_file = os.path.join(_target_img_dir, "%s_%s" %(_dir_transfered, _img))
+                    if not os.path.isfile(_target_file):
+                        os.link(_file, _target_file)
+                    elif filecmp.cmp(_file, _target_file) is False:
+                        os.remove(_target_file)
+                        os.link(_file, _target_file)
+                    _imgs_list[i].append(_target_file)
+
+
+#        if not os.path.isdir(_target_img_dir):
+#            os.mkdir(_target_img_dir)
+#        for _dir in _case_dirs:
+#            # join project directory with relative path
+#            _img_dir = os.path.join(_project_dir, _dir, 'img')
+#            _imgs = ReturnFileList(_img_dir, self.imgs)
+#            # transfer _dir to a name to append
+#            _dir_transfered = os.path.basename(_dir)
+#            # create hard links in target_dir
+#            for _img in _imgs:
+#                _file = os.path.join(_img_dir, _img)
+#                _target_file = os.path.join(_target_img_dir, "%s_%s" %(_dir_transfered, _img))
+#                if not os.path.isfile(_target_file):
+#                    os.link(_file, _target_file)
+#                elif filecmp.cmp(_file, _target_file) is False:
+#                    os.remove(_target_file)
+#                    os.link(_file, _target_file)
+        
+        # Append a summary.md
+        # todo, append image information
+        _base_name = kwargs.get('basename', None)
+        if os.path.isfile(os.path.join(_target_dir, 'summary.md')):
+            if update == True:
+                _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs) # images=_imgs)
+        else:
+            _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs) # images=_imgs)
+            # in a mkdocs file, files are listed as 'name/_filename'
+            _summary = os.path.join(_name, os.path.basename(_filename))
+            if _base_name is None:
+                self.new_files['Summary'] = _summary
+            else:
+                # a subcase of a group
+                self.new_files[_name]['Summary'] = os.path.join(_base_name, _summary)
+        pass
 
     def GenerateCaseMkd(self, _dir, _target_dir, **kwargs):
         '''
@@ -344,6 +441,50 @@ class MKDOC():
             with open(_filename, 'a') as fout:
                 fout.write(_contents)
         return _filename
+                
+        
+    def GenerateAnalysisMkd(self, _target_dir, _case_dirs, **kwargs):
+        '''
+        Generate markdown file of a analysis
+        Inputs:
+            _target_dir(str): directory of this case
+            kwargs:
+                filename(str): name of the file
+        Returns:
+            _filename(str): file generated
+        '''
+        # get filename
+        _filename = kwargs.get('filename', 'summary.md')
+        _filename = os.path.join(_target_dir, _filename)
+
+        # write file header
+        contents = ''
+        _name = os.path.basename(_target_dir)
+        contents += '## Analysis %s\n\n' % _name
+        
+        # append names of cases
+        contents += '### This includes cases: \n\n'
+        for _case_dir in _case_dirs:
+            _case_link = os.path.join('..', _case_dir)
+            contents += '* %s %s\n' % (_case_dir, ConvertLinkMKD('link_to_case', _case_link))
+       
+        # append imgs
+        # todo
+        _imgs = kwargs.get('images', [[]]*len(self.imgs))
+        my_assert(len(self.imgs)==len(_imgs), ValueError,
+                  "GenerateAnalysisMkd: images input must be a list that have the same length with self.imgs")
+        for i in range(len(self.imgs)):
+            img_root = self.imgs[i]
+            contents += '### Image %s' % img_root
+
+
+        # write
+        with open(_filename, 'w') as fout:
+            fout.write(contents)
+        pass
+
+        return _filename
+        
 
     def RenewMkdocsYml(self, _name):
         '''
@@ -391,8 +532,6 @@ def ExtractNav(_lines, **kwargs):
     Inputs:
         _contents(str): plain text contents
         kwargs:
-            todo
-        todo:
         fix the name with the produce function
     '''
     _previous = kwargs.get('previous', 0)
@@ -444,10 +583,10 @@ def ProduceNav(_idict, **kwargs):
             _line += (' ' + value)
             _lines.append(_line)  # append this line to the list
         elif type(value) == dict:
-            _lines.append(_line)  # append this line to the list
-            _lines += ProduceNav(value, now=_now+_indent, indent=_indent)
+             _lines.append(_line)  # append this line to the list
+             _lines += ProduceNav(value, now=_now+_indent, indent=_indent)
         else:
-            raise TypeError('Value must be str or dict')
+             raise TypeError('Value must be str or dict')
     return _lines
 
 
@@ -463,21 +602,32 @@ def SeparateNavPattern(_pattern):
     return key, value
 
 
-
 def UpdateProjectDoc(_project_dict, _project_dir, **kwargs):
     '''
     Update doc for all cases in this project
+    Inputs:
+        kwargs(dict): options
+            analysis: a dictionary of tests
     '''
     _mkdocs = kwargs.get('mkdocs', 'mkdocs_project')
     _imgs = kwargs.get('images', [])
-    myMkdoc = MKDOC(os.path.join(_project_dir, _mkdocs), images=_imgs)
+    myMkdoc = MKDOC(os.path.join(_project_dir, _mkdocs))
+
+    # deal with case and group
     for key, value in _project_dict.items():
         if key == 'cases':
             for _case in value:
-                myMkdoc(_case, os.path.join(_project_dir, _case), append_prm=True, update=True)
+                myMkdoc(_case, os.path.join(_project_dir, _case), append_prm=True, update=True, images=_imgs)
         else:
             my_assert(type(value) == list and value != [], TypeError, 'Input group must have a \'case\' list and it cannot be []')
-            myMkdoc(key, os.path.join(_project_dir, key), append_prm=True, update=True, type='group', case_names=value)
+            myMkdoc(key, os.path.join(_project_dir, key), append_prm=True, update=True, type='group', case_names=value, images=_imgs)
+    
+    # deal with analysis
+    analysis_dict = kwargs.get('analysis', {})
+    for key, value in analysis_dict.items():
+        case_dirs = value['case_dirs']
+        images = value['images']
+        myMkdoc(key, _project_dir, append_prm=True, update=True, type='analysis', case_dirs=case_dirs, images=images)
 
 
 def ReturnFileList(_dir, _names):
