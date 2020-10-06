@@ -359,7 +359,7 @@ main(){
 	if [[ -n ${log_file_time} ]]; then
 		local log_file_time_dir=$(dirname "${log_file_time}")
 		[[ -d ${log_file_time_dir} ]] || mkdir "${log_file_time_dir}"
-        	eval "nohup ${dir}/aspect_lib.sh foo keep_write_time_log ${case_dir} ${job_id} ${log_file_time} &"
+        	eval "nohup ${dir}/aspect_lib.sh foo keep_write_time_log ${case_dir} ${job_id} ${log_file_time} >/dev/null 2>&1 &"
 		return 0
 	fi
 

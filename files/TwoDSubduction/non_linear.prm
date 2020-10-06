@@ -9,9 +9,8 @@ set Surface pressure = 0
 set Adiabatic surface temperature = 273
 set Prescribe internal temperatures = true
 set Resume computation = false
-
-set Nonlinear solver scheme = single Advection, iterated Newton Stokes
-set CFL number                             = 0.25
+set Nonlinear solver scheme = iterated Advection and Newton Stokes
+set CFL number = 0.25
 set Max nonlinear iterations = 25
 set Max nonlinear iterations in pre-refinement = 0
 set Nonlinear solver tolerance = 1e-6
@@ -29,19 +28,18 @@ subsection Discretization
 end
 
 
-
 subsection Solver parameters
-  subsection Newton solver parameters
-      set Max pre-Newton nonlinear iterations = 20
-      set Nonlinear Newton solver switch tolerance = 1e-3
-      set Max Newton line search iterations = 0
-      set Maximum linear Stokes solver tolerance =  5e-2
-      set Use Newton residual scaling method = true
-      set Use Newton failsafe = true
-      set Stabilization preconditioner = SPD
-      set Stabilization velocity block = SPD
-      set Use Eisenstat Walker method for Picard iterations = true
-  end
+    subsection Newton solver parameters
+        set Max pre-Newton nonlinear iterations = 20
+        set Nonlinear Newton solver switch tolerance = 1e-3
+        set Max Newton line search iterations = 0
+        set Maximum linear Stokes solver tolerance = 5e-2
+        set Use Newton residual scaling method = true
+        set Use Newton failsafe = true
+        set Stabilization preconditioner = SPD
+        set Stabilization velocity block = SPD
+        set Use Eisenstat Walker method for Picard iterations = true
+    end
 end
 
 

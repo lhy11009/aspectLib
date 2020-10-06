@@ -115,6 +115,7 @@ create_group(){
 
 
 submit(){
+    # future parse from json file
     local case_dir="$1"
     local case_name=$(basename "${case_dir}")
     local romote_case_dir="$2"
@@ -122,13 +123,21 @@ submit(){
     local flag=''  # a vacant flag for adding optional parameters
     local case_prm="${case_dir}/case.prm"
     local remote_case_prm="${remote_case_dir}/case.prm"
+    # output machine time output
+    local remote_time_file="${remote_case_dir}/output/machine_time"
+    flag="${flag} -lt ${remote_time_file}"
+
     # get configuration from a file
+    local node=1  # backward compatible
     total_tasks=$(sed -n '1'p "slurm_config")
     time_by_hour=$(sed -n '2'p "slurm_config")
     partition=$(sed -n '3'p "slurm_config")
+    nodes=$(sed -n '4'p "slurm_config")
+
     # scp to remote
     local remote_target=$(dirname "${remote_case_dir}")
     eval "${RSYNC} -r ${case_dir} ${server_info}:${remote_target}"
+
     # check file arrival
     local status_
     while [[ true ]]; do
@@ -138,13 +147,14 @@ EOF
         status_=$(cat '.temp'| sed -n '$'p)
         ((status_==0)) && break || { cecho ${WARN} "Files haven't arrived yet, sleep for 2s"; sleep 2s; }
     done
+
     # add an optional log file
     [[ "$4" != '' ]] && flag="${flag} -l $4"  # add -l log_file to flag, if $4 given
     # submit using slurm.sh,
     # determine if there is a valid job id, future
     # also add -P option for project name
     ssh ${server_info} << EOF > '.temp'
-        eval "slurm.sh -n ${total_tasks} -t ${time_by_hour} -p ${partition} -P ${project} ${remote_case_prm} ${flag}"
+        eval "slurm.sh -N ${nodes} -n ${total_tasks} -t ${time_by_hour} -p ${partition} -P ${project} ${remote_case_prm} ${flag}"
 EOF
     # get job_id
     local _info=$(cat '.temp'| sed -n '$'p)
