@@ -338,7 +338,7 @@ class PARSE_OPERATIONS():
         """
         Initiation
         """
-        self.ALL_OPERATIONS = ['MeshRefinement', 'Termination', 'Solver']
+        self.ALL_OPERATIONS = ['MeshRefinement', 'Termination', 'Solver', 'MaterialModel']
         pass
 
     def MeshRefinement(self, Inputs, _config):
@@ -427,7 +427,6 @@ class PARSE_OPERATIONS():
     
     def Solver(self, Inputs, _config):
         """
-        todo
         solver parameters
         """
         # change the CFL number
@@ -437,6 +436,34 @@ class PARSE_OPERATIONS():
             pass
         else:
             Inputs['CFL number'] = str(CFL_number)
+    
+    def MaterialModel(self, Inputs, _config):
+        """
+        todo
+        properties in the material model
+        only support changing parameters inside a material model
+        """
+       
+        model_name = Inputs['Material model']['Model name']
+
+        if model_name == 'visco plastic': 
+            model = Inputs['Material model']['Visco Plastic']
+            # change lower limit
+            try:
+                minimum_viscosity = _config['minimum_viscosity']
+            except KeyError:
+                pass
+            else:
+                model['Minimum viscosity'] = str(minimum_viscosity)
+            # change upper limit
+            try:
+                maximum_viscosity = _config['maximum_viscosity']
+            except KeyError:
+                pass
+            else:
+                model['Maximum viscosity'] = str(maximum_viscosity)
+            # parse back
+            Inputs['Material model']['Visco Plastic'] = model
 
 
 class BASH_OPTIONS():

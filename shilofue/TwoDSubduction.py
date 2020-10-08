@@ -287,8 +287,12 @@ def main():
     except IndexError:
         pass
     arg = parser.parse_args(_options)
+
     # execute commend
     if _commend == 'create_group':
+        # create a group
+        # example usage:
+        #    python -m shilofue.TwoDSubduction create_group -j config_group.json 2>&1 > .temp
         print('Now we create a group of cases:')  # screen output
         # create a group of cases
         # read files
