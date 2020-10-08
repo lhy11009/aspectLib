@@ -323,12 +323,27 @@ write_time_log(){
     if ! [[ -e ${log_file} ]]; then 
         printf "# 1: Time step number\n" >> ${log_file}
         printf "# 2: Time\n" >> ${log_file}
-        printf "# 3: Machine time\n" >> ${log_file}
+        printf "# 3: Machine time (hr)\n" >> ${log_file}
         printf "# 4: CPU number\n" >> ${log_file}
     fi
+
+    # fix non-existing value
+    [[ -z ${last_time_step} ]] && last_time_step=0
+    [[ -z ${last_time} ]] && last_time=0
+
+    # expand time
+    IFS=':'; time_array=(${TIME})
+    local hour=${time_array[0]}
+    local minute=${time_array[1]}
+    # output from slurm could have no second
+    local second=${time_array[2]}
+    [[ -z ${second} ]] && second=0
+    # compute time in hrs
+    local time_in_hr=(echo "scale=4; ${hour}+(${minute}/60.0)+(${second}/3600.0)" | bc)
+
     
     # output to file 
-    printf "%-10s %-15s %-10s %s\n" ${last_time_step} ${last_time} ${TIME} ${CPU} >> ${log_file}
+    printf "%-10s %-15s %-10s %s\n" ${last_time_step} ${last_time} ${time_in_hr} ${CPU} >> ${log_file}
 
     return 0
 }
