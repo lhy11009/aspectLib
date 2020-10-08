@@ -41,10 +41,31 @@ class LINEARPLOT():
             with resources.open_text(shilofue.json, self.name + '.json') as fin:
                 self.configs = json.load(fin)
     
-    def __call__(self):
+    def __call__(self, _filename, **kwargs):
         '''
+        Read and plot
+        Attributes:
+            _filename(string):
+                filename for data file
+        Returns:
+            _fileout(string):
+                filename for output figure
         '''
-        pass
+        _fileout = kwargs.get('fileout', _filename + '.pdf')
+        
+        # inteprate header information
+        self.ReadHeader(_filename)
+
+        # Read data
+        # catch possible vacant file
+        state=self.ReadData(_filename)
+        if state == 1:
+            return None
+
+        # manage output data
+        _data_list = self.ManageData()
+        _fileout = self.PlotCombine(_data_list, _fileout)
+        return _fileout
 
     class DataNotFoundWarning(UserWarning):
         # handle the circumstance that one data field is not found,
@@ -76,7 +97,7 @@ class LINEARPLOT():
         # self.data = np.genfromtxt(_filename, comments='#')
         
         # import data via numpy buid in method
-        # todo catch warning of empty file and return 1
+        # catch warning of empty file and return 1
         with warnings.catch_warnings(record=True) as w:
             self.data = np.genfromtxt(_filename, comments='#')
             if (len(w) > 0):
@@ -188,7 +209,7 @@ class LINEARPLOT():
         _xname = _opt.get('xname', 'Time')
         _yname = _opt.get('yname', 'Number_of_mesh_cells')
         _color = _opt.get('color', 'r')
-        _label = _opt.get('label', 'default')
+        _label = _opt.get('label', None)
         _line = _opt.get('line', '-')
         _invert_x = _opt.get('invert_x', 0)  # invert x axis
         _invert_y = _opt.get('invert_y', 0)
@@ -245,7 +266,10 @@ but you will get a blank one for this field name' % _yname,
             _ax.invert_xaxis()
         if _invert_y and ~_ax.yaxis_inverted():
             _ax.invert_yaxis()
-        _ax.legend()
+        
+        # legend
+        if _label is not None:
+            _ax.legend()
 
 
 class STATISTICS_PLOT(LINEARPLOT):
@@ -259,32 +283,6 @@ class STATISTICS_PLOT(LINEARPLOT):
     def __init__(self, _name, **kwargs):
         LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
     
-    def __call__(self, _filename, **kwargs):
-        '''
-        Read and plot
-        Attributes:
-            _filename(string):
-                filename for data file
-        Returns:
-            _fileout(string):
-                filename for output figure
-        '''
-        _fileout = kwargs.get('fileout', _filename + '.pdf')
-        
-        # inteprate header information
-        self.ReadHeader(_filename)
-
-        # Read data
-        # todo: catch possible vacant file
-        state=self.ReadData(_filename)
-        if state == 1:
-            return None
-
-        # manage output data
-        _data_list = self.ManageData()
-        _fileout = self.PlotCombine(_data_list, _fileout)
-        return _fileout
-
 
 class DEPTH_AVERAGE_PLOT(LINEARPLOT):
     '''
@@ -471,7 +469,7 @@ class NEWTON_SOLVER_PLOT(LINEARPLOT):
         _fileout = kwargs.get('fileout', _filename + '.pdf')
         self.ReadHeader(_filename)  # inteprate header information
 
-        # todo, catch possible vacant file
+        # catch possible vacant file
         state = self.ReadData(_filename)  # read data
         if state == 1:
             return None
@@ -548,6 +546,43 @@ class NEWTON_SOLVER_PLOT(LINEARPLOT):
         self.header['Number_of_nonlinear_iteration']['col'] = self.header['total_col']
         self.header['Number_of_nonlinear_iteration']['unit'] = None
         self.header['total_col'] += 1
+        return _data_list
+
+
+class MACHINE_TIME_PLOT(LINEARPLOT):
+    '''
+    Class for plotting machine time file.
+    This is an inheritage of the LINEARPLOT class
+
+    Attributes:
+    Args:
+    '''
+    def __init__(self, _name, **kwargs):
+        LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
+    
+    def ManageData(self):
+        '''
+        manage data, get new data for this class
+        for the base class, this method simply takes the combination
+        of self.data
+        Returns:
+            _data_list(list):
+                list of data for ploting
+        '''
+        _data_list = []
+        for i in range(self.data.shape[1]):
+            _data_list.append(self.data[:, i])
+
+        # compute core time
+        col_mt = self.header['Machine_time']['col']
+        col_cpu = self.header['CPU_number']['col']
+        core_time = self.data[:, col_mt] * self.data[:, col_cpu]
+        
+        # append core time
+        _data_list.append(core_time)
+        self.header['Core_time'] = {'col': self.header['total_col'], 'unit': None}
+        self.header['total_col'] += 1
+        
         return _data_list
 
 

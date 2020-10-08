@@ -1,0 +1,10 @@
+{
+    "canvas": [2, 2],
+    "types": [
+        "Machine_Time",
+        "Core_Time",
+        "Machine_Model_Time",
+        "Core_Model_Time"
+    ],
+    "size": [10, 10]
+}

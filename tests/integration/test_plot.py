@@ -67,7 +67,6 @@ def test_plot_depth_average():
 
 def test_plot_newton_solver():
     '''
-    todo
     A test on ploting newton solver results
     '''
     test_file = os.path.join(_test_source_dir, 'newton_solver')
@@ -94,4 +93,22 @@ def test_plot_newton_solver():
     json_dir = os.path.join(_test_source_dir, 'json')
     NewtonSolver = Plot.NEWTON_SOLVER_PLOT('NewtonSolver', json_dir=json_dir)
     NewtonSolver(test_file, fileout=_ofile)
-    assert(os.path.isfile(_ofile))  # assert that the file is generated successfully
+    # assert that the file is generated successfull
+    assert(os.path.isfile(_ofile))
+
+
+def test_plot_machine_time():
+    '''
+    A test on ploting newton solver results
+    '''
+    test_file = os.path.join(_test_source_dir, 'machine_time')
+    assert(os.access(test_file, os.R_OK))
+
+    # initiate 
+    MachineTime = Plot.MACHINE_TIME_PLOT('MachineTime')
+
+    # plot 
+    _ofile = os.path.join(_test_dir, 'MachineTime.pdf')
+    MachineTime(test_file, fileout=_ofile)
+    # assert that the file is generated successfull
+    assert(os.path.isfile(_ofile))
