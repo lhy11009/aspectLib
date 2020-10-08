@@ -320,6 +320,8 @@ write_time_log(){
     parse_stdout ${_file}  # parse this file
 
     # output header if file doesn't exist
+    # mind here Time is related to ${last_time},
+    # which is the model time at last model step
     if ! [[ -e ${log_file} ]]; then 
         printf "# 1: Time step number\n" >> ${log_file}
         printf "# 2: Time\n" >> ${log_file}
@@ -327,9 +329,13 @@ write_time_log(){
         printf "# 4: CPU number\n" >> ${log_file}
     fi
 
+    # todo
     # fix non-existing value
     [[ -z ${last_time_step} ]] && last_time_step=0
     [[ -z ${last_time} ]] && last_time=0
+
+    # get rid of unit in last_time
+    last_time=$(echo "${last_time}" | sed 's/[^0-9]*$//g')
 
     # expand time
     IFS=':'; time_array=(${TIME})
@@ -339,7 +345,7 @@ write_time_log(){
     local second=${time_array[2]}
     [[ -z ${second} ]] && second=0
     # compute time in hrs
-    local time_in_hr=(echo "scale=4; ${hour}+(${minute}/60.0)+(${second}/3600.0)" | bc)
+    local time_in_hr=$(echo "scale=4; ${hour}+(${minute}/60.0)+(${second}/3600.0)" | bc)
 
     
     # output to file 
