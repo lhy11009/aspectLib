@@ -1,7 +1,7 @@
 export ASPECT_PROJECT_DIR="$HOME/ASPECT_PROJECT"
 export ASPECT_LAB_DIR="$HOME/ASPECT_PROJECT/aspectLib"
 export TwoDSubduction_DIR="$HOME/ASPECT_PROJECT/TwoDSubduction"
-alias project_update="python -m shilofue.TwoDSubduction update -o /home/lochy/ASPECT_PROJECT/TwoDSubduction"
+alias project_update="${ASPECT_LAB_DIR}/aspect_lib.sh TwoDSubduction post_process"
 alias plt_connect='ssh -X lochy@peloton.cse.ucdavis.edu'
 alias plt_update='process.sh update_from_server .output/job.log lochy@peloton.cse.ucdavis.edu'
 alias plt_clean='process.sh clean_from_server .output/job.log lochy@peloton.cse.ucdavis.edu'

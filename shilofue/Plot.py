@@ -606,6 +606,8 @@ def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
     # But yes, we need two of them to do different type of plot.
     NewtonSolverStep = NEWTON_SOLVER_PLOT('NewtonSolverStep')
     NewtonSolver = NEWTON_SOLVER_PLOT('NewtonSolver')
+    # machine time
+    MachineTime = MACHINE_TIME_PLOT('MachineTime')
 
     for key, value in _project_dict.items():
         if key == 'cases':
@@ -683,5 +685,23 @@ One option is to delete incorrect file before running again" % _depth_average_fi
                     if _ofile_exact is not None:
                         # output when there is file generated
                         print('Plot has been generated: ', _ofile_exact)  # screen output
+            
+            # plot machine_time
+            # todo
+            _machine_time_file = os.path.join(_case_output_dir, 'machine_time')
+            _time = 0.0
+            _ofile = os.path.join(_case_img_dir, 'MachineTime.%s' % _file_type)  # ofile has the exact time
+            if os.path.isfile(_machine_time_file) and (not os.path.isfile(_ofile) or update is True):
+                # check for ofile here is not precist, not intuitive. future: change the implementation
+                try:
+                    _ofile_exact = MachineTime(_machine_time_file, fileout=_ofile)
+                except Exception as e:
+                    raise Exception("Plot DepthAverage file failed for %s, please chech file content.\
+One option is to delete incorrect file before running again" % _machine_time_file) from e
+                else:
+                    if _ofile_exact is not None:
+                        # output when there is file generated
+                        print('Plot has been generated: ', _ofile_exact)  # screen output
+        
         pass
     

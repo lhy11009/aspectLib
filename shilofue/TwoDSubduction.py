@@ -437,6 +437,20 @@ def main():
         # plot step0
         NewtonSolverStep(filein, fileout=ofile_route)
         pass
+    
+    elif _commend == 'plot_machine_time':
+        # plot the machine time output
+        # use -i option as input and -o option as output dir
+        # example usages:
+        #   python -m shilofue.TwoDSubduction plot_machine_time -i tests/integration/fixtures/test-plot/machine_time -o .test
+        filein = arg.input_dir
+        output_dir = arg.output_dir
+        ofile = os.path.join(output_dir, 'MachineTime.pdf')
+        # plot newton solver output
+        MachineTime = Plot.MACHINE_TIME_PLOT('MachineTime')
+        # plot step0
+        MachineTime(filein, fileout=ofile)
+        pass
 
     elif _commend == 'plot':
         # future
