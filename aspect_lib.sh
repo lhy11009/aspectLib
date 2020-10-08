@@ -535,6 +535,59 @@ build_aspect_project(){
 }
 
 
+################################################################################
+# todo
+# post-process of a case via bash
+#   Inputs:
+#   case_dir: directory of case
+bash_post_process_case(){
+    # handle newton solver output
+    # future: add option
+    vlist=(0 1 20)
+    parse_case_solver_output
+    return 0
+}
+
+
+################################################################################
+# todo
+# post-process of a project via bash
+# Inputs:
+#   local_root: directory of project
+bash_post_process_project(){
+    # search for groups and cases
+    # return values are group_dirs and case_dirs
+    search_project_for_groups_cases
+
+    local case_dir; local group_dir
+
+    # deal solver output
+    for case_dir in "${case_dirs[@]}"; do
+        bash_post_process_case
+    done
+    
+    # group_dirs=
+    # case_dirs=
+    # for case_dir in ${case_dirs[@]}; do
+    # done
+    return 0
+}
+
+
+################################################################################
+# todo
+# post-projecss of a project via bash and python
+# Inputs:
+#   py_script: python script for this project
+#   local_root: directory of project
+post_process_project(){
+    bash_post_process_project
+
+    # call python post process
+    eval "python -m ${py_script} update -o ${local_root}"
+}
+
+
 main(){
     # parameter list, future
     local project="$1"
@@ -692,6 +745,7 @@ main(){
         case_dir="$3"
         
         # call function
+        # future: make this quieter
         parse_case_solver_output
 
     elif [[ ${_commend} = 'write_time_log' ]]; then
@@ -720,6 +774,20 @@ main(){
             [[ $? -eq 0 ]] || { printf "${FUNCNAME[0]}: stop writing time log\n"; exit 0; }
             sleep 1h
         done
+
+    elif [[ ${_commend} = 'bash_post_process' ]]; then
+        # do post process project-wise, handling only the bash part
+        # todo
+        # example command line:
+        # ./aspect_lib.sh TwoDSubduction bash_post_process
+        bash_post_process_project
+
+    elif [[ ${_commend} = 'post_process' ]]; then
+        # do post process project-wise, handling both the bash and the python part
+        # todo
+        # example command line:
+        # ./aspect_lib.sh TwoDSubduction post_process
+        post_process_project
     
     elif [[ ${_commend} = 'build' ]]; then
         # build a project in aspect

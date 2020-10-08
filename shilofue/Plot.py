@@ -73,10 +73,22 @@ class LINEARPLOT():
                 filename for data file
         '''
         assert(os.access(_filename, os.R_OK))  # read in data
-        self.data = np.genfromtxt(_filename, comments='#')
+        # self.data = np.genfromtxt(_filename, comments='#')
+        
+        # import data via numpy buid in method
+        # todo catch warning of empty file and return 1
+        with warnings.catch_warnings(record=True) as w:
+            self.data = np.genfromtxt(_filename, comments='#')
+            if (len(w) > 0):
+                assert(issubclass(w[-1].category, UserWarning))
+                assert('Empty input file' in str(w[-1].message))
+                warnings.warn('ReadData: %s, abort' % str(w[-1].message))
+                return 1
+        
         if len(self.data.shape) == 1:
             # only one row, expand it too 2-d array
             self.data = np.array([self.data])
+        return 0
         
 
     def ManageData(self):
@@ -258,9 +270,18 @@ class STATISTICS_PLOT(LINEARPLOT):
                 filename for output figure
         '''
         _fileout = kwargs.get('fileout', _filename + '.pdf')
-        self.ReadHeader(_filename)  # inteprate header information
-        self.ReadData(_filename)  # read data
-        _data_list = self.ManageData()  # manage output data
+        
+        # inteprate header information
+        self.ReadHeader(_filename)
+
+        # Read data
+        # todo: catch possible vacant file
+        state=self.ReadData(_filename)
+        if state == 1:
+            return None
+
+        # manage output data
+        _data_list = self.ManageData()
         _fileout = self.PlotCombine(_data_list, _fileout)
         return _fileout
 
@@ -449,8 +470,14 @@ class NEWTON_SOLVER_PLOT(LINEARPLOT):
         '''
         _fileout = kwargs.get('fileout', _filename + '.pdf')
         self.ReadHeader(_filename)  # inteprate header information
-        self.ReadData(_filename)  # read data
-        _data_list = self.ManageData()  # manage output data
+
+        # todo, catch possible vacant file
+        state = self.ReadData(_filename)  # read data
+        if state == 1:
+            return None
+
+        # manage output data
+        _data_list = self.ManageData()
 
         # figure out name of file 
         if self.step is None:
@@ -585,7 +612,9 @@ One option is to delete incorrect file before running again" % _statistic_file) 
                     raise Exception("Plot DepthAverage file failed for %s, please chech file content.\
 One option is to delete incorrect file before running again" % _depth_average_file) from e
                 else:
-                    print('Plot has been generated: ', _ofile_exact)  # screen output
+                    if _ofile_exact is not None:
+                        # output when there is file generated
+                        print('Plot has been generated: ', _ofile_exact)  # screen output
             
             # add solver output
             # plot newton solver output
@@ -603,7 +632,9 @@ One option is to delete incorrect file before running again" % _depth_average_fi
                     raise Exception("Plot NewtonSolver file failed for %s, please chech file content.\
     One option is to delete incorrect file before running again" % _solver_file) from e
                 else:
-                    print('Plot has been generated: ', _ofile_exact)  # screen output
+                    if _ofile_exact is not None:
+                        # output when there is file generated
+                        print('Plot has been generated: ', _ofile_exact)  # screen output
             # plot whole history
             _ofile = os.path.join(_case_img_dir, 'NewtonSolver.%s' % _file_type)
             if os.path.isfile(_solver_file) and (not os.path.isfile(_ofile) or update is True):
@@ -614,6 +645,8 @@ One option is to delete incorrect file before running again" % _depth_average_fi
                     raise Exception("Plot NewtonSolver file failed for %s, please chech file content.\
     One option is to delete incorrect file before running again" % _solver_file) from e
                 else:
-                    print('Plot has been generated: ', _ofile_exact)  # screen output
+                    if _ofile_exact is not None:
+                        # output when there is file generated
+                        print('Plot has been generated: ', _ofile_exact)  # screen output
         pass
     

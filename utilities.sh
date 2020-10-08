@@ -609,6 +609,43 @@ parse_output_value(){
 
 
 ################################################################################
+# todo
+# return list of groups and cases
+# Inputs:
+#   local_root(str)
+# Outputs:
+#   group_dirs(array): list of full routes to groups
+#   case_dirs(array)
+search_project_for_groups_cases(){
+    # configurations
+    local config_file="config.json"
+    local prm_file="case.prm"
+
+    # loop for groups and case
+    local object; local contents; local sub_object; local sub_contents
+    # initialize arrays
+    group_dirs=(); case_dirs=()
+    for object in "${local_root}"/*; do
+        if [[ -d ${object} ]]; then
+            contents=$(ls "${object}")
+            [[ ${contents} =~ "${config_file}" && ${contents} =~ "${prm_file}" ]] && case_dirs+=("${object}")
+            # loop for cases in the sub-folder of groups
+            if [[ ${contents} =~ "${config_file}" && ! ${contents} =~ "${prm_file}" ]]; then
+                group_dirs+=("${object}")
+                for sub_object in "${object}"/*; do
+                    if [[ -d ${sub_object} ]]; then
+                        sub_contents=$(ls "${sub_object}")
+                        [[ ${sub_contents} =~ "${config_file}" && ${sub_contents} =~ "${prm_file}" ]] && case_dirs+=("${sub_object}")
+                    fi
+                done
+            fi
+        fi
+    done
+    return 0
+}
+
+
+################################################################################
 # Test functions
 test_element_in(){
 	local _test_array=('a' 'b' 'c d')
