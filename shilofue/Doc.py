@@ -310,7 +310,7 @@ class MKDOC():
         _target_img_dir = os.path.join(_target_dir, 'img')
         if not os.path.isdir(_target_img_dir):
             os.mkdir(_target_img_dir)
-        # todo loop imgs first
+        # loop imgs first, so as to create a two-d list
         _imgs_list = [[]]*len(self.imgs)
         for i in range(len(self.imgs)):
             img = self.imgs[i]
@@ -318,7 +318,8 @@ class MKDOC():
                 _img_dir = os.path.join(_project_dir, _dir, 'img')
                 _imgs = ReturnFileList(_img_dir, [img])
                 # transfer _dir to a name to append
-                _dir_transfered = os.path.basename(_dir)
+                _dir_transfered = re.sub(os.sep, '-', _dir)
+                #_dir_transfered = os.path.basename(_dir)
                 # create hard links in target_dir
                 for _img in _imgs:
                     _file = os.path.join(_img_dir, _img)
@@ -329,34 +330,15 @@ class MKDOC():
                         os.remove(_target_file)
                         os.link(_file, _target_file)
                     _imgs_list[i].append(_target_file)
-
-
-#        if not os.path.isdir(_target_img_dir):
-#            os.mkdir(_target_img_dir)
-#        for _dir in _case_dirs:
-#            # join project directory with relative path
-#            _img_dir = os.path.join(_project_dir, _dir, 'img')
-#            _imgs = ReturnFileList(_img_dir, self.imgs)
-#            # transfer _dir to a name to append
-#            _dir_transfered = os.path.basename(_dir)
-#            # create hard links in target_dir
-#            for _img in _imgs:
-#                _file = os.path.join(_img_dir, _img)
-#                _target_file = os.path.join(_target_img_dir, "%s_%s" %(_dir_transfered, _img))
-#                if not os.path.isfile(_target_file):
-#                    os.link(_file, _target_file)
-#                elif filecmp.cmp(_file, _target_file) is False:
-#                    os.remove(_target_file)
-#                    os.link(_file, _target_file)
         
         # Append a summary.md
         # todo, append image information
         _base_name = kwargs.get('basename', None)
         if os.path.isfile(os.path.join(_target_dir, 'summary.md')):
             if update == True:
-                _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs) # images=_imgs)
+                _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs, images=_imgs_list)
         else:
-            _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs) # images=_imgs)
+            _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs, images=_imgs_list)
             # in a mkdocs file, files are listed as 'name/_filename'
             _summary = os.path.join(_name, os.path.basename(_filename))
             if _base_name is None:
@@ -383,17 +365,21 @@ class MKDOC():
         _filename = os.path.join(_target_dir, _filename)
         _auto_mkd_file = os.path.join(_dir, 'auto.md')
         _extra_mkd_file = os.path.join(_dir, 'extra.md')
+        
+        # copy the auto.mkd file from case directory
         assert (os.path.isfile(_auto_mkd_file))
-        copyfile(_auto_mkd_file, _filename)  # copy the auto.mkd file from case directory
+        copyfile(_auto_mkd_file, _filename)
+        
+        # apppend contents of extra.mkd at the end of case.mkd
         if (os.path.isfile(_extra_mkd_file)):
-            # apppend contents of extra.mkd at the end of case.mkd
             with open(_extra_mkd_file, 'r') as fin:
                 _contents = fin.read()
             with open(_filename, 'a') as fout:
                 fout.write('\n')
                 fout.write(_contents)
+        
+        # append images
         if _imgs != []:
-            # append images
             _contents = self.GenerateImageMkd(_dir, _imgs)
             with open(_filename, 'a') as fout:
                 fout.write('\n')
@@ -460,23 +446,28 @@ class MKDOC():
         # write file header
         contents = ''
         _name = os.path.basename(_target_dir)
-        contents += '## Analysis %s\n\n' % _name
+        contents += '# Analysis %s\n\n' % _name
         
         # append names of cases
-        contents += '### This includes cases: \n\n'
+        contents += '## This includes cases: \n\n'
         for _case_dir in _case_dirs:
-            _case_link = os.path.join('..', _case_dir)
-            contents += '* %s %s\n' % (_case_dir, ConvertLinkMKD('link_to_case', _case_link))
+            _case_link = os.path.join('..', _case_dir, 'summary.md')
+            contents += '* %s\n' % ConvertLinkMKD(_case_dir, _case_link)
+        contents += '\n'
        
         # append imgs
         # todo
-        _imgs = kwargs.get('images', [[]]*len(self.imgs))
-        my_assert(len(self.imgs)==len(_imgs), ValueError,
+        imgs_ = kwargs.get('images', [[]]*len(self.imgs))
+        my_assert(len(self.imgs)==len(imgs_), ValueError,
                   "GenerateAnalysisMkd: images input must be a list that have the same length with self.imgs")
         for i in range(len(self.imgs)):
             img_root = self.imgs[i]
-            contents += '### Image %s' % img_root
-
+            contents += '## Image %s\n\n' % img_root
+            for img_ in imgs_[i]:
+                basename_ = os.path.basename(img_)
+                relative_route = os.path.join('img', os.path.basename(basename_))
+                contents += '%s\n' % basename_
+                contents += '%s\n\n' % ConvertMediaMKD(basename_, relative_route)
 
         # write
         with open(_filename, 'w') as fout:

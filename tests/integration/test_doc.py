@@ -6,7 +6,7 @@ from shutil import rmtree, copyfile
 
 
 # test files are in this directory
-# todo: change name in all other files as this one
+# future: change name in all other files as this one
 test_source_dir = os.path.join(os.path.dirname(__file__), 'fixtures')
 test_dir = './.test'
 
@@ -41,73 +41,90 @@ def test_mkdoc():
     '''
     test class MKDOC from shilofue.doc
     '''
-    _mkdocs_dir = os.path.join(test_dir, 'test-project')
-    _docs_dir = os.path.join(_mkdocs_dir, 'docs')
-    _mkdocs_case_dir = os.path.join(_docs_dir, 'foo')  # this should be generate by the code
-    if os.path.isdir(_mkdocs_dir):
-        rmtree(_mkdocs_dir)
-    os.mkdir(_mkdocs_dir)
-    os.mkdir(_docs_dir)
-    os.mkdir(_mkdocs_case_dir)
+    source_dir = os.path.join(test_source_dir, 'test-project')
+    mkdocs_dir = os.path.join(test_dir, 'test-project')
+    docs_dir = os.path.join(mkdocs_dir, 'docs')
+    mkdocs_case_dir = os.path.join(docs_dir, 'foo')  # this should be generate by the code
+    if os.path.isdir(mkdocs_dir):
+        rmtree(mkdocs_dir)
+    os.mkdir(mkdocs_dir)
+    os.mkdir(docs_dir)
+    os.mkdir(mkdocs_case_dir)
 
     # files that will be used in this test
-    _mkdocs_file = os.path.join(_mkdocs_dir, 'mkdocs.yml')
-    copyfile(os.path.join(test_source_dir, 'test-project', 'mkdocs.yml'), _mkdocs_file)
-    _index_file = os.path.join(_docs_dir, 'index.md')
-    _case_file = os.path.join(_mkdocs_case_dir, 'foo.md')
+    mkdocs_file = os.path.join(mkdocs_dir, 'mkdocs.yml')
+    copyfile(os.path.join(source_dir, 'mkdocs.yml'), mkdocs_file)
 
     # call __init__ function
-    myMkdoc = Doc.MKDOC(_mkdocs_dir)
+    myMkdoc = Doc.MKDOC(mkdocs_dir)
 
     #call __call__ function for a case
-    myMkdoc('foo', os.path.join(test_source_dir, 'test-project', 'foo'), append_prm=True, images='DepthAverage')
-    _case_summary_file = os.path.join(_mkdocs_case_dir, 'summary.md')
-    _case_prm_file = os.path.join(_mkdocs_case_dir, 'case.prm')
-    _case_img_file = os.path.join(_mkdocs_case_dir, 'img', 'DepthAverage_t0.00000000e+00.pdf')
-    assert(os.path.isfile(_case_summary_file))  # assert summary.md generated
-    assert(os.path.isfile(_case_img_file))  # assert hard link for image generated
+    # source directory for this case
+    case_source_dir = os.path.join(source_dir, 'foo')
+    myMkdoc('foo', os.path.join(case_source_dir), append_prm=True, images='DepthAverage')
+    case_summary_file = os.path.join(mkdocs_case_dir, 'summary.md')
+    case_prm_file = os.path.join(mkdocs_case_dir, 'case.prm')
+    case_img_file = os.path.join(mkdocs_case_dir, 'img', 'DepthAverage_t0.00000000e+00.png')
+    assert(os.path.isfile(case_summary_file))  # assert summary.md generated
+    assert(os.path.isfile(case_img_file))  # assert hard link for image generated
     # assert file has the right content
-    _case_summary_file_std = os.path.join(test_source_dir, 'test-project', 'standard_foo_summary.md')
-    assert(filecmp.cmp(_case_summary_file, _case_summary_file_std))
+    case_summary_file_std = os.path.join(case_source_dir, 'summary_std.md')
+    assert(filecmp.cmp(case_summary_file, case_summary_file_std))
     
     # call __call__ function for a group
-    _mkdocs_group_dir = os.path.join(_docs_dir, 'foo_group')  # this should be generate by the code
-    myMkdoc('foo_group', os.path.join(test_source_dir, 'test-project', 'foo_group'), append_prm=True, type='group', case_names=['foo1', 'foo2'])
-    _group_summary_file = os.path.join(_mkdocs_group_dir, 'summary.md')
+    group_source_dir = os.path.join(source_dir, 'foo_group')
+    mkdocs_group_dir = os.path.join(docs_dir, 'foo_group')  # this should be generate by the code
+    myMkdoc('foo_group', group_source_dir, append_prm=True, type='group', case_names=['foo1', 'foo2'], images='DepthAverage')
+    group_summary_file = os.path.join(mkdocs_group_dir, 'summary.md')
+    group_summary_file_std = os.path.join(group_source_dir, 'summary_std.md')
+    assert(filecmp.cmp(group_summary_file, group_summary_file_std))
     # check for foo1
-    _mkdocs_subcase_dir = os.path.join(_mkdocs_group_dir, 'foo1')
-    _case_summary_file = os.path.join(_mkdocs_subcase_dir, 'summary.md')
-    _case_prm_file = os.path.join(_mkdocs_subcase_dir, 'case.prm')
-    assert(os.path.isfile(_case_summary_file))  # assert summary.md generated
+    case_source_dir = os.path.join(group_source_dir, 'foo1')
+    mkdocs_case_dir = os.path.join(mkdocs_group_dir, 'foo1')
+    case_summary_file = os.path.join(mkdocs_case_dir, 'summary.md')
+    case_prm_file = os.path.join(mkdocs_case_dir, 'case.prm')
+    # assert summary.md generated
+    assert(os.path.isfile(case_summary_file))
     # assert file has the right content
-    with open(_case_summary_file, 'r') as fin:
-        _case_summary_contents = fin.read()
-    with open(os.path.join(test_source_dir, 'test-project', 'standard_foo1_summary.md')) as standard_fin:
-        assert(_case_summary_contents == standard_fin.read())
-    assert(os.path.isfile(_case_prm_file))  # assert case.prm generated
+    case_summary_file_std = os.path.join(case_source_dir, 'summary_std.md')
+    assert(filecmp.cmp(case_summary_file, case_summary_file_std))
+    # assert case.prm generated
+    assert(os.path.isfile(case_prm_file))
     # check for foo2
-    _mkdocs_subcase_dir = os.path.join(_mkdocs_group_dir, 'foo2')
-    _case_summary_file = os.path.join(_mkdocs_subcase_dir, 'summary.md')
-    _case_prm_file = os.path.join(_mkdocs_subcase_dir, 'case.prm')
-    assert(os.path.isfile(_case_summary_file))  # assert summary.md generated
+    case_source_dir = os.path.join(group_source_dir, 'foo2')
+    mkdocs_case_dir = os.path.join(mkdocs_group_dir, 'foo2')
+    case_summary_file = os.path.join(mkdocs_case_dir, 'summary.md')
+    case_prm_file = os.path.join(mkdocs_case_dir, 'case.prm')
+    # assert summary.md generated
+    assert(os.path.isfile(case_summary_file))
     # assert file has the right content
-    with open(_case_summary_file, 'r') as fin:
-        _case_summary_contents = fin.read()
-    with open(os.path.join(test_source_dir, 'test-project', 'standard_foo2_summary.md')) as standard_fin:
-        assert(_case_summary_contents == standard_fin.read())
-    assert(os.path.isfile(_case_prm_file))  # assert case.prm generated
+    case_summary_file_std = os.path.join(case_source_dir, 'summary_std.md')
+    assert(filecmp.cmp(case_summary_file, case_summary_file_std))
+    # assert case.prm generated
+    assert(os.path.isfile(case_prm_file))
 
     # call __call__ function for a analysis
-    # todo
     case_dirs = ['foo', 'foo_group/foo1']
     images = ['DepthAverage']
-    myMkdoc('test_analysis', os.path.join(test_source_dir, 'test-project'), append_prm=True, update=True, type='analysis', case_dirs=case_dirs, images=images)
+    analysis_source_dir = os.path.join(source_dir, 'test_analysis')
+    mkdocs_analysis_dir = os.path.join(docs_dir, 'test_analysis')  # this should be generate by the code
+    myMkdoc('test_analysis', source_dir, append_prm=True, update=True, type='analysis', case_dirs=case_dirs, images=images)
     # assertions
+    analysis_summary_file = os.path.join(mkdocs_analysis_dir, 'summary.md')
+    # assert summary.md generated
+    assert(os.path.isfile(analysis_summary_file))
+    analysis_summary_file_std = os.path.join(analysis_source_dir, 'summary_std.md')
+    # assert file has the right content
+    assert(filecmp.cmp(analysis_summary_file, analysis_summary_file_std))
+    # assert images are linked
+    analysis_image_dir = os.path.join(mkdocs_analysis_dir, 'img')
+    images_ = ['foo_DepthAverage_t0.00000000e+00.png', 'foo_group-foo1_DepthAverage_t0.00000000e+00.png']
+    for image_ in images_:
+        assert(os.path.isfile(os.path.join(analysis_image_dir, image_)))
 
     # assert mkdocs.yml file has the right contents
-    # todo fix content
-    mkdocs_file = os.path.join(test_dir, 'test-project', 'mkdocs.yml')
-    mkdocs_file_std = os.path.join(test_source_dir, 'test-project', 'standard_mkdocs.yml')
+    mkdocs_file = os.path.join(mkdocs_dir, 'mkdocs.yml')
+    mkdocs_file_std = os.path.join(source_dir, 'mkdocs_std.yml')
     assert(filecmp.cmp(mkdocs_file, mkdocs_file_std))
             
 

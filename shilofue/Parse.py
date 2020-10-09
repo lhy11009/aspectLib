@@ -436,10 +436,17 @@ class PARSE_OPERATIONS():
             pass
         else:
             Inputs['CFL number'] = str(CFL_number)
+        
+        # change the Max nonlinear iterations number
+        try:
+            max_nonlinear_iterations = _config['max_nonlinear_iterations']
+        except KeyError:
+            pass
+        else:
+            Inputs['Max nonlinear iterations'] = str(max_nonlinear_iterations)
     
     def MaterialModel(self, Inputs, _config):
         """
-        todo
         properties in the material model
         only support changing parameters inside a material model
         """
