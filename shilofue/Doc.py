@@ -179,24 +179,29 @@ class MKDOC():
         _index_file = os.path.join(self.odir, 'docs', 'index.md')
 
         # deal with different types of entry
+        self.name = _name
         _target_dir = os.path.join(self.odir, 'docs', _name)
         if _type == 'case':
             # append a case
             self.AppendCase(_name, _dir, _target_dir, update=update, append_prm=append_prm)
+            # tabname is assign to tab in mkdocs
+            tab_name = 'default'
         elif _type == 'group':
             # append a group
             _case_names = kwargs.get('case_names', None)
             my_assert(_case_names is not None, ValueError, 'For a group, case names cannot be None. Valid names must be given')
             self.AppendGroup(_name, _dir, _case_names, _target_dir, update=update, append_prm=append_prm)
+            tab_name = _name
         elif _type == 'analysis':
             # append a analysis
             _case_dirs = kwargs.get('case_dirs', [])
             # here the _dir is the project directory and case_dirs are relative directories to that
             self.AppendAnalysis(_name, _dir, _case_dirs, _target_dir)
+            tab_name = 'analysis'
         else:
             raise ValueError("Type must be 'case', 'group', 'analysis' ")
         if self.new_files != {}:
-            self.RenewMkdocsYml(_name)
+            self.RenewMkdocsYml(tab_name)
         
     def AppendCase(self, _name, _dir, _target_dir, **kwargs):
         '''
@@ -212,7 +217,6 @@ class MKDOC():
         '''
         update = kwargs.get('update', False)
         append_prm = kwargs.get('append_prm', False)
-        _prm = kwargs.get('prm', 'case.prm')
         _base_name = kwargs.get('basename', None)
         if not os.path.isdir(_target_dir):
             os.mkdir(_target_dir)
@@ -232,35 +236,19 @@ class MKDOC():
                 os.remove(_target_file)
                 os.link(_file, _target_file)
         # Append a summary.md
+        prm = kwargs.get('prm', 'case.prm')
         if os.path.isfile(os.path.join(_target_dir, 'summary.md')):
             if update == True:
-                self.GenerateCaseMkd(_dir, _target_dir, update=True, images=_imgs)
+                self.GenerateCaseMkd(_dir, _target_dir, update=True, images=_imgs, prm=prm)
         else:
-            _filename = self.GenerateCaseMkd(_dir, _target_dir, images=_imgs)
+            _filename = self.GenerateCaseMkd(_dir, _target_dir, images=_imgs, prm=prm)
             # in a mkdocs file, files are listed as 'name/_filename'
             _summary = os.path.join(_name, os.path.basename(_filename))
             if _base_name is None:
-                self.new_files['Summary'] = _summary
+                self.new_files[_name] = _summary
             else:
                 # a subcase of a group
-                self.new_files[_name]['Summary'] = os.path.join(_base_name, _summary)
-        # Append a prm file if the append_prm option is True
-        if append_prm:
-            if os.path.isfile(os.path.join(_target_dir, _prm)):
-                if update == True:
-                    _prm_source_file = os.path.join(_dir, _prm)
-                    assert(os.path.isfile(_prm_source_file))
-                    copyfile(_prm_source_file, os.path.join(_target_dir, _prm))
-            else:
-                _prm_source_file = os.path.join(_dir, _prm)
-                assert(os.path.isfile(_prm_source_file))
-                copyfile(_prm_source_file, os.path.join(_target_dir, _prm))
-                _parameters = os.path.join(_name, _prm)
-                if _base_name is None:
-                    self.new_files['Parameters'] = _parameters
-                else:
-                    # a subcase of a group
-                    self.new_files[_name]['Parameters'] = os.path.join(_base_name, _parameters)
+                self.new_files[_name] = os.path.join(_base_name, _summary)
     
     def AppendGroup(self, _name, _dir, _case_names, _target_dir, **kwargs):
         '''
@@ -285,6 +273,8 @@ class MKDOC():
         else:
             _filename = self.GenerateGroupMkd(_dir, _target_dir)
             # in a mkdocs file, files are listed as 'name/_filename'
+            if self.new_files == None:
+                self.new_files = {}
             self.new_files['Summary'] = os.path.join(_name, os.path.basename(_filename))
         for _case_name in _case_names:
             self.new_files[_case_name] = {}
@@ -332,7 +322,7 @@ class MKDOC():
                     _imgs_list[i].append(_target_file)
         
         # Append a summary.md
-        # todo, append image information
+        # append image information
         _base_name = kwargs.get('basename', None)
         if os.path.isfile(os.path.join(_target_dir, 'summary.md')):
             if update == True:
@@ -341,12 +331,12 @@ class MKDOC():
             _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs, images=_imgs_list)
             # in a mkdocs file, files are listed as 'name/_filename'
             _summary = os.path.join(_name, os.path.basename(_filename))
+            # append to the new_files
             if _base_name is None:
-                self.new_files['Summary'] = _summary
+                self.new_files[_name] = _summary
             else:
-                # a subcase of a group
-                self.new_files[_name]['Summary'] = os.path.join(_base_name, _summary)
-        pass
+                # of a group
+                self.new_files[_name] = os.path.join(_base_name, _summary)
 
     def GenerateCaseMkd(self, _dir, _target_dir, **kwargs):
         '''
@@ -362,28 +352,43 @@ class MKDOC():
         '''
         _filename = kwargs.get('filename', 'summary.md')
         _imgs = kwargs.get('images', [])
+        _prm = kwargs.get('prm', 'case.prm')
         _filename = os.path.join(_target_dir, _filename)
-        _auto_mkd_file = os.path.join(_dir, 'auto.md')
-        _extra_mkd_file = os.path.join(_dir, 'extra.md')
+
+        # get case name
+        case_name = os.path.basename(_dir)
+
+        # initialize contents
+        _contents = '# %s\n\n' % case_name
+
+        # link to prm file if included
+        # todo
+        _auto_prm_file = os.path.join(_dir, _prm)
+        _prm_file = os.path.join(_target_dir, _prm)
+        if os.path.isfile(_auto_prm_file):
+            copyfile(_auto_prm_file, _prm_file)
+            _contents += '%s\n\n' % ConvertLinkMKD('prm file', _prm)
         
-        # copy the auto.mkd file from case directory
-        assert (os.path.isfile(_auto_mkd_file))
-        copyfile(_auto_mkd_file, _filename)
+        # append content of 'auto.mkd'
+        _auto_mkd_file = os.path.join(_dir, 'auto.md')
+        assert (os.access(_auto_mkd_file, os.R_OK))
+        with open(_auto_mkd_file, 'r') as fin:
+            _contents += '%s\n' % fin.read()
         
         # apppend contents of extra.mkd at the end of case.mkd
+        _extra_mkd_file = os.path.join(_dir, 'extra.md')
         if (os.path.isfile(_extra_mkd_file)):
             with open(_extra_mkd_file, 'r') as fin:
-                _contents = fin.read()
-            with open(_filename, 'a') as fout:
-                fout.write('\n')
-                fout.write(_contents)
+                _contents += '%s\n' % fin.read()
         
         # append images
         if _imgs != []:
-            _contents = self.GenerateImageMkd(_dir, _imgs)
-            with open(_filename, 'a') as fout:
-                fout.write('\n')
-                fout.write(_contents)
+            _contents += self.GenerateImageMkd(_dir, _imgs)
+        
+        # write file
+        with open(_filename, 'w') as fout:
+            fout.write('\n')
+            fout.write(_contents)
         return _filename
 
     def GenerateImageMkd(self, _dir, _files, **kwargs):
@@ -456,7 +461,6 @@ class MKDOC():
         contents += '\n'
        
         # append imgs
-        # todo
         imgs_ = kwargs.get('images', [[]]*len(self.imgs))
         my_assert(len(self.imgs)==len(imgs_), ValueError,
                   "GenerateAnalysisMkd: images input must be a list that have the same length with self.imgs")

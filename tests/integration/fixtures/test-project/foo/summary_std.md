@@ -1,3 +1,8 @@
+
+# foo
+
+[prm file](case.prm)
+
 # foo
 
 # overview

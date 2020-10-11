@@ -101,7 +101,7 @@ def test_mkdoc():
     case_summary_file_std = os.path.join(case_source_dir, 'summary_std.md')
     assert(filecmp.cmp(case_summary_file, case_summary_file_std))
     # assert case.prm generated
-    assert(os.path.isfile(case_prm_file))
+    assert(os.path.isfile(case_prm_file))  # debug
 
     # call __call__ function for a analysis
     case_dirs = ['foo', 'foo_group/foo1']
