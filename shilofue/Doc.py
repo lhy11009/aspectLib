@@ -192,7 +192,7 @@ class MKDOC():
             # append a analysis
             _case_dirs = kwargs.get('case_dirs', [])
             # here the _dir is the project directory and case_dirs are relative directories to that
-            self.AppendAnalysis(_name, _dir, _case_dirs, _target_dir)
+            self.AppendAnalysis(_name, _dir, _case_dirs, _target_dir, update=update)
         else:
             raise ValueError("Type must be 'case', 'group', 'analysis' ")
         if self.new_files != {}:
@@ -311,7 +311,10 @@ class MKDOC():
         if not os.path.isdir(_target_img_dir):
             os.mkdir(_target_img_dir)
         # loop imgs first, so as to create a two-d list
-        _imgs_list = [[]]*len(self.imgs)
+        _imgs_list = []
+        for i in range(len(self.imgs)):
+            _imgs_list.append([])
+        # _imgs_list = [[]]*len(self.imgs)
         for i in range(len(self.imgs)):
             img = self.imgs[i]
             for _dir in _case_dirs:
@@ -332,7 +335,7 @@ class MKDOC():
                     _imgs_list[i].append(_target_file)
         
         # Append a summary.md
-        # todo, append image information
+        # append image information
         _base_name = kwargs.get('basename', None)
         if os.path.isfile(os.path.join(_target_dir, 'summary.md')):
             if update == True:
@@ -456,7 +459,6 @@ class MKDOC():
         contents += '\n'
        
         # append imgs
-        # todo
         imgs_ = kwargs.get('images', [[]]*len(self.imgs))
         my_assert(len(self.imgs)==len(imgs_), ValueError,
                   "GenerateAnalysisMkd: images input must be a list that have the same length with self.imgs")

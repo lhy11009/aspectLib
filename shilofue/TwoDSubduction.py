@@ -405,7 +405,8 @@ def main():
         Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False)
 
         # update mkdocs
-        Doc.UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'NewtonSolver', 'PvMesh', 'visit'], analysis=analysis_dict)
+        imgs = ['Statistics' , 'MachineTime', 'DepthAverage', 'NewtonSolver', 'PvMesh', 'visit']
+        Doc.UpdateProjectDoc(_project_dict, _project_dir, images=imgs, analysis=analysis_dict)
 
     elif _commend == 'plot_newton_solver_step':
         # Plot one step from Newton solver
