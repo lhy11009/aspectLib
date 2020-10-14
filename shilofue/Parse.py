@@ -444,6 +444,18 @@ class PARSE_OPERATIONS():
             pass
         else:
             Inputs['Max nonlinear iterations'] = str(max_nonlinear_iterations)
+
+        # change "Nonlinear Newton solver switch tolerance" in Newton solve configuration
+        try:
+            newton_solver_switch = _config['newton_solver_switch']
+        except KeyError:
+            pass
+        try:
+            newton_solver = Inputs['Solver parameters']['Newton solver parameters']
+        except KeyError:
+            pass
+        else:
+            newton_solver['Nonlinear Newton solver switch tolerance'] = str(newton_solver_switch)
     
     def MaterialModel(self, Inputs, _config):
         """
