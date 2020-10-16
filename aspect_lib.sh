@@ -470,7 +470,7 @@ parse_case_solver_output()
     local idin=0
     for file_ in "${case_dir}"/*"stdout"; do
         # fix bug
-        [[ -e "${file_}" ]] || break
+        [[ -e "${file_}" ]] || continue
         # get id
         filename=$(basename "${file_}")
         temp=${filename#*"-"}

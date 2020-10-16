@@ -341,9 +341,9 @@ write_time_log(){
     IFS=':'; time_array=(${TIME})
     local hour; local minute; local second
     if [[ ${#time_array{@}} -eq 2 ]]; then
-        minute=${time_array[0]}; second=${time_array[1]};
-    elif [[ ${#time_array{@}} -eq 3 ]]
-        hour=${time_array[0]}; minute=${time_array[1]}; second=${time_array[2]};
+        minute=${time_array[0]}; second=${time_array[1]}
+    elif [[ ${#time_array{@}} -eq 3 ]]; then
+        hour=${time_array[0]}; minute=${time_array[1]}; second=${time_array[2]}
     else
         cecho ${BAD} "${FUNCNAME[0]}: length of the output from slurm must be 2 or 3 instead of ${#time_array[@]}"
     fi
