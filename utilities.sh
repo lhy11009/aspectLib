@@ -339,11 +339,14 @@ write_time_log(){
 
     # expand time
     IFS=':'; time_array=(${TIME})
-    local hour=${time_array[0]}
-    local minute=${time_array[1]}
-    # output from slurm could have no second
-    local second=${time_array[2]}
-    [[ -z ${second} ]] && second=0
+    local hour; local minute; local second
+    if [[ ${#time_array{@}} -eq 2 ]]; then
+        minute=${time_array[0]}; second=${time_array[1]};
+    elif [[ ${#time_array{@}} -eq 3 ]]
+        hour=${time_array[0]}; minute=${time_array[1]}; second=${time_array[2]};
+    else
+        cecho ${BAD} "${FUNCNAME[0]}: length of the output from slurm must be 2 or 3 instead of ${#time_array[@]}"
+    fi
     # compute time in hrs
     local time_in_hr=$(echo "scale=4; ${hour}+(${minute}/60.0)+(${second}/3600.0)" | bc)
 
@@ -353,7 +356,6 @@ write_time_log(){
 
     return 0
 }
-
 
 ################################################################################
 # generate message for a tests
