@@ -29,21 +29,17 @@ end
 
 
 subsection Solver parameters
-  subsection Stokes solver parameters
-    set Stokes solver type = block GMG
-  end
-  subsection Newton solver parameters
-    set Max Newton line search iterations        = 5
-    set Max pre-Newton nonlinear iterations      = 25
-    set Maximum linear Stokes solver tolerance   = 1e-1
-    set Nonlinear Newton solver switch tolerance = 1e-7
-    set SPD safety factor                        = 0.9
-    set Stabilization preconditioner             = SPD
-    set Stabilization velocity block             = SPD
-    set Use Newton failsafe                      = false
-    set Use Newton residual scaling method       = false
-    set Use Eisenstat Walker method for Picard iterations = true
-  end
+    subsection Newton solver parameters
+        set Max pre-Newton nonlinear iterations = 25
+        set Nonlinear Newton solver switch tolerance = 1e-7
+        set Max Newton line search iterations = 0
+        set Maximum linear Stokes solver tolerance = 5e-2
+        set Use Newton residual scaling method = true
+        set Use Newton failsafe = true
+        set Stabilization preconditioner = SPD
+        set Stabilization velocity block = SPD
+        set Use Eisenstat Walker method for Picard iterations = true
+    end
 end
 
 

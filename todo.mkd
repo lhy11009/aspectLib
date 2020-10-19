@@ -143,3 +143,10 @@ add a assertion for all possible entries, like the one for the 'Strategy'
 # Plot.py
 
 * inprove the interface of ProjectPlot
+
+# Doc.py
+
+## add a function to delete a doc for a case/group
+
+* delete file in the 'docs' folder and clean record in the '.yml' file simutanously;
+* if a link is presenting in the .yml file but the file is not found in the docs, then remove the link instead. 
