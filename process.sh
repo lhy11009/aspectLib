@@ -112,6 +112,7 @@ update_outputs_from_server(){
 	for job_dir in ${job_dirs[@]}; do
         target_dir=${job_dir/"${remote_root}"/"${local_root}"}
         [[ -d ${target_dir} ]] || mkdir -p "${target_dir}"  # mkdir target dir if it doesn't exist
+		echo "${RSYNC} -avur ${server_info}:${job_dir}/* ${target_dir}/"
 		eval "${RSYNC} -avur ${server_info}:${job_dir}/* ${target_dir}/"
 	done
 }
