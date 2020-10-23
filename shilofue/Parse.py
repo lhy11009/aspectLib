@@ -458,6 +458,20 @@ class PARSE_OPERATIONS():
                 pass
             else:
                 newton_solver['Nonlinear Newton solver switch tolerance'] = str(newton_solver_switch)
+            try:
+                # change "Max pre-Newton nonlinear iterations"
+                max_pre_newton_iteration = _config['max_pre_newton_iteration']
+            except KeyError:
+                pass
+            else:
+                newton_solver['Max pre-Newton nonlinear iterations'] = str(max_pre_newton_iteration)
+            try:
+                # change "Maximum linear Stokes solver tolerance"
+                max_linear_tolerance = _config['max_linear_tolerance']
+            except KeyError:
+                pass
+            else:
+                newton_solver['Maximum linear Stokes solver tolerance'] = str(max_linear_tolerance)
     
     def MaterialModel(self, Inputs, _config):
         """

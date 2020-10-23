@@ -1,9 +1,11 @@
 {
     "canvas": [3, 3],
     "types": [
+        "Time",
         "Number_of_Cells",
         "Iterations_for_Stokes_solver",
-        "Time",
+        "Iterations_for_temperature_solver",
+        "Number_of_nonlinear_iterations",
         ["Heat_Flux_1", "Heat_Flux_2", "Heat_Flux_3"],
         ["RMS_Velocity", "Max_Velocity"],
         ["Average_Temperature", "Minimal_Temperature", "Maximal_Temperature"],
