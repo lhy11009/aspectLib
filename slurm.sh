@@ -159,9 +159,23 @@ parse_options(){
         -b=*|--bool=*)
           bool="${param#*=}"
         ;;
+        #####################################
+        # float value
+        #####################################
+        -f)
+          shift
+          float="${1}"
+        ;;
+        -f=*|--float=*)
+          float="${param#*=}"
+        ;;
       esac
       shift
     done
+    
+    # check values
+    [[ -z ${bool} || ${bool} = "true" || ${bool} = "false" ]] || { cecho ${BAD} "${FUNCNAME[0]}: bool value must be true or false"; exit 1; }
+    [[ -z ${float} || ${float} =~ ^[0-9\.]+$ ]] || { cecho ${BAD} "${FUNCNAME[0]}: entry for \${float} must be a float value"; exit 1; }
 }
 
 submit(){
@@ -356,10 +370,12 @@ main(){
 	echo "${_message}"
 	# todo
 	# bind this with aspect_lib.sh to pullout machine time
+	local sleep_duration
+	[[ -n ${float} ]] && sleep_duration="${float}" || sleep_duration=1
 	if [[ -n ${log_file_time} ]]; then
 		local log_file_time_dir=$(dirname "${log_file_time}")
 		[[ -d ${log_file_time_dir} ]] || mkdir "${log_file_time_dir}"
-        	eval "nohup ${dir}/aspect_lib.sh foo keep_write_time_log ${case_dir} ${job_id} ${log_file_time} >/dev/null 2>&1 &"
+        	eval "nohup ${dir}/aspect_lib.sh foo keep_write_time_log ${case_dir} ${job_id} ${log_file_time} -f ${sleep_duration}>/dev/null 2>&1 &"
 		return 0
 	fi
 

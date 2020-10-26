@@ -36,6 +36,16 @@ parse_options(){
           bool="${param#*=}"
         ;;
         #####################################
+        # float value
+        #####################################
+        -f)
+          shift
+          float="${1}"
+        ;;
+        -f=*|--float=*)
+          float="${param#*=}"
+        ;;
+        #####################################
         # list
         #####################################
         -l)
@@ -53,6 +63,7 @@ parse_options(){
 
     # check values
     [[ -z ${bool} || ${bool} = "true" || ${bool} = "false" ]] || { cecho ${BAD} "${FUNCNAME[0]}: bool value must be true or false"; exit 1; }
+    [[ -z ${float} || ${float} =~ ^[0-9\.]+$ ]] || { cecho ${BAD} "${FUNCNAME[0]}: entry for \${float} must be a float value"; exit 1; }
 }
 
 
@@ -894,11 +905,15 @@ main(){
         [[ -n $4 && $4=~^[0-9]+$ ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$4 must be a valid job id"; exit 1; }
         [[ -n $5 ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$5 must be a valid path of a file"; exit 1; }
 
+	# get value of time interval(sleep duration)
+	local sleep_duration
+	[[ -n ${float} ]] && sleep_duration="${float}" || sleep_duration=1
+
         while true
         do
             write_time_log $3 $4 $5
             [[ $? -eq 0 ]] || { printf "${FUNCNAME[0]}: stop writing time log\n"; exit 0; }
-            sleep 1h
+            eval "sleep ${sleep_duration}h"
         done
 
     elif [[ ${_commend} = 'bash_post_process' ]]; then
