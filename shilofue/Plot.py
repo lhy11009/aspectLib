@@ -672,6 +672,21 @@ One option is to delete incorrect file before running again" % _depth_average_fi
                     if _ofile_exact is not None:
                         # output when there is file generated
                         print('Plot has been generated: ', _ofile_exact)  # screen output
+            # plot step 1
+            _step = 1
+            NewtonSolverStep.GetStep(_step)
+            _ofile = os.path.join(_case_img_dir, 'NewtonSolverStep_s%07d.%s' % (_step, _file_type))
+            if os.path.isfile(_solver_file) and (not os.path.isfile(_ofile) or update is True):
+                # check for ofile here is not precist, not intuitive. future: change the implementation
+                try:
+                    _ofile_exact = NewtonSolverStep(_solver_file, fileout=_ofile_route)
+                except Exception as e:
+                    raise Exception("Plot NewtonSolver file failed for %s, please chech file content.\
+    One option is to delete incorrect file before running again" % _solver_file) from e
+                else:
+                    if _ofile_exact is not None:
+                        # output when there is file generated
+                        print('Plot has been generated: ', _ofile_exact)  # screen output
             # plot whole history
             _ofile = os.path.join(_case_img_dir, 'NewtonSolver.%s' % _file_type)
             if os.path.isfile(_solver_file) and (not os.path.isfile(_ofile) or update is True):
