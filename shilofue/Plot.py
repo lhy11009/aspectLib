@@ -6,7 +6,7 @@ import shilofue.json
 import warnings
 import numpy as np
 from importlib import resources
-from shilofue.Utilities import JsonOptions, ReadHeader, ReadHeader2, UNITCONVERT
+from shilofue.Utilities import JsonOptions, ReadHeader, ReadHeader2, UNITCONVERT, my_assert
 from matplotlib import pyplot as plt
 
 class LINEARPLOT():
@@ -584,6 +584,39 @@ class MACHINE_TIME_PLOT(LINEARPLOT):
         self.header['total_col'] += 1
         
         return _data_list
+    
+    def GetStepMT(self, filename, step):
+        '''
+        get the total core hours spent before reaching a specific step
+        Inputs:
+            step(int): a specified step
+        Returns:
+            machine_time(float): machine time spent before reaching this step
+        '''
+        # Read header and data
+        self.ReadHeader(filename)
+        state=self.ReadData(filename)
+        if state == 1:
+            # empty file, return None
+            return None
+
+        # get steps and machine time
+        col_step = self.header['Time_step_number']['col']
+        col_mt = self.header['Machine_time']['col']
+        steps = self.data[:, col_step]
+        machine_times = self.data[:, col_mt]
+
+        # check step is in range
+        my_assert(type(step) == int, TypeError, "GetStepMT: step mush be an int value")
+        my_assert(step <= np.max(steps), ValueError, "GetStepMT: step given is bigger than maximum step") 
+        
+        # interp for step
+        machine_time_at_step = np.interp(step, steps, machine_times)
+        
+        # compute total time
+        col_cpu = self.header['CPU_number']['col']
+        number_of_cpu = self.data[0, col_cpu]
+        return machine_time_at_step * number_of_cpu, number_of_cpu
 
 
 def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
@@ -702,7 +735,6 @@ One option is to delete incorrect file before running again" % _depth_average_fi
                         print('Plot has been generated: ', _ofile_exact)  # screen output
             
             # plot machine_time
-            # todo
             _machine_time_file = os.path.join(_case_output_dir, 'machine_time')
             _time = 0.0
             _ofile = os.path.join(_case_img_dir, 'MachineTime.%s' % _file_type)  # ofile has the exact time

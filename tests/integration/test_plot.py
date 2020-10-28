@@ -107,6 +107,17 @@ def test_plot_machine_time():
     # initiate 
     MachineTime = Plot.MACHINE_TIME_PLOT('MachineTime')
 
+    # get machine time at one step
+    step = 35
+    machine_time_at_step = MachineTime.GetStepMT(test_file, step)
+    machine_time_at_step_std = 256.0
+    assert(abs(machine_time_at_step - machine_time_at_step_std) < 1.0)
+    
+    step = 100
+    machine_time_at_step = MachineTime.GetStepMT(test_file, step)
+    machine_time_at_step_std = 675.56
+    assert(abs(machine_time_at_step - machine_time_at_step_std) < 1.0)
+
     # plot 
     _ofile = os.path.join(_test_dir, 'MachineTime.pdf')
     MachineTime(test_file, fileout=_ofile)

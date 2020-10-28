@@ -4,9 +4,13 @@ import os
 import re
 import filecmp
 import shilofue.json
+import shilofue.Plot as Plot
+from matplotlib import pyplot as plt
+from matplotlib import cm
 from importlib import resources
 from shutil import copyfile
 from pathlib import Path
+
 from shilofue.Utilities import my_assert, re_neat_word, re_count_indent
 
 
@@ -192,7 +196,7 @@ class MKDOC():
             # append a analysis
             _case_dirs = kwargs.get('case_dirs', [])
             # here the _dir is the project directory and case_dirs are relative directories to that
-            self.AppendAnalysis(_name, _dir, _case_dirs, _target_dir, update=update)
+            self.AppendAnalysis(_name, _dir, _case_dirs, _target_dir, kwargs)
         else:
             raise ValueError("Type must be 'case', 'group', 'analysis' ")
         if self.new_files != {}:
@@ -291,8 +295,107 @@ class MKDOC():
             _case_dir = os.path.join(_dir, _case_name)
             _case_target_dir = os.path.join(_target_dir, _case_name)
             self.AppendCase(_case_name, _case_dir, _case_target_dir, update=update, append_prm=append_prm, basename=_name)
+
+    def AnalyzeExtra(self, _name, _project_dir, _case_dirs, _target_dir, extra_analysis, kwargs):
+        # extra procedures in an analysis
+        # Inputs:
+        #   extra_analysis(str): type of extra analysis
+        #   kwargs(dict): dictionary of options
+        for key,value in extra_analysis.items():
+            if key == 'machine_time':
+                my_assert(type(value)==dict, TypeError, "AnalyzeExtra: settings to an option(a key in the analysis dict) must be a dict")
+                self.AnalyzeMachineTime(_project_dir, _case_dirs, _target_dir, value)
+            if key == 'newton_solver':
+                my_assert(type(value)==dict, TypeError, "AnalyzeExtra: settings to an option(a key in the analysis dict) must be a dict")
+                self.AnalyzeNewtonSolver(_project_dir, _case_dirs, _target_dir, value)
+
+    def AnalyzeMachineTime(self, _project_dir, _case_dirs, _target_dir, kwargs):
+        '''
+        generate a comparison of total machine time
+        '''
+        # Instantiate an object for MachineTime
+        MachineTime = Plot.MACHINE_TIME_PLOT('MachineTime')
+        
+        # get data
+        step = kwargs.get('step', 1)
+        machine_times = []
+        number_of_cpus = []
+        for _dir in _case_dirs:
+            _img_dir = os.path.join(_project_dir, _dir, 'img')
+            _output_dir = os.path.join(_project_dir, _dir, 'output')
+            machine_time_file = os.path.join(_output_dir, 'machine_time')
+            if os.path.isfile(machine_time_file):
+                machine_time, number_of_cpu = MachineTime.GetStepMT(machine_time_file, step)
+                machine_times.append(machine_time)
+                number_of_cpus.append(number_of_cpu)
+            else:
+                machine_times.append(None)
+                number_of_cpus.append(None)
+
+        # plot
+        _target_img_dir = os.path.join(_target_dir, 'img')
+        fileout = os.path.join(_target_img_dir, 'MachineTimeAnalysis.png')
+        fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+        # create a color table
+        normalizer = [float(i)/(len(_case_dirs)-1) for i in range(len(_case_dirs))]
+        colors = cm.rainbow(normalizer)
+        for i in range(len(machine_times)):
+            if number_of_cpus[i] != None and machine_times[i] != None:
+                axs[0].plot(number_of_cpus[i], machine_times[i], 'o', color=colors[i], label=_case_dirs[i])
+                axs[1].plot(number_of_cpus[i], machine_times[i]/number_of_cpus[i], 'o', color=colors[i], label=_case_dirs[i])
+        axs[0].set(xlabel="Number of CPU", ylabel="Machine Time (core hour)")
+        axs[1].set(xlabel="Number of CPU", ylabel="Real-World Time (hour)")
+        axs[0].legend()
+        axs[0].set_title("Machine Time at step %d" % step)
+        axs[1].set_title("Real-World Time at step %d" % step)
+        fig.tight_layout()
+        fig.savefig(fileout)
     
-    def AppendAnalysis(self, _name, _project_dir, _case_dirs, _target_dir, **kwargs):
+    def AnalyzeNewtonSolver(self, _project_dir, _case_dirs, _target_dir, kwargs):
+        '''
+        generate a comparison of solver output
+        '''
+        # Instantiate an object for Solver output
+        NewtonSolver = Plot.NEWTON_SOLVER_PLOT('NewtonSolver')
+        
+        # Initialize plot
+        fig, ax = plt.subplots()
+
+        # create a color table
+        normalizer = [float(i)/(len(_case_dirs)-1) for i in range(len(_case_dirs))]
+        colors = cm.rainbow(normalizer)
+
+        # loop for cases, read data and plot
+        for i in range(len(_case_dirs)):
+            _dir = _case_dirs[i]
+            _img_dir = os.path.join(_project_dir, _dir, 'img')
+            _output_dir = os.path.join(_project_dir, _dir, 'output')
+            solver_output_file = os.path.join(_output_dir, 'solver_output')
+            if os.path.isfile(solver_output_file):
+                NewtonSolver.ReadHeader(solver_output_file)  # inteprate header information
+        
+                # catch possible vacant file
+                state = NewtonSolver.ReadData(solver_output_file)  # read data
+                if state == 1:
+                    continue
+        
+                # manage output data for all steps
+                _data_list = NewtonSolver.ManageDataAll()
+
+                # plot
+                options={'xname': 'Number_of_nonlinear_iteration', 'yname': 'Relative_nonlinear_residual', 'log_y': 1,
+                        'line': '.-', 'color': colors[i], 'label': _dir}
+                NewtonSolver.Plot(_data_list, ax, options)
+        
+        # save figure
+        _target_img_dir = os.path.join(_target_dir, 'img')
+        fileout = os.path.join(_target_img_dir, 'NewtonSolverAnalysis.png')
+        ax.set(xlabel="Number of nonlinear iteration", ylabel="Relative nonlinear residual")
+        ax.legend()
+        ax.set_title("Relative Nonlinear Residual")
+        fig.savefig(fileout)
+    
+    def AppendAnalysis(self, _name, _project_dir, _case_dirs, _target_dir, kwargs):
         '''
         Append a analysis to doc
         Inputs:
@@ -333,15 +436,20 @@ class MKDOC():
                         os.remove(_target_file)
                         os.link(_file, _target_file)
                     _imgs_list[i].append(_target_file)
+
+        # deal with extra analysis
+        extra_analysis = kwargs.get('extra_analysis', {})
+        my_assert(type(extra_analysis)==dict, TypeError, "AppendAnalysis: extra_analysis must be a dict")
+        self.AnalyzeExtra(_name, _project_dir, _case_dirs, _target_dir, extra_analysis, kwargs)
         
         # Append a summary.md
         # append image information
         _base_name = kwargs.get('basename', None)
         if os.path.isfile(os.path.join(_target_dir, 'summary.md')):
             if update == True:
-                _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs, images=_imgs_list)
+                _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs, images=_imgs_list, extra_analysis=extra_analysis)
         else:
-            _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs, images=_imgs_list)
+            _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs, images=_imgs_list, extra_analysis=extra_analysis)
             # in a mkdocs file, files are listed as 'name/_filename'
             _summary = os.path.join(_name, os.path.basename(_filename))
             if _base_name is None:
@@ -470,6 +578,17 @@ class MKDOC():
                 relative_route = os.path.join('img', os.path.basename(basename_))
                 contents += '%s\n' % basename_
                 contents += '%s\n\n' % ConvertMediaMKD(basename_, relative_route)
+
+        # append extra analysis
+        extra_analysis = kwargs.get('extra_analysis', {})
+        for key, value in extra_analysis.items():
+            contents += '## %s\n\n' % key
+            if key == 'machine_time':
+                contents += 'Here we show machine time (core hrs) for each case\n'
+                contents += '%s\n\n' % ConvertMediaMKD("MachineTimeAnalysis.png", "img/MachineTimeAnalysis.png")
+            if key == 'newton_solver':
+                contents += 'Here we show solver output for each case\n'
+                contents += '%s\n\n' % ConvertMediaMKD("NewtonSolverAnalysis.png", "img/NewtonSolverAnalysis.png")
 
         # write
         with open(_filename, 'w') as fout:
@@ -619,8 +738,9 @@ def UpdateProjectDoc(_project_dict, _project_dir, **kwargs):
     analysis_dict = kwargs.get('analysis', {})
     for key, value in analysis_dict.items():
         case_dirs = value['case_dirs']
-        images = value['images']
-        myMkdoc(key, _project_dir, append_prm=True, update=True, type='analysis', case_dirs=case_dirs, images=images)
+        images = value.get('images', [])
+        extra_analysis = value.get('extra_analysis', {})
+        myMkdoc(key, _project_dir, append_prm=True, update=True, type='analysis', case_dirs=case_dirs, images=images, extra_analysis=extra_analysis)
 
 
 def ReturnFileList(_dir, _names):

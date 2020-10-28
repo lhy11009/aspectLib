@@ -108,7 +108,13 @@ def test_mkdoc():
     images = ['DepthAverage']
     analysis_source_dir = os.path.join(source_dir, 'test_analysis')
     mkdocs_analysis_dir = os.path.join(docs_dir, 'test_analysis')  # this should be generate by the code
-    myMkdoc('test_analysis', source_dir, append_prm=True, update=True, type='analysis', case_dirs=case_dirs, images=images)
+    # append an extra analysis of machine time
+    # and Newton solver
+    extra_analysis={'machine_time': {'step':2}, 'newton_solver': {}}
+    myMkdoc('test_analysis', source_dir, append_prm=True, update=True, type='analysis', extra_analysis=extra_analysis,
+            case_dirs=case_dirs, images=images)
+    # myMkdoc('test_analysis', source_dir, append_prm=True, update=True, type='analysis', extra_analysis='machine_time',
+    #        analyze_machine_step=2, case_dirs=case_dirs, images=images)
     # assertions
     analysis_summary_file = os.path.join(mkdocs_analysis_dir, 'summary.md')
     # assert summary.md generated
@@ -121,6 +127,9 @@ def test_mkdoc():
     images_ = ['foo_DepthAverage_t0.00000000e+00.png', 'foo_group-foo1_DepthAverage_t0.00000000e+00.png']
     for image_ in images_:
         assert(os.path.isfile(os.path.join(analysis_image_dir, image_)))
+    # assert extra analysis is done
+    assert(os.path.isfile(os.path.join(analysis_image_dir, "MachineTimeAnalysis.png")))
+    assert(os.path.isfile(os.path.join(analysis_image_dir, "NewtonSolverAnalysis.png")))
 
     # assert mkdocs.yml file has the right contents
     mkdocs_file = os.path.join(mkdocs_dir, 'mkdocs.yml')
