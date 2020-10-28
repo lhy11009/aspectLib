@@ -4,9 +4,12 @@ import os
 import re
 import filecmp
 import shilofue.json
+import shilofue.Plot as Plot
+from matplotlib import pyplot as plt
 from importlib import resources
 from shutil import copyfile
 from pathlib import Path
+
 from shilofue.Utilities import my_assert, re_neat_word, re_count_indent
 
 
@@ -192,7 +195,7 @@ class MKDOC():
             # append a analysis
             _case_dirs = kwargs.get('case_dirs', [])
             # here the _dir is the project directory and case_dirs are relative directories to that
-            self.AppendAnalysis(_name, _dir, _case_dirs, _target_dir, update=update)
+            self.AppendAnalysis(_name, _dir, _case_dirs, _target_dir, kwargs)
         else:
             raise ValueError("Type must be 'case', 'group', 'analysis' ")
         if self.new_files != {}:
@@ -291,8 +294,48 @@ class MKDOC():
             _case_dir = os.path.join(_dir, _case_name)
             _case_target_dir = os.path.join(_target_dir, _case_name)
             self.AppendCase(_case_name, _case_dir, _case_target_dir, update=update, append_prm=append_prm, basename=_name)
+
+    def AnalyzeExtra(self, _name, _project_dir, _case_dirs, _target_dir, extra_analysis, kwargs):
+        # extra procedures in an analysis
+        # Inputs:
+        #   extra_analysis(str): type of extra analysis
+        #   kwargs(dict): dictionary of options
+        if extra_analysis == "machine_time":
+            analyze_machine_step = kwargs.get('analyze_machine_step', 1)
+            self.AnalyzeMachineTime(_project_dir, _case_dirs, _target_dir, analyze_machine_step)
+        pass
+
+    def AnalyzeMachineTime(self, _project_dir, _case_dirs, _target_dir, step):
+        '''
+        generate a comparison of total machine time
+        '''
+        # Instantiate an object for MachineTime
+        MachineTime = Plot.MACHINE_TIME_PLOT('MachineTime')
+        
+        # get data
+        machine_times = []
+        for _dir in _case_dirs:
+            _img_dir = os.path.join(_project_dir, _dir, 'img')
+            _output_dir = os.path.join(_project_dir, _dir, 'output')
+            machine_time_file = os.path.join(_output_dir, 'machine_time')
+            if os.path.isfile(machine_time_file):
+                machine_times.append(MachineTime.GetStepMT(machine_time_file, step))
+            else:
+                machine_times.append(None)
+        
+        # plot
+        _target_img_dir = os.path.join(_target_dir, 'img')
+        fileout = os.path.join(_target_img_dir, 'MachineTimeAnalysis.png')
+        fig, ax = plt.subplots()
+        for i in range(len(machine_times)):
+            ax.plot(i, machine_times[i], 'o', label=_case_dirs[i])
+        ax.set(ylabel="Machine Time (core hour)")
+        ax.legend()
+        ax.set_title("Machine Time at step %d" % step)
+        fig.savefig(fileout)
+        pass
     
-    def AppendAnalysis(self, _name, _project_dir, _case_dirs, _target_dir, **kwargs):
+    def AppendAnalysis(self, _name, _project_dir, _case_dirs, _target_dir, kwargs):
         '''
         Append a analysis to doc
         Inputs:
@@ -333,15 +376,20 @@ class MKDOC():
                         os.remove(_target_file)
                         os.link(_file, _target_file)
                     _imgs_list[i].append(_target_file)
+
+        # deal with extra analysis
+        extra_analysis = kwargs.get('extra_analysis', None)
+        if extra_analysis is not None:
+            self.AnalyzeExtra(_name, _project_dir, _case_dirs, _target_dir, extra_analysis, kwargs)
         
         # Append a summary.md
         # append image information
         _base_name = kwargs.get('basename', None)
         if os.path.isfile(os.path.join(_target_dir, 'summary.md')):
             if update == True:
-                _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs, images=_imgs_list)
+                _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs, images=_imgs_list, extra_analysis=extra_analysis)
         else:
-            _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs, images=_imgs_list)
+            _filename = self.GenerateAnalysisMkd(_target_dir, _case_dirs, images=_imgs_list, extra_analysis=extra_analysis)
             # in a mkdocs file, files are listed as 'name/_filename'
             _summary = os.path.join(_name, os.path.basename(_filename))
             if _base_name is None:
@@ -470,6 +518,14 @@ class MKDOC():
                 relative_route = os.path.join('img', os.path.basename(basename_))
                 contents += '%s\n' % basename_
                 contents += '%s\n\n' % ConvertMediaMKD(basename_, relative_route)
+
+        # append extra analysis
+        extra_analysis = kwargs.get('extra_analysis', None)
+        if extra_analysis is not None:
+            contents += '## %s\n\n' % extra_analysis
+            if extra_analysis == 'machine_time':
+                contents += 'Here we show machine time (core hrs) for each case\n'
+                contents += '%s\n\n' % ConvertMediaMKD("MachineTimeAnalysis.png", "img/MachineTimeAnalysis")
 
         # write
         with open(_filename, 'w') as fout:

@@ -13,3 +13,8 @@ foo_DepthAverage_t0.00000000e+00.png
 foo_group-foo1_DepthAverage_t0.00000000e+00.png
 ![foo_group-foo1_DepthAverage_t0.00000000e+00.png](img/foo_group-foo1_DepthAverage_t0.00000000e+00.png)
 
+## machine_time
+
+Here we show machine time (core hrs) for each case
+![MachineTimeAnalysis.png](img/MachineTimeAnalysis)
+
