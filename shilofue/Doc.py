@@ -303,7 +303,6 @@ class MKDOC():
         if extra_analysis == "machine_time":
             analyze_machine_step = kwargs.get('analyze_machine_step', 1)
             self.AnalyzeMachineTime(_project_dir, _case_dirs, _target_dir, analyze_machine_step)
-        pass
 
     def AnalyzeMachineTime(self, _project_dir, _case_dirs, _target_dir, step):
         '''
@@ -314,26 +313,29 @@ class MKDOC():
         
         # get data
         machine_times = []
+        number_of_cpus = []
         for _dir in _case_dirs:
             _img_dir = os.path.join(_project_dir, _dir, 'img')
             _output_dir = os.path.join(_project_dir, _dir, 'output')
             machine_time_file = os.path.join(_output_dir, 'machine_time')
             if os.path.isfile(machine_time_file):
-                machine_times.append(MachineTime.GetStepMT(machine_time_file, step))
+                machine_time, number_of_cpu = MachineTime.GetStepMT(machine_time_file, step)
+                machine_times.append(machine_time)
+                number_of_cpus.append(number_of_cpu)
             else:
                 machine_times.append(None)
+                number_of_cpus.append(None)
         
         # plot
         _target_img_dir = os.path.join(_target_dir, 'img')
         fileout = os.path.join(_target_img_dir, 'MachineTimeAnalysis.png')
         fig, ax = plt.subplots()
         for i in range(len(machine_times)):
-            ax.plot(i, machine_times[i], 'o', label=_case_dirs[i])
-        ax.set(ylabel="Machine Time (core hour)")
+            ax.plot(number_of_cpus[i], machine_times[i], 'o', label=_case_dirs[i])
+        ax.set(xlabel="Number of CPU", ylabel="Machine Time (core hour)")
         ax.legend()
         ax.set_title("Machine Time at step %d" % step)
         fig.savefig(fileout)
-        pass
     
     def AppendAnalysis(self, _name, _project_dir, _case_dirs, _target_dir, kwargs):
         '''

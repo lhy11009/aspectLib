@@ -616,7 +616,7 @@ class MACHINE_TIME_PLOT(LINEARPLOT):
         # compute total time
         col_cpu = self.header['CPU_number']['col']
         number_of_cpu = self.data[0, col_cpu]
-        return machine_time_at_step * number_of_cpu
+        return machine_time_at_step * number_of_cpu, number_of_cpu
 
 
 def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
