@@ -6,6 +6,7 @@ import filecmp
 import shilofue.json
 import shilofue.Plot as Plot
 from matplotlib import pyplot as plt
+from matplotlib import cm
 from importlib import resources
 from shutil import copyfile
 from pathlib import Path
@@ -300,11 +301,15 @@ class MKDOC():
         # Inputs:
         #   extra_analysis(str): type of extra analysis
         #   kwargs(dict): dictionary of options
-        if extra_analysis == "machine_time":
-            analyze_machine_step = kwargs.get('analyze_machine_step', 1)
-            self.AnalyzeMachineTime(_project_dir, _case_dirs, _target_dir, analyze_machine_step)
+        for key,value in extra_analysis.items():
+            if key == 'machine_time':
+                my_assert(type(value)==dict, TypeError, "AnalyzeExtra: settings to an option(a key in the analysis dict) must be a dict")
+                self.AnalyzeMachineTime(_project_dir, _case_dirs, _target_dir, value)
+            if key == 'newton_solver':
+                my_assert(type(value)==dict, TypeError, "AnalyzeExtra: settings to an option(a key in the analysis dict) must be a dict")
+                self.AnalyzeNewtonSolver(_project_dir, _case_dirs, _target_dir, value)
 
-    def AnalyzeMachineTime(self, _project_dir, _case_dirs, _target_dir, step):
+    def AnalyzeMachineTime(self, _project_dir, _case_dirs, _target_dir, kwargs):
         '''
         generate a comparison of total machine time
         '''
@@ -312,6 +317,7 @@ class MKDOC():
         MachineTime = Plot.MACHINE_TIME_PLOT('MachineTime')
         
         # get data
+        step = kwargs.get('step', 1)
         machine_times = []
         number_of_cpus = []
         for _dir in _case_dirs:
@@ -330,11 +336,58 @@ class MKDOC():
         _target_img_dir = os.path.join(_target_dir, 'img')
         fileout = os.path.join(_target_img_dir, 'MachineTimeAnalysis.png')
         fig, ax = plt.subplots()
+        # create a color table
+        normalizer = [float(i)/(len(_case_dirs)-1) for i in range(len(_case_dirs))]
+        colors = cm.rainbow(normalizer)
         for i in range(len(machine_times)):
-            ax.plot(number_of_cpus[i], machine_times[i], 'o', label=_case_dirs[i])
+            ax.plot(number_of_cpus[i], machine_times[i], 'o', color=colors[i], label=_case_dirs[i])
         ax.set(xlabel="Number of CPU", ylabel="Machine Time (core hour)")
         ax.legend()
         ax.set_title("Machine Time at step %d" % step)
+        fig.savefig(fileout)
+    
+    def AnalyzeNewtonSolver(self, _project_dir, _case_dirs, _target_dir, kwargs):
+        '''
+        generate a comparison of solver output
+        '''
+        # Instantiate an object for Solver output
+        NewtonSolver = Plot.NEWTON_SOLVER_PLOT('NewtonSolver')
+        
+        # Initialize plot
+        fig, ax = plt.subplots()
+
+        # create a color table
+        normalizer = [float(i)/(len(_case_dirs)-1) for i in range(len(_case_dirs))]
+        colors = cm.rainbow(normalizer)
+
+        # loop for cases, read data and plot
+        for i in range(len(_case_dirs)):
+            _dir = _case_dirs[i]
+            _img_dir = os.path.join(_project_dir, _dir, 'img')
+            _output_dir = os.path.join(_project_dir, _dir, 'output')
+            solver_output_file = os.path.join(_output_dir, 'solver_output')
+            if os.path.isfile(solver_output_file):
+                NewtonSolver.ReadHeader(solver_output_file)  # inteprate header information
+        
+                # catch possible vacant file
+                state = NewtonSolver.ReadData(solver_output_file)  # read data
+                if state == 1:
+                    continue
+        
+                # manage output data for all steps
+                _data_list = NewtonSolver.ManageDataAll()
+
+                # plot
+                options={'xname': 'Number_of_nonlinear_iteration', 'yname': 'Relative_nonlinear_residual', 'log_y': 1,
+                        'line': '.-', 'color': colors[i], 'label': _dir}
+                NewtonSolver.Plot(_data_list, ax, options)
+        
+        # save figure
+        _target_img_dir = os.path.join(_target_dir, 'img')
+        fileout = os.path.join(_target_img_dir, 'NewtonSolverAnalysis.png')
+        ax.set(xlabel="Number of nonlinear iteration", ylabel="Relative nonlinear residual")
+        ax.legend()
+        ax.set_title("Relative Nonlinear Residual")
         fig.savefig(fileout)
     
     def AppendAnalysis(self, _name, _project_dir, _case_dirs, _target_dir, kwargs):
@@ -380,9 +433,9 @@ class MKDOC():
                     _imgs_list[i].append(_target_file)
 
         # deal with extra analysis
-        extra_analysis = kwargs.get('extra_analysis', None)
-        if extra_analysis is not None:
-            self.AnalyzeExtra(_name, _project_dir, _case_dirs, _target_dir, extra_analysis, kwargs)
+        extra_analysis = kwargs.get('extra_analysis', {})
+        my_assert(type(extra_analysis)==dict, TypeError, "AppendAnalysis: extra_analysis must be a dict")
+        self.AnalyzeExtra(_name, _project_dir, _case_dirs, _target_dir, extra_analysis, kwargs)
         
         # Append a summary.md
         # append image information
@@ -522,12 +575,15 @@ class MKDOC():
                 contents += '%s\n\n' % ConvertMediaMKD(basename_, relative_route)
 
         # append extra analysis
-        extra_analysis = kwargs.get('extra_analysis', None)
-        if extra_analysis is not None:
-            contents += '## %s\n\n' % extra_analysis
-            if extra_analysis == 'machine_time':
+        extra_analysis = kwargs.get('extra_analysis', {})
+        for key, value in extra_analysis.items():
+            contents += '## %s\n\n' % key
+            if key == 'machine_time':
                 contents += 'Here we show machine time (core hrs) for each case\n'
                 contents += '%s\n\n' % ConvertMediaMKD("MachineTimeAnalysis.png", "img/MachineTimeAnalysis")
+            if key == 'newton_solver':
+                contents += 'Here we show solver output for each case\n'
+                contents += '%s\n\n' % ConvertMediaMKD("NewtonSolverAnalysis.png", "img/NewtonSolverAnalysis")
 
         # write
         with open(_filename, 'w') as fout:
