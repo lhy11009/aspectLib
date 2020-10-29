@@ -331,19 +331,24 @@ class MKDOC():
             else:
                 machine_times.append(None)
                 number_of_cpus.append(None)
-        
+
         # plot
         _target_img_dir = os.path.join(_target_dir, 'img')
         fileout = os.path.join(_target_img_dir, 'MachineTimeAnalysis.png')
-        fig, ax = plt.subplots()
+        fig, axs = plt.subplots(1, 2, figsize=(10, 5))
         # create a color table
         normalizer = [float(i)/(len(_case_dirs)-1) for i in range(len(_case_dirs))]
         colors = cm.rainbow(normalizer)
         for i in range(len(machine_times)):
-            ax.plot(number_of_cpus[i], machine_times[i], 'o', color=colors[i], label=_case_dirs[i])
-        ax.set(xlabel="Number of CPU", ylabel="Machine Time (core hour)")
-        ax.legend()
-        ax.set_title("Machine Time at step %d" % step)
+            if number_of_cpus[i] != None and machine_times[i] != None:
+                axs[0].plot(number_of_cpus[i], machine_times[i], 'o', color=colors[i], label=_case_dirs[i])
+                axs[1].plot(number_of_cpus[i], machine_times[i]/number_of_cpus[i], 'o', color=colors[i], label=_case_dirs[i])
+        axs[0].set(xlabel="Number of CPU", ylabel="Machine Time (core hour)")
+        axs[1].set(xlabel="Number of CPU", ylabel="Real-World Time (hour)")
+        axs[0].legend()
+        axs[0].set_title("Machine Time at step %d" % step)
+        axs[1].set_title("Real-World Time at step %d" % step)
+        fig.tight_layout()
         fig.savefig(fileout)
     
     def AnalyzeNewtonSolver(self, _project_dir, _case_dirs, _target_dir, kwargs):
@@ -580,10 +585,10 @@ class MKDOC():
             contents += '## %s\n\n' % key
             if key == 'machine_time':
                 contents += 'Here we show machine time (core hrs) for each case\n'
-                contents += '%s\n\n' % ConvertMediaMKD("MachineTimeAnalysis.png", "img/MachineTimeAnalysis")
+                contents += '%s\n\n' % ConvertMediaMKD("MachineTimeAnalysis.png", "img/MachineTimeAnalysis.png")
             if key == 'newton_solver':
                 contents += 'Here we show solver output for each case\n'
-                contents += '%s\n\n' % ConvertMediaMKD("NewtonSolverAnalysis.png", "img/NewtonSolverAnalysis")
+                contents += '%s\n\n' % ConvertMediaMKD("NewtonSolverAnalysis.png", "img/NewtonSolverAnalysis.png")
 
         # write
         with open(_filename, 'w') as fout:
@@ -733,8 +738,9 @@ def UpdateProjectDoc(_project_dict, _project_dir, **kwargs):
     analysis_dict = kwargs.get('analysis', {})
     for key, value in analysis_dict.items():
         case_dirs = value['case_dirs']
-        images = value['images']
-        myMkdoc(key, _project_dir, append_prm=True, update=True, type='analysis', case_dirs=case_dirs, images=images)
+        images = value.get('images', [])
+        extra_analysis = value.get('extra_analysis', {})
+        myMkdoc(key, _project_dir, append_prm=True, update=True, type='analysis', case_dirs=case_dirs, images=images, extra_analysis=extra_analysis)
 
 
 def ReturnFileList(_dir, _names):

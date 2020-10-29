@@ -110,7 +110,7 @@ def test_mkdoc():
     mkdocs_analysis_dir = os.path.join(docs_dir, 'test_analysis')  # this should be generate by the code
     # append an extra analysis of machine time
     # and Newton solver
-    extra_analysis={'machine_time': {'step':2}, 'newton_solver': {'step': 20}}
+    extra_analysis={'machine_time': {'step':2}, 'newton_solver': {}}
     myMkdoc('test_analysis', source_dir, append_prm=True, update=True, type='analysis', extra_analysis=extra_analysis,
             case_dirs=case_dirs, images=images)
     # myMkdoc('test_analysis', source_dir, append_prm=True, update=True, type='analysis', extra_analysis='machine_time',
