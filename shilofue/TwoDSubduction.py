@@ -312,8 +312,10 @@ def main():
         # create a directory under the name of the group
         _group_name = _config.get('name', 'foo')
         _odir = os.path.join(arg.output_dir, _group_name)
-        my_assert(not os.path.isdir(_odir), ValueError, "The script doesn't support updating a pr-exiting group")
-        os.mkdir(_odir)
+        # todo, allow for append
+        # my_assert(not os.path.isdir(_odir), ValueError, "The script doesn't support updating a pr-exiting group")
+        if not os.path.isdir(_odir):
+            os.mkdir(_odir)
         # initialte a class instance
         MyGroup = Parse.GROUP_CASE(MYCASE, _inputs, _config)
         # call __call__ function to generate
@@ -322,6 +324,8 @@ def main():
         parse_operations = MY_PARSE_OPERATIONS()
         _case_names = MyGroup(parse_operations, _odir, extra=_extra, basename=_base_name)
         # generate auto.md
+        # todo
+        # check if there is alread a preexisting group
         Parse.AutoMarkdownCase(_group_name, _config, dirname=_odir)
         for _case_name in _case_names:
             _case_dir = os.path.join(_odir, _case_name)
