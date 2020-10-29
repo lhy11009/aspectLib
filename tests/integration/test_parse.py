@@ -72,3 +72,10 @@ def test_parse_to_new_case():
     parse_operations = Parse.PARSE_OPERATIONS()
     Case(parse_operations, dirname='.test', basename='test_case_by_auto')
     assert(os.path.isfile(_ofile))
+
+def test_get_group_case_from_dict1():
+    '''
+    todo
+    test function GetGroupCaseFromDict1
+    '''
+    pass

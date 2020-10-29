@@ -792,6 +792,7 @@ def GetGroupCaseFromDict(_idict):
 
 def GetGroupCaseFromDict1(_idict):
     '''
+    todo: allow grouped options
     second method(simpler one) of getting a list for names and a list for parameters from a dictionary read from a json file
     Inputs:
         _idict(dict):
