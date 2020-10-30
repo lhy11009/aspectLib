@@ -293,7 +293,6 @@ def main():
         # create a group
         # example usage:
         #    python -m shilofue.TwoDSubduction create_group -j config_group.json 2>&1 > .temp
-        print('Now we create a group of cases:')  # screen output
         # create a group of cases
         # read files
         # read configuration
@@ -309,24 +308,32 @@ def main():
             _inputs = Parse.ParseFromDealiiInput(fin)
         if not os.path.isdir(arg.output_dir):
             os.mkdir(arg.output_dir)
+            print('Now we create a group of cases:')  # screen output
+        else:
+            print('Now we update a group of cases:')  # screen output
+
         # create a directory under the name of the group
         _group_name = _config.get('name', 'foo')
         _odir = os.path.join(arg.output_dir, _group_name)
         # todo, allow for append
-        # my_assert(not os.path.isdir(_odir), ValueError, "The script doesn't support updating a pr-exiting group")
+        # By default, we don't update
+        update_ = _config.get('update', 0)
+        if not update_:
+            my_assert(os.path.isdir(_odir) is False, ValueError, 'Going to update a pr-exiting group, but update is not included in the option')
         if not os.path.isdir(_odir):
             os.mkdir(_odir)
+        
         # initialte a class instance
         MyGroup = Parse.GROUP_CASE(MYCASE, _inputs, _config)
         # call __call__ function to generate
         _extra = _config.get('extra', {})
         # add an entry for parse_operations
         parse_operations = MY_PARSE_OPERATIONS()
-        _case_names = MyGroup(parse_operations, _odir, extra=_extra, basename=_base_name)
+        _case_names = MyGroup(parse_operations, _odir, extra=_extra, basename=_base_name, update=update_)
         # generate auto.md
         # todo
         # check if there is alread a preexisting group
-        Parse.AutoMarkdownCase(_group_name, _config, dirname=_odir)
+        Parse.AutoMarkdownGroup(_group_name, _config, dirname=_odir)
         for _case_name in _case_names:
             _case_dir = os.path.join(_odir, _case_name)
             _case_json_file = os.path.join(_case_dir, 'config.json')
