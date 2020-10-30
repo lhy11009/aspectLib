@@ -444,6 +444,14 @@ class PARSE_OPERATIONS():
             pass
         else:
             Inputs['Max nonlinear iterations'] = str(max_nonlinear_iterations)
+        
+        # change the nonlinear solver tolerance
+        try:
+            nonlinear_solver_tolerance = _config['nonlinear_solver_tolerance']
+        except KeyError:
+            pass
+        else:
+            Inputs['Nonlinear solver tolerance'] = str(nonlinear_solver_tolerance)
 
         # change Newton solver configuration
         try:
