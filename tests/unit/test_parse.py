@@ -99,6 +99,10 @@ def test_get_group_case_from_dict1():
     ]
     assert(_config_tests == _standard_config_tests)
 
+    # test 3: include sub_group options
+    # _idict = {'config': {'foo': [0, 1], 'foo1': [0, 1], 'sub_group1': {['foo2', 'foo3']: [[2, 3], [4, 5]]}},
+    #          'test': {'foo2': [0, 1]}}
+
 
 def test_change_disc_values():
     '''

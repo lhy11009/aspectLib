@@ -792,7 +792,6 @@ def GetGroupCaseFromDict(_idict):
 
 def GetGroupCaseFromDict1(_idict):
     '''
-    todo: allow grouped options
     second method(simpler one) of getting a list for names and a list for parameters from a dictionary read from a json file
     Inputs:
         _idict(dict):
@@ -809,6 +808,8 @@ def GetGroupCaseFromDict1(_idict):
     _total = 1
     _totals = [1]
     for key, value in sorted(_configs.items(), key=lambda item: item[0]):
+        # if re.match("sub_group", key):
+        #   continue
         if type(value) == list:
             _total *= len(value)
         _totals.append(_total)

@@ -303,53 +303,101 @@ class MKDOC():
         #   kwargs(dict): dictionary of options
         for key,value in extra_analysis.items():
             if key == 'machine_time':
+                # todo change to a class 
                 my_assert(type(value)==dict, TypeError, "AnalyzeExtra: settings to an option(a key in the analysis dict) must be a dict")
-                self.AnalyzeMachineTime(_project_dir, _case_dirs, _target_dir, value)
+                AnalyzeMachineTime = self.ANALYZEMACHINETIME(_project_dir, _case_dirs, _target_dir, value)
+                AnalyzeMachineTime(value)
             if key == 'newton_solver':
                 my_assert(type(value)==dict, TypeError, "AnalyzeExtra: settings to an option(a key in the analysis dict) must be a dict")
                 self.AnalyzeNewtonSolver(_project_dir, _case_dirs, _target_dir, value)
 
-    def AnalyzeMachineTime(self, _project_dir, _case_dirs, _target_dir, kwargs):
+    class ANALYZEMACHINETIME():
         '''
-        generate a comparison of total machine time
-        '''
-        # Instantiate an object for MachineTime
-        MachineTime = Plot.MACHINE_TIME_PLOT('MachineTime')
-        
-        # get data
-        step = kwargs.get('step', 1)
-        machine_times = []
-        number_of_cpus = []
-        for _dir in _case_dirs:
-            _img_dir = os.path.join(_project_dir, _dir, 'img')
-            _output_dir = os.path.join(_project_dir, _dir, 'output')
-            machine_time_file = os.path.join(_output_dir, 'machine_time')
-            if os.path.isfile(machine_time_file):
-                machine_time, number_of_cpu = MachineTime.GetStepMT(machine_time_file, step)
-                machine_times.append(machine_time)
-                number_of_cpus.append(number_of_cpu)
-            else:
-                machine_times.append(None)
-                number_of_cpus.append(None)
+        Analyze machine time outputs
+        Atributes:
+            project_dir(str) : directory of project
+            case_dirs(str) : directory of cases included
+            target_dir: directory of mkdocs where the results are kept
+        ''' 
+        def __init__(self, project_dir, case_dirs, target_dir, kwargs={}):
+            '''
+            Inputs:
+                kwargs(dict): options, optional
+            '''
+            self.project_dir = project_dir
+            self.case_dirs = case_dirs
+            self.target_dir = target_dir
+            # Instantiate an object for MachineTime
+            self.MachineTime = Plot.MACHINE_TIME_PLOT('MachineTime')
 
-        # plot
-        _target_img_dir = os.path.join(_target_dir, 'img')
-        fileout = os.path.join(_target_img_dir, 'MachineTimeAnalysis.png')
-        fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-        # create a color table
-        normalizer = [float(i)/(len(_case_dirs)-1) for i in range(len(_case_dirs))]
-        colors = cm.rainbow(normalizer)
-        for i in range(len(machine_times)):
-            if number_of_cpus[i] != None and machine_times[i] != None:
-                axs[0].plot(number_of_cpus[i], machine_times[i], 'o', color=colors[i], label=_case_dirs[i])
-                axs[1].plot(number_of_cpus[i], machine_times[i]/number_of_cpus[i], 'o', color=colors[i], label=_case_dirs[i])
-        axs[0].set(xlabel="Number of CPU", ylabel="Machine Time (core hour)")
-        axs[1].set(xlabel="Number of CPU", ylabel="Real-World Time (hour)")
-        axs[0].legend()
-        axs[0].set_title("Machine Time at step %d" % step)
-        axs[1].set_title("Real-World Time at step %d" % step)
-        fig.tight_layout()
-        fig.savefig(fileout)
+        def __call__(self, kwargs):
+            '''
+            Analysis and plot
+            '''
+            my_assert(type(kwargs) == dict, TypeError, "ANALYZEMACHIENTIME: __call__: kwargs must be a dictionary")
+
+            # read data
+            step = kwargs.get('step', 1)
+            self.ReadData(step)
+
+            # do analysis
+            type_ = kwargs.get('type', 'strong_scaling')
+            if type_ == 'strong_scaling':
+                self.StrongScaling(step, kwargs)
+            else:
+                raise ValueError("type_ could only be one of: 'strong_scaling'")
+        
+        def ReadData(self, step):
+            '''
+            import data for analysis
+            '''
+            self.machine_times = []
+            self.number_of_cpus = []
+            for _dir in self.case_dirs:
+                _img_dir = os.path.join(self.project_dir, _dir, 'img')
+                _output_dir = os.path.join(self.project_dir, _dir, 'output')
+                machine_time_file = os.path.join(_output_dir, 'machine_time')
+                if os.path.isfile(machine_time_file):
+                    machine_time, number_of_cpu = self.MachineTime.GetStepMT(machine_time_file, step)
+                    self.machine_times.append(machine_time)
+                    self.number_of_cpus.append(number_of_cpu)
+                else:
+                    self.machine_times.append(None)
+                    self.number_of_cpus.append(None)
+
+        def StrongScaling(self, step, kwargs={}):
+            '''
+            todo
+            generate a strong scaling plot of wall-time vs cores
+            Inputs:
+                kwargs(dict): options
+            '''
+            # plot
+            _target_img_dir = os.path.join(self.target_dir, 'img')
+            fileout_png = os.path.join(_target_img_dir, 'MachineTimeAnalysis.png')
+            fileout_pdf = os.path.join(_target_img_dir, 'MachineTimeAnalysis.pdf')
+            fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+
+            # create a color table
+            normalizer = [float(i)/(len(self.case_dirs)-1) for i in range(len(self.case_dirs))]
+            colors = cm.rainbow(normalizer)
+
+            # generate plot
+            for i in range(len(self.machine_times)):
+                if self.number_of_cpus[i] != None and self.machine_times[i] != None:
+                    axs[0].loglog(self.number_of_cpus[i], self.machine_times[i]*3600.0, 'o', color=colors[i], label=self.case_dirs[i])
+                    axs[1].loglog(self.number_of_cpus[i], self.machine_times[i]/self.number_of_cpus[i]*3600.0, 'o', color=colors[i], label=self.case_dirs[i])
+            axs[0].set(xlabel="Number of CPU", ylabel="Machine Time (core*second)")
+            axs[1].set(xlabel="Number of CPU", ylabel="Wall-clock Time (second)")
+            axs[0].legend()
+            axs[0].set_title("Machine Time at step %d" % step)
+            axs[1].set_title("Wall-clock Time at step %d" % step)
+            fig.tight_layout()
+            fig.savefig(fileout_png)
+            # attach a pdf
+            attach_pdf = kwargs.get('attach_pdf', 0)
+            if attach_pdf:
+                fig.savefig(fileout_pdf)
     
     def AnalyzeNewtonSolver(self, _project_dir, _case_dirs, _target_dir, kwargs):
         '''
