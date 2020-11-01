@@ -186,12 +186,14 @@ read_keys_values(){
     unset values
 	local line
 	local foo
+    local temp
 
     # read in keys and values from file
 	while IFS= read line; do
         IFS=' ' read -r -a foo<<< "${line}"  # construct an array from line
-	    [[ -z ${keys} ]] && keys=(${foo[0]}) || keys+=(${foo[0]})
-	    [[ -z ${values} ]] && values=(${foo[1]}) || values+=(${foo[1]})
+	    [[ -z ${keys} ]] && keys=("${foo[0]}") || keys+=("${foo[0]}")
+        temp=$(echo "$line" | sed -E "s/^[^ ]*(\t| )*//g")
+	    [[ -z ${values} ]] && values=("$temp") || values+=("$temp")
     done < "${filein}"
 }
 

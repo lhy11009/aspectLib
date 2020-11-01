@@ -136,22 +136,6 @@ class MYCASE(Parse.CASE):
             self.particle_data[i, 1] = y
 
 
-class BASH_OPTIONS(Parse.BASH_OPTIONS):
-    """
-    parse .prm file to a option file that bash can easily read
-    """
-    def Interpret(self):
-        """
-        Interpret the inputs, to be reloaded in children
-        """
-        # call function from parent
-        Parse.BASH_OPTIONS.Interpret(self)
-
-        # own implementations
-        # initial adaptive refinement
-        self.odict['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
-
-
 class VISIT_XYZ(Parse.VISIT_XYZ):
     """
     Read .xyz file exported from visit and do analysis
@@ -247,7 +231,7 @@ def SlabDip(r0, ph0, r1, ph1):
     alpha = np.arctan2((r0 - r1), (r1 * (ph1 - ph0)))
     return alpha
 
-    
+
 def main():
     '''
     main function of this module
@@ -315,7 +299,6 @@ def main():
         # create a directory under the name of the group
         _group_name = _config.get('name', 'foo')
         _odir = os.path.join(arg.output_dir, _group_name)
-        # todo, allow for append
         # By default, we don't update
         update_ = _config.get('update', 0)
         if not update_:
@@ -331,7 +314,6 @@ def main():
         parse_operations = MY_PARSE_OPERATIONS()
         _case_names = MyGroup(parse_operations, _odir, extra=_extra, basename=_base_name, update=update_)
         # generate auto.md
-        # todo
         # check if there is alread a preexisting group
         Parse.AutoMarkdownGroup(_group_name, _config, dirname=_odir)
         for _case_name in _case_names:
@@ -401,7 +383,7 @@ def main():
         _project_dir = arg.output_dir
         _project_dict = Parse.UpdateProjectJson(_project_dir)  # update project json file
         
-        # todo append analysis
+        # append analysis
         analysis_file = os.path.join(ASPECT_LAB_DIR, 'analysis.json')
         if os.path.isfile(analysis_file):
             with open(analysis_file, 'r') as fin:
@@ -469,16 +451,25 @@ def main():
         # plot something
         pass
 
-    elif _commend == 'bash_options':
+    elif _commend == 'visit_options':
         # output bash options to a file that could be
         # read by bash script
         # initiate class object
         case_dir = arg.input_dir
-        Base_Options = BASH_OPTIONS(case_dir)
+
+        Visit_Options = Parse.VISIT_OPTIONS(case_dir)
+
+        # load extra options
+        if arg.json_file == './config_case.json':
+            # no json file is giving
+            extra_options = {}
+        else:
+            with open(arg.json_file, 'r') as fin:
+                extra_options = json.load(fin)
 
         # call function
         ofile = os.path.join(ASPECT_LAB_DIR, 'visit_keys_values')
-        Base_Options(ofile)
+        Visit_Options(ofile, extra_options)
         pass
     
     else:

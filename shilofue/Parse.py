@@ -201,7 +201,6 @@ class CASE():
             self.case_name = _basename + self.CaseName()
             
             # After that, make a directory with case name
-            # todo
             _case_dir = os.path.join(_dirname, self.case_name)
             # By default, we don't update
             update_ = kwargs.get('update', 0)
@@ -568,10 +567,41 @@ class BASH_OPTIONS():
         # initiate a dictionary
         self.odict = {}
     
-    def Interpret(self):
+    def Interpret(self, kwargs):
         """
         Interpret the inputs, to be reloaded in children
         """
+        pass
+
+    def __call__(self, ofile, kwargs):
+        """
+        Call function
+        Args:
+            ofile(str): path of output
+        """
+        # interpret
+        self.Interpret(kwargs)
+
+        # open ofile for output
+        # write outputs by keys and values
+        with open(ofile, 'w') as fout:
+            for key, value in self.odict.items():
+                fout.write("%s       %s\n" % (key, value))
+        pass
+
+
+class VISIT_OPTIONS(BASH_OPTIONS):
+    """
+    todo
+    parse .prm file to a option file that bash can easily read
+    """
+    def Interpret(self, kwargs={}):
+        """
+        Interpret the inputs, to be reloaded in children
+        """
+        # call function from parent
+        BASH_OPTIONS.Interpret(self, kwargs)
+        
         # visit file
         self.odict["VISIT_FILE"] = self._visit_file
 
@@ -586,21 +616,12 @@ class BASH_OPTIONS():
         # directory to output images
         self.odict["IMG_OUTPUT_DIR"] = self._img_dir
 
-    def __call__(self, ofile):
-        """
-        Call function
-        Args:
-            ofile(str): path of output
-        """
-        # interpret
-        self.Interpret()
-
-        # open ofile for output
-        # write outputs by keys and values
-        with open(ofile, 'w') as fout:
-            for key, value in self.odict.items():
-                fout.write("%s       %s\n" % (key, value))
-        pass
+        # own implementations
+        # initial adaptive refinement
+        self.odict['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
+        # SNAPSHOT index
+        self.odict['SINGLE_SNAPSHOT'] = kwargs.get('SINGLE_SNAPSHOT', 0)
+        self.odict['MULTIPLE_SNAPSHOTS'] = kwargs.get('MULTIPLE_SNAPSHOTS', [])
 
 
 class VISIT_XYZ():
@@ -977,7 +998,6 @@ def AutoMarkdownGroup(_group_name, _idict, **kwargs):
     _dirname = kwargs.get('dirname', '.')
     _md_file = os.path.join(_dirname, _md)
 
-    # todo
     # header of the file
     _contents = ''
     if not os.path.isfile(_md_file):
