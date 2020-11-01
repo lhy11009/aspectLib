@@ -222,7 +222,7 @@ create_group(){
     for case_name in ${case_names[@]}; do
         local case_dir="${group_dir}/${case_name}"
         local case_prm="${case_dir}/case.prm"
-        [[ -d ${case_dir} && -e ${case_prm} ]] || { cecho ${BAD} "Case generation failed"; exit 1; }
+        [[ -d ${case_dir} && -e ${case_prm} ]] || { cecho ${BAD} "Creating Group: Case generation failed"; exit 1; }
     done
     cecho ${GOOD} "${_info}"
 }

@@ -196,31 +196,43 @@ class CASE():
             my_assert(self.config != None, ValueError,
                       'With the \'auto\' method, the config must exist')
             self.Intepret(parse_operations, extra=_extra)
+            
             # Next generate a case name
             self.case_name = _basename + self.CaseName()
+            
             # After that, make a directory with case name
+            # todo
             _case_dir = os.path.join(_dirname, self.case_name)
-            my_assert(os.path.isdir(_case_dir) is False, ValueError, 'The script doesn\'t support updating a pr-exiting group')
-            os.mkdir(_case_dir)
+            # By default, we don't update
+            update_ = kwargs.get('update', 0)
+            if not update_:
+                my_assert(os.path.isdir(_case_dir) is False, ValueError, 'Going to update a pr-exiting case, but update is not included in the option')
+            if not os.path.isdir(_case_dir):
+                os.mkdir(_case_dir)            
+
             # write configs to _json
             _json_outputs = {'basename': _basename, 'config': self.config, 'test': self.test, 'extra': _extra, 'extra_file': _extra_files}
             _json_ofile = os.path.join(_case_dir, 'config.json')
             with open(_json_ofile, 'w') as fout:
                 json.dump(_json_outputs, fout)
+
             # At last, export a .prm file
             _filename = os.path.join(_case_dir, 'case.prm')
             with open(_filename, 'w') as fout:
                 ParseToDealiiInput(fout, self.idict)
+
             # output particle data to an ascii file
             if self.particle_data is not None:
                 _filename = os.path.join(_case_dir, 'particle.dat')
                 with open(_filename, 'w') as fout:
                     self.output_particle_ascii(fout)
+
             # also copy the extra files
             if type(_extra_files) is str:
                 _extra_files = [_extra_files]
             for _extra_file in _extra_files:
                 shutil.copy2(_extra_file, _case_dir)
+
         elif _method == 'manual':
             # export a .prm file
             _filename = kwargs.get('filename', None)
@@ -321,8 +333,11 @@ class GROUP_CASE():
         _json_ofile = os.path.join(_odir, 'config.json')
         with open(_json_ofile, 'w') as fout:
             json.dump(_json_outputs, fout)
+
+        # create cases in this group
+        update_ = kwargs.get('update', 0)
         for _case in self.cases:
-            _case_name = _case(parse_operations, dirname=_odir, extra=_extra, basename=_base_name)
+            _case_name = _case(parse_operations, dirname=_odir, extra=_extra, basename=_base_name, update=update_)
             self.case_names.append(_case_name)
         return self.case_names
 
@@ -961,8 +976,15 @@ def AutoMarkdownGroup(_group_name, _idict, **kwargs):
     _md = kwargs.get('md', 'auto.md')
     _dirname = kwargs.get('dirname', '.')
     _md_file = os.path.join(_dirname, _md)
-    _contents = '# Group %s\n\n' % _group_name  # an string to hold content of file
-    _contents += '## Overview\n\n'
+
+    # todo
+    # header of the file
+    _contents = ''
+    if not os.path.isfile(_md_file):
+        _contents = '# Group %s\n\n' % _group_name  # an string to hold content of file
+        _contents += '## Overview\n\n'
+
+    # configures of group    
     _config = _idict.get('config', {})  # append configuration part
     _contents += '### The group is configured with:\n\n'
     for key, value in sorted(_config.items(), key=lambda item: item[0]):
@@ -975,7 +997,7 @@ def AutoMarkdownGroup(_group_name, _idict, **kwargs):
     _contents += '### The group is genearated with extra settings:\n\n'
     for key, value in sorted(_extra.items(), key=lambda item: item[0]):
         _contents += '%s: %s\n\n' % (key, str(value))
-    with open(_md_file, 'w') as fout:
+    with open(_md_file, 'a') as fout:
         # output file
         fout.write(_contents)
     pass
