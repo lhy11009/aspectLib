@@ -68,7 +68,6 @@ parse_options(){
 
 
 ################################################################################
-# todo
 # help message
 usage()
 {
@@ -332,12 +331,12 @@ tranlate_visit_script(){
 
     # read file
     contents=$(cat ${filein})
-
+    
     # do substutions
     local i=0
     for key in ${keys[@]}; do
-        value=${values[i]}
-        contents=${contents//$key/$value}  # substitute key with value
+        value="${values[i]}"
+        contents=${contents//"$key"/"${value}"}  # substitute key with value
         ((i++))
     done
 
@@ -400,7 +399,7 @@ plot_visit_case(){
     visit_script_dir="${dir}/visit_scripts/${project}"
         
     # call python module to generate visit_keys_values file
-    eval "python -m shilofue.${project} bash_options -i ${case_dir}"
+    eval "python -m shilofue.${project} visit_options -i ${case_dir} -j visit_plot.json"
     
     # get keys and values
     keys_values_file="${dir}/visit_keys_values"
@@ -650,7 +649,6 @@ build_aspect_project(){
 
 
 ################################################################################
-# todo
 # post-process of a case via bash
 #   Inputs:
 #   case_dir: directory of case
@@ -664,7 +662,6 @@ bash_post_process_case(){
 
 
 ################################################################################
-# todo
 # post-process of a project via bash
 # Inputs:
 #   local_root: directory of project
@@ -689,7 +686,6 @@ bash_post_process_project(){
 
 
 ################################################################################
-# todo
 # post-projecss of a project via bash and python
 # Inputs:
 #   py_script: python script for this project
@@ -845,6 +841,7 @@ main(){
         read_keys_values "${ASPECT_LAB_DIR}/visit_keys_values"
 
         # call function
+        keys = ${keys[@]} 
         tranlate_visit_script
     
     elif [[ ${_commend} = 'plot_visit_case' ]]; then
