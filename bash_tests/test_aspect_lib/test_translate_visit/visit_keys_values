@@ -1,3 +1,7 @@
-VISIT_FILE      /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12/output1/solution.visit
-INITIAL_ADAPTIVE_REFINEMENT     6
-IMG_OUTPUT_DIR      /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12/img
+VISIT_FILE       /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12/output/solution.visit
+VISIT_PARTICLE_FILE       /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12/output/particles.visit
+DATA_OUTPUT_DIR       /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12/output1
+IMG_OUTPUT_DIR       /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12/img
+INITIAL_ADAPTIVE_REFINEMENT       6
+SINGLE_SNAPSHOT       0
+MULTIPLE_SNAPSHOTS       [1, 2, 3]
