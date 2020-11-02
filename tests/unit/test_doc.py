@@ -71,5 +71,4 @@ def test_produce_nav():
               '            - About3: about/about3.md',
               '    - Foo: foo.md']
     _lines = Doc.ProduceNav(_idict)
-    print('lines: ', _lines)  # screen output
     assert(_lines==_lines_standard)

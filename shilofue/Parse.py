@@ -500,8 +500,12 @@ class PARSE_OPERATIONS():
         properties in the material model
         only support changing parameters inside a material model
         """
-       
-        model_name = Inputs['Material model']['Model name']
+
+        # Get model configurations from a prm file
+        try: 
+            model_name = Inputs['Material model']['Model name']
+        except KeyError:
+            return
 
         if model_name == 'visco plastic': 
             model = Inputs['Material model']['Visco Plastic']
