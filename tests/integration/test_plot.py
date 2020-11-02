@@ -109,13 +109,17 @@ def test_plot_machine_time():
 
     # get machine time at one step
     step = 35
-    machine_time_at_step = MachineTime.GetStepMT(test_file, step)
+    machine_time_at_step, number_of_core = MachineTime.GetStepMT(test_file, step)
     machine_time_at_step_std = 256.0
+    number_of_core_std = 128.0
+    assert(abs(number_of_core - number_of_core_std) < 1.0)
     assert(abs(machine_time_at_step - machine_time_at_step_std) < 1.0)
     
     step = 100
-    machine_time_at_step = MachineTime.GetStepMT(test_file, step)
+    machine_time_at_step, number_of_core = MachineTime.GetStepMT(test_file, step)
     machine_time_at_step_std = 675.56
+    number_of_core_std = 128.0
+    assert(abs(number_of_core - number_of_core_std) < 1.0)
     assert(abs(machine_time_at_step - machine_time_at_step_std) < 1.0)
 
     # plot 
