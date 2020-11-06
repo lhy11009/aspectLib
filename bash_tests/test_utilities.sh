@@ -77,7 +77,7 @@ test_read_json_file()
 
     # test 0
     local unmatched_output=0
-    filein="./test1.json"
+    filein="${test_dir}/test_read_json_file/test1.json"
     # first key
     keys=("project")
     read_json_file

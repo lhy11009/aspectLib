@@ -806,5 +806,6 @@ def ReturnFileList(_dir, _names):
             _pathlist = Path(_dir).rglob(_name+'*')
             for _path in _pathlist:
                 _base_name = os.path.basename(str(_path))
-                _files.append(_base_name)
+                if os.path.isfile(str(_path)):
+                    _files.append(_base_name)
         return _files

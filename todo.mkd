@@ -125,9 +125,6 @@ also prescribe composition in ridge area
 ## complete phase functions
 include a phase diagram instead of a clapayron
 
-# general plugin adapted from Menno's
-
-include strategy of composition and temperature and viscosity and phases in potential
 
 ## change input file using the 'parse map method'
 
@@ -136,11 +133,16 @@ include strategy of composition and temperature and viscosity and phases in pote
 add a assertion for all possible entries, like the one for the 'Strategy'
 
 
-# slurm.sh
+# Changes to be made to aspect branch
 
-* set default value when use them
+## merge intial condition into world builder
 
-# Plot.py
+include strategy of composition and temperature and viscosity and phases in potential
+
+
+# Changes to be made to python scripts
+
+## Plot.py
 
 * change interface of LinearPlot, possibly changing the settings.
 
@@ -152,9 +154,21 @@ The step and 'all' option mess up with each other right now.
 
 * inprove the interface of ProjectPlot
 
+* use the post_process.json as configuration file
+
+Put every type of plot into one key. e.g. "visit": {}, "newton_solver": {}
+
 # Doc.py
 
-## add a function to delete a doc for a case/group
-
 * delete file in the 'docs' folder and clean record in the '.yml' file simutanously;
+
 * if a link is presenting in the .yml file but the file is not found in the docs, then remove the link instead. 
+
+
+# Changes to be made to bash cases
+
+## slurm.sh
+
+* set default value when use them
+
+

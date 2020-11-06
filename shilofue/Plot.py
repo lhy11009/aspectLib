@@ -627,6 +627,7 @@ def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
             update(True or False): if True, update existing figures
     '''
     update = kwargs.get('update', False)
+    pdict = kwargs.get('pdict', {})
     # Init the UnitConvert class
     UnitConvert = UNITCONVERT()
 

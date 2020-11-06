@@ -552,10 +552,10 @@ class BASH_OPTIONS():
         self._visit_file = os.path.join(self._output_dir, 'solution.visit')
         my_assert(os.access(self._visit_file, os.R_OK), FileNotFoundError,
                   'BASH_OPTIONS.__init__: case visit file - %s cannot be read' % self._visit_file)
-        # additonal output dir
-        self._output1_dir = os.path.join(case_dir, 'output1')
-        if not os.path.isdir(self._output1_dir):
-            os.mkdir(self._output1_dir)
+        # output dir
+        self._output_dir = os.path.join(case_dir, 'output')
+        if not os.path.isdir(self._output_dir):
+            os.mkdir(self._output_dir)
         # img dir
         self._img_dir = os.path.join(case_dir, 'img')
         if not os.path.isdir(self._img_dir):
@@ -615,9 +615,11 @@ class VISIT_OPTIONS(BASH_OPTIONS):
             self.odict["VISIT_PARTICLE_FILE"] = particle_file
 
         # directory to output data 
-        self.odict["DATA_OUTPUT_DIR"] = self._output1_dir
+        self.odict["DATA_OUTPUT_DIR"] = self._output_dir
 
         # directory to output images
+        if not os.path.isdir(self._img_dir):
+            os.mkdir(self._img_dir)
         self.odict["IMG_OUTPUT_DIR"] = self._img_dir
 
         # own implementations

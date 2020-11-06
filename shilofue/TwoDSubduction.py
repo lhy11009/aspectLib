@@ -383,6 +383,10 @@ def main():
         _project_dir = arg.output_dir
         _project_dict = Parse.UpdateProjectJson(_project_dir)  # update project json file
         
+        # load options for post_process
+        with open(arg.json_file, 'r') as fin:
+            pdict = json.load(fin)
+        
         # append analysis
         analysis_file = os.path.join(ASPECT_LAB_DIR, 'analysis.json')
         if os.path.isfile(analysis_file):
@@ -395,10 +399,10 @@ def main():
         Parse.UpdateProjectMd(_project_dict, _project_dir)
 
         # plot figures for every case
-        Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False)
+        Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False, pdict=pdict)
 
         # update mkdocs
-        imgs = ['Statistics' , 'MachineTime', 'DepthAverage', 'NewtonSolver', 'PvMesh', 'visit']
+        imgs = ['Statistics' , 'MachineTime', 'DepthAverage', 'NewtonSolver', 'PvMesh', 'visit', 'um', 'slab']
         Doc.UpdateProjectDoc(_project_dict, _project_dir, images=imgs, analysis=analysis_dict)
 
     elif _commend == 'plot_newton_solver_step':
@@ -409,7 +413,7 @@ def main():
         filein = arg.input_dir
         output_dir = arg.output_dir
         step = arg.step
-        ofile_route = os.path.join(output_dir, 'NewtonSolverStep.pdf')
+        ofile_route = os.path.join(output_dir, 'NewtonSolverStep.png')
         # plot newton solver output
         NewtonSolverStep = Plot.NEWTON_SOLVER_PLOT('NewtonSolverStep')
         # plot step0
@@ -465,7 +469,8 @@ def main():
             extra_options = {}
         else:
             with open(arg.json_file, 'r') as fin:
-                extra_options = json.load(fin)
+                dict_in = json.load(fin)
+                extra_options = dict_in.get('visit', {})
 
         # call function
         ofile = os.path.join(ASPECT_LAB_DIR, 'visit_keys_values')

@@ -637,11 +637,11 @@ parse_output_value(){
 # todo
 # return list of groups and cases
 # Inputs:
-#   local_root(str)
+#   $1(str): search in this directory
 # Outputs:
 #   group_dirs(array): list of full routes to groups
 #   case_dirs(array)
-search_project_for_groups_cases(){
+search_for_groups_cases(){
     # configurations
     local config_file="config.json"
     local prm_file="case.prm"
@@ -650,7 +650,7 @@ search_project_for_groups_cases(){
     local object; local contents; local sub_object; local sub_contents
     # initialize arrays
     group_dirs=(); case_dirs=()
-    for object in "${local_root}"/*; do
+    for object in "$1"/*; do
         if [[ -d ${object} ]]; then
             contents=$(ls "${object}")
             [[ ${contents} =~ "${config_file}" && ${contents} =~ "${prm_file}" ]] && case_dirs+=("${object}")

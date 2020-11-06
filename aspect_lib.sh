@@ -395,11 +395,11 @@ plot_visit_case(){
     [ -d "${img_dir}" ] || mkdir "${img_dir}" ]
 
     # get a list of scripts to plot
-    visit_script_bases=("initial_slab.py" "export_particles.py" "slab.py")
+    visit_script_bases=("export_particles.py" "slab.py")
     visit_script_dir="${dir}/visit_scripts/${project}"
         
     # call python module to generate visit_keys_values file
-    eval "python -m shilofue.${project} visit_options -i ${case_dir} -j visit_plot.json"
+    eval "python -m shilofue.${project} visit_options -i ${case_dir} -j post_process.json"
     
     # get keys and values
     keys_values_file="${dir}/visit_keys_values"
@@ -665,22 +665,47 @@ bash_post_process_case(){
 # post-process of a project via bash
 # Inputs:
 #   local_root: directory of project
+# Global variables:
+#   case_dir(dir): this is changed here
 bash_post_process_project(){
     # search for groups and cases
     # return values are group_dirs and case_dirs
-    search_project_for_groups_cases
+    search_for_groups_cases "${local_root}"
 
-    local case_dir; local group_dir
+    local group_dir
 
     # deal solver output
     for case_dir in "${case_dirs[@]}"; do
         bash_post_process_case
     done
+
+    # read for directories to plot with visit
+    # it is possible to write this part into a function
+    local filein="${dir}/post_process.json"
+    local keys=("visit" "dirs")
+    local is_array='true'
+    read_json_file
+
+    # get the dir to plot visit
+    local visit_dirs=()
+    if [[ $value =~ "active" ]]; then
+        # future
+        echo 0
+    else
+        IFS=" "; dirs=(${value})
+        local source_dir; local dir_
+        for dir_ in "${dirs[@]}"; do
+            source_dir="${local_root}/${dir_}"
+            search_for_groups_cases "${source_dir}"
+            visit_dirs+=("${case_dirs[@]}")
+        done
+    fi
+
+    # plot visit cases
+    for case_dir in "${visit_dirs[@]}"; do
+        plot_visit_case
+    done
     
-    # group_dirs=
-    # case_dirs=
-    # for case_dir in ${case_dirs[@]}; do
-    # done
     return 0
 }
 
@@ -694,7 +719,7 @@ post_process_project(){
     bash_post_process_project
 
     # call python post process
-    eval "python -m ${py_script} update -o ${local_root}"
+    eval "python -m ${py_script} update -j ${dir}/post_process.json -o ${local_root}"
 }
 
 
@@ -944,9 +969,9 @@ main(){
     elif [[ ${_commend} = 'build_remote' ]]; then
         #   server build(add a server_info):
         #   example command lines:
-        #       ./aspect_lib.sh TwoDSubduction build lochy@peloton.cse.ucdavis.edu
-        #       ./aspect_lib.sh TwoDSubduction build lochy@peloton.cse.ucdavis.edu debug
-        #       ./aspect_lib.sh TwoDSubduction build lochy@peloton.cse.ucdavis.edu release
+        #       ./aspect_lib.sh TwoDSubduction build_remote lochy@peloton.cse.ucdavis.edu
+        #       ./aspect_lib.sh TwoDSubduction build_remote lochy@peloton.cse.ucdavis.edu debug
+        #       ./aspect_lib.sh TwoDSubduction build_remote lochy@peloton.cse.ucdavis.edu release
         server_info="$3"
         ssh ${server_info} << EOF
             eval "\${ASPECT_LAB_DIR}/aspect_lib.sh ${project} build $4"
