@@ -634,7 +634,6 @@ parse_output_value(){
 
 
 ################################################################################
-# todo
 # return list of groups and cases
 # Inputs:
 #   $1(str): search in this directory
@@ -650,6 +649,15 @@ search_for_groups_cases(){
     local object; local contents; local sub_object; local sub_contents
     # initialize arrays
     group_dirs=(); case_dirs=()
+
+    [[ -d "$1" ]] || cecho "${FUNCNAME[0]}: \$1 must be an existing directory"
+
+    # check if this is a case directory
+    contents=$(ls "${1}")
+    [[ ${contents} =~ "${config_file}" && ${contents} =~ "${prm_file}" ]] && { case_dirs+=("${1}"); return 0; }
+    [[ ${contents} =~ "${config_file}" && ! ${contents} =~ "${prm_file}" ]] && group_dirs+=("${1}")
+
+    # check if this is a group or project folder, note that there could be 3 layers at most
     for object in "$1"/*; do
         if [[ -d ${object} ]]; then
             contents=$(ls "${object}")

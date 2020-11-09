@@ -3,6 +3,7 @@ import os
 import shutil
 import json
 import numpy as np
+import shilofue.Plot as Plot
 from shilofue.Utilities import my_assert, re_neat_word, WriteFileHeader
 
 '''
@@ -570,6 +571,12 @@ class BASH_OPTIONS():
 
         # initiate a dictionary
         self.odict = {}
+
+        # initiate a statistic data
+        self.Statistics = Plot.STATISTICS_PLOT('Statistics')
+        statistic_file = os.path.join(self._output_dir, 'statistics')
+        self.Statistics.ReadHeader(statistic_file)
+        self.Statistics.ReadData(statistic_file)
     
     def Interpret(self, kwargs):
         """
@@ -596,7 +603,6 @@ class BASH_OPTIONS():
 
 class VISIT_OPTIONS(BASH_OPTIONS):
     """
-    todo
     parse .prm file to a option file that bash can easily read
     """
     def Interpret(self, kwargs={}):
@@ -625,9 +631,12 @@ class VISIT_OPTIONS(BASH_OPTIONS):
         # own implementations
         # initial adaptive refinement
         self.odict['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
-        # SNAPSHOT index
-        self.odict['SINGLE_SNAPSHOT'] = kwargs.get('SINGLE_SNAPSHOT', 0)
-        self.odict['MULTIPLE_SNAPSHOTS'] = kwargs.get('MULTIPLE_SNAPSHOTS', [])
+        
+        # get snaps for plots
+        graphical_snaps, _, _ = GetSnapsSteps(self._case_dir, 'graphical')
+        self.odict['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'] = str(graphical_snaps)
+        particle_snaps, _, _ = GetSnapsSteps(self._case_dir, 'particle')
+        self.odict['ALL_AVAILABLE_PARTICLE_SNAPSHOTS'] = str(particle_snaps)
 
 
 class VISIT_XYZ():
@@ -1097,3 +1106,88 @@ def UpdateProjectJson(_dir, **kwargs):
     with open(_json_file, 'w') as fout:
         json.dump(_odict, fout)
     return _odict
+    
+def GetSnapsSteps(case_dir, type_='graphical'):
+    case_output_dir = os.path.join(case_dir, 'output')
+    
+    # import parameters 
+    prm_file = os.path.join(case_dir, 'case.prm')
+    my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,
+              'case prm file - %s cannot be read' % prm_file)
+    with open(prm_file, 'r') as fin:
+        idict = ParseFromDealiiInput(fin)
+
+    # import statistics file
+    Statistics = Plot.STATISTICS_PLOT('Statistics')
+    statistic_file = os.path.join(case_output_dir, 'statistics')
+    my_assert(os.access(statistic_file, os.R_OK), FileNotFoundError,
+              'case statistic file - %s cannot be read' % prm_file)
+    Statistics.ReadHeader(statistic_file)
+    Statistics.ReadData(statistic_file)
+    col_time = Statistics.header['Time']['col']
+    
+    # final time
+    final_time = Statistics.data[-1, col_time]
+    
+    # time interval
+    # graphical
+    try:
+        time_between_graphical_output = float(idict['Postprocess']['Visualization']['Time between graphical output'])
+    except KeyError:
+        time_between_graphical_output = 1e8
+    total_graphical_outputs = int(final_time / time_between_graphical_output) + 1
+    graphical_times = [i*time_between_graphical_output for i in range(total_graphical_outputs)]
+    graphical_steps = [Statistics.GetStep(time) for time in graphical_times]
+    # particle
+    try:
+        time_between_particles_output = float(idict['Postprocess']['Particles']['Time between data output'])
+    except KeyError:
+        time_between_particles_output = 1e8
+    total_particles_outputs = int(final_time / time_between_particles_output) + 1
+    particle_times = [i*time_between_particles_output for i in range(total_particles_outputs)]
+    particle_steps = [Statistics.GetStep(time) for time in particle_times]
+    
+    # initial_snap
+    try:
+        initial_snap = int(idict['Mesh refinement']['Initial adaptive refinement'])
+    except KeyError:
+        initial_snap = 6
+
+    # end snap
+    snaps = [0]
+    if type_ == 'graphical':
+        start_ = initial_snap
+        end_ = total_graphical_outputs + initial_snap
+        snaps = list(range(start_, end_))
+        times = graphical_times
+        steps = graphical_steps
+    elif type_ == 'particle':
+        start_ = 0
+        end_ = total_particles_outputs
+        snaps = list(range(start_, end_))
+        times = particle_times
+        steps = particle_steps
+    
+    return snaps, times, steps
+
+def GetSubCases(_dir):
+    '''
+    get cases in a folder
+    '''
+    my_assert(os.path.isdir(_dir), TypeError, "_dir must be a directory")
+    dir_abs = os.path.abspath(_dir)
+
+    # initiate
+    case_dirs = []
+
+    # look for config.json and case.prm
+    if 'config.json' in os.listdir(dir_abs) and 'case.prm' in os.listdir(dir_abs):
+        case_dirs.append(dir_abs)
+
+    # loop in _dir and iteration
+    for _subname in os.listdir(dir_abs):
+        _fullsubname = os.path.join(dir_abs, _subname)
+        if os.path.isdir(_fullsubname):
+            case_dirs += GetSubCases(_fullsubname)
+    
+    return case_dirs

@@ -5,6 +5,12 @@
 #   INITIAL_ADAPTIVE_REFINEMENT
 # directory for images:
 #   IMG_OUTPUT_DIR
+# directory for output particle information
+#   PARTICLE_OUTPUT_DIR
+# all available snapshots for graphical output
+#   ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS
+# all available snapshots for particle output
+#   ALL_AVAILABLE_PARTICLE_SNAPSHOTS
 
 
 class VISIT_PLOT():
@@ -25,6 +31,7 @@ class VISIT_PLOT():
             plots(list): lists of plot
         """
         # open data base
+        self.filein = filein
         OpenDatabase("localhost:%s" % filein, 0)
 
         # assign initial values 
@@ -195,7 +202,7 @@ class VISIT_PLOT():
     def save_window(self, filename, **kwargs):
         '''
         save window
-        Inputs:
+        Inputs:)
             filename(str): base name for file
             kwargs(dict):
                 size(list of 2): size of plot in (width, height)
@@ -218,7 +225,19 @@ class VISIT_PLOT():
         
         SetSaveWindowAttributes(SaveWindowAtts)
         SaveWindow()
+    
+    def abort(self):
+        '''
+        abort mission and leave
+        '''
+        # delete active plots
+        all_idxs_tuple = tuple([i for i in range(self.all_idxs)])
+        SetActivePlots(all_idxs_tuple)
+        DeleteActivePlots()
 
+        # close file 
+        OpenDatabase(self.filein)
+    
 
 class SLAB(VISIT_PLOT):
 
@@ -236,7 +255,14 @@ class SLAB(VISIT_PLOT):
 
         # call __init__ function of parent
         VISIT_PLOT.__init__(self, filein, plot_types=plot_types, vars=vars_, output_dir=output_dir)
+
+        # define the field of the slab
+        DefineScalarExpression("slab", "spcrust+spharz")
         
+        # define a new field if needed
+        if IF_DEFORM_MECHANISM:
+            DefineScalarExpression("deform_mechanism", "if(lt(viscosity, 0.99e24),if(lt(dislocation_viscosity,diffusion_viscosity), 1.0, 0.0), 2.0)")
+        self.add_plot("Pseudocolor", "deform_mechanism")
         
         # set transformation
         self.set_rotation_transform(52.0)
@@ -274,8 +300,17 @@ class SLAB(VISIT_PLOT):
         # plot slab viscosity
         self.plot_viscosity_slab()
 
+        # plot deform_mechanism 
+        if IF_DEFORM_MECHANISM:
+            self.plot_deform_mechanism_slab()
+
         # plot upper mantle
+        # viscosity
         self.plot_viscosity_upper_mantle()
+
+        # deform mechanism 
+        if IF_DEFORM_MECHANISM:
+            self.plot_deform_mechanism_upper_mantle()
 
     
     def plot_crust(self):
@@ -332,6 +367,23 @@ class SLAB(VISIT_PLOT):
         # save plot 
         self.save_window('slab_viscosity_snap')
         HideActivePlots()
+    
+    def plot_deform_mechanism_slab(self):
+        '''
+        plot deform mechanism
+        '''
+        # set camera
+        self.set_view_attrs((-200000, 200000, 6.1e+06, 6.372e+06))
+        
+        # set up deform_mechanism
+        self.set_pseudo_color('deform_mechanism', color_table='viridis')
+       
+        SetActivePlots((self.idxs['deform_mechanism']))
+        HideActivePlots()
+
+        # save plot 
+        self.save_window('slab_deform_mechanism_snap')
+        HideActivePlots()
 
     def plot_viscosity_upper_mantle(self):
         '''
@@ -348,7 +400,7 @@ class SLAB(VISIT_PLOT):
         # set up velocity
         SetActivePlots(self.idxs['velocity'])
         VectorAtts = VectorAttributes()
-        VectorAtts = VectorAttributes()
+        VectorAtts = VectorAttributes( )
         VectorAtts.glyphLocation = VectorAtts.UniformInSpace # AdaptsToMeshResolution, UniformInSpace
         VectorAtts.colorTableName = "BrBG"
         VectorAtts.nVectors = 20000
@@ -363,21 +415,106 @@ class SLAB(VISIT_PLOT):
         # save plot 
         self.save_window('um_viscosity_snap')
         HideActivePlots()
+    
+    def plot_deform_mechanism_upper_mantle(self):
+        '''
+        plot deform mechanism in upper mantle
+        '''
+        # set camera
+        self.set_view_attrs((-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06))
+        
+        # set up deform_mechanism
+        self.set_pseudo_color('deform_mechanism', color_table='viridis')
+       
+        SetActivePlots((self.idxs['deform_mechanism']))
+        HideActivePlots()
+
+        # save plot 
+        self.save_window('um_deform_mechanism_snap')
+        HideActivePlots()
+        
+
+class EXPORT_PARTICLE(VISIT_PLOT):
+    '''
+    export particles from visit file
+    generate a file with positions of particles for each step
+    '''
+    
+    def __init__(self, filein, **kwargs):
+        """
+        initiate
+        Args:
+            filein(str): path of vtu file
+        """
+        # get options
+        output_dir = kwargs.get('output_dir', '.')
+
+        # types of plot
+        plot_types, vars_ = self.get_plots()
+
+        # call __init__ function of parent
+        VISIT_PLOT.__init__(self, filein, plot_types=plot_types, vars=vars_, output_dir=output_dir)
+
+        # draw plots
+        all_idxs_tuple = tuple([i for i in range(self.all_idxs)])
+        SetActivePlots(all_idxs_tuple)
+        DrawPlots()
+        HideActivePlots()
+    
+    def get_plots(self):
+        """
+        get types of plot
+        to be reloaded in children
+        Returns:
+            plot_types(list)
+            vars_(list): variables to plot
+        """
+        plot_types = ["Mesh", "Molecule"]
+        vars_ = ["mesh", "id"]
+        return plot_types, vars_
+    
+    def plot_time_snap(self):
+        # set active
+        SetActivePlots((self.idxs['id']))
+        # SetActivePlots((self.idxs['mesh'], self.idxs['id']))
+        HideActivePlots()
+
+        # export 
+        ExportDBAtts = ExportDBAttributes()
+        ExportDBAtts.allTimes = 1
+        ExportDBAtts.dirname = "PARTICLE_OUTPUT_DIR"
+        ExportDBAtts.filename = "visit_particles_%06d" % self.time_snap
+        ExportDBAtts.timeStateFormat = "_%04d"
+        ExportDBAtts.db_type = "XYZ"
+        ExportDBAtts.db_type_fullname = "XYZ_1.0"
+        ExportDBAtts.variables = ("id")
+        ExportDBAtts.writeUsingGroups = 0
+        ExportDBAtts.groupSize = 48
+        ExportDatabase(ExportDBAtts)
+        HideActivePlots()
+
 
 
 def main():
-    Slab = SLAB("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
-    # todo
-    # First number is the number of initial adaptive refinements
-    # Second one is the snapshot to plot
-    # here we prefer to use a series of snapshots.
-    # If this doesn't work, we will use a single snapshot
-    snapshots = MULTIPLE_SNAPSHOTS
-    if not snapshots == []:
-        for snapshot in snapshots:
-            Slab(INITIAL_ADAPTIVE_REFINEMENT+snapshot)
-    else:
-        Slab(INITIAL_ADAPTIVE_REFINEMENT+SINGLE_SNAPSHOT)
+    if IF_PLOT_SLAB:
+        Slab = SLAB("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
+        # First number is the number of initial adaptive refinements
+        # Second one is the snapshot to plot
+        # here we prefer to use a series of snapshots.
+        # If this doesn't work, we will use a single snapshot
+        steps = PLOT_SLAB_STEPS
+        if not steps == []:
+            for step in steps:
+                Slab(INITIAL_ADAPTIVE_REFINEMENT+step)
+        else:
+            Slab(INITIAL_ADAPTIVE_REFINEMENT+SINGLE_SNAPSHOT)
+        Slab.abort()
 
+    # Output particles for slab morphology
+    if IF_EXPORT_SLAB_MORPH:
+        Export_Particle = EXPORT_PARTICLE("VISIT_PARTICLE_FILE", output_dir="DATA_OUTPUT_DIR")
+        for snapshot in ALL_AVAILABLE_PARTICLE_SNAPSHOTS:
+            Export_Particle(snapshot)
+        Export_Particle.abort()
 
 main()

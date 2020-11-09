@@ -1,18 +1,3 @@
-# enhance the procedures
-
-* change 'echo' to 'printf'
-* fix 'usage' function and help message
-
-## submit cases
-
-* fix the bug that files arrive at the cluster later than it's tranfered, write a seperature file to use port
-* update after submit, and cat the file conent of job.log
-* for submit use the stdout of python seems to be a bad idea. We could specifically print that to a file.
-* if the create fails, delete the related files
-* look for base file based on basename
-* add the option to submit to local
-* link to a log file automatically
-
 ## update
 
 * show a status NA even if the return string from slurm is ' ' or CG
@@ -34,10 +19,7 @@ traking branch with project name
 
 ## script path
 
-run script under any folder
-
-## add a 'para_group' with list of parameters and a list of value
-
+run script under any foldernon_linear1MaULV3.000e+01testMLT5.000e-02MV1.000e+24NST5.000e-05
 so that we can create a group with assigned parameter groups instead of looping each parameters
 
 ## separate the configuration of projects
@@ -131,10 +113,7 @@ include a phase diagram instead of a clapayron
 ## change .cc file accordingly
 
 add a assertion for all possible entries, like the one for the 'Strategy'
-
-
-# Changes to be made to aspect branch
-
+/home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear14
 ## merge intial condition into world builder
 
 include strategy of composition and temperature and viscosity and phases in potential
@@ -142,7 +121,7 @@ include strategy of composition and temperature and viscosity and phases in pote
 
 # Changes to be made to python scripts
 
-## Plot.py
+# Plot.py
 
 * change interface of LinearPlot, possibly changing the settings.
 
@@ -160,12 +139,37 @@ Put every type of plot into one key. e.g. "visit": {}, "newton_solver": {}
 
 # Doc.py
 
-* delete file in the 'docs' folder and clean record in the '.yml' file simutanously;
+* add a 'delete' option, delete file in the 'docs' folder and clean record in the '.yml' file simutanously;
 
-* if a link is presenting in the .yml file but the file is not found in the docs, then remove the link instead. 
+* add a 'fix' option, if a link is presenting in the .yml file but the file is not found in the docs, then remove the link instead. 
+
+* add a 'update' option, it searches the new cases within a group.
 
 
 # Changes to be made to bash cases
+
+* fix 'usage' function and help message
+
+## aspect.sh
+
+* change the code to output warning only when a certain flag is given
+
+* with 'submit group', now the scheme is to look at cases that there is no 'stdout' file.
+
+* with 'create'. If it fails, delete the related files
+
+* with 'submit' add the option to submit to local
+
+* for submit use the stdout of python seems to be a bad idea. We could specifically print that to a file. Use this file as the communication between python and bash
+
+* with the 'post_process.json' file, add a look up table / or json for files generated.
+
+    fisrt, look up in bash code for each of the keys. e.g. 'visit', 'newton_solver'.
+
+    Then, based on whether the key is found, call separate functions or python commands to finish the operation.
+
+    Eliminate the function to do project-wise post-postprocess from python and put them in the post_process.
+
 
 ## slurm.sh
 

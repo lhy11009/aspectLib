@@ -13,7 +13,7 @@ set Nonlinear solver scheme = iterated Advection and Newton Stokes
 set CFL number = 0.25
 set Max nonlinear iterations = 75
 set Max nonlinear iterations in pre-refinement = 0
-set Nonlinear solver tolerance = 1e-6
+set Nonlinear solver tolerance = 2e-05
 
 subsection Discretization
     set Composition polynomial degree = 2
@@ -33,7 +33,7 @@ subsection Solver parameters
         set Max pre-Newton nonlinear iterations = 20
         set Nonlinear Newton solver switch tolerance = 1e-3
         set Max Newton line search iterations = 0
-        set Maximum linear Stokes solver tolerance = 5e-2
+        set Maximum linear Stokes solver tolerance = 0.01
         set Use Newton residual scaling method = true
         set Use Newton failsafe = true
         set Stabilization preconditioner = SPD
@@ -151,7 +151,7 @@ subsection Material model
         set Minimum strain rate = 1.e-20
         set Reference strain rate = 1.e-15
         set Minimum viscosity = 1e19
-        set Maximum viscosity = 1e24
+        set Maximum viscosity = 1e+24
         set Phase transition depths = background:670e3
         set Phase transition widths = background:5e3
         set Phase transition temperatures = background:1662.0
@@ -226,7 +226,7 @@ subsection Postprocess
         set Time between graphical output = 0
     end
     subsection Visualization
-        set List of output variables = density, viscosity, error indicator, named additional outputs
+        set List of output variables = density, viscosity, error indicator
         set Output format = vtu
         set Time between graphical output = 0.1e6
     end
@@ -234,7 +234,7 @@ subsection Postprocess
         set Particle generator name = ascii file
         set Data output format = vtu
         set List of particle properties = initial position, pT path
-        set Time between data output = 0.1e6
+        set Time between data output = 0.2e6
         subsection Generator
             subsection Ascii file
                 set Data directory = ./
@@ -243,6 +243,7 @@ subsection Postprocess
         end
     end
 end
+
 
 subsection Checkpointing
     set Steps between checkpoint = 100

@@ -3,6 +3,7 @@ import sys
 import json
 import argparse
 import re
+import warnings
 import numpy as np
 import shilofue.Parse as Parse
 import shilofue.Doc as Doc
@@ -136,6 +137,40 @@ class MYCASE(Parse.CASE):
             self.particle_data[i, 1] = y
 
 
+class VISIT_OPTIONS(Parse.VISIT_OPTIONS):
+    """
+    inherite the VISIT_OPTIONS clase from Parse.py
+    in order to add in additional settings
+    """
+    def Interpret(self, kwargs={}):
+        """
+        Interpret the inputs, to be reloaded in children
+        """
+        # call function from parent
+        Parse.VISIT_OPTIONS.Interpret(self, kwargs)
+
+        # default settings
+        self.odict['IF_PLOT_SLAB'] = 'False'
+        self.odict['IF_EXPORT_SLAB_MORPH'] = 'False'
+        particle_output_dir = os.path.join(self._output_dir, "slab_morphs")
+        self.odict["PARTICLE_OUTPUT_DIR"] = particle_output_dir
+
+        # optional settings
+        for key, value in kwargs.items():
+            # slab
+            if key == 'slab':
+                self.odict['IF_PLOT_SLAB'] = 'True'
+                self.odict['PLOT_SLAB_STEPS'] = value.get('steps', [0])
+                self.odict['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
+            # export particles for slab morph
+            elif key == 'slab_morph':
+                self.odict['IF_EXPORT_SLAB_MORPH'] = 'True'
+                # check directory
+                if not os.path.isdir(particle_output_dir):
+                    os.mkdir(particle_output_dir)
+        
+
+
 class VISIT_XYZ(Parse.VISIT_XYZ):
     """
     Read .xyz file exported from visit and do analysis
@@ -209,7 +244,7 @@ class VISIT_XYZ(Parse.VISIT_XYZ):
         # construct header
         self.output_header = {
             'Maximum depth': {'col': 0, 'unit': self.header['x']['unit']},
-            'Trench position': {'col': 1},
+            'Trench position': {'col': 1, 'unit': 'rad'},
             'Slab length': {'col': 2, 'unit': self.header['x']['unit']}
         }
         total_cols = 2
@@ -230,6 +265,45 @@ def SlabDip(r0, ph0, r1, ph1):
     """
     alpha = np.arctan2((r0 - r1), (r1 * (ph1 - ph0)))
     return alpha
+
+
+def SlabMorph(case_dir, kwargs={}):
+    """
+    Slab morphology
+    Inputs:
+        case_dir(str): directory of case
+        kwargs(dict): options
+    """
+    case_output_dir = os.path.join(case_dir, 'output')
+    case_morph_dir = os.path.join(case_output_dir, 'slab_morphs')
+
+    # Initiation
+    Visit_Xyz = VISIT_XYZ()
+    
+    # a header for interpreting file format
+    # note that 'col' starts form 0
+    header = {
+        'x': {'col': 1, 'unit': 'm'},
+        'y': {'col': 2, 'unit': 'm' },
+        'id': {'col': 4}
+    }
+
+    # depth range
+    # this is for computing dip angles with different ranges
+    depth_ranges = kwargs.get('depth_ranges', [[0, 100e3], [100e3, 400e3], [400e3, 6371e3]])
+    my_assert(type(depth_ranges) == list, TypeError, "depth_ranges mush be a list")
+
+    # remove older results 
+    ofile = os.path.join(case_output_dir, 'slab_morph') 
+    if os.path.isfile(ofile):
+        os.remove(ofile)
+    
+    #   loop for every snap and call function
+    snaps, _, _= Parse.GetSnapsSteps(case_dir, 'particle')
+
+    for i in snaps:
+        visit_xyz_file = os.path.join(case_morph_dir, 'visit_particles_%06d.xyz' % i)
+        Visit_Xyz(visit_xyz_file, header=header, ofile=ofile, depth_ranges=depth_ranges)
 
 
 def main():
@@ -357,11 +431,6 @@ def main():
         _case_dir = os.path.join(arg.output_dir, _case_name)
         Parse.AutoMarkdownCase(_case_name, _config, dirname=_case_dir)
         print(_case_name)
-    
-    elif _commend == 'query':
-        # for now, only out put the cases in this group
-        print('Now we query into a group')
-        _config_file = os.path.join(arg.output_dir, 'config.json')
         # check this group exist
         my_assert(os.path.isdir(arg.output_dir), FileExistsError, "%s doesn't exist" % arg.output_dir)
         my_assert(os.path.isdir(_config_file), FileExistsError, "%s doesn't exist" % arg._config_file)
@@ -379,7 +448,7 @@ def main():
     elif _commend == 'update':
         # update a case
         # example usage:
-        #   python -m shilofue.TwoDSubduction update -o /home/lochy/ASPECT_PROJECT/TwoDSubduction
+        #   python -m shilofue.TwoDSubduction update -o /home/lochy/ASPECT_PROJECT/TwoDSubduction 
         _project_dir = arg.output_dir
         _project_dict = Parse.UpdateProjectJson(_project_dir)  # update project json file
         
@@ -399,7 +468,13 @@ def main():
         Parse.UpdateProjectMd(_project_dict, _project_dir)
 
         # plot figures for every case
-        Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False, pdict=pdict)
+        # Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False, pdict=pdict)
+        # get sub cases
+        pp_source_dirs = pdict.get('dirs', 'foo')
+        for pp_source_dir_base in pp_source_dirs:
+            pp_source_dir = os.path.join(_project_dir, pp_source_dir_base)
+            pp_case_dirs = Parse.GetSubCases(pp_source_dir)
+            Plot.ProjectPlot(pp_case_dirs, 'png', update=False, pdict=pdict)
 
         # update mkdocs
         imgs = ['Statistics' , 'MachineTime', 'DepthAverage', 'NewtonSolver', 'PvMesh', 'visit', 'um', 'slab']
@@ -450,6 +525,20 @@ def main():
         MachineTime(filein, fileout=ofile)
         pass
 
+    elif _commend == 'process_slab_morph':
+        # process slab morphology from visit particle output
+        # generate a file that can be used for plot
+        # example usages:
+        case_dir = arg.input_dir
+        with open(arg.json_file, 'r') as fin:
+            dict_in = json.load(fin)
+            extra_options = dict_in.get('slab_morph', {})
+        try:
+            SlabMorph(case_dir, extra_options)
+        except FileNotFoundError:
+            warnings.warn('process_slab_morph: file existence requirements are not met')
+            
+
     elif _commend == 'plot':
         # future
         # plot something
@@ -461,7 +550,7 @@ def main():
         # initiate class object
         case_dir = arg.input_dir
 
-        Visit_Options = Parse.VISIT_OPTIONS(case_dir)
+        Visit_Options = VISIT_OPTIONS(case_dir)
 
         # load extra options
         if arg.json_file == './config_case.json':

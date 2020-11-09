@@ -395,7 +395,7 @@ plot_visit_case(){
     [ -d "${img_dir}" ] || mkdir "${img_dir}" ]
 
     # get a list of scripts to plot
-    visit_script_bases=("export_particles.py" "slab.py")
+    visit_script_bases=("slab.py")
     visit_script_dir="${dir}/visit_scripts/${project}"
         
     # call python module to generate visit_keys_values file
@@ -682,29 +682,35 @@ bash_post_process_project(){
     # read for directories to plot with visit
     # it is possible to write this part into a function
     local filein="${dir}/post_process.json"
-    local keys=("visit" "dirs")
-    local is_array='true'
-    read_json_file
 
-    # get the dir to plot visit
-    local visit_dirs=()
-    if [[ $value =~ "active" ]]; then
-        # future
-        echo 0
-    else
-        IFS=" "; dirs=(${value})
-        local source_dir; local dir_
-        for dir_ in "${dirs[@]}"; do
-            source_dir="${local_root}/${dir_}"
-            search_for_groups_cases "${source_dir}"
-            visit_dirs+=("${case_dirs[@]}")
+    local keys=("visit")
+    # check for visit options
+    read_json_file
+    if [[ -n "${value}" ]]; then
+        keys=("dirs")
+        local is_array='true'
+        read_json_file
+    
+        # get the dir to plot visit
+        local visit_dirs=()
+        if [[ $value =~ "active" ]]; then
+            # future
+            echo 0
+        else
+            IFS=" "; dirs=(${value})
+            local source_dir; local dir_
+            for dir_ in "${dirs[@]}"; do
+                source_dir="${local_root}/${dir_}"
+                search_for_groups_cases "${source_dir}"
+                visit_dirs+=("${case_dirs[@]}")
+            done
+        fi
+
+        # plot visit cases
+        for case_dir in "${visit_dirs[@]}"; do
+            plot_visit_case
         done
     fi
-
-    # plot visit cases
-    for case_dir in "${visit_dirs[@]}"; do
-        plot_visit_case
-    done
     
     return 0
 }
@@ -803,6 +809,9 @@ main(){
             if [[ -d "${case_dir}" ]]; then
                 # select directories
                 local _files=$(ls "${case_dir}")
+                if [[ "${_files[@]}" =~ 'stdout' ]]; then
+                    continue
+                fi
                 if [[ "${_files[@]}" =~ 'case.prm' ]]; then
                     local remote_case_dir=${case_dir/"${local_root}"/"${remote_root}"}
                     # call submit functions

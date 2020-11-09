@@ -283,6 +283,33 @@ class STATISTICS_PLOT(LINEARPLOT):
     def __init__(self, _name, **kwargs):
         LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
     
+    def GetStep(self, time):
+        '''
+        Inputs:
+            time(double)
+        get step corresponding to a value of model time
+        '''
+        # get data
+        col_t = self.header['Time']['col']
+        col_step = self.header['Time_step_number']['col']
+        times = self.data[:, col_t]
+        steps = self.data[:, col_step]
+
+        # get step
+        idx = np.argmin(abs(times - time))
+        step = int(steps[idx])
+        return step
+    
+    def GetTime(self, step):
+        '''
+        future
+        Inputs:
+            step(int)
+        get time to a value of model step
+        '''
+        time = 0.0
+        return time
+    
 
 class DEPTH_AVERAGE_PLOT(LINEARPLOT):
     '''
@@ -619,7 +646,7 @@ class MACHINE_TIME_PLOT(LINEARPLOT):
         return machine_time_at_step * number_of_cpu, number_of_cpu
 
 
-def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
+def ProjectPlot(case_dirs, _file_type, **kwargs):
     '''
     Plot figures for all cases in this project
     Inputs:
@@ -643,113 +670,106 @@ def ProjectPlot(_project_dict, _project_dir, _file_type, **kwargs):
     # machine time
     MachineTime = MACHINE_TIME_PLOT('MachineTime')
 
-    for key, value in _project_dict.items():
-        if key == 'cases':
-            _dir = _project_dir
-        else:
-            # groups, future
-            _dir = os.path.join(_project_dir, key)
-        for _case in value:
-            # cases
-            _case_dir = os.path.join(_dir, _case)
-            _case_output_dir = os.path.join(_case_dir, 'output')
-            _case_img_dir = os.path.join(_case_dir, 'img')
-            if not os.path.isdir(_case_img_dir):
-                # make img folder if not exists
-                os.mkdir(_case_img_dir)
+    # loop for cases and post process
+    for _case_dir in case_dirs:
+        # cases
+        _case_output_dir = os.path.join(_case_dir, 'output')
+        _case_img_dir = os.path.join(_case_dir, 'img')
+        if not os.path.isdir(_case_img_dir):
+            # make img folder if not exists
+            os.mkdir(_case_img_dir)
 
-            # plot statistic
-            _statistic_file = os.path.join(_case_output_dir, 'statistics')
-            _ofile = os.path.join(_case_img_dir, 'Statistics.'+ _file_type)
-            if os.path.isfile(_statistic_file) and (not os.path.isfile(_ofile) or update is True):
-                try:
-                    Statistics(_statistic_file, fileout=_ofile)
-                except Exception as e:
-                    raise Exception("Plot statistics file failed for %s, please chech file content.\
+        # plot statistic
+        _statistic_file = os.path.join(_case_output_dir, 'statistics')
+        _ofile = os.path.join(_case_img_dir, 'Statistics.'+ _file_type)
+        if os.path.isfile(_statistic_file) and (not os.path.isfile(_ofile) or update is True):
+            try:
+                Statistics(_statistic_file, fileout=_ofile)
+            except Exception as e:
+                raise Exception("Plot statistics file failed for %s, please chech file content.\
 One option is to delete incorrect file before running again" % _statistic_file) from e
-                else:
-                    print('Plot has been generated: ', _ofile)  # screen output
+            else:
+                print('Plot has been generated: ', _ofile)  # screen output
 
-            # plot depth-average
-            _depth_average_file = os.path.join(_case_output_dir, 'depth_average.txt')
-            _time = 0.0
-            _ofile_route = os.path.join(_case_img_dir, 'DepthAverage.%s' % _file_type)
-            _ofile = os.path.join(_case_img_dir, 'DepthAverage_t%.8e.%s' % (_time, _file_type))  # ofile has the exact time
-            if os.path.isfile(_depth_average_file) and (not os.path.isfile(_ofile) or update is True):
-                # check for ofile here is not precist, not intuitive. future: change the implementation
-                try:
-                    _ofile_exact = DepthAverage(_depth_average_file, fileout=_ofile_route, time=_time)
-                except Exception as e:
-                    raise Exception("Plot DepthAverage file failed for %s, please chech file content.\
+        # plot depth-average
+        _depth_average_file = os.path.join(_case_output_dir, 'depth_average.txt')
+        _time = 0.0
+        _ofile_route = os.path.join(_case_img_dir, 'DepthAverage.%s' % _file_type)
+        _ofile = os.path.join(_case_img_dir, 'DepthAverage_t%.8e.%s' % (_time, _file_type))  # ofile has the exact time
+        if os.path.isfile(_depth_average_file) and (not os.path.isfile(_ofile) or update is True):
+            # check for ofile here is not precist, not intuitive. future: change the implementation
+            try:
+                _ofile_exact = DepthAverage(_depth_average_file, fileout=_ofile_route, time=_time)
+            except Exception as e:
+                raise Exception("Plot DepthAverage file failed for %s, please chech file content.\
 One option is to delete incorrect file before running again" % _depth_average_file) from e
-                else:
-                    if _ofile_exact is not None:
-                        # output when there is file generated
-                        print('Plot has been generated: ', _ofile_exact)  # screen output
-            
-            # add solver output
-            # plot newton solver output
-            _solver_file = os.path.join(_case_output_dir, 'solver_output')
-            _ofile_route = os.path.join(_case_img_dir, 'NewtonSolverStep.%s' % _file_type)
-            # plot step0
-            _step = 0
-            NewtonSolverStep.GetStep(_step)
-            _ofile = os.path.join(_case_img_dir, 'NewtonSolverStep_s%07d.%s' % (_step, _file_type))
-            if os.path.isfile(_solver_file) and (not os.path.isfile(_ofile) or update is True):
-                # check for ofile here is not precist, not intuitive. future: change the implementation
-                try:
-                    _ofile_exact = NewtonSolverStep(_solver_file, fileout=_ofile_route)
-                except Exception as e:
-                    raise Exception("Plot NewtonSolver file failed for %s, please chech file content.\
-    One option is to delete incorrect file before running again" % _solver_file) from e
-                else:
-                    if _ofile_exact is not None:
-                        # output when there is file generated
-                        print('Plot has been generated: ', _ofile_exact)  # screen output
-            # plot step 1
-            _step = 1
-            NewtonSolverStep.GetStep(_step)
-            _ofile = os.path.join(_case_img_dir, 'NewtonSolverStep_s%07d.%s' % (_step, _file_type))
-            if os.path.isfile(_solver_file) and (not os.path.isfile(_ofile) or update is True):
-                # check for ofile here is not precist, not intuitive. future: change the implementation
-                try:
-                    _ofile_exact = NewtonSolverStep(_solver_file, fileout=_ofile_route)
-                except Exception as e:
-                    raise Exception("Plot NewtonSolver file failed for %s, please chech file content.\
-    One option is to delete incorrect file before running again" % _solver_file) from e
-                else:
-                    if _ofile_exact is not None:
-                        # output when there is file generated
-                        print('Plot has been generated: ', _ofile_exact)  # screen output
-            # plot whole history
-            _ofile = os.path.join(_case_img_dir, 'NewtonSolver.%s' % _file_type)
-            if os.path.isfile(_solver_file) and (not os.path.isfile(_ofile) or update is True):
-                # check for ofile here is not precist, not intuitive. future: change the implementation
-                try:
-                    _ofile_exact = NewtonSolver(_solver_file, fileout=_ofile)
-                except Exception as e:
-                    raise Exception("Plot NewtonSolver file failed for %s, please chech file content.\
-    One option is to delete incorrect file before running again" % _solver_file) from e
-                else:
-                    if _ofile_exact is not None:
-                        # output when there is file generated
-                        print('Plot has been generated: ', _ofile_exact)  # screen output
-            
-            # plot machine_time
-            _machine_time_file = os.path.join(_case_output_dir, 'machine_time')
-            _time = 0.0
-            _ofile = os.path.join(_case_img_dir, 'MachineTime.%s' % _file_type)  # ofile has the exact time
-            if os.path.isfile(_machine_time_file) and (not os.path.isfile(_ofile) or update is True):
-                # check for ofile here is not precist, not intuitive. future: change the implementation
-                try:
-                    _ofile_exact = MachineTime(_machine_time_file, fileout=_ofile)
-                except Exception as e:
-                    raise Exception("Plot DepthAverage file failed for %s, please chech file content.\
-One option is to delete incorrect file before running again" % _machine_time_file) from e
-                else:
-                    if _ofile_exact is not None:
-                        # output when there is file generated
-                        print('Plot has been generated: ', _ofile_exact)  # screen output
+            else:
+                if _ofile_exact is not None:
+                    # output when there is file generated
+                    print('Plot has been generated: ', _ofile_exact)  # screen output
         
-        pass
+        # add solver output
+        # plot newton solver output
+        _solver_file = os.path.join(_case_output_dir, 'solver_output')
+        _ofile_route = os.path.join(_case_img_dir, 'NewtonSolverStep.%s' % _file_type)
+        # plot step0
+        _step = 0
+        NewtonSolverStep.GetStep(_step)
+        _ofile = os.path.join(_case_img_dir, 'NewtonSolverStep_s%07d.%s' % (_step, _file_type))
+        if os.path.isfile(_solver_file) and (not os.path.isfile(_ofile) or update is True):
+            # check for ofile here is not precist, not intuitive. future: change the implementation
+            try:
+                _ofile_exact = NewtonSolverStep(_solver_file, fileout=_ofile_route)
+            except Exception as e:
+                raise Exception("Plot NewtonSolver file failed for %s, please chech file content.\
+One option is to delete incorrect file before running again" % _solver_file) from e
+            else:
+                if _ofile_exact is not None:
+                    # output when there is file generated
+                    print('Plot has been generated: ', _ofile_exact)  # screen output
+        # plot step 1
+        _step = 1
+        NewtonSolverStep.GetStep(_step)
+        _ofile = os.path.join(_case_img_dir, 'NewtonSolverStep_s%07d.%s' % (_step, _file_type))
+        if os.path.isfile(_solver_file) and (not os.path.isfile(_ofile) or update is True):
+            # check for ofile here is not precist, not intuitive. future: change the implementation
+            try:
+                _ofile_exact = NewtonSolverStep(_solver_file, fileout=_ofile_route)
+            except Exception as e:
+                raise Exception("Plot NewtonSolver file failed for %s, please chech file content.\
+One option is to delete incorrect file before running again" % _solver_file) from e
+            else:
+                if _ofile_exact is not None:
+                    # output when there is file generated
+                    print('Plot has been generated: ', _ofile_exact)  # screen output
+        # plot whole history
+        _ofile = os.path.join(_case_img_dir, 'NewtonSolver.%s' % _file_type)
+        if os.path.isfile(_solver_file) and (not os.path.isfile(_ofile) or update is True):
+            # check for ofile here is not precist, not intuitive. future: change the implementation
+            try:
+                _ofile_exact = NewtonSolver(_solver_file, fileout=_ofile)
+            except Exception as e:
+                raise Exception("Plot NewtonSolver file failed for %s, please chech file content.\
+One option is to delete incorrect file before running again" % _solver_file) from e
+            else:
+                if _ofile_exact is not None:
+                    # output when there is file generated
+                    print('Plot has been generated: ', _ofile_exact)  # screen output
+        
+        # plot machine_time
+        _machine_time_file = os.path.join(_case_output_dir, 'machine_time')
+        _time = 0.0
+        _ofile = os.path.join(_case_img_dir, 'MachineTime.%s' % _file_type)  # ofile has the exact time
+        if os.path.isfile(_machine_time_file) and (not os.path.isfile(_ofile) or update is True):
+            # check for ofile here is not precist, not intuitive. future: change the implementation
+            try:
+                _ofile_exact = MachineTime(_machine_time_file, fileout=_ofile)
+            except Exception as e:
+                raise Exception("Plot DepthAverage file failed for %s, please chech file content.\
+One option is to delete incorrect file before running again" % _machine_time_file) from e
+            else:
+                if _ofile_exact is not None:
+                    # output when there is file generated
+                    print('Plot has been generated: ', _ofile_exact)  # screen output
     
+    pass
