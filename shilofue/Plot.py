@@ -15,7 +15,6 @@ class LINEARPLOT():
     class for LINEARPLOT
 
     '''
-
     def __init__(self, _name, kwargs):
         '''
         _name(str):
@@ -30,16 +29,14 @@ class LINEARPLOT():
         self.UnitConvert = kwargs.get('unit_convert', None)
         self.dim = kwargs.get('dim', 2)  # dimension
         assert(self.dim in [1, 2, 3])  # dimension must be 1, 2, 3
-        # Read plot options from a json file
-        _jsonfile = kwargs.get('json', None)
-        if _json_dir is not None:
-            _jsonfile = os.path.join(_json_dir, self.name + '.json')
-            with open(_jsonfile, 'r') as fin:
-                self.configs = json.load(fin)
+
+        # reset the options with a option in the kwargs
+        try:
+            options = kwargs['options']
+        except KeyError:
+            pass
         else:
-            # default is to read from '.json' in shilofue.json
-            with resources.open_text(shilofue.json, self.name + '.json') as fin:
-                self.configs = json.load(fin)
+            self.options = options
     
     def __call__(self, _filename, **kwargs):
         '''
@@ -147,13 +144,14 @@ class LINEARPLOT():
         '''
         # plot configuration
         assert(type(_data_list) is list)
-        _canvas = self.configs.get('canvas', [1, 1])
+        _canvas = self.options.get('canvas', [1, 1])
         assert(type(_canvas) is list and len(_canvas) == 2)
-        _types = self.configs['types']  # types of plotting
+        _types = self.options.get('types', [])  # types of plotting
         assert(type(_types) is list and
             _canvas[0] * _canvas[1] >= len(_types))  # size of canvas match size of _types
-        _size = self.configs.get('size', (12, 12))  # size of the plot
+        _size = self.options.get('size', (5, 5))  # size of the plot
         _title = kwargs.get('title', None)  # get title
+
         # plot
         fig, axs = plt.subplots(_canvas[0], _canvas[1], figsize=_size)
         for i in range(len(_types)):

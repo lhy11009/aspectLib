@@ -1,5 +1,6 @@
 import os
 import pytest
+import json
 import numpy as np
 import shilofue.Plot as Plot
 from shilofue.Utilities import UNITCONVERT
@@ -22,11 +23,18 @@ def test_plot_statistics():
         os.remove(_ofile)
     test_file = os.path.join(_test_source_dir, 'statistics')
     assert(os.access(test_file, os.R_OK))
+
+    # use a json file
+    json_file = os.path.join(_test_source_dir, 'linear_plot.json')
+    assert(os.access(json_file, os.R_OK))
+    with open(json_file, 'r') as fin:
+        json_options = json.load(fin)
+    plot_options = json_options.get('Statistics', {})
+
     # Init the UnitConvert class
     UnitConvert = UNITCONVERT()
     # plot statistics ouput #####
-    json_dir = os.path.join(_test_source_dir, 'json')
-    Statistics = Plot.STATISTICS_PLOT('Statistics', unit_convert=UnitConvert, json_dir=json_dir)
+    Statistics = Plot.STATISTICS_PLOT('Statistics', unit_convert=UnitConvert, options=plot_options)
     Statistics(test_file, fileout=_ofile)
     assert(os.path.isfile(_ofile))  # assert that the file is generated successfully
     # os.remove('Statistics.pdf')  # remove this file after finished
@@ -44,10 +52,18 @@ def test_plot_depth_average():
     # test_file = 'fixtures/statistics'
     test_file = os.path.join(_test_source_dir, 'depth_average.txt')
     assert(os.access(test_file, os.R_OK))
+
+    # use a json file
+    json_file = os.path.join(_test_source_dir, 'linear_plot.json')
+    assert(os.access(json_file, os.R_OK))
+    with open(json_file, 'r') as fin:
+        json_options = json.load(fin)
+    plot_options = json_options.get('DepthAverage', {})
+
     # Init the UnitConvert class
     UnitConvert = UNITCONVERT()
     # plot statistics ouput #####
-    DepthAverage = Plot.DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert)
+    DepthAverage = Plot.DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert, options=plot_options)
     # test error handling of key word time
     with pytest.raises(TypeError) as _excinfo:
         DepthAverage(test_file, fileout=_ofile_route, time='foo')
@@ -78,8 +94,16 @@ def test_plot_newton_solver():
     if(os.path.isfile(_ofile)):
         # remove previous files
         os.remove(_ofile)
-    json_dir = os.path.join(_test_source_dir, 'json')
-    NewtonSolverStep = Plot.NEWTON_SOLVER_PLOT('NewtonSolverStep', json_dir=json_dir)
+
+    # use a json file
+    json_file = os.path.join(_test_source_dir, 'linear_plot.json')
+    assert(os.access(json_file, os.R_OK))
+    with open(json_file, 'r') as fin:
+        json_options = json.load(fin)
+    plot_options = json_options.get('NewtonSolverStep', {})
+
+    NewtonSolverStep = Plot.NEWTON_SOLVER_PLOT('NewtonSolverStep', options=plot_options)
+    
     # plot step0
     NewtonSolverStep.GetStep(0)
     NewtonSolverStep(test_file, fileout=_ofile_route)
@@ -90,8 +114,15 @@ def test_plot_newton_solver():
     if(os.path.isfile(_ofile)):
         # remove previous files
         os.remove(_ofile)
-    json_dir = os.path.join(_test_source_dir, 'json')
-    NewtonSolver = Plot.NEWTON_SOLVER_PLOT('NewtonSolver', json_dir=json_dir)
+
+    # use a json file
+    json_file = os.path.join(_test_source_dir, 'linear_plot.json')
+    assert(os.access(json_file, os.R_OK))
+    with open(json_file, 'r') as fin:
+        json_options = json.load(fin)
+    plot_options = json_options.get('NewtonSolver', {})
+    
+    NewtonSolver = Plot.NEWTON_SOLVER_PLOT('NewtonSolver', options=plot_options)
     NewtonSolver(test_file, fileout=_ofile)
     # assert that the file is generated successfull
     assert(os.path.isfile(_ofile))
@@ -104,8 +135,15 @@ def test_plot_machine_time():
     test_file = os.path.join(_test_source_dir, 'machine_time')
     assert(os.access(test_file, os.R_OK))
 
+    # use a json file
+    json_file = os.path.join(_test_source_dir, 'linear_plot.json')
+    assert(os.access(json_file, os.R_OK))
+    with open(json_file, 'r') as fin:
+        json_options = json.load(fin)
+    plot_options = json_options.get('MachineTime', {})
+    
     # initiate 
-    MachineTime = Plot.MACHINE_TIME_PLOT('MachineTime')
+    MachineTime = Plot.MACHINE_TIME_PLOT('MachineTime', options=plot_options)
 
     # get machine time at one step
     step = 35

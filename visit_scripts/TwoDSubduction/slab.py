@@ -163,12 +163,8 @@ class VISIT_PLOT():
         PseudocolorAtts.limitsMode = PseudocolorAtts.OriginalData  # OriginalData, CurrentPlot
 
         # color
-        try:
-            color_table = kwargs['color_table']
-        except KeyError:
-            pass
-        else:
-            PseudocolorAtts.colorTableName = color_table
+        color_table = kwargs.get('color_table', "viridis")
+        PseudocolorAtts.colorTableName = color_table
 
         # min and max values to use
         try:

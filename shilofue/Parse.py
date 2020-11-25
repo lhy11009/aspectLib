@@ -467,6 +467,27 @@ class PARSE_OPERATIONS():
             pass
         else:
             Inputs['Nonlinear solver tolerance'] = str(nonlinear_solver_tolerance)
+        
+        # change Stokes solver configuration
+        try:
+            stokes_solver = Inputs['Solver parameters']['Stokes solver parameters']
+        except KeyError:
+            pass
+        else:
+            try:
+                # change linear tolerance
+                linear_stokes_tolerance = _config['linear_stokes_tolerance']
+            except KeyError:
+                pass
+            else:
+                stokes_solver['Linear solver tolerance'] = str(linear_stokes_tolerance)
+            try:
+                # change cheap stokes steps
+                cheap_stokes_steps = _config['cheap_stokes_steps']
+            except KeyError:
+                pass
+            else:
+                stokes_solver['Number of cheap Stokes solver steps '] = str(cheap_stokes_steps)
 
         # change Newton solver configuration
         try:
