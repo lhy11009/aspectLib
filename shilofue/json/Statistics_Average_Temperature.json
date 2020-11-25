@@ -1,8 +1,0 @@
-{
-    "name": "Average_Temperature", 
-    "xname": "Time", 
-    "yname": "Average_temperature", 
-    "color": "r", 
-    "line": ".",
-    "label": "Average Temperature"
-}

@@ -1,8 +1,0 @@
-{
-    "name": "Newton Derivative Scaling Factor",
-    "xname": "Number_of_nonlinear_iteration",
-    "yname": "Newton_Derivative_Scaling_Factor",
-    "color": "b",
-    "line": ".-",
-    "label": "ndsf"
-}

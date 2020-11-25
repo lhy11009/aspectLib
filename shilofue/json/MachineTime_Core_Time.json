@@ -1,7 +1,0 @@
-{
-    "name": "Core Time", 
-    "xname": "Time_step_number", 
-    "yname": "Core_time", 
-    "color": "r", 
-    "line": "-"
-}

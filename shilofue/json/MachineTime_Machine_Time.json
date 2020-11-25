@@ -1,7 +1,0 @@
-{
-    "name": "Machine Time", 
-    "xname": "Time_step_number", 
-    "yname": "Machine_time", 
-    "color": "b", 
-    "line": "-"
-}

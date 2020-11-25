@@ -34,7 +34,10 @@ class LINEARPLOT():
         try:
             options = kwargs['options']
         except KeyError:
-            pass
+            # read default
+            with resources.open_text(shilofue.json, 'linear_plot.json') as fin:
+                all_options = json.load(fin)
+            self.options = all_options[self.name]
         else:
             self.options = options
     

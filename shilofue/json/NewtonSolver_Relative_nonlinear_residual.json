@@ -1,9 +1,0 @@
-{
-    "name": "Relative nonlinear residual",
-    "xname": "Number_of_nonlinear_iteration",
-    "yname": "Relative_nonlinear_residual",
-    "log_y": 1,
-    "color": "k",
-    "line": ".-",
-    "label": "rnr"
-}

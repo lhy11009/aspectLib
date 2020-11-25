@@ -1,8 +1,0 @@
-{
-    "name": "Maximal_Temperature", 
-    "xname": "Time", 
-    "yname": "Maximal_temperature", 
-    "color": "b", 
-    "line": ".",
-    "label": "Maximal Temperature"
-}

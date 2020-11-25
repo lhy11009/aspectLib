@@ -1,8 +1,0 @@
-{
-    "name": "Statistics_Heat_Flux_1",
-    "xname": "Time",
-    "yname": "Outward_heat_flux_through_boundary_with_indicator_1",
-    "color": "g",
-    "line": ".",
-    "label": "Heat Flux 1"
-}

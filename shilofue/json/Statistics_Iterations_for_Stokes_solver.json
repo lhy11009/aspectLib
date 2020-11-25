@@ -1,8 +1,0 @@
-{
-    "name": "Iterations_for_Stokes_solver",
-    "xname": "Time_step_number",
-    "yname": "Iterations_for_Stokes_solver",
-    "color": "g",
-    "line": ".",
-    "label": "Iterations for Stokes solver"
-}
