@@ -1,5 +1,6 @@
 import os
 import json
+import filecmp
 import shilofue.TwoDSubduction as TwoDSubduction
 import shilofue.Parse as Parse
 from shutil import rmtree
@@ -127,8 +128,7 @@ def test_visit_xyz():
     # this is for computing dip angles with different ranges
     depth_ranges = [[0, 100e3], [100e3, 400e3], [400e3, 6371e3]]
     Visit_Xyz(test_file, header=header, ofile=ofile, depth_ranges=depth_ranges)
+    
     # compare output
     standard_output = os.path.join(test_source_dir, 'TwoDSubduction', 'visit_xyz', 'standard_output1')
-    with open(standard_output, 'r') as standard_fin:
-        with open(ofile, 'r') as fin:
-            assert(fin.read() == standard_fin.read())
+    assert(filecmp.cmp(ofile, standard_output))

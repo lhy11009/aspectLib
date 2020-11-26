@@ -20,6 +20,8 @@ ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
+project = "TwoDSubduction"
+
 
 class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
     """
@@ -453,9 +455,15 @@ def main():
         _project_dict = Parse.UpdateProjectJson(_project_dir)  # update project json file
         
         # load options for post_process
-        with open(arg.json_file, 'r') as fin:
+        # load the project level configuration as default
+        project_pp_json = os.path.join(ASPECT_LAB_DIR, 'files', project, 'post_process.json')
+        with open(project_pp_json, 'r') as fin:
             pdict = json.load(fin)
-        
+        # load explicitly defined parameters
+        with open(arg.json_file, 'r') as fin:
+            pdict1 = json.load(fin)
+        pdict.update(pdict1)
+
         # append analysis
         analysis_file = os.path.join(ASPECT_LAB_DIR, 'analysis.json')
         if os.path.isfile(analysis_file):
@@ -470,7 +478,7 @@ def main():
         # plot figures for every case
         # Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False, pdict=pdict)
         # get sub cases
-        pp_source_dirs = pdict.get('dirs', 'foo')
+        pp_source_dirs = pdict.get('dirs', [])
         for pp_source_dir_base in pp_source_dirs:
             pp_source_dir = os.path.join(_project_dir, pp_source_dir_base)
             pp_case_dirs = Parse.GetSubCases(pp_source_dir)

@@ -35,7 +35,7 @@ class LINEARPLOT():
             options = kwargs['options']
         except KeyError:
             # read default
-            with resources.open_text(shilofue.json, 'linear_plot.json') as fin:
+            with resources.open_text(shilofue.json, 'post_process.json') as fin:
                 all_options = json.load(fin)
             self.options = all_options[self.name]
         else:
@@ -660,16 +660,21 @@ def ProjectPlot(case_dirs, _file_type, **kwargs):
     UnitConvert = UNITCONVERT()
 
     # plot statistics ouput
-    Statistics = STATISTICS_PLOT('Statistics', unit_convert=UnitConvert)
+    plot_options = pdict.get('Statistics', {})
+    Statistics = STATISTICS_PLOT('Statistics', unit_convert=UnitConvert, options=plot_options)
     # depth average output
-    DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert)
+    plot_options = pdict.get('DepthAverage', {})
+    DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert, options=plot_options)
     # newton solver output
     # This is a little bit confusing to myself.
     # But yes, we need two of them to do different type of plot.
-    NewtonSolverStep = NEWTON_SOLVER_PLOT('NewtonSolverStep')
-    NewtonSolver = NEWTON_SOLVER_PLOT('NewtonSolver')
+    plot_options = pdict.get('NewtonSolverStep', {})
+    NewtonSolverStep = NEWTON_SOLVER_PLOT('NewtonSolverStep', options=plot_options)
+    plot_options = pdict.get('NewtonSolver', {})
+    NewtonSolver = NEWTON_SOLVER_PLOT('NewtonSolver', options=plot_options)
     # machine time
-    MachineTime = MACHINE_TIME_PLOT('MachineTime')
+    plot_options = pdict.get('MachineTime', {})
+    MachineTime = MACHINE_TIME_PLOT('MachineTime', options=plot_options)
 
     # loop for cases and post process
     for _case_dir in case_dirs:

@@ -1,5 +1,5 @@
 # 0: Maximum depth (m)
-# 1: Trench position
+# 1: Trench position (rad)
 # 2: Slab length (m)
 # 2: Dip angle 0_100000
 # 3: Dip angle 100000_400000
