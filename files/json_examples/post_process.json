@@ -1,0 +1,27 @@
+{
+    "_comments": ["dirs is the source directory, cases within this directory will be processed",
+                  "each of the dicts is a type of plot. If one is commented out, this type of plot is not generated"],
+    "_dirs": ["non_linear16"],
+    "visit": {
+        "_comments": ["SNAPSHOTS(list) is a serie of snapshots",
+                      "slab(dict) are the options for slab plot, when this is commented out, slab plots are not generated, same for the following",
+                      "slab_morph(dict) are the options for slab_morph",
+                      "deform_mechanism(0 or 1) controls whether to plot deformation mechanism"],
+        "slab":{
+            "_comments": ["steps(list) are the steps to plot"],
+            "steps": [0, 1, 2],
+            "_steps": [0],
+            "deform_mechanism": 1
+        },
+        "_slab_morph":{}
+    },
+    "newton_solver":{
+        "_comments": ["options for the newton solver."],
+        "steps": [0]
+    },
+    "slab_morph":{
+        "_comments": ["options for the slab morphology.",
+                      "depth_ranges: ranges of depth to compute dip angles"],
+        "depth_ranges": [[0, 100e3], [100e3, 400e3], [400e3, 6371e3]]
+    }
+}
