@@ -249,6 +249,7 @@ write_log(){
     get_job_info ${job_id} 'ST'
     quit_if_fail "get_job_info: invalid id number ${job_id} or no such stat 'ST'" 
     local ST=${return_value}
+    [[ -z ${ST} ]] && ST="PD"
 
     # find the stdout file  
     for _file in ${job_dir}/*
@@ -261,6 +262,11 @@ write_log(){
     
     # parse stdout file
     parse_stdout ${_file}  # parse this file
+   
+    # fix non-existing value 
+    [[ -z ${last_time_step} ]] && last_time_step=0
+    [[ -z ${last_time} ]] && last_time=0
+
     echo "${job_dir} ${job_id} ${ST} ${last_time_step} ${last_time}" >> "${log_file}"
 }
 
