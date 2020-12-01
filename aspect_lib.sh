@@ -66,6 +66,16 @@ parse_options(){
     [[ -z ${float} || ${float} =~ ^[0-9\.]+$ ]] || { cecho ${BAD} "${FUNCNAME[0]}: entry for \${float} must be a float value"; exit 1; }
 }
 
+################################################################################
+# set the value of server_info and source the relative .sh file in folder env
+# Inputs:
+#   $!: server_info
+set_server_info()
+{
+    server_info="$1"
+    local server_config_file="${ASPECT_LAB_DIR}/env/${server_info}.sh"
+    [[ -e $server_config_file ]] && eval "source ${server_config_file}"
+}
 
 ################################################################################
 # help message
@@ -750,7 +760,7 @@ main(){
         # example usage:
         #   aspect_lib.sh TwoDSubduction install lochy@peloton.cse.ucdavis.edu
         [[ "$#" -eq 3 ]] || { cecho ${BAD} "for install, server_info must be given"; exit 1; }
-        local server_info="$3"
+        set_server_info "$3"
         install "${project}" ${server_info}
 
     elif [[ ${_commend} = 'create' ]]; then
@@ -770,7 +780,7 @@ main(){
         # example usage:
         #   aspect_lib.sh TwoDSubduction submit ./foo lochy@peloton.cse.ucdavis.edu
         local case_name="$3"
-        local server_info="$4"
+        set_server_info "$4"
         local case_dir="${local_root}/${case_name}"
         # get remote case directory
         get_remote_environment "${server_info}" "${project}_DIR"
@@ -790,7 +800,7 @@ main(){
         # example usage:
         #   aspect_lib.sh TwoDSubduction submit_group ./foo_group lochy@peloton.cse.ucdavis.edu
         local group_name="$3"
-        local server_info="$4"
+        set_server_info "$4"
         local group_dir="${local_root}/${group_name}"
         # get remote case directory
         get_remote_environment "${server_info}" "${project}_DIR"
@@ -830,7 +840,7 @@ main(){
         # if a $4 is given as log file, this will append slurm information to this log file on server side
         # example usage:
         #   aspect_lib.sh TwoDSubduction create_submit lochy@peloton.cse.ucdavis.edu .output/job.log
-        local server_info="$3"
+        set_server_info "$3"
         local log_file="$4"  # optional log file
         ./aspect_lib.sh "${project}" 'create'
         [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh create failed"; exit 1; }
@@ -846,7 +856,7 @@ main(){
         # if a $4 is given as log file, this will append slurm information to this log file on server side
         # example usage:
         #   aspect_lib.sh TwoDSubduction create_submit_group lochy@peloton.cse.ucdavis.edu .output/job.log
-        local server_info="$3"
+        set_server_info "$3"
         local log_file="$4"  # optional log file
         ./aspect_lib.sh "${project}" 'create_group'
         [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh create failed"; exit 1; }
@@ -981,7 +991,7 @@ main(){
         #       ./aspect_lib.sh TwoDSubduction build_remote lochy@peloton.cse.ucdavis.edu
         #       ./aspect_lib.sh TwoDSubduction build_remote lochy@peloton.cse.ucdavis.edu debug
         #       ./aspect_lib.sh TwoDSubduction build_remote lochy@peloton.cse.ucdavis.edu release
-        server_info="$3"
+        set server_info "$3"
         ssh ${server_info} << EOF
             eval "\${ASPECT_LAB_DIR}/aspect_lib.sh ${project} build $4"
 EOF
@@ -994,7 +1004,7 @@ EOF
         #   server test:
         #       ./aspect_lib.sh TwoDSubduction test lochy@peloton.cse.ucdavis.edu
         # get server info
-        server_info="$3"
+        set_server_info "$3"
 
         # call scripts in bash_tests folder
         run_tests

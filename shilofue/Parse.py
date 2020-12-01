@@ -399,6 +399,14 @@ class PARSE_OPERATIONS():
                 pass
             else:
                 Inputs['Mesh refinement']['Coarsening fraction'] = str(_coarsening_fraction)
+        
+        try:
+            # Time steps between mesh refinement
+            _steps_between_refinement = int(_config['steps_between_refinement'])
+        except KeyError:
+            pass
+        else:
+            Inputs['Mesh refinement']['Time steps between mesh refinement'] = str(_steps_between_refinement)
     
         try:
             # only use minimum_refinement_function
