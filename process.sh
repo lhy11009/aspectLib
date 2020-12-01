@@ -4,7 +4,6 @@
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 source "${dir}/utilities.sh"
-source "${dir}/extra_configurations.sh"
 
 test_dir="${dir}/.test"  # do test in this directory
 if ! [[ -d ${test_dir} ]]; then
@@ -73,7 +72,7 @@ update_from_server(){
     # use ssh to update log file on server side, \$ escapes '$' so that it is called on the remote side
     ssh "$server_info" eval "\${ASPECT_LAB_DIR}/process.sh update ${remote_log_file}"
     # use rsync to update log file on local side
-    eval "${RSYNC} ${server_info}:${remote_log_file} ${local_log_file}"
+    echo "${RSYNC} ${server_info}:${remote_log_file} ${local_log_file}"  # debug
 }
 
 clean_NA_from_server(){
@@ -218,10 +217,11 @@ test_update_outputs_from_server(){
 # main function
 ################################################################################
 main(){
-	if [[ "$1" = "test" ]]; then
+	_command="$1"
+	if [[ "${_command}" = "test" ]]; then
 		test_update
 		test_clean_NA
-	elif [[ "$1" = "remote_test" ]]; then
+	elif [[ "${_command}" = "remote_test" ]]; then
         # test run script on remote
 		if ! [[ $# -eq 2 ]]; then
 			cecho ${BAD} "with \"remote_test\" command, \$2 must be given for server_info"
@@ -230,7 +230,7 @@ main(){
         local server_info=$2
 		test_update_from_server "${server_info}"
 		test_update_outputs_from_server "${server_info}"
-	elif [[ "$1" = "add" ]]; then
+	elif [[ "${_command}" = "add" ]]; then
 		if [[ "$#" -eq 4 ]]; then
 			cecho ${BAD} "with \"update\" command, \$2 \$3 and \$4 must be given for job_dir, job_id, log_file"
             		exit 1
@@ -239,7 +239,7 @@ main(){
 		local job_id="$3"
 		local log_file=$4
 		write_log "${job_dir}" "${job_id}" "${log_file}"
-	elif [[ "$1" = "update" ]]; then
+	elif [[ "${_command}" = "update" ]]; then
         # todo_future, strip root dir from output dir
 		local log_file=$2
 		if [[ "${log_file}" = '' ]]; then
@@ -247,7 +247,7 @@ main(){
             exit 1
 		fi
 	       	update "${log_file}"
-	elif [[ "$1" = "clean" ]]; then
+	elif [[ "${_command}" = "clean" ]]; then
         # todo_future, strip root dir from output dir
 		local log_file=$2
 		if [[ "${log_file}" = '' ]]; then
@@ -255,7 +255,7 @@ main(){
             exit 1
 		fi
 	       	clean_NA "${log_file}"
-	elif [[ "$1" = "update_from_server" ]]; then
+	elif [[ "${_command}" = "update_from_server" ]]; then
         # download new log file from server
         # todo_future, use a config file for configration
 		if ! [[ $# -eq 3 ]]; then
@@ -271,7 +271,7 @@ main(){
 	    remote_log_file=${local_log_file/"${dir}"/"${return_value}"}
         # call function to transfer file
 		update_from_server "${server_info}" "${local_log_file}" "${remote_log_file}"
-	elif [[ "$1" = "clean_from_server" ]]; then
+	elif [[ "${_command}" = "clean_from_server" ]]; then
         # download new log file from server
         # todo_future, use a config file for configration
 		if ! [[ $# -eq 3 ]]; then
@@ -287,7 +287,7 @@ main(){
 	    remote_log_file=${local_log_file/"${dir}"/"${return_value}"}
         # call function to transfer file
 	    clean_NA_from_server "${server_info}" "${local_log_file}" "${remote_log_file}"
-	elif [[ "$1" = "update_outputs_from_server" ]]; then
+	elif [[ "${_command}" = "update_outputs_from_server" ]]; then
         # test update_outputs_from_server
 		if ! [[ $# -eq 3 ]]; then
 			cecho ${BAD} "with \"update_outputs_from_server\" command, \$2 and \$3 must be given for server_info and log_files on local side"
@@ -296,7 +296,7 @@ main(){
 		local local_log_file=$2
 		local server_info=$3
         update_outputs_from_server "${server_info}" "${local_log_file}"
-	elif [[ "$1" = "remove" ]]; then
+	elif [[ "${_command}" = "remove" ]]; then
         # remove both local and remote log file
 		if ! [[ $# -eq 3 ]]; then
 			cecho ${BAD} "with \"clean\" command, \$2, \$3 must be given for local log file and server information"
@@ -312,10 +312,10 @@ main(){
         # remove local and remote files
         [[ -e "${local_file}" ]] && eval "rm  -r ${local_file}"
         ssh "${server_info}" eval "[[ -e "${remote_file}" ]] && rm -r ${remote_file}"
-	elif [[ "$1" = '-h' || "$1" = '--help' ]]; then
+	elif [[ "${_command}" = '-h' || "${_command}" = '--help' ]]; then
 		usage
 	else
-		cecho ${BAD} "bad command \"$1\""
+		cecho ${BAD} "bad command \"${_command}\""
 		usage
 	fi
 }

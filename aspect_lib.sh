@@ -746,16 +746,16 @@ main(){
     local py_script="shilofue.${project}"
 
     # parse commend
-    _commend="$2"
+    _command="$2"
 
     # parse options
     parse_options $@
 
     # check project
-    [[ -d ${local_root} || ${_commend} = 'install' || ${_commend} = 'write_time_log' || ${_commend} = 'keep_write_time_log' ]] || { cecho ${BAD} "Project ${project} is not included"; exit 1; }
+    [[ -d ${local_root} || ${_command} = 'install' || ${_command} = 'write_time_log' || ${_command} = 'keep_write_time_log' ]] || { cecho ${BAD} "Project ${project} is not included"; exit 1; }
 
     # execute
-    if [[ ${_commend} = 'install' ]]; then
+    if [[ ${_command} = 'install' ]]; then
         # Install on local and server
         # example usage:
         #   aspect_lib.sh TwoDSubduction install lochy@peloton.cse.ucdavis.edu
@@ -763,19 +763,19 @@ main(){
         set_server_info "$3"
         install "${project}" ${server_info}
 
-    elif [[ ${_commend} = 'create' ]]; then
+    elif [[ ${_command} = 'create' ]]; then
         # create a case under project
         # example usage:
         #   aspect_lib.sh TwoDSubduction create
         create_case "${py_script}" "${local_root}"
 
-    elif [[ ${_commend} = 'create_group' ]]; then
+    elif [[ ${_command} = 'create_group' ]]; then
         # creat a group of cases under project
         # example usage:
         #   aspect_lib.sh TwoDSubduction create_group
         create_group "${py_script}" "${local_root}"
 
-    elif [[ ${_commend} = 'submit' ]]; then
+    elif [[ ${_command} = 'submit' ]]; then
         # submit a case under project to server
         # example usage:
         #   aspect_lib.sh TwoDSubduction submit ./foo lochy@peloton.cse.ucdavis.edu
@@ -795,7 +795,7 @@ main(){
         submit "${case_dir}" "${remote_case_dir}" "${server_info}" "${log_file}"
         quit_if_fail "aspect_lib.sh submit failed for case ${case_name}"
 
-    elif [[ ${_commend} = 'submit_group' ]]; then
+    elif [[ ${_command} = 'submit_group' ]]; then
         # submit cases within a group under project to server
         # example usage:
         #   aspect_lib.sh TwoDSubduction submit_group ./foo_group lochy@peloton.cse.ucdavis.edu
@@ -835,7 +835,7 @@ main(){
         echo "${job_ids[@]}" > ".temp"
         return 0
 
-    elif [[ ${_commend} = 'create_submit' ]]; then
+    elif [[ ${_command} = 'create_submit' ]]; then
         # create and then submit a case under project to server
         # if a $4 is given as log file, this will append slurm information to this log file on server side
         # example usage:
@@ -851,7 +851,7 @@ main(){
         ./aspect_lib.sh "${project}" 'submit' "${case_name}" "${server_info}" "${log_file}"
         [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh submit failed"; exit 1; }
 
-    elif [[ ${_commend} = 'create_submit_group' ]]; then
+    elif [[ ${_command} = 'create_submit_group' ]]; then
         # create and then submit a group under project to server
         # if a $4 is given as log file, this will append slurm information to this log file on server side
         # example usage:
@@ -867,15 +867,15 @@ main(){
         ./aspect_lib.sh "${project}" 'submit_group' "${group_name}" "${server_info}" "${log_file}"
         quit_if_fail "aspect_lib.sh submit_group failed"
 
-    elif [[ ${_commend} = 'terminate' ]]; then
+    elif [[ ${_command} = 'terminate' ]]; then
         # future
         echo '0'
 
-    elif [[ ${_commend} = 'remove' ]]; then
+    elif [[ ${_command} = 'remove' ]]; then
         # future
         echo '0'
 
-    elif [[ ${_commend} = 'translate_visit' ]]; then
+    elif [[ ${_command} = 'translate_visit' ]]; then
         # translate visit scripts
         filein="$3"
         filein_base=$(basename ${filein})
@@ -888,7 +888,7 @@ main(){
         keys = ${keys[@]} 
         tranlate_visit_script
     
-    elif [[ ${_commend} = 'plot_visit_case' ]]; then
+    elif [[ ${_command} = 'plot_visit_case' ]]; then
         # plot visit for a case
         # example command line:
         # ./aspect_lib.sh TwoDSubduction plot_visit_case $TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12
@@ -900,7 +900,7 @@ main(){
         # call function
         plot_visit_case
 
-    elif [[ ${_commend} = 'parse_solver_output' ]]; then
+    elif [[ ${_command} = 'parse_solver_output' ]]; then
         # parse solver information from stdout file
         # This commends extract newton solver output from a stdout output from aspect(e.g. 'task.stdout') and save results in 'solver_output' file
         # This file could then be used to plot.
@@ -914,7 +914,7 @@ main(){
         # call function
         parse_solver_output
     
-    elif [[ ${_commend} = 'parse_case_solver_output' ]]; then
+    elif [[ ${_command} = 'parse_case_solver_output' ]]; then
         # parse solver information from stdout file by giving a case directory
         # the .stdout file must be placed under this directory
         # and the output file 'solver_output' goes into the 'output' directory
@@ -928,7 +928,7 @@ main(){
         # future: make this quieter
         parse_case_solver_output
 
-    elif [[ ${_commend} = 'write_time_log' ]]; then
+    elif [[ ${_command} = 'write_time_log' ]]; then
         # Note that for this command, \$1 (i.e. name of project) is not needed
         # write time and machine time output to a file
         # example command line:
@@ -940,7 +940,7 @@ main(){
         write_time_log $3 $4 $5
     
     
-    elif [[ ${_commend} = 'keep_write_time_log' ]]; then
+    elif [[ ${_command} = 'keep_write_time_log' ]]; then
         # write time and machine time output to a file
         # example command line:
         # nohup ./aspect_lib.sh foo keep_write_time_log /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13\
@@ -963,19 +963,19 @@ main(){
             eval "sleep ${sleep_duration}h"
         done
 
-    elif [[ ${_commend} = 'bash_post_process' ]]; then
+    elif [[ ${_command} = 'bash_post_process' ]]; then
         # do post process project-wise, handling only the bash part
         # example command line:
         # ./aspect_lib.sh TwoDSubduction bash_post_process
         bash_post_process_project
 
-    elif [[ ${_commend} = 'post_process' ]]; then
+    elif [[ ${_command} = 'post_process' ]]; then
         # do post process project-wise, handling both the bash and the python part
         # example command line:
         # ./aspect_lib.sh TwoDSubduction post_process
         post_process_project
     
-    elif [[ ${_commend} = 'build' ]]; then
+    elif [[ ${_command} = 'build' ]]; then
         # build a project in aspect
         # usage of this is to bind up source code and plugins
         # example command line:
@@ -985,7 +985,7 @@ main(){
         #       ./aspect_lib.sh TwoDSubduction build release
         build_aspect_project $3
     
-    elif [[ ${_commend} = 'build_remote' ]]; then
+    elif [[ ${_command} = 'build_remote' ]]; then
         #   server build(add a server_info):
         #   example command lines:
         #       ./aspect_lib.sh TwoDSubduction build_remote lochy@peloton.cse.ucdavis.edu
@@ -996,7 +996,7 @@ main(){
             eval "\${ASPECT_LAB_DIR}/aspect_lib.sh ${project} build $4"
 EOF
 
-    elif [[ ${_commend} = 'test' ]]; then
+    elif [[ ${_command} = 'test' ]]; then
         # run tests
         # example command line:
         #   local test:
@@ -1010,7 +1010,7 @@ EOF
         run_tests
     
     else
-        cecho ${BAD} "Bad commend: ${_commend}"
+        cecho ${BAD} "Bad commend: ${_command}"
     fi
     return 0
 }
