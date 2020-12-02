@@ -67,17 +67,6 @@ parse_options(){
 }
 
 ################################################################################
-# set the value of server_info and source the relative .sh file in folder env
-# Inputs:
-#   $!: server_info
-set_server_info()
-{
-    server_info="$1"
-    local server_config_file="${ASPECT_LAB_DIR}/env/${server_info}.sh"
-    [[ -e $server_config_file ]] && eval "source ${server_config_file}"
-}
-
-################################################################################
 # help message
 usage()
 {

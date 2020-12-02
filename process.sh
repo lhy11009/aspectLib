@@ -74,7 +74,7 @@ update_from_server(){
     # use ssh to update log file on server side, \$ escapes '$' so that it is called on the remote side
     ssh "$server_info" eval "\${ASPECT_LAB_DIR}/process.sh update ${remote_log_file}"
     # use rsync to update log file on local side
-    echo "${RSYNC} ${server_info}:${remote_log_file} ${local_log_file}"  # debug
+    eval "${RSYNC} ${server_info}:${remote_log_file} ${local_log_file}"
 }
 
 clean_NA_from_server(){
@@ -229,7 +229,7 @@ main(){
 			cecho ${BAD} "with \"remote_test\" command, \$2 must be given for server_info"
             exit 1
 		fi
-        local server_info=$2
+        set_server_info "$2"
 		test_update_from_server "${server_info}"
 		test_update_outputs_from_server "${server_info}"
 	elif [[ "${_command}" = "add" ]]; then
@@ -265,7 +265,7 @@ main(){
             exit 1
 		fi
 		local local_log_file=$2
-		local server_info=$3
+		set_server_info "$3"
         # fix route
         local_log_file=$(fix_route "${local_log_file}")
         # figure out remote directory
@@ -281,7 +281,7 @@ main(){
             exit 1
 		fi
 		local local_log_file=$2
-		local server_info=$3
+		set_server_info "$3"
         # fix route
         local_log_file=$(fix_route "${local_log_file}")
         # figure out remote directory
@@ -296,7 +296,7 @@ main(){
             exit 1
 		fi
 		local local_log_file=$2
-		local server_info=$3
+		set_server_info "$3"
         update_outputs_from_server "${server_info}" "${local_log_file}"
 	elif [[ "${_command}" = "remove" ]]; then
         # remove both local and remote log file
@@ -305,7 +305,7 @@ main(){
             exit 1
 		fi
 		local local_file=$2
-		local server_info=$3
+		set_server_info "$3"
         # fix route
         local_file=$(fix_route "${local_file}")
         # figure out remote directory
