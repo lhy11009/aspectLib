@@ -156,11 +156,12 @@ parse_stdout(){
 	local _ifile=$1
 	unset last_time_step
 	unset last_time
-	while IFS= read -r line; do
-		if [[ ${line} =~ \*\*\* ]]; then
-			break
+	local temp; local line
+	while IFS= read -r temp; do
+		if [[ ${temp} =~ \*\*\* ]]; then
+			line="${temp}"
 		fi
-	done <<< "$(sed '1!G;h;$!d' ${_ifile})"
+	done <<< "$(cat ${_ifile})"
 	last_time_step=${line#*Timestep\ }
 	last_time_step=${last_time_step%:*}
 	last_time=${line#*t=}

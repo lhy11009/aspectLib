@@ -36,7 +36,9 @@ update(){
 		write_log "${job_dir}" "${job_id}" "${log_file}"
 		((i++))
 	done
-	# updata log file
+	# show content
+	echo "content of log file:"
+	eval "cat ${log_file}"
 }
 
 clean_NA(){
