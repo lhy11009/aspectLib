@@ -119,6 +119,12 @@ update_outputs_from_server(){
 }
 
 ################################################################################
+# show local jobs ran with mpirun
+show_local_jobs(){
+   	eval "ps -aux | grep build.*aspect" # show all process
+}
+
+################################################################################
 # test functions
 ################################################################################
 test_update(){
@@ -220,9 +226,11 @@ test_update_outputs_from_server(){
 ################################################################################
 main(){
 	_command="$1"
+
 	if [[ "${_command}" = "test" ]]; then
 		test_update
 		test_clean_NA
+
 	elif [[ "${_command}" = "remote_test" ]]; then
         # test run script on remote
 		if ! [[ $# -eq 2 ]]; then
@@ -232,6 +240,7 @@ main(){
         set_server_info "$2"
 		test_update_from_server "${server_info}"
 		test_update_outputs_from_server "${server_info}"
+
 	elif [[ "${_command}" = "add" ]]; then
 		if [[ "$#" -eq 4 ]]; then
 			cecho ${BAD} "with \"update\" command, \$2 \$3 and \$4 must be given for job_dir, job_id, log_file"
@@ -241,6 +250,7 @@ main(){
 		local job_id="$3"
 		local log_file=$4
 		write_log "${job_dir}" "${job_id}" "${log_file}"
+
 	elif [[ "${_command}" = "update" ]]; then
         # todo_future, strip root dir from output dir
 		local log_file=$2
@@ -249,6 +259,7 @@ main(){
             exit 1
 		fi
 	       	update "${log_file}"
+
 	elif [[ "${_command}" = "clean" ]]; then
         # todo_future, strip root dir from output dir
 		local log_file=$2
@@ -257,6 +268,7 @@ main(){
             exit 1
 		fi
 	       	clean_NA "${log_file}"
+
 	elif [[ "${_command}" = "update_from_server" ]]; then
         # download new log file from server
         # todo_future, use a config file for configration
@@ -273,6 +285,7 @@ main(){
 	    remote_log_file=${local_log_file/"${dir}"/"${return_value}"}
         # call function to transfer file
 		update_from_server "${server_info}" "${local_log_file}" "${remote_log_file}"
+
 	elif [[ "${_command}" = "clean_from_server" ]]; then
         # download new log file from server
         # todo_future, use a config file for configration
@@ -289,6 +302,7 @@ main(){
 	    remote_log_file=${local_log_file/"${dir}"/"${return_value}"}
         # call function to transfer file
 	    clean_NA_from_server "${server_info}" "${local_log_file}" "${remote_log_file}"
+
 	elif [[ "${_command}" = "update_outputs_from_server" ]]; then
         # test update_outputs_from_server
 		if ! [[ $# -eq 3 ]]; then
@@ -298,6 +312,7 @@ main(){
 		local local_log_file=$2
 		set_server_info "$3"
         update_outputs_from_server "${server_info}" "${local_log_file}"
+
 	elif [[ "${_command}" = "remove" ]]; then
         # remove both local and remote log file
 		if ! [[ $# -eq 3 ]]; then
@@ -314,8 +329,16 @@ main(){
         # remove local and remote files
         [[ -e "${local_file}" ]] && eval "rm  -r ${local_file}"
         ssh "${server_info}" eval "[[ -e "${remote_file}" ]] && rm -r ${remote_file}"
+
+	elif [[ "${_command}" = "show_local_jobs" ]]; then
+        # show local jobs ran with mpirun
+        #   example command lines:
+		#		./process.sh show_local_jobs
+		show_local_jobs
+
 	elif [[ "${_command}" = '-h' || "${_command}" = '--help' ]]; then
 		usage
+
 	else
 		cecho ${BAD} "bad command \"${_command}\""
 		usage
