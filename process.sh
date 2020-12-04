@@ -13,10 +13,177 @@ test_fixtures_dir="${dir}/tests/integration/fixtures"
 
 
 usage(){
-	#todo
+	# future
 	echo "foo"
 }
 
+################################################################################
+# parse_options
+parse_options(){
+    # parse parameters from command line
+    # future pass in name of case
+    while [ -n "$1" ]; do
+      param="$1"
+      case $param in
+        -h|--help)
+          echo ""  # help information
+          exit 0
+        ;;
+        #####################################
+        # filename
+        #####################################
+        [^-]*)
+          filename=$(fix_route "$param")
+        ;;
+        #####################################
+        # number of total tasks
+        #####################################
+        -n)
+          shift
+          total_tasks="${1}"
+        ;;
+        -n=*|--total_tasks=*)
+          total_tasks="${param#*=}"
+        ;;
+        #####################################
+        # number of nodes
+        #####################################
+        -N)
+          shift
+          nnode="${1}"
+        ;;
+        -N=*|--nnode=*)
+          nnode="${param#*=}"
+        ;;
+        #####################################
+        # time in hour
+        #####################################
+        -t)
+          shift
+          time_by_hour="${1}"
+        ;;
+        -t=*|--time=*)
+          time_by_hour="${param#*=}"
+        ;;
+        #####################################
+        # partition
+        #####################################
+        -p)
+          shift
+          partition="${1}"
+        ;;
+        -p=*|--partition=*)
+          partition="${param#*=}"
+        ;;
+        #####################################
+        # memory per cpu
+        #####################################
+        -m)
+          shift
+          mem_per_cpu="${1}"
+        ;;
+        -m=*|--mem-per-cup=*)
+          mem_per_cpu="${param#*=}"
+        ;;
+        #####################################
+        # log file
+        #####################################
+        -l)
+          shift
+          local temp="${1}"
+	  log_file=$(fix_route "${temp}")
+        ;;
+        -l=*|--log_file=*)
+          local temp="${param#*=}"
+	  log_file=$(fix_route "${temp}")
+        ;;
+        #####################################
+        # log file for time
+        #####################################
+        -lt)
+          shift
+          local temp="${1}"
+	  log_file_time=$(fix_route "${temp}")
+        ;;
+        -lt=*|--log_file_time=*)
+          local temp="${param#*=}"
+	  log_file_time=$(fix_route "${temp}")
+        ;;
+        #####################################
+        # project
+        #####################################
+        -P)
+          shift
+          project="${1}"
+        ;;
+        -P=*|--project=*)
+          project="${param#*=}"
+        ;;
+        #####################################
+        # bool value
+        #####################################
+        -b)
+          shift
+          bool="${1}"
+        ;;
+        -b=*|--bool=*)
+          bool="${param#*=}"
+        ;;
+        #####################################
+        # float value
+        #####################################
+        -f)
+          shift
+          float="${1}"
+        ;;
+        -f=*|--float=*)
+          float="${param#*=}"
+        ;;
+      esac
+      shift
+    done
+    
+    # check values
+    [[ -z ${bool} || ${bool} = "true" || ${bool} = "false" ]] || { cecho ${BAD} "${FUNCNAME[0]}: bool value must be true or false"; exit 1; }
+    [[ -z ${float} || ${float} =~ ^[0-9\.]+$ ]] || { cecho ${BAD} "${FUNCNAME[0]}: entry for \${float} must be a float value"; exit 1; }
+}
+
+################################################################################
+# submit case
+submit(){
+	_sbatch=$(which sbatch)
+	if [[ -z ${_sbatch} ]]; then
+		_mpirun=$(which mpirun)
+		[[ -z ${_mpirun} ]] && { cecho $BAD "${FUNCNAME[0]}: this is neither slurm or mpi in system"; exit 1; } || submit_mpirun
+	else
+		submit_slurm
+	fi
+}
+
+################################################################################
+# submit case through slurm
+submit_slurm(){
+	# todo
+	echo "foo"
+}
+
+################################################################################
+# submit case through mpirun
+# Inputs:
+# 	$1: name of project(optional)
+submit_mpirun(){
+
+	# todo
+	project="$1"
+
+	# fix executable
+	[[ -z ${project} ]] && executable="${ASPECT_SOURCE_DIR}/build/aspect" || executable="${ASPECT_SOURCE_DIR}/build_${project}/aspect"
+
+	_dir=$(dirname "${filename}"); 
+	_base=$(basename "${filename}"); 
+	cd "${_dir}"
+	mpirun -np "$total_tasks" "$executable" "${basename}" >"job.stdout" 2>"job.stderr" &
+}
 
 update(){
 	local log_file=$1
@@ -226,6 +393,7 @@ test_update_outputs_from_server(){
 ################################################################################
 main(){
 	_command="$1"
+    parse_options "$@"  # todo, parse option with '-'
 
 	if [[ "${_command}" = "test" ]]; then
 		test_update
@@ -335,6 +503,10 @@ main(){
         #   example command lines:
 		#		./process.sh show_local_jobs
 		show_local_jobs
+    
+	elif [[ ${_command} = "submit" ]]; then
+		# submit jobs
+		submit
 
 	elif [[ "${_command}" = '-h' || "${_command}" = '--help' ]]; then
 		usage
