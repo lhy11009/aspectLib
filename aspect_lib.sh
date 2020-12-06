@@ -282,6 +282,8 @@ EOF
 }
 
 
+################################################################################
+# install
 install(){
     local project="$1"
     local server_info="$2"
@@ -313,6 +315,30 @@ EOF
         echo "theme: readthedocs" >> "${yml_file}"
     fi
     cd "${previous}"
+}
+
+################################################################################
+# copy visit color table from ScientificColourMaps6
+# Inputs:
+#   $1: ScientificColourMap directory
+copy_visit_color_table(){
+    local visit_conf_dir="${HOME}/.visit"
+    [[ -d ${visit_conf_dir} ]] || cecho ${BAD} "${FUNCNAME[0]}: ${visit_conf_dir} doesn't exist"
+
+    # copy file
+    for _dir in "$1"/*; do
+        if [[ -d ${_dir} ]]; then
+            for _file in "${_dir}"/*; do
+                if [[ ${_file} =~ ".ct" ]]; then 
+                    echo "copy file: ${_file}"
+                    # get base name of file
+                    _base=$(basename "${_file}")
+                    # copy file with prefix 'SCM'
+                    eval "cp ${_file} ${visit_conf_dir}/SCM_${_base}"
+                fi
+            done
+        fi
+    done
 }
 
 ################################################################################
@@ -758,6 +784,13 @@ main(){
         set_server_info "$3"
         install "${project}" ${server_info}
 
+    elif [[ ${_command} = "copy_visit_color_table" ]]; then
+        # copy visit color file
+        # example usage:
+        #   ./aspect_lib.sh TwoDSubduction copy_visit_color_table /home/lochy/Desktop/ScientificColourMaps6/ScientificColourMaps6
+        ScientificColourMap_dir="$3"
+        copy_visit_color_table "${ScientificColourMap_dir}"
+
     elif [[ ${_command} = 'create' ]]; then
         # create a case under project
         # example usage:
@@ -924,6 +957,9 @@ main(){
         parse_case_solver_output
     
     elif [[ ${_command} = 'plot_solver_step' ]]; then
+        # plot solver output for specific step
+        # example usage:
+        #   ./aspect_lib.sh TwoDSubduction plot_solver_step /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear19/non_linear_1e18_1MaULV3.000e+01testNST5.000e-05SBR5 -f 55
         case_dir="$3"
 
         # construct vlist based on step 

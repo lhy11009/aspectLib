@@ -343,7 +343,7 @@ class SLAB(VISIT_PLOT):
         
         # set up viscosity
         # change to log scale and invert the color table
-        self.set_pseudo_color('viscosity', invert_color=True, log=True)
+        self.set_pseudo_color('viscosity', color_table="SCM_romaO", invert_color=True, log=True)
        
         # set up velocity
         SetActivePlots(self.idxs['velocity'])
@@ -391,7 +391,7 @@ class SLAB(VISIT_PLOT):
         
         # set up viscosity
         # change to log scale and invert the color table
-        self.set_pseudo_color('viscosity', invert_color=True, log=True)
+        self.set_pseudo_color('viscosity', color_table="SCM_romaO", invert_color=True, log=True)
        
         # set up velocity
         SetActivePlots(self.idxs['velocity'])
