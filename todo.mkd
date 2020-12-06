@@ -170,6 +170,15 @@ Put every type of plot into one key. e.g. "visit": {}, "newton_solver": {}
 
     Eliminate the function to do project-wise post-postprocess from python and put them in the post_process.
 
+## utilities.sh
+
+* parse binary data from visit
+
+* parse_stdout1 is too slow because it first uses grep to find lines for a time step and then uses sed to get output.
+
+    implement a new function, read the stdout file from start to end once.
+
+
 
 ## slurm.sh
 

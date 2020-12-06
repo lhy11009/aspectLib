@@ -469,6 +469,8 @@ parse_solver_output(){
 #   case_dir: directory to parse from
 #   vlist: [start step, interval, end step].
 #       If this is none, take all steps   
+#   update: if we update a pre-existing file
+#   $1: output file name, default is 'solver_output'
 # Returns:
 #   0: normal
 #   -1: no operation needed
@@ -496,8 +498,12 @@ parse_case_solver_output()
     [[ -d ${output_dir} ]] || mkdir "${output_dir}"
 
     # check results existence and compare time
-    fileout="${output_dir}/solver_output"
-    [[ -e "${fileout}" && "${fileout}" -nt ${filein} ]] && return -1
+    local fileout_base
+    [[ -n $1 ]] && fileout_base="$1" || fileout_base="solver_output"
+    fileout="${output_dir}/${fileout_base}"
+    if [[ -z ${update} || ${update} = "False" ]]; then
+        [[ -e "${fileout}" && "${fileout}" -nt ${filein} ]] && return -1
+    fi
 
     # call parse_solver_output function
     parse_solver_output
@@ -916,6 +922,20 @@ main(){
         # call function
         # future: make this quieter
         parse_case_solver_output
+    
+    elif [[ ${_command} = 'plot_solver_step' ]]; then
+        case_dir="$3"
+
+        # construct vlist based on step 
+        vlist=("${float}" 1 "$((${float}+1))")
+        echo "${vlist[@]}"  # debug
+
+        # call function to parse output
+        local update="True"
+        parse_case_solver_output "solver_output_step"
+
+        # call python scripts to plot
+        eval "python -m shilofue.TwoDSubduction plot_newton_solver_step -i ${case_dir}/output/solver_output_step -o ${case_dir}/img -s ${float}"
 
     elif [[ ${_command} = 'write_time_log' ]]; then
         # Note that for this command, \$1 (i.e. name of project) is not needed
