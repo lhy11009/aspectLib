@@ -147,7 +147,6 @@ Put every type of plot into one key. e.g. "visit": {}, "newton_solver": {}
 
 # Parse.py
 
-* when parsing the steps for visit, check the value of the steps of snapshots. If option is bigger than this value, don't include that.
 
 
 # Changes to be made to bash cases

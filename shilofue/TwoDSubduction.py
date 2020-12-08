@@ -442,14 +442,41 @@ def main():
 
         pass
 
-    elif _commend == 'update_doc':
-        # future
-        pass
+    elif _commend == 'update_docs':
+        # todo
+        # update the contents of the mkdocs
+        # example usage:
+        #   python -m shilofue.TwoDSubduction update_docs -o /home/lochy/ASPECT_PROJECT/TwoDSubduction -j post_process.json
+        _project_dir = arg.output_dir
+        _project_dict = Parse.UpdateProjectJson(_project_dir)  # update project json file
+        
+        # load options for post_process
+        # load the project level configuration as default
+        project_pp_json = os.path.join(ASPECT_LAB_DIR, 'files', project, 'post_process.json')
+        with open(project_pp_json, 'r') as fin:
+            pdict = json.load(fin)
+        # load explicitly defined parameters
+        with open(arg.json_file, 'r') as fin:
+            pdict1 = json.load(fin)
+        pdict.update(pdict1)
+        
+        # append analysis
+        analysis_file = os.path.join(ASPECT_LAB_DIR, 'analysis.json')
+        if os.path.isfile(analysis_file):
+            with open(analysis_file, 'r') as fin:
+                analysis_dict = json.load(fin)
+        else:
+            analysis_dict = {}
+        
+        # update docs
+        docs_dict = pdict.get('docs', {})
+        imgs = docs_dict.get('imgs', [])
+        Doc.UpdateProjectDoc(_project_dict, _project_dir, images=imgs, analysis=analysis_dict)
 
     elif _commend == 'update':
         # update a case
         # example usage:
-        #   python -m shilofue.TwoDSubduction update -o /home/lochy/ASPECT_PROJECT/TwoDSubduction 
+        #   python -m shilofue.TwoDSubduction update -o /home/lochy/ASPECT_PROJECT/TwoDSubduction -j post_process.json
         _project_dir = arg.output_dir
         _project_dict = Parse.UpdateProjectJson(_project_dir)  # update project json file
         
@@ -463,14 +490,6 @@ def main():
             pdict1 = json.load(fin)
         pdict.update(pdict1)
 
-        # append analysis
-        analysis_file = os.path.join(ASPECT_LAB_DIR, 'analysis.json')
-        if os.path.isfile(analysis_file):
-            with open(analysis_file, 'r') as fin:
-                analysis_dict = json.load(fin)
-        else:
-            analysis_dict = {}
-
         # update auto.md file for every case
         Parse.UpdateProjectMd(_project_dict, _project_dir)
 
@@ -482,10 +501,6 @@ def main():
             pp_source_dir = os.path.join(_project_dir, pp_source_dir_base)
             pp_case_dirs = Parse.GetSubCases(pp_source_dir)
             Plot.ProjectPlot(pp_case_dirs, 'png', update=False, pdict=pdict)
-
-        # update mkdocs
-        imgs = ['Statistics' , 'MachineTime', 'DepthAverage', 'NewtonSolver', 'PvMesh', 'visit', 'um', 'slab']
-        Doc.UpdateProjectDoc(_project_dict, _project_dir, images=imgs, analysis=analysis_dict)
 
     elif _commend == 'plot_newton_solver_step':
         # Plot one step from Newton solver

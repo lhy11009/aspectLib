@@ -746,6 +746,20 @@ bash_post_process_project(){
     return 0
 }
 
+################################################################################
+# Update the mkdocs and public on github
+# Inputs:
+#   local_root: directory of project
+process_docs(){
+    # update mkdocs
+    eval "python -m shilofue.${project} update_docs -o ${local_root} -j post_process.json"
+
+    # submit to github
+    mkdocs_dir="${local_root}/mkdocs_project"
+    local previous_=$(pwd)
+    cd "${mkdocs_dir}"; eval "mkdocs gh-deploy"; cd "${previous_}"
+}
+
 
 ################################################################################
 # post-projecss of a project via bash and python
@@ -753,10 +767,14 @@ bash_post_process_project(){
 #   py_script: python script for this project
 #   local_root: directory of project
 post_process_project(){
+    # call bash scripts to do post process
     bash_post_process_project
 
     # call python post process
-    eval "python -m ${py_script} update -j ${dir}/post_process.json -o ${local_root}"
+    eval "python -m ${py_script} update -j ${dir}/post_process.json -o ${local_root} -j post_process.json"
+
+    # update mkdocs
+    process_docs
 }
 
 
@@ -1014,11 +1032,18 @@ main(){
         # ./aspect_lib.sh TwoDSubduction bash_post_process
         bash_post_process_project
 
+    elif [[ ${_command} = 'process_docs' ]]; then
+        # update the mkdocs and publish on github
+        # example command line:
+        #   ./aspect_lib.sh TwoDSubduction process_docs
+        process_docs
+
     elif [[ ${_command} = 'post_process' ]]; then
         # do post process project-wise, handling both the bash and the python part
         # example command line:
         # ./aspect_lib.sh TwoDSubduction post_process
         post_process_project
+
     
     elif [[ ${_command} = 'build' ]]; then
         # build a project in aspect
