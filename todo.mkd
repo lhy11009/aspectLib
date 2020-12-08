@@ -145,6 +145,10 @@ Put every type of plot into one key. e.g. "visit": {}, "newton_solver": {}
 
 * add a 'update' option, it searches the new cases within a group.
 
+# Parse.py
+
+* when parsing the steps for visit, check the value of the steps of snapshots. If option is bigger than this value, don't include that.
+
 
 # Changes to be made to bash cases
 
@@ -169,6 +173,8 @@ Put every type of plot into one key. e.g. "visit": {}, "newton_solver": {}
     Then, based on whether the key is found, call separate functions or python commands to finish the operation.
 
     Eliminate the function to do project-wise post-postprocess from python and put them in the post_process.
+
+* add a command to update doc and publish mkdocs to github
 
 ## utilities.sh
 

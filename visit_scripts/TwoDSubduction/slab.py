@@ -343,7 +343,7 @@ class SLAB(VISIT_PLOT):
         
         # set up viscosity
         # change to log scale and invert the color table
-        self.set_pseudo_color('viscosity', color_table="SCM_romaO", invert_color=True, log=True)
+        self.set_pseudo_color('viscosity', color_table="SCM_roma", invert_color=False, log=True)
        
         # set up velocity
         SetActivePlots(self.idxs['velocity'])
@@ -391,7 +391,7 @@ class SLAB(VISIT_PLOT):
         
         # set up viscosity
         # change to log scale and invert the color table
-        self.set_pseudo_color('viscosity', color_table="SCM_romaO", invert_color=True, log=True)
+        self.set_pseudo_color('viscosity', color_table="SCM_roma", invert_color=False, log=True)
        
         # set up velocity
         SetActivePlots(self.idxs['velocity'])
@@ -501,7 +501,12 @@ def main():
         steps = PLOT_SLAB_STEPS
         if not steps == []:
             for step in steps:
-                Slab(INITIAL_ADAPTIVE_REFINEMENT+step)
+                # check that snapshot is valid
+                snapshots = INITIAL_ADAPTIVE_REFINEMENT+step
+                if snapshots in ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS:
+                    Slab(INITIAL_ADAPTIVE_REFINEMENT+step)
+                else:
+                    print "step %s is not valid. There is no output" % step
         else:
             Slab(INITIAL_ADAPTIVE_REFINEMENT+SINGLE_SNAPSHOT)
         Slab.abort()
