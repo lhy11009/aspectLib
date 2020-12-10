@@ -524,6 +524,13 @@ class PARSE_OPERATIONS():
                 pass
             else:
                 newton_solver['Maximum linear Stokes solver tolerance'] = str(max_linear_tolerance)
+            try:
+                # change "line search iteration"
+                max_line_search = int(_config['max_line_search'])
+            except KeyError:
+                pass
+            else:
+                newton_solver['Max Newton line search iterations'] = str(max_line_search)
     
     def MaterialModel(self, Inputs, _config):
         """

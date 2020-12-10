@@ -574,15 +574,19 @@ parse_solver_output_timestep(){
     local ndsfs=()
     local temp; local temp1
     for block_output in "${block_outputs[@]}"; do
+        # todo
         # get rnr
-        parse_output_value "${block_output}" "nonlinear iteration" ":" ","
+        parse_output_value "${block_output}" "Relative nonlinear" "residual"
+        local line_="${value}"
+
+        parse_output_value "${line_}" "nonlinear iteration" ":" ","
         [[ -z ${value} ]] && { cecho ${WARN} "${FUNCNAME[0]}: ${filein} doens't have solver outputs"; return 2; } 
         rnrs+=("${value}")
         # get nors
-        parse_output_value "${block_output}" "norm of the rhs" ":" ","
+        parse_output_value "${line_}" "norm of the rhs" ":" ","
         nors+=("${value}")
         # get ndrsf
-        parse_output_value "${block_output}" "newton_derivative_scaling_factor" ":" ","
+        parse_output_value "${line_}" "newton_derivative_scaling_factor" ":" ","
         # if value is not present, append by 0
         [[ -n ${value} ]] && ndsfs+=("${value}") || ndsfs+=("0")
     done

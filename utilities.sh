@@ -624,7 +624,8 @@ parse_output_value(){
     local key=$2
     local dlm; local dlm1
     [[ -n $3 ]] && dlm=$3 || dlm=","
-    [[ -n $4 ]] && dlm1=$4 || dlm1=","
+#    [[ -n $4 ]] && dlm1=$4 || dlm1=","
+    dlm1=$4
 
     # reset output
     unset value
@@ -635,7 +636,7 @@ parse_output_value(){
     # get value otherwise
     local temp
     temp=${content#*"${key}"*"${dlm}"[ ]*}
-    value=${temp%%["${dlm1}"]**}
+    [[ -n $dlm1 ]] && value=${temp%%["${dlm1}"]**} || value=${temp}
     return 0
 }
 

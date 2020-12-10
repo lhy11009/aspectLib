@@ -357,6 +357,22 @@ test_parse_solver_output()
         ((local_failed_tests++))
     fi
 
+    # test2
+    # todo
+    filein="${source_dir}/task1.stdout"
+    fileout_std="${source_dir}/output1_std"
+    # remove old file
+    fileout="${test_dir}/test_parse_solver_output1"
+    [[ -e ${fileout} ]] && rm "${fileout}"
+    timestep=0
+    ./aspect_lib.sh "${project}" "parse_solver_output" "${filein}" "${fileout}" "${timestep}"
+    compare_files "${FUNCNAME[0]}" "${fileout_std}" "${fileout}"
+    if [[ $? -eq 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+
     # message
     final_message ${FUNCNAME[0]} ${local_passed_tests} ${local_failed_tests}
 }

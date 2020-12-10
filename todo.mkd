@@ -173,7 +173,6 @@ Put every type of plot into one key. e.g. "visit": {}, "newton_solver": {}
 
     Eliminate the function to do project-wise post-postprocess from python and put them in the post_process.
 
-* add a command to update doc and publish mkdocs to github
 
 ## utilities.sh
 
@@ -182,6 +181,11 @@ Put every type of plot into one key. e.g. "visit": {}, "newton_solver": {}
 * parse_stdout1 is too slow because it first uses grep to find lines for a time step and then uses sed to get output.
 
     implement a new function, read the stdout file from start to end once.
+
+* parse_block_outputs seems to miss the last block of a output file, see if we can fix that
+    
+    judging from the output of parse_solver_output_timestep()
+
 
 
 
