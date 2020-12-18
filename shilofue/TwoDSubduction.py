@@ -37,10 +37,25 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
         """
         Parse.PARSE_OPERATIONS.__init__(self)
         self.ALL_OPERATIONS += ["LowerMantle", "Particle"]
-
+    
     def LowerMantle(self, Inputs, _config):
         """
         calculate flow law parameters
+        """
+        # todo
+        _type = _config.get('model_type', 0)
+        my_assert(type(_type) == int, TypeError, "Type of input \'model_type\' must be int")
+        if _type == 0:
+            # when phase transition only happens on mantle composition
+            self.LowerMantle0(Inputs, _config)
+        if _type == 1:
+            # when phase transition only happens on all compositions
+            # There is a eclogite transition of crustal layer
+            self.LowerMantle1(Inputs, _config)
+
+    def LowerMantle0(self, Inputs, _config):
+        """
+        calculate flow law parameters, when phase transition only happens on mantle composition
         """
         # parse from input
         jump = _config['upper_lower_viscosity']
@@ -67,6 +82,53 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
         grain_size_exponents_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['m'], backgroud_lower_mantle_diffusion['m']]
         activation_energies_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['E'], backgroud_lower_mantle_diffusion['E']]
         activation_volumes_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['V'], backgroud_lower_mantle_diffusion['V']] 
+        # parse back
+        visco_plastic["Prefactors for diffusion creep"] = prefactors_for_diffusion_creep.parse_back()
+        visco_plastic["Grain size exponents for diffusion creep"] = grain_size_exponents_for_diffusion_creep.parse_back()
+        visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
+        visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
+        return Inputs
+    
+    def LowerMantle1(self, Inputs, _config):
+        """
+        calculate flow law parameters, when phase transition only happens on all compositions
+        There is a eclogite transition of crustal layer
+        """
+        # parse from input
+        jump = _config['upper_lower_viscosity']
+        T = _config['T660']
+        P = _config['P660']
+        V1 = _config['LowerV']
+        visco_plastic = Inputs["Material model"]['Visco Plastic']
+        prefactors_for_diffusion_creep = Parse.COMPOSITION(visco_plastic["Prefactors for diffusion creep"])
+        grain_size = float(visco_plastic["Grain size"])
+        grain_size_exponents_for_diffusion_creep  = Parse.COMPOSITION(visco_plastic["Grain size exponents for diffusion creep"])
+        activation_energies_for_diffusion_creep = Parse.COMPOSITION(visco_plastic["Activation energies for diffusion creep"])
+        activation_volumes_for_diffusion_creep  = Parse.COMPOSITION(visco_plastic["Activation volumes for diffusion creep"])
+        # call GetLowerMantleRheology to derive parameters for lower mantle flow law 
+        backgroud_upper_mantle_diffusion = {}
+        backgroud_upper_mantle_diffusion['A'] = prefactors_for_diffusion_creep.data['background'][0] 
+        backgroud_upper_mantle_diffusion['d'] = grain_size
+        backgroud_upper_mantle_diffusion['n'] = 1.0 
+        backgroud_upper_mantle_diffusion['m'] = grain_size_exponents_for_diffusion_creep.data['background'][0] 
+        backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
+        backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0] 
+        backgroud_lower_mantle_diffusion = Rheology.GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='A')
+        # future: add in choice of phases
+        prefactors_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['A'], backgroud_lower_mantle_diffusion['A']]
+        grain_size_exponents_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['m'], backgroud_lower_mantle_diffusion['m']]
+        activation_energies_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['E'], backgroud_lower_mantle_diffusion['E']]
+        activation_volumes_for_diffusion_creep.data['background'] = [backgroud_upper_mantle_diffusion['V'], backgroud_lower_mantle_diffusion['V']] 
+        # spcrust
+        prefactors_for_diffusion_creep.data['spcrust'][2] = backgroud_lower_mantle_diffusion['A']
+        grain_size_exponents_for_diffusion_creep.data['spcrust'][2] = backgroud_lower_mantle_diffusion['m']
+        activation_energies_for_diffusion_creep.data['spcrust'][2] = backgroud_lower_mantle_diffusion['E']
+        activation_volumes_for_diffusion_creep.data['spcrust'][2] = backgroud_lower_mantle_diffusion['V']
+        # harz
+        prefactors_for_diffusion_creep.data['spharz'][1] = backgroud_lower_mantle_diffusion['A']
+        grain_size_exponents_for_diffusion_creep.data['spharz'][1] = backgroud_lower_mantle_diffusion['m']
+        activation_energies_for_diffusion_creep.data['spharz'][1] = backgroud_lower_mantle_diffusion['E']
+        activation_volumes_for_diffusion_creep.data['spharz'][1] = backgroud_lower_mantle_diffusion['V']
         # parse back
         visco_plastic["Prefactors for diffusion creep"] = prefactors_for_diffusion_creep.parse_back()
         visco_plastic["Grain size exponents for diffusion creep"] = grain_size_exponents_for_diffusion_creep.parse_back()

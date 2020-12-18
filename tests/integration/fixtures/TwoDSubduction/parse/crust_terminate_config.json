@@ -1,0 +1,12 @@
+{
+    "config": {
+        "upper_lower_viscosity": 10.0
+        }, 
+    "extra": {
+        "model_type": 1,
+        "T660": 1663.0, 
+        "P660": 21000000000.0,
+        "LowerV": 1.5e-06
+        }, 
+    "extra_file": {}
+}

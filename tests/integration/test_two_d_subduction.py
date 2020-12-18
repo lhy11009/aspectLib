@@ -12,14 +12,15 @@ test_dir = '.test'
 
 def test_generate_case():
     # Test 1: generate case with Lower Mantle viscosity
-    _test_prm_file = os.path.join(test_source_dir, 'TwoDSubduction', 'twoDSubduction_base.prm')
-    _config_file = os.path.join(test_source_dir, 'TwoDSubduction', 'config.json')
+    parse_dir = os.path.join(test_source_dir, 'TwoDSubduction', 'parse')
+    _test_prm_file = os.path.join(parse_dir, 'base.prm')
+    _config_file = os.path.join(parse_dir, 'base_config.json')
     _case_dir = os.path.join('.test', 'ULV3.000e+01')  # case name is 'ULV3.000e+01'
     if os.path.isdir(_case_dir):
         # remove older files
         rmtree(_case_dir)
     _prm_file = os.path.join(_case_dir, 'case.prm')
-    _standard_prm_file = os.path.join(test_source_dir, 'TwoDSubduction', 'standard_case.prm')
+    _standard_prm_file = os.path.join(parse_dir, 'standard_base.prm')
     # Read files
     with open(_test_prm_file, 'r') as fin:
         _inputs = Parse.ParseFromDealiiInput(fin)
@@ -34,20 +35,17 @@ def test_generate_case():
     MyCase(parse_operations, dirname='.test', extra=_extra)
     # Assertions
     assert(os.path.isfile(_prm_file))
-    with open(_standard_prm_file, 'r') as standard_fin:
-        # chech the content of the prm file
-        with open(_prm_file, 'r') as fin:
-            assert(fin.read() == standard_fin.read())
+    assert(filecmp.cmp(_standard_prm_file, _prm_file))
     
     # Test 2: generate case with Lower Mantle viscosity with changed mesh_refinement
-    _test_prm_file = os.path.join(test_source_dir, 'TwoDSubduction', 'twoDSubduction_base.prm')
-    _config_file = os.path.join(test_source_dir, 'TwoDSubduction', 'config2.json')
+    _test_prm_file = os.path.join(parse_dir, 'base.prm')
+    _config_file = os.path.join(parse_dir, 'base_config_1.json')
     _case_dir = os.path.join('.test', 'ULV1.000e+02testIAR8')  # case name is 'ULV3.000e+01_testIAR8'
     if os.path.isdir(_case_dir):
         # remove older files
         rmtree(_case_dir)
     _prm_file = os.path.join(_case_dir, 'case.prm')
-    _standard_prm_file = os.path.join(test_source_dir, 'TwoDSubduction', 'standard_case2.prm')
+    _standard_prm_file = os.path.join(parse_dir, 'standard_base_1.prm')
     # Read files
     with open(_test_prm_file, 'r') as fin:
         _inputs = Parse.ParseFromDealiiInput(fin)
@@ -63,16 +61,66 @@ def test_generate_case():
     MyCase(parse_operations, dirname='.test', extra=_extra)
     # Assertions
     assert(os.path.isfile(_prm_file))
-    with open(_standard_prm_file, 'r') as standard_fin:
-        # chech the content of the prm file
-        with open(_prm_file, 'r') as fin:
-            assert(fin.read() == standard_fin.read())
+    assert(filecmp.cmp(_standard_prm_file, _prm_file))
+    
+    # Test 3: generate case with non_liear rheology and test solver
+    _test_prm_file = os.path.join(parse_dir, 'non_linear_1e18.prm')
+    _config_file = os.path.join(parse_dir, 'non_linear_1e18_config.json')
+    _case_dir = os.path.join('.test', 'ULV3.000e+01testC4.000e-01MLT9.000e-01NST1.000e-04SBR10')  # case name is 'ULV3.000e+01_testIAR8'
+    if os.path.isdir(_case_dir):
+        # remove older files
+        rmtree(_case_dir)
+    _prm_file = os.path.join(_case_dir, 'case.prm')
+    _standard_prm_file = os.path.join(parse_dir, 'standard_non_linear_1e18.prm')
+    # Read files
+    with open(_test_prm_file, 'r') as fin:
+        _inputs = Parse.ParseFromDealiiInput(fin)
+    with open(_config_file, 'r') as fin:
+        _json_inputs = json.load(fin)
+        _config = _json_inputs['config']
+        _test = _json_inputs.get('test', {})
+        _extra = _json_inputs.get('extra', {})
+    # Initiate Class MyCase
+    MyCase = TwoDSubduction.MYCASE(_inputs, config=_config, test=_test, extra=_extra)
+    # call __call__ function
+    parse_operations = TwoDSubduction.MY_PARSE_OPERATIONS()
+    MyCase(parse_operations, dirname='.test', extra=_extra)
+    # Assertions
+    assert(os.path.isfile(_prm_file))
+    assert(filecmp.cmp(_standard_prm_file, _prm_file))
+    
+    # Test 4: generate case with phase transitions on all compositions and a eclogite transition of crustal layer
+    _test_prm_file = os.path.join(parse_dir, 'crust_terminate.prm')
+    _config_file = os.path.join(parse_dir, 'crust_terminate_config.json')
+    _case_dir = os.path.join('.test', 'crust_terminateULV1.000e+01')  # case name is 'ULV3.000e+01_testIAR8'
+    if os.path.isdir(_case_dir):
+        # remove older files
+        rmtree(_case_dir)
+    _prm_file = os.path.join(_case_dir, 'case.prm')
+    _standard_prm_file = os.path.join(parse_dir, 'crust_terminate_standard.prm')
+    # Read files
+    with open(_test_prm_file, 'r') as fin:
+        _inputs = Parse.ParseFromDealiiInput(fin)
+    with open(_config_file, 'r') as fin:
+        _json_inputs = json.load(fin)
+        _config = _json_inputs['config']
+        _test = _json_inputs.get('test', {})
+        _extra = _json_inputs.get('extra', {})
+    # Initiate Class MyCase
+    MyCase = TwoDSubduction.MYCASE(_inputs, config=_config, test=_test, extra=_extra)
+    # call __call__ function
+    parse_operations = TwoDSubduction.MY_PARSE_OPERATIONS()
+    MyCase(parse_operations, basename="crust_terminate", dirname='.test', extra=_extra)
+    # Assertions
+    assert(os.path.isfile(_prm_file))
+    assert(filecmp.cmp(_standard_prm_file, _prm_file))
 
 
 def test_generate_group():
     # test 1, generate a group
-    _test_prm_file = os.path.join(test_source_dir, 'TwoDSubduction', 'twoDSubduction_base.prm')
-    _config_file = os.path.join(test_source_dir, 'TwoDSubduction', 'config_group.json')
+    parse_dir = os.path.join(test_source_dir, 'TwoDSubduction', 'parse')
+    _test_prm_file = os.path.join(parse_dir, 'base.prm')
+    _config_file = os.path.join(parse_dir, 'base_config_group.json')
     _odir = os.path.join(test_dir, 'test_group')
     if os.path.isdir(_odir):
         # remove older files

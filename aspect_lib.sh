@@ -7,8 +7,6 @@
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
 
 source "${dir}/utilities.sh"
-source "${dir}/extra_configurations.sh"
-
 
 ################################################################################
 # parse parameters from command line
@@ -1065,7 +1063,7 @@ main(){
         #       ./aspect_lib.sh TwoDSubduction build_remote lochy@peloton.cse.ucdavis.edu
         #       ./aspect_lib.sh TwoDSubduction build_remote lochy@peloton.cse.ucdavis.edu debug
         #       ./aspect_lib.sh TwoDSubduction build_remote lochy@peloton.cse.ucdavis.edu release
-        set server_info "$3"
+        set_server_info "$3"
         ssh ${server_info} << EOF
             eval "\${ASPECT_LAB_DIR}/aspect_lib.sh ${project} build $4"
 EOF

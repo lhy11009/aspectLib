@@ -114,10 +114,14 @@ include a phase diagram instead of a clapayron
 
 add a assertion for all possible entries, like the one for the 'Strategy'
 /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear14
+
 ## merge intial condition into world builder
 
 include strategy of composition and temperature and viscosity and phases in potential
 
+## add transition depth in code so that phase transition doesn't take place out of this range
+
+define a upper limit and lower limit; add another test
 
 # Changes to be made to python scripts
 
@@ -141,9 +145,13 @@ Put every type of plot into one key. e.g. "visit": {}, "newton_solver": {}
 
 * add a 'delete' option, delete file in the 'docs' folder and clean record in the '.yml' file simutanously;
 
+    Actually, this could serve as a update function, where we could update the content of one of the cases. But in order to do this, we may need to delete the corresponding parts in both of this files.
+
 * add a 'fix' option, if a link is presenting in the .yml file but the file is not found in the docs, then remove the link instead. 
 
 * add a 'update' option, it searches the new cases within a group.
+
+* generate set of cases by tag them. In this way we can generate multiple set of cases, say one set with only 660 transition, another with a MTZ.
 
 # Parse.py
 

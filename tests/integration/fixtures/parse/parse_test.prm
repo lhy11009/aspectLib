@@ -1,0 +1,21 @@
+# Basic Parameter File as Starting Point for 2D-Slab Model.
+# 2D, Dimensional, Boussinesq
+# Subduction Initial conditions, composite rheology with weak corners, etc..
+
+#set Additional shared libraries = /home/billen/AspectProjects/MyModules/build/libbillen_subduction.so
+
+# Dimension, end-time (years) and output directory
+set Dimension                              = 2
+set Use years in output instead of seconds = true
+set End time                               = 40.0e6 # 40 million years
+set Additional shared libraries = /home/lochy/ASPECT_PROJECT/aspect_plugins/subduction_temperature2d/libsubduction_temperature2d.so, /home/lochy/ASPECT_PROJECT/aspect_plugins/prescribe_field/libprescribed_temperature.so
+
+#  subsection Billen Subduction
+subsection Material model
+   subsection Visco Plastic
+
+    set Reference temperature = 273
+    set Heat capacities       = background:1250.0|1250.0, spcrust:1250, spharz:1250, opcrust:1250, opharz:1250 
+    set Reset corner viscosity constant = 1e20
+  end
+end

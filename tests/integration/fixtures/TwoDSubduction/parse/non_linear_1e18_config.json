@@ -1,0 +1,16 @@
+{
+    "config": {
+        "upper_lower_viscosity": 30.0
+        }, 
+    "test": {
+        "nonlinear_solver_tolerance": 0.0001, 
+        "steps_between_refinement": 10, 
+        "max_linear_tolerance": 0.9, 
+        "CFL": 0.4}, 
+    "extra": {
+        "T660": 1663.0, 
+        "P660": 21000000000.0,
+        "LowerV": 1.5e-06
+        }, 
+    "extra_file": {}
+}
