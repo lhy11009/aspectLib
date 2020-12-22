@@ -246,7 +246,7 @@ submit(){
 
     # scp to remote
     local remote_target=$(dirname "${remote_case_dir}")
-    eval "${RSYNC} -r ${case_dir} ${server_info}:${remote_target}"
+    eval "${RSYNC} -r ${case_dir} ${server_info}:${remote_target}/"
 
     # check file arrival
     local status_
@@ -854,7 +854,7 @@ main(){
         get_remote_environment "${server_info}" "${project}_DIR"
         local remote_root=${return_value}
         local remote_group_dir=${group_dir/"${local_root}"/"${remote_root}"}
-        ssh "${server_info}" eval "[[ -d ${remote_group_dir} ]] && { rm -r ${remote_group_dir}; mkdir ${remote_group_dir}; }|| mkdir ${remote_group_dir}"
+        ssh "${server_info}" eval "[[ -d ${remote_group_dir} ]] || mkdir ${remote_group_dir}"
         local log_file="$5"  # add an optional log_file, future, move this to global settings
         if [[ "${log_file}" != '' ]]; then
             # if there is no $5 given, log file is ''

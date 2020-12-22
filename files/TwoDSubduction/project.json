@@ -2,7 +2,7 @@
     "_comments":
     [
         "This is the settings for aspectLib., at the level of project",
-        "plugins: plugins to include",
+        "plugins: plugins to include"
     ],
     "plugins": ["prescribe_field", "subduction_temperature2d"]
 }

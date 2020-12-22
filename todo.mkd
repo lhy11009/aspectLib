@@ -171,6 +171,8 @@ Put every type of plot into one key. e.g. "visit": {}, "newton_solver": {}
 
 * with 'submit' add the option to submit to local
 
+* use the json file to set options of "slurm config" file
+
 * for submit use the stdout of python seems to be a bad idea. We could specifically print that to a file. Use this file as the communication between python and bash
 
 * with the 'post_process.json' file, add a look up table / or json for files generated.
