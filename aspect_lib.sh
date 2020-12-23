@@ -213,12 +213,18 @@ create_group(){
     # get case names
     _info=$(cat ".temp")
     local group_name=$(echo "${_info}" | sed -n '2'p)
-    IFS=' ' read -r -a case_names <<< $(cat ".temp" | sed -n '1,2!'p)
+    case_names=()
+    while read -r line ; do
+        case_names+=("${line}")
+    done <<<  "$(cat ".temp" | sed -n '1,2!'p)"
     group_dir="${local_root}/${group_name}"
-    for case_name in ${case_names[@]}; do
+    # todo: return a create_group_case_dirs
+    create_group_case_dirs=()
+    for case_name in "${case_names[@]}"; do
         local case_dir="${group_dir}/${case_name}"
         local case_prm="${case_dir}/case.prm"
         [[ -d ${case_dir} && -e ${case_prm} ]] || { cecho ${BAD} "Creating Group: Case generation failed"; exit 1; }
+        create_group_case_dirs+=("${case_dir}")
     done
     cecho ${GOOD} "${_info}"
 }
@@ -906,13 +912,30 @@ main(){
         #   aspect_lib.sh TwoDSubduction create_submit_group lochy@peloton.cse.ucdavis.edu .output/job.log
         set_server_info "$3"
         local log_file="$4"  # optional log file
-        ./aspect_lib.sh "${project}" 'create_group'
+        # ./aspect_lib.sh "${project}" 'create_group'
+        # todo
+        create_group "${py_script}" "${local_root}"
         [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh create failed"; exit 1; }
         # get group name
-        local _info=$(cat ".temp")
-        local group_name=$(echo "${_info}" | sed -n '2'p)
+        # local _info=$(cat ".temp")
+        # local group_name=$(echo "${_info}" | sed -n '2'p)
         # call self
-        ./aspect_lib.sh "${project}" 'submit_group' "${group_name}" "${server_info}" "${log_file}"
+        # ./aspect_lib.sh "${project}" 'submit_group' "${group_name}" "${server_info}" "${log_file}"
+        # todo
+        # get remote case directory
+        get_remote_environment "${server_info}" "${project}_DIR"
+        local remote_root=${return_value}
+        local remote_case_dir
+        # fix log_file 
+        if [[ "${log_file}" != '' ]]; then
+            # if there is no $4 given, log file is ''
+            log_file=$(fix_route "${log_file}")
+            log_file=${log_file/"${local_root}"/"${remote_root}"} # substitution
+        fi
+        for case_dir in ${create_group_case_dirs[@]}; do
+            remote_case_dir=${case_dir/"${local_root}"/"${remote_root}"} # substitution
+            submit "${case_dir}" "${remote_case_dir}" "${server_info}" "${log_file}"
+        done
         quit_if_fail "aspect_lib.sh submit_group failed"
 
     elif [[ ${_command} = 'terminate' ]]; then
