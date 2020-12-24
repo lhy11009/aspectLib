@@ -688,7 +688,13 @@ def ProjectPlot(case_dirs, _file_type, **kwargs):
         # plot statistic
         _statistic_file = os.path.join(_case_output_dir, 'statistics')
         _ofile = os.path.join(_case_img_dir, 'Statistics.'+ _file_type)
-        if os.path.isfile(_statistic_file) and (not os.path.isfile(_ofile) or update is True):
+        # compare the dates of files, determine whether to plot
+        is_plot = False
+        if os.path.isfile(_statistic_file):
+            if not os.path.isfile(_ofile) or \
+               os.stat(_statistic_file)[8] > os.stat(_ofile)[8]:
+                is_plot = True
+        if is_plot:
             try:
                 Statistics(_statistic_file, fileout=_ofile)
             except Exception as e:
