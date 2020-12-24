@@ -135,5 +135,20 @@ def test_mkdoc():
     mkdocs_file = os.path.join(mkdocs_dir, 'mkdocs.yml')
     mkdocs_file_std = os.path.join(source_dir, 'mkdocs_std.yml')
     assert(filecmp.cmp(mkdocs_file, mkdocs_file_std))
+
+    # call __call__ function to update a new case in the previous group foo_group
+    # todo
+    group_source_dir = os.path.join(source_dir, 'foo_group')
+    mkdocs_group_dir = os.path.join(docs_dir, 'foo_group')  # this should be generate by the code
+    myMkdoc('foo_group', group_source_dir, append_prm=True, type='group', case_names=['foo1', 'foo2', 'foo3'], images='DepthAverage', update=True)
+    # assert the summary file
+    group_summary_file = os.path.join(mkdocs_group_dir, 'summary.md')
+    group_summary_file_std = os.path.join(group_source_dir, 'summary_std.md')
+    assert(filecmp.cmp(group_summary_file, group_summary_file_std))
+    # assert the .yml file is updated
+    mkdocs_file = os.path.join(mkdocs_dir, 'mkdocs.yml')
+    mkdocs_file_std = os.path.join(source_dir, 'mkdocs_std1.yml')
+    assert(filecmp.cmp(mkdocs_file, mkdocs_file_std))
+
             
 

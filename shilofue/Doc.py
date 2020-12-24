@@ -193,7 +193,7 @@ class MKDOC():
             my_assert(_case_names is not None, ValueError, 'For a group, case names cannot be None. Valid names must be given')
             self.AppendGroup(_name, _dir, _case_names, _target_dir, update=update, append_prm=append_prm)
         elif _type == 'analysis':
-            # append a analysis
+            # append an analysis
             _case_dirs = kwargs.get('case_dirs', [])
             # here the _dir is the project directory and case_dirs are relative directories to that
             self.AppendAnalysis(_name, _dir, _case_dirs, _target_dir, kwargs)
@@ -247,7 +247,11 @@ class MKDOC():
                 self.new_files['Summary'] = _summary
             else:
                 # a subcase of a group
-                self.new_files[_name]['Summary'] = os.path.join(_base_name, _summary)
+                try:
+                    self.new_files[_name]['Summary'] = os.path.join(_base_name, _summary)
+                except KeyError:
+                    self.new_files[_name] = {}
+                    self.new_files[_name]['Summary'] = os.path.join(_base_name, _summary)
         # Append a prm file if the append_prm option is True
         if append_prm:
             if os.path.isfile(os.path.join(_target_dir, _prm)):
@@ -264,7 +268,11 @@ class MKDOC():
                     self.new_files['Parameters'] = _parameters
                 else:
                     # a subcase of a group
-                    self.new_files[_name]['Parameters'] = os.path.join(_base_name, _parameters)
+                    try:
+                        self.new_files[_name]['Parameters'] = os.path.join(_base_name, _parameters)
+                    except KeyError:
+                        self.new_files[_name] = {}
+                        self.new_files[_name]['Parameters'] = os.path.join(_base_name, _parameters)
     
     def AppendGroup(self, _name, _dir, _case_names, _target_dir, **kwargs):
         '''
@@ -291,7 +299,6 @@ class MKDOC():
             # in a mkdocs file, files are listed as 'name/_filename'
             self.new_files['Summary'] = os.path.join(_name, os.path.basename(_filename))
         for _case_name in _case_names:
-            self.new_files[_case_name] = {}
             _case_dir = os.path.join(_dir, _case_name)
             _case_target_dir = os.path.join(_target_dir, _case_name)
             self.AppendCase(_case_name, _case_dir, _case_target_dir, update=update, append_prm=append_prm, basename=_name)
@@ -674,7 +681,7 @@ class MKDOC():
             value = _nav_dict[_name]
             my_assert(type(value) == dict, TypeError,
                       'entry for a case must be a single dict, prepared to include dictionary in the future')
-            value = {**value, **self.new_files}  # merge and substitute value in first dict with value in second dict
+            _nav_dict[_name] = {**value, **self.new_files}  # merge and substitute value in first dict with value in second dict
         except KeyError:
             # this case is new to the yml file
             _nav_dict[_name] = self.new_files
