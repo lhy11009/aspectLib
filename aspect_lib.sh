@@ -760,6 +760,7 @@ bash_post_process_project(){
 #   local_root: directory of project
 process_docs(){
     # update mkdocs
+    echo "python -m shilofue.${project} update_docs -o ${local_root} -j post_process.json"
     eval "python -m shilofue.${project} update_docs -o ${local_root} -j post_process.json"
 
     # submit to github
