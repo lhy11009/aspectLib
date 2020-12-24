@@ -41,8 +41,8 @@ def test_mkdoc():
     '''
     test class MKDOC from shilofue.doc
     '''
-    source_dir = os.path.join(test_source_dir, 'test-project')
-    mkdocs_dir = os.path.join(test_dir, 'test-project')
+    source_dir = os.path.join(test_source_dir, 'doc')
+    mkdocs_dir = os.path.join(test_dir, 'doc')
     docs_dir = os.path.join(mkdocs_dir, 'docs')
     mkdocs_case_dir = os.path.join(docs_dir, 'foo')  # this should be generate by the code
     if os.path.isdir(mkdocs_dir):
