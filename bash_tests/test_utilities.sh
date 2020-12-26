@@ -304,6 +304,15 @@ test_convert_time_to_hrs(){
         ((local_failed_tests++))
     fi
     
+    # test 3 
+    convert_time_to_hrs "1-03:01:00"
+    compare_outputs "${FUNCNAME[0]}" "27.0166" "${convert_time_to_hrs_o}"
+    if [[ $? = 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+    
     # message
     final_message ${FUNCNAME[0]} ${local_passed_tests} ${local_failed_tests}
     return 0

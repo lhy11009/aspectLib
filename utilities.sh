@@ -300,17 +300,31 @@ clean_log(){
 #   convert_time_to_hrs_o: time in unit of hour
 convert_time_to_hrs(){
     # expand time
-    IFS=':'; time_array=(${1})
-    local hour; local minute; local second
+
+    # deal with day part
+    local hrs_mins_seconds; local time_array; local day; local hour; local minute; local second
+    IFS='-'; time_array=(${1})
+    if [[ ${#time_array[@]} -eq 1 ]]; then
+        day=0.0; hrs_mins_seconds=${time_array[0]}
+    elif [[ ${#time_array[@]} -eq 2 ]]; then
+        day=${time_array[0]}; hrs_mins_seconds=${time_array[1]}
+    else
+        cecho ${BAD} "${FUNCNAME[0]}: length of the output from string input must be 1 or 2 instead of ${#time_array[@]}"
+    fi
+
+    # deal with hrs:mins:seconds part
+    unset time_array
+    IFS=':'; time_array=(${hrs_mins_seconds})
     if [[ ${#time_array[@]} -eq 2 ]]; then
         hour=0.0; minute=${time_array[0]}; second=${time_array[1]}
     elif [[ ${#time_array[@]} -eq 3 ]]; then
         hour=${time_array[0]}; minute=${time_array[1]}; second=${time_array[2]}
     else
-        cecho ${BAD} "${FUNCNAME[0]}: length of the output from slurm must be 2 or 3 instead of ${#time_array[@]}"
+        cecho ${BAD} "${FUNCNAME[0]}: length of the output from string input must be 2 or 3 instead of ${#time_array[@]}"
     fi
+
     # compute time in hrs
-    convert_time_to_hrs_o=$(echo "scale=4; ${hour}+(${minute}/60.0)+(${second}/3600.0)" | bc)
+    convert_time_to_hrs_o=$(echo "scale=4; (${day}*24.0)+${hour}+(${minute}/60.0)+(${second}/3600.0)" | bc)
 }
 
 ################################################################################
@@ -367,7 +381,7 @@ write_time_log(){
 
     # expand time
     convert_time_to_hrs "${TIME}"
-    local time_in_hr="${convert_time_to_hrs}"
+    local time_in_hr="${convert_time_to_hrs_o}"
 
     # output to file 
     printf "%-10s %-15s %-10s %s\n" ${last_time_step} ${last_time} ${time_in_hr} ${CPU} >> ${log_file}
