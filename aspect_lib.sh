@@ -644,22 +644,6 @@ build_aspect_project(){
     # get the list of plugins
     plugins=("prescribe_field" "subduction_temperature2d")
 
-    # copy plugins
-    plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
-    for plugin in ${plugins[@]}; do
-        # check plugin existence
-        plugin_dir="${plugins_dir}/${plugin}"
-        [[ -d ${plugin_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: plugin(i.e. ${plugin_dir}) doesn't exist"; exit 1; }
-
-        # remove old ones
-        plugin_to_dir="${build_dir}/${plugin}"
-        [[ -d ${plugin_to_dir} ]] && rm -r ${plugin_to_dir}
-
-        # copy new ones
-        eval "cp -r ${plugin_dir} ${build_dir}/"
-        cecho ${GOOD} "${FUNCNAME[0]}: copyied plugin(i.e. ${plugin})"
-    done
-
     # build
     local current_dir=$(pwd)
     # Here we pick nproc - 1, this make sure that we don't use up all resources. 
@@ -673,17 +657,46 @@ build_aspect_project(){
     quit_if_fail "${FUNCNAME[0]}: \"make ${mode}\" inside ${build_dir} failed"
     eval "make -j ${nproc}"
     quit_if_fail "${FUNCNAME[0]}: make inside ${build_dir} failed"
+
     # build plugins
+    plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
     for plugin in ${plugins[@]}; do
-        plugin_to_dir="${build_dir}/${plugin}"
-        cd ${plugin_to_dir}
-        # remove cache before compling
-        [[ -e "${plugin_to_dir}/CMakeCache.txt" ]] && eval "rm ${plugin_to_dir}/CMakeCache.txt"
-        eval "cmake -DAspect_DIR=${build_dir}"
-        quit_if_fail "${FUNCNAME[0]}: cmake inside ${plugin_to_dir} failed"
-        eval "make"
-        quit_if_fail "${FUNCNAME[0]}: make inside ${plugin_to_dir} failed"
+        build_aspect_plugin "${plugin}"
     done
+}
+
+################################################################################
+# todo
+# build a plugin with source code in aspect
+# usage of this is to bind up source code and plugins
+# Inputs:
+#   project: name of the project
+#   $1: name of plugin
+build_aspect_plugin(){
+    local plugin="$1"
+    build_dir="${ASPECT_SOURCE_DIR}/build_${project}"
+    [[ -d ${build_dir} ]] || mkdir ${build_dir}
+    
+    # copy plugins
+    plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
+    # check plugin existence
+    plugin_dir="${plugins_dir}/${plugin}"
+    [[ -d ${plugin_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: plugin(i.e. ${plugin_dir}) doesn't exist"; exit 1; }
+    # remove old ones
+    plugin_to_dir="${build_dir}/${plugin}"
+    [[ -d ${plugin_to_dir} ]] && rm -r ${plugin_to_dir}
+    # copy new ones
+    eval "cp -r ${plugin_dir} ${build_dir}/"
+    cecho ${GOOD} "${FUNCNAME[0]}: copyied plugin(i.e. ${plugin})"
+
+    # build 
+    cd ${plugin_to_dir}
+    # remove cache before compling
+    [[ -e "${plugin_to_dir}/CMakeCache.txt" ]] && eval "rm ${plugin_to_dir}/CMakeCache.txt"
+    eval "cmake -DAspect_DIR=${build_dir}"
+    quit_if_fail "${FUNCNAME[0]}: cmake inside ${plugin_to_dir} failed"
+    eval "make"
+    quit_if_fail "${FUNCNAME[0]}: make inside ${plugin_to_dir} failed"
 }
 
 
@@ -1080,6 +1093,15 @@ main(){
         #       ./aspect_lib.sh TwoDSubduction build debug
         #       ./aspect_lib.sh TwoDSubduction build release
         build_aspect_project $3
+
+    
+    elif [[ ${_command} = 'build_plugin' ]]; then
+        # build a the plugin with the main source in aspect
+        # usage of this is to bind up source code and plugins
+        # example command line:
+        #   ./aspect_lib.sh TwoDSubduction build_plugin subduction_temperature2d
+        build_aspect_plugin "$3"
+
     
     elif [[ ${_command} = 'build_remote' ]]; then
         #   server build(add a server_info):
