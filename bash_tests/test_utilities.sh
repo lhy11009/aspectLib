@@ -185,9 +185,7 @@ test_element_in(){
 		cecho ${BAD} "test_element_in failed, 'c' is in ${_test_array}[@]"
 	fi
 	cecho ${GOOD} "test_element_in passed"
-
 }
-
 
 test_parse_stdout(){
 	# test the parse_stdout function, return values are last timestpe and time
@@ -279,6 +277,38 @@ test_fix_route() {
     cecho ${GOOD} "test_fix_route passed"
 }
 
+#################################################################################
+# test convert_time_to_hrs
+# Inputs:
+#   local_passed_tests: number of passed tests
+#   local_failed_tests: number of failed tests
+test_convert_time_to_hrs(){
+    local_passed_tests=0
+    local_failed_tests=0
+
+    # test 1
+    convert_time_to_hrs "01:00"
+    compare_outputs "${FUNCNAME[0]}" ".0166" "${convert_time_to_hrs_o}"
+    if [[ $? = 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+    
+    # test 2 
+    convert_time_to_hrs "03:01:00"
+    compare_outputs "${FUNCNAME[0]}" "3.0166" "${convert_time_to_hrs_o}"
+    if [[ $? = 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+    
+    # message
+    final_message ${FUNCNAME[0]} ${local_passed_tests} ${local_failed_tests}
+    return 0
+}
+
 
 ################################################################################
 # main function
@@ -313,6 +343,11 @@ main(){
 
     # test parse_output_value
     test_parse_output_value
+    ((passed_tests+=local_passed_tests))
+    ((failed_tests+=local_failed_tests))
+
+    # test convert_time_to_hrs
+    test_convert_time_to_hrs
     ((passed_tests+=local_passed_tests))
     ((failed_tests+=local_failed_tests))
 

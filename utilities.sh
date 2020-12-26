@@ -292,6 +292,26 @@ clean_log(){
     [[ ${_find} -eq 1 ]] && eval "sed -in '${flag}'d ${log_file}"  # eliminate the line of "${case_dir}"
 }
 
+################################################################################
+# convert time to hours
+# Inputs:
+#   $1: time with the format of hrs:minutes:seconds:
+# Outputs:
+#   convert_time_to_hrs_o: time in unit of hour
+convert_time_to_hrs(){
+    # expand time
+    IFS=':'; time_array=(${1})
+    local hour; local minute; local second
+    if [[ ${#time_array[@]} -eq 2 ]]; then
+        hour=0.0; minute=${time_array[0]}; second=${time_array[1]}
+    elif [[ ${#time_array[@]} -eq 3 ]]; then
+        hour=${time_array[0]}; minute=${time_array[1]}; second=${time_array[2]}
+    else
+        cecho ${BAD} "${FUNCNAME[0]}: length of the output from slurm must be 2 or 3 instead of ${#time_array[@]}"
+    fi
+    # compute time in hrs
+    convert_time_to_hrs_o=$(echo "scale=4; ${hour}+(${minute}/60.0)+(${second}/3600.0)" | bc)
+}
 
 ################################################################################
 # write time and machine time output to a file
@@ -338,7 +358,6 @@ write_time_log(){
         printf "# 4: CPU number\n" >> ${log_file}
     fi
 
-    # todo
     # fix non-existing value
     [[ -z ${last_time_step} ]] && last_time_step=0
     [[ -z ${last_time} ]] && last_time=0
@@ -347,19 +366,9 @@ write_time_log(){
     last_time=$(echo "${last_time}" | sed 's/[^0-9]*$//g')
 
     # expand time
-    IFS=':'; time_array=(${TIME})
-    local hour; local minute; local second
-    if [[ ${#time_array[@]} -eq 2 ]]; then
-        hour=0.0; minute=${time_array[0]}; second=${time_array[1]}
-    elif [[ ${#time_array[@]} -eq 3 ]]; then
-        hour=${time_array[0]}; minute=${time_array[1]}; second=${time_array[2]}
-    else
-        cecho ${BAD} "${FUNCNAME[0]}: length of the output from slurm must be 2 or 3 instead of ${#time_array[@]}"
-    fi
-    # compute time in hrs
-    local time_in_hr=$(echo "scale=4; ${hour}+(${minute}/60.0)+(${second}/3600.0)" | bc)
+    convert_time_to_hrs "${TIME}"
+    local time_in_hr="${convert_time_to_hrs}"
 
-    
     # output to file 
     printf "%-10s %-15s %-10s %s\n" ${last_time_step} ${last_time} ${time_in_hr} ${CPU} >> ${log_file}
 
