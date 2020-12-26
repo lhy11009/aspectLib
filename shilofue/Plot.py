@@ -694,6 +694,7 @@ def ProjectPlot(case_dirs, _file_type, **kwargs):
             if not os.path.isfile(_ofile) or \
                os.stat(_statistic_file)[8] > os.stat(_ofile)[8]:
                 is_plot = True
+        # plot
         if is_plot:
             try:
                 Statistics(_statistic_file, fileout=_ofile)
@@ -772,7 +773,14 @@ One option is to delete incorrect file before running again" % _solver_file) fro
         _machine_time_file = os.path.join(_case_output_dir, 'machine_time')
         _time = 0.0
         _ofile = os.path.join(_case_img_dir, 'MachineTime.%s' % _file_type)  # ofile has the exact time
-        if os.path.isfile(_machine_time_file) and (not os.path.isfile(_ofile) or update is True):
+        # compare the dates of files, determine whether to plot
+        is_plot = False
+        if os.path.isfile(_machine_time_file):
+            if not os.path.isfile(_ofile) or \
+               os.stat(_machine_time_file)[8] > os.stat(_ofile)[8]:
+                is_plot = True
+        # plot
+        if is_plot:
             # check for ofile here is not precist, not intuitive. future: change the implementation
             try:
                 _ofile_exact = MachineTime(_machine_time_file, fileout=_ofile)

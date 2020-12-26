@@ -559,10 +559,11 @@ def main():
         # Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False, pdict=pdict)
         # get sub cases
         pp_source_dirs = pdict.get('dirs', [])
+        _format = pdict.get('py_format', 'png')
         for pp_source_dir_base in pp_source_dirs:
             pp_source_dir = os.path.join(_project_dir, pp_source_dir_base)
             pp_case_dirs = Parse.GetSubCases(pp_source_dir)
-            Plot.ProjectPlot(pp_case_dirs, 'png', update=False, pdict=pdict)
+            Plot.ProjectPlot(pp_case_dirs, _format, update=False, pdict=pdict)
 
     elif _commend == 'plot_newton_solver_step':
         # Plot one step from Newton solver
