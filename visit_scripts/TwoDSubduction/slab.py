@@ -258,7 +258,7 @@ class SLAB(VISIT_PLOT):
         # define a new field if needed
         if IF_DEFORM_MECHANISM:
             DefineScalarExpression("deform_mechanism", "if(lt(viscosity, 0.99e24),if(lt(dislocation_viscosity,diffusion_viscosity), 1.0, 0.0), 2.0)")
-        self.add_plot("Pseudocolor", "deform_mechanism")
+            self.add_plot("Pseudocolor", "deform_mechanism")
         
         # set transformation
         self.set_rotation_transform(52.0)
@@ -479,8 +479,8 @@ class EXPORT_PARTICLE(VISIT_PLOT):
         ExportDBAtts = ExportDBAttributes()
         ExportDBAtts.allTimes = 1
         ExportDBAtts.dirname = "PARTICLE_OUTPUT_DIR"
-        ExportDBAtts.filename = "visit_particles_%06d" % self.time_snap
-        ExportDBAtts.timeStateFormat = "_%04d"
+        ExportDBAtts.filename = "visit_particles"
+        ExportDBAtts.timeStateFormat = "_%06d"
         ExportDBAtts.db_type = "XYZ"
         ExportDBAtts.db_type_fullname = "XYZ_1.0"
         ExportDBAtts.variables = ("id")
@@ -514,8 +514,8 @@ def main():
     # Output particles for slab morphology
     if IF_EXPORT_SLAB_MORPH:
         Export_Particle = EXPORT_PARTICLE("VISIT_PARTICLE_FILE", output_dir="DATA_OUTPUT_DIR")
-        for snapshot in ALL_AVAILABLE_PARTICLE_SNAPSHOTS:
-            Export_Particle(snapshot)
+        # Be default, it outputs all steps. So we only needs to go to a single snapshot
+        Export_Particle(0)
         Export_Particle.abort()
 
 main()
