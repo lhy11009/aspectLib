@@ -44,6 +44,16 @@ parse_options(){
           float="${param#*=}"
         ;;
         #####################################
+        # float value
+        #####################################
+        -ex)
+          shift
+          extention="${1}"
+        ;;
+        -ex=*|--extension=*)
+          extension="${param#*=}"
+        ;;
+        #####################################
         # list
         #####################################
         -l)
@@ -1017,18 +1027,27 @@ main(){
         # plot solver output for specific step
         # example usage:
         #   ./aspect_lib.sh TwoDSubduction plot_solver_step /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear19/non_linear_1e18_1MaULV3.000e+01testNST5.000e-05SBR5 -f 55
+        # --extension=pdf
         case_dir="$3"
 
         # construct vlist based on step 
         vlist=("${float}" 1 "$((${float}+1))")
         echo "${vlist[@]}"  # debug
 
+        # remove previous data file
+        local odatafile="${case_dir}/output/solver_output_step"
+        [[ -e ${odatafile} ]] && rm ${odatafile}
+        
         # call function to parse output
-        local update="True"
+        local update="False"
         parse_case_solver_output "solver_output_step"
 
+        # add appendix
+        local appendix=""
+        [[ -n ${extension} ]] && appendix="${appendix} --ex ${extension}"
+
         # call python scripts to plot
-        eval "python -m shilofue.TwoDSubduction plot_newton_solver_step -i ${case_dir}/output/solver_output_step -o ${case_dir}/img -s ${float}"
+        eval "python -m shilofue.TwoDSubduction plot_newton_solver_step -i ${case_dir}/output/solver_output_step -o ${case_dir}/img -s ${float} ${appendix}"
 
     elif [[ ${_command} = 'write_time_log' ]]; then
         # Note that for this command, \$1 (i.e. name of project) is not needed

@@ -119,9 +119,14 @@ add a assertion for all possible entries, like the one for the 'Strategy'
 
 include strategy of composition and temperature and viscosity and phases in potential
 
-## add transition depth in code so that phase transition doesn't take place out of this range
+## create tests to visualize phase transition
 
-define a upper limit and lower limit; add another test
+first, output the phase transition values in viscoplastic
+
+then create a test, make a whole temperature range at every depth, so to look at the values of phase transition in a diagram
+
+## define the eclogite phase transitions with a phase diagram
+
 
 # Changes to be made to python scripts
 

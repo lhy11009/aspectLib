@@ -403,6 +403,9 @@ def main():
     parser.add_argument('-s', '--step', type=int,
                         default=0,
                         help='timestep')
+    parser.add_argument('-ex', '--extension', type=str,
+                        default='png',
+                        help='extension for output')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -569,11 +572,12 @@ def main():
         # Plot one step from Newton solver
         # use -i option as input and -o option as output dir
         # example usage:
-        #   python -m shilofue.TwoDSubduction plot_newton_solver_step -i tests/integration/fixtures/test-plot/newton_solver -o .test -s 1  
+        #   python -m shilofue.TwoDSubduction plot_newton_solver_step -i tests/integration/fixtures/test-plot/newton_solver -o .test -s 1 --extension pdf
         filein = arg.input_dir
         output_dir = arg.output_dir
         step = arg.step
-        ofile_route = os.path.join(output_dir, 'NewtonSolverStep.png')
+        extension = arg.extension
+        ofile_route = os.path.join(output_dir, 'NewtonSolverStep.%s' % extension)
         # plot newton solver output
         NewtonSolverStep = Plot.NEWTON_SOLVER_PLOT('NewtonSolverStep')
         # plot step0

@@ -785,7 +785,7 @@ One option is to delete incorrect file before running again" % _solver_file) fro
             try:
                 _ofile_exact = MachineTime(_machine_time_file, fileout=_ofile)
             except Exception as e:
-                raise Exception("Plot DepthAverage file failed for %s, please chech file content.\
+                raise Exception("Plot MachineTime file failed for %s, please chech file content.\
 One option is to delete incorrect file before running again" % _machine_time_file) from e
             else:
                 if _ofile_exact is not None:
