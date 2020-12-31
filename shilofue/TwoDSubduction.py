@@ -42,7 +42,6 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
         """
         calculate flow law parameters
         """
-        # todo
         _type = _config.get('model_type', 0)
         my_assert(type(_type) == int, TypeError, "Type of input \'model_type\' must be int")
         if _type == 0:
@@ -306,18 +305,37 @@ class VISIT_XYZ(Parse.VISIT_XYZ):
                 dips_in_ranges[i] = total / weight
     
         # construct header
-        self.output_header = {
-            'Maximum depth': {'col': 0, 'unit': self.header['x']['unit']},
-            'Trench position': {'col': 1, 'unit': 'rad'},
-            'Slab length': {'col': 2, 'unit': self.header['x']['unit']}
-        }
-        total_cols = 2
+        # append time if present
+        try:
+            _time = kwargs['time']
+        except KeyError:
+            self.output_header = {
+             'Maximum depth': {'col': 0, 'unit': self.header['x']['unit']},
+             'Trench position': {'col': 1, 'unit': 'rad'},
+             'Slab length': {'col': 2, 'unit': self.header['x']['unit']}
+            }
+            total_cols = 3
+        else:
+            _time_unit = kwargs.get('time_unit', 'yr')
+            self.output_header = {
+             'Time': {'col': 0, 'unit': _time_unit},
+             'Maximum depth': {'col': 1, 'unit': self.header['x']['unit']},
+             'Trench position': {'col': 2, 'unit': 'rad'},
+             'Slab length': {'col': 3, 'unit': self.header['x']['unit']}
+            }
+            total_cols = 4
         for i in range(len(depth_ranges)):
-            key = 'Dip angle %d_%d' % (int(depth_ranges[i][0]), int(depth_ranges[i][1]))
+            key = 'Dip angle %d_%d (rad)' % (int(depth_ranges[i][0]), int(depth_ranges[i][1]))
             self.output_header[key] = {'col': i+total_cols}
 
         # manage output
-        output_data_temp = [max_depth, trench_position, slab_length]
+        # append time if present
+        try:
+            _time = kwargs['time']
+        except KeyError:
+            output_data_temp = [max_depth, trench_position, slab_length]
+        else:
+            output_data_temp = [_time, max_depth, trench_position, slab_length]
         for i in range(len(depth_ranges)):
             output_data_temp.append(dips_in_ranges[i])
         self.output_data = Make2dArray(output_data_temp)
@@ -363,11 +381,11 @@ def SlabMorph(case_dir, kwargs={}):
         os.remove(ofile)
     
     #   loop for every snap and call function
-    snaps, _, _= Parse.GetSnapsSteps(case_dir, 'particle')
+    snaps, times, _= Parse.GetSnapsSteps(case_dir, 'particle')
 
     for i in snaps:
         visit_xyz_file = os.path.join(case_morph_dir, 'visit_particles_%06d.xyz' % i)
-        Visit_Xyz(visit_xyz_file, header=header, ofile=ofile, depth_ranges=depth_ranges)
+        Visit_Xyz(visit_xyz_file, header=header, ofile=ofile, depth_ranges=depth_ranges, time=times[i])
 
 
 def main():
@@ -508,7 +526,6 @@ def main():
         pass
 
     elif _commend == 'update_docs':
-        # todo
         # update the contents of the mkdocs
         # example usage:
         #   python -m shilofue.TwoDSubduction update_docs -o /home/lochy/ASPECT_PROJECT/TwoDSubduction -j post_process.json
@@ -619,6 +636,7 @@ def main():
         # generate a file that can be used for plot
         # example usages:
         case_dir = arg.input_dir
+        # process slab morph with extra options
         with open(arg.json_file, 'r') as fin:
             dict_in = json.load(fin)
             extra_options = dict_in.get('slab_morph', {})
