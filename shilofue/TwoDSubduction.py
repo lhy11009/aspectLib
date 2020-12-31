@@ -341,6 +341,19 @@ class VISIT_XYZ(Parse.VISIT_XYZ):
         self.output_data = Make2dArray(output_data_temp)
 
 
+class SLAB_MORPH_PLOT(Plot.LINEARPLOT):
+    '''
+    Class for plotting depth average file.
+    This is an inheritage of the LINEARPLOT class
+
+    Attributes:
+    Args:
+    '''
+    # todo
+    def __init__(self, _name, **kwargs):
+        Plot.LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
+
+
 def SlabDip(r0, ph0, r1, ph1):
     """
     compute the dip angle between 2 adjacent point

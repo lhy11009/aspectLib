@@ -180,3 +180,15 @@ def test_visit_xyz():
     # compare output
     standard_output = os.path.join(test_source_dir, 'TwoDSubduction', 'visit_xyz', 'standard_output1')
     assert(filecmp.cmp(ofile, standard_output))
+
+
+def test_slab_morph():
+    """
+    test SLAB_MORPH_PLOT class
+    """
+    # todo
+    test_file = os.path.join(test_source_dir, 'TwoDSubduction', 'slab_morph_plot', 'slab_morph')
+    Slab_morph_plot = TwoDSubduction.SLAB_MORPH_PLOT('slab_morph')
+    ofile = os.path.join(test_dir, 'slab_morph.png')
+    # test 1
+    pass
