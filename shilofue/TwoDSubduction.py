@@ -433,6 +433,12 @@ def SlabMorph(case_dir, kwargs={}):
         visit_xyz_file = os.path.join(case_morph_dir, 'visit_particles_%06d.xyz' % i)
         Visit_Xyz(visit_xyz_file, header=header, ofile=ofile, depth_ranges=depth_ranges, time=times[i])
 
+def PlotCaseSlabMorph():
+    """
+    todo
+    """
+    pass
+
 
 def main():
     '''
@@ -702,6 +708,8 @@ def main():
         # process slab morphology from visit particle output
         # generate a file that can be used for plot
         # example usages:
+        # python -m shilofue.TwoDSubduction process_slab_morph -i 
+        #   /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear26/cr80w5ULV3.000e+01 -j post_process.json
         case_dir = arg.input_dir
         # process slab morph with extra options
         with open(arg.json_file, 'r') as fin:
