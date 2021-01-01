@@ -31,15 +31,15 @@ class LINEARPLOT():
         assert(self.dim in [1, 2, 3])  # dimension must be 1, 2, 3
 
         # reset the options with a option in the kwargs
+        with resources.open_text(shilofue.json, 'post_process.json') as fin:
+            all_options = json.load(fin)
+        self.options = all_options[self.name]
         try:
             options = kwargs['options']
         except KeyError:
-            # read default
-            with resources.open_text(shilofue.json, 'post_process.json') as fin:
-                all_options = json.load(fin)
-            self.options = all_options[self.name]
+            pass
         else:
-            self.options = options
+            self.options.update(options)
     
     def __call__(self, _filename, **kwargs):
         '''
