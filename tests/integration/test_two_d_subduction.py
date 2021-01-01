@@ -3,11 +3,13 @@ import json
 import filecmp
 import shilofue.TwoDSubduction as TwoDSubduction
 import shilofue.Parse as Parse
+import shilofue.Utilities as Utilities
 from shutil import rmtree
 
-
+ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 test_source_dir = os.path.join(os.path.dirname(__file__), 'fixtures')
 test_dir = '.test'
+project_pp_json = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'post_process.json')
 
 
 def test_generate_case():
@@ -188,7 +190,17 @@ def test_slab_morph():
     """
     # todo
     test_file = os.path.join(test_source_dir, 'TwoDSubduction', 'slab_morph_plot', 'slab_morph')
-    Slab_morph_plot = TwoDSubduction.SLAB_MORPH_PLOT('slab_morph')
-    ofile = os.path.join(test_dir, 'slab_morph.png')
     # test 1
+    # Init the UnitConvert class
+    UnitConvert = Utilities.UNITCONVERT()
+    with open(project_pp_json, 'r') as fin:
+        pdict = json.load(fin)
+    plot_options = pdict.get('slab_morph', {})
+    Slab_morph_plot = TwoDSubduction.SLAB_MORPH_PLOT('slab_morph', unit_convert=UnitConvert, options=plot_options)
+    # plot
+    ofile = os.path.join(test_dir, 'slab_morph.png')
+    if os.path.isfile(ofile):
+        os.remove(ofile)
+    Slab_morph_plot(test_file, fileout=ofile)
+    assert(os.path.isfile(ofile))  # assert that the file is generated successfully
     pass

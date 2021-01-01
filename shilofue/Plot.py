@@ -33,7 +33,7 @@ class LINEARPLOT():
         # reset the options with a option in the kwargs
         with resources.open_text(shilofue.json, 'post_process.json') as fin:
             all_options = json.load(fin)
-        self.options = all_options[self.name]
+        self.options = all_options.get(self.name, {})
         try:
             options = kwargs['options']
         except KeyError:

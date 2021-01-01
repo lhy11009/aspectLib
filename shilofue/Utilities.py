@@ -352,7 +352,7 @@ def WriteFileHeader(ofile, header):
         for key, value in header.items():
             col = value['col']
             unit = value.get('unit', None)
-            output += '# %d: %s' % (col, key)
+            output += '# %d: %s' % (col+1, key)
             if unit is not None:
                 output += ' (%s)' % unit 
             output += '\n'

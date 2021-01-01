@@ -10,7 +10,7 @@ import shilofue.Doc as Doc
 import shilofue.Plot as Plot
 import shilofue.Rheology as Rheology
 from numpy import linalg as LA
-from shilofue.Utilities import my_assert, ggr2cart2, cart2sph2, Make2dArray
+from shilofue.Utilities import my_assert, ggr2cart2, cart2sph2, Make2dArray, UNITCONVERT
 
 
 # global varibles
@@ -352,6 +352,39 @@ class SLAB_MORPH_PLOT(Plot.LINEARPLOT):
     # todo
     def __init__(self, _name, **kwargs):
         Plot.LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
+    
+    def ManageData(self):
+        '''
+        manage data, get new data for this class
+        for the base class, this method simply takes the combination
+        of self.data
+        Returns:
+            _data_list(list):
+                list of data for ploting
+        '''
+        _data_list = Plot.LINEARPLOT.ManageData(self)
+        # todo add subduction rate
+        _col_depth = self.header['Maximum_depth']['col']
+        _unit_depth = self.header['Maximum_depth']['unit']
+        _col_time = self.header['Time']['col']
+        _unit_time = self.header['Time']['unit']
+        _depths = self.data[:, _col_depth]
+        _times = self.data[:, _col_time]
+        # get derivative
+        _size = _depths.size
+        _depths_i = np.zeros(_size + 1)
+        _depths_i[0: _size] = _depths
+        _depths_i[1: _size+1] += _depths 
+        _times_i = np.zeros(_size + 1)
+        _times_i[0: _size] = _times
+        _times_i[1: _size+1] += _times 
+        _rate = np.diff(_depths_i) / np.diff(_times_i)
+        _data_list.append(_rate)
+        self.header['Subduction_rate'] = {}
+        self.header['Subduction_rate']['col'] = self.header['total_col']
+        self.header['Subduction_rate']['unit'] = '%s/%s' % (_unit_depth, _unit_time)
+        self.header['total_col'] += 1
+        return _data_list
 
 
 def SlabDip(r0, ph0, r1, ph1):
@@ -643,6 +676,27 @@ def main():
         # plot step0
         MachineTime(filein, fileout=ofile)
         pass
+    
+    elif _commend == 'plot_slab_morph':
+        # plot the slab morph output
+        # use -i option as input and -o option as output dir
+        # example usages:
+        #   python -m shilofue.TwoDSubduction plot_slab_morph 
+        #       -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear26/cr80w5ULV3.000e+01/output/slab_morph 
+        #       -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear26/cr80w5ULV3.000e+01/img
+        filein = arg.input_dir
+        output_dir = arg.output_dir
+        ofile = os.path.join(output_dir, 'slab_morph.png')
+        # Init the UnitConvert class
+        UnitConvert = UNITCONVERT()
+        # Get options
+        project_pp_json = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'post_process.json')
+        with open(project_pp_json, 'r') as fin:
+            pdict = json.load(fin)
+        plot_options = pdict.get('slab_morph', {})
+        Slab_morph_plot = SLAB_MORPH_PLOT('slab_morph', unit_convert=UnitConvert, options=plot_options)
+        # plot
+        Slab_morph_plot(filein, fileout=ofile)
 
     elif _commend == 'process_slab_morph':
         # process slab morphology from visit particle output

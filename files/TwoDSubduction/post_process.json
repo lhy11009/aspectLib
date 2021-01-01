@@ -1,3 +1,53 @@
 {
-    "_comments": ["options for plot"]
+    "_comments": ["options for plot"],
+    "slab_morph":{
+        "canvas": [1, 3],
+        "types": [
+            "maximum_depth",
+            "Subduction_rate",
+            ["Dip_angle_0_100000", "Dip_angle_100000_400000"]
+        ],
+        "size": [15, 5],
+        "maximum_depth":{
+            "name": "maximum_depth", 
+            "xname": "Time",
+            "xunit": "myr",
+            "yname": "Maximum_depth", 
+            "yunit": "km",
+            "color": "r", 
+            "line": "-",
+            "label": "maximum_depth"
+        },
+        "Dip_angle_0_100000":{
+            "name": "Dip_angle_0_100000", 
+            "xname": "Time",
+            "xunit": "myr",
+            "yname": "Dip_angle_0_100000",
+            "yunit": "deg",
+            "color": "b", 
+            "line": "-",
+            "label": "Dip angle (0-100 km)"
+        },
+        "Dip_angle_100000_400000":{
+            "name": "Dip_angle_100000_400000", 
+            "xname": "Time",
+            "xunit": "myr",
+            "yname": "Dip_angle_100000_400000",
+            "yunit": "deg",
+            "color": "c", 
+            "line": "-",
+            "label": "Dip angle (100-400 km)"
+        },
+        "Subduction_rate":{
+            "name": "Subduction_rate", 
+            "xname": "Time",
+            "xunit": "myr",
+            "yname": "Subduction_rate", 
+            "yunit": "km/myr",
+            "log_y": 1,
+            "color": "r", 
+            "line": "-",
+            "label": "Subduction_rate"
+        }
+    }
 }
