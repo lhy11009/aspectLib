@@ -4,6 +4,7 @@ import json
 import argparse
 import re
 import warnings
+import pdb
 import numpy as np
 import shilofue.Parse as Parse
 import shilofue.Doc as Doc
@@ -349,7 +350,6 @@ class SLAB_MORPH_PLOT(Plot.LINEARPLOT):
     Attributes:
     Args:
     '''
-    # todo
     def __init__(self, _name, **kwargs):
         Plot.LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
     
@@ -363,7 +363,7 @@ class SLAB_MORPH_PLOT(Plot.LINEARPLOT):
                 list of data for ploting
         '''
         _data_list = Plot.LINEARPLOT.ManageData(self)
-        # todo add subduction rate
+        # add subduction rate
         _col_depth = self.header['Maximum_depth']['col']
         _unit_depth = self.header['Maximum_depth']['unit']
         _col_time = self.header['Time']['col']
@@ -433,11 +433,55 @@ def SlabMorph(case_dir, kwargs={}):
         visit_xyz_file = os.path.join(case_morph_dir, 'visit_particles_%06d.xyz' % i)
         Visit_Xyz(visit_xyz_file, header=header, ofile=ofile, depth_ranges=depth_ranges, time=times[i])
 
-def PlotCaseSlabMorph():
-    """
-    todo
-    """
-    pass
+
+def ProjectPlot(case_dirs, _file_type, **kwargs):
+    '''
+    Plot figures for all cases in this project
+    Inputs:
+        kwargs:
+            update(True or False): if True, update existing figures
+    '''
+    # future: not used, may remove
+    update = kwargs.get('update', False)
+    pdict = kwargs.get('pdict', {})
+    # Init the UnitConvert class
+    UnitConvert = UNITCONVERT()
+
+    # plot statistics ouput
+    plot_options = pdict.get('slab_morph', {})
+    Slab_morph_plot = SLAB_MORPH_PLOT('slab_morph', unit_convert=UnitConvert, options=plot_options)
+
+    # loop for cases and post process
+    for case_dir in case_dirs:
+        # first generate slab_morph output
+        img_dir = os.path.join(case_dir, 'img')
+        if not os.path.isdir(img_dir):
+            os.mkdir(img_dir)
+        
+        # todo, conditional plot for slab morph
+        # future extra options
+        # with open(arg.json_file, 'r') as fin:
+        #     dict_in = json.load(fin)
+        #     extra_options = dict_in.get('slab_morph', {})
+        particle_file = os.path.join(case_dir, 'output', 'particles.visit')
+        ofile = os.path.join(img_dir, 'slab_morph.png')
+        is_plot = False
+        if os.path.isfile(particle_file):
+            if not os.path.isfile(ofile) or \
+               os.stat(particle_file)[8] > os.stat(ofile)[8]:
+                is_plot = True
+        if is_plot:
+            # process slab morph with extra options
+            extra_options = {}
+            try:
+                SlabMorph(case_dir, extra_options)
+            except FileNotFoundError:
+                warnings.warn('process_slab_morph: file existence requirements are not met')
+            # then plot the slab morph figure
+            filein = os.path.join(case_dir, 'output', 'slab_morph')
+            # Get options
+            # plot
+            Slab_morph_plot(filein, fileout=ofile)
 
 
 def main():
@@ -622,13 +666,21 @@ def main():
         # load explicitly defined parameters
         with open(arg.json_file, 'r') as fin:
             pdict1 = json.load(fin)
-        pdict.update(pdict1)
+        # update every entry in pdict1
+        for key, value in pdict1.items():
+            if type(value) == dict:
+                try:
+                    _ = pdict[key]
+                    pdict[key].update(value)
+                except KeyError:
+                    pdict[key] = value
+            else:
+                pdict[key] = value
 
         # update auto.md file for every case
         Parse.UpdateProjectMd(_project_dict, _project_dir)
 
         # plot figures for every case
-        # Plot.ProjectPlot(_project_dict, _project_dir, 'png', update=False, pdict=pdict)
         # get sub cases
         pp_source_dirs = pdict.get('dirs', [])
         _format = pdict.get('py_format', 'png')
@@ -636,6 +688,8 @@ def main():
             pp_source_dir = os.path.join(_project_dir, pp_source_dir_base)
             pp_case_dirs = Parse.GetSubCases(pp_source_dir)
             Plot.ProjectPlot(pp_case_dirs, _format, update=False, pdict=pdict)
+            # deal with project defined plots
+            ProjectPlot(pp_case_dirs, _format, update=False, pdict=pdict)
 
     elif _commend == 'plot_newton_solver_step':
         # Plot one step from Newton solver
@@ -719,7 +773,35 @@ def main():
             SlabMorph(case_dir, extra_options)
         except FileNotFoundError:
             warnings.warn('process_slab_morph: file existence requirements are not met')
+    
             
+    elif _commend == 'plot_slab_morph_case':
+        # plot the slab morph output for a case
+        # first generate slab_morph output
+        case_dir = arg.input_dir
+        # process slab morph with extra options
+        with open(arg.json_file, 'r') as fin:
+            dict_in = json.load(fin)
+            extra_options = dict_in.get('slab_morph', {})
+        try:
+            SlabMorph(case_dir, extra_options)
+        except FileNotFoundError:
+            warnings.warn('process_slab_morph: file existence requirements are not met')
+        # then plot the slab morph figure
+        filein = os.path.join(case_dir, 'output', 'slab_morph')
+        output_dir = os.path.join(case_dir, 'img')
+        ofile = os.path.join(output_dir, 'slab_morph.png')
+        # Init the UnitConvert class
+        UnitConvert = UNITCONVERT()
+        # Get options
+        project_pp_json = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'post_process.json')
+        with open(project_pp_json, 'r') as fin:
+            pdict = json.load(fin)
+        plot_options = pdict.get('slab_morph', {})
+        Slab_morph_plot = SLAB_MORPH_PLOT('slab_morph', unit_convert=UnitConvert, options=plot_options)
+        # plot
+        Slab_morph_plot(filein, fileout=ofile)
+
 
     elif _commend == 'plot':
         # future
