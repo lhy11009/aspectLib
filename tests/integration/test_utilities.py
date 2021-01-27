@@ -1,8 +1,13 @@
 import pytest
+import os
 import numpy as np
-import shilofue.Utilities as Utilities
 from shilofue.Utilities import UNITCONVERT
 from importlib import resources
+from matplotlib import pyplot as plt
+from matplotlib import ticker, cm
+import shilofue.Utilities as Utilities
+
+_test_dir = '.test'
 
 def test_unit_convert_json():
     '''
@@ -35,3 +40,30 @@ def test_unit_convert_json():
     with pytest.raises(KeyError) as excinfo:
         UnitConvert('foo1', 'm')
     assert('alias' in str(excinfo.value))
+
+
+def test_average_phase_function_inputs():
+    '''
+    todo
+    Test AveragePhaseFunction
+    '''
+    # create data array
+    nx = 100
+    ny = 200
+    x = np.linspace(-5, 5, nx)
+    y = np.linspace(-5, 5, ny)
+    xx, yy = np.meshgrid(x, y)
+    # zz = np.zeros(xx.shape)
+    # derive phase_function_value
+    average = Utilities.AveragePhaseFunctionInputs(xx, yy)
+    zz = Utilities.PhaseFunction(average)
+    # plot
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    ax[0].pcolormesh(xx, yy, average)
+    ax[1].pcolormesh(xx, yy, zz)
+    filename = os.path.join(_test_dir, "AveragePhaseFunction.png")
+    fig.tight_layout()
+    fig.savefig(filename)
+
+    assert(os.path.isfile(filename))
+    pass

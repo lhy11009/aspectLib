@@ -652,7 +652,7 @@ build_aspect_project(){
     [[ -e ${json} ]] || cecho ${WARN} "${FUNCNAME[0]}: json file of project(i.e. ${json}) doesn't exist"
 
     # get the list of plugins
-    plugins=("prescribe_field" "subduction_temperature2d")
+    plugins=("prescribe_field" "subduction_temperature2d" "slab2d_statistics")
 
     # build
     local current_dir=$(pwd)

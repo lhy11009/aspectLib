@@ -357,3 +357,33 @@ def WriteFileHeader(ofile, header):
                 output += ' (%s)' % unit 
             output += '\n'
         fout.write(output)
+
+
+def PhaseFunction(x):
+    """
+    function defined in MaterialModel/Utilities in aspect
+    """
+    return 0.5 * (1 + np.tanh(x))
+
+
+def AveragePhaseFunctionInputs(x1, x2):
+    """
+    todo
+    Average phase function value
+    """
+    my_assert(x1.shape == x2.shape, ValueError, "Inputs(x1 and x2) need to be arrays of the same shape")
+    average = np.zeros(x1.shape)
+    
+    # logical expressions for regions
+    pin_point = 2.0
+    limit_point = -2.0
+    is_above = np.logical_and(x1 > pin_point, x2 > pin_point)
+    is_upper_left = np.logical_and(x1 < pin_point, x2 > pin_point)
+    is_lower_right = np.logical_and(x1 > pin_point, x2 < pin_point)
+    is_middle = np.logical_and(x1 < pin_point, x2 < pin_point)
+    # compute values
+    average[is_above] = np.minimum(x1[is_above], x2[is_above])
+    average[is_upper_left] = x1[is_upper_left]
+    average[is_lower_right] = x2[is_lower_right]
+    average[is_middle] = pin_point - np.sqrt((pin_point - x1[is_middle])**2.0 + (pin_point - x2[is_middle])**2.0)
+    return average

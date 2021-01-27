@@ -37,7 +37,8 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
         Initiation
         """
         Parse.PARSE_OPERATIONS.__init__(self)
-        self.ALL_OPERATIONS += ["LowerMantle", "Particle"]
+        # todo
+        self.ALL_OPERATIONS += ["LowerMantle", "Particle", "Phases", "InitialTemperature"]
     
     def LowerMantle(self, Inputs, _config):
         """
@@ -160,6 +161,53 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
         p_dict['Generator'] = p_generator_dict
         # assign it to Inputs
         Inputs['Postprocess']['Particles'] = p_dict
+    
+    def Phases(self, Inputs, _config):
+        '''
+        Define phase transition variables
+        '''
+        visco_plastic = Inputs["Material model"]['Visco Plastic']
+        try:
+            eclogite_transition = visco_plastic["Eclogite transition"]
+        except KeyError:
+            pass
+        else:
+            # temperature for eclogite transition 
+            try:
+                temperature_for_eclogite_transition = _config["temperature_for_eclogite_transition"]
+            except KeyError:
+                pass
+            else:
+                eclogite_transition["Temperature for eclogite transition"] = str(temperature_for_eclogite_transition)
+            # temperature width for eclogite transition 
+            try:
+                temperature_width_for_eclogite_transition = _config["temperature_width_for_eclogite_transition"]
+            except KeyError:
+                pass
+            else:
+                eclogite_transition["Temperature width for eclogite transition"] = str(temperature_width_for_eclogite_transition)
+           
+            visco_plastic["Eclogite transition"] = eclogite_transition
+            
+        Inputs["Material model"]['Visco Plastic'] = visco_plastic
+        return Inputs
+    
+    def InitialTemperature(self, Inputs, _config):
+        """
+        todo
+        Initial temperature
+        """
+        # get the initial temperature module 
+        initial_temperature = Inputs["Initial temperature model"]
+
+        # subsection Subduction 2d temperature
+        try:
+            thermal_boundary_width_factor = _config["slab_thermal_boundary_width_factor"]
+            initial_temperature["Subduction 2d temperature"]["Thermal boundary width factor"] = str(thermal_boundary_width_factor)
+        except KeyError:
+            pass
+
+        Inputs["Initial temperature model"] = initial_temperature
 
 
 class MYCASE(Parse.CASE):

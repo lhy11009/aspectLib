@@ -4,6 +4,7 @@ import json
 import numpy as np
 import shilofue.Plot as Plot
 from shilofue.Utilities import UNITCONVERT
+from matplotlib import pyplot as plt
 
 
 _test_dir = '.test'

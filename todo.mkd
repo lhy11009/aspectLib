@@ -125,7 +125,10 @@ first, output the phase transition values in viscoplastic
 
 then create a test, make a whole temperature range at every depth, so to look at the values of phase transition in a diagram
 
-## define the eclogite phase transitions with a phase diagram
+## fix tests
+
+Now there is one failing test "TwoD ... crust_statistics" since the problem is too big
+
 
 
 # Changes to be made to python scripts
