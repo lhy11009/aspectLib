@@ -69,7 +69,7 @@ subsection Mesh refinement
     set Strategy = isosurfaces, minimum refinement function
     set Time steps between mesh refinement = 10
     set Run postprocessors on initial refinement = true
-    set Skip solvers on initial refinement = false
+    set Skip solvers on initial refinement = true
     subsection Isosurfaces
         set Isosurfaces = 11, 12, spcrust: 0.5 | 1.0; 10, 12, spharz: 0.5 | 1.0;  10, 12, opcrust: 0.5 | 1.0; 9, 12, opharz: 0.5 | 1.0; 10, 12, Temperature: 270.0 | 1173.0
     end

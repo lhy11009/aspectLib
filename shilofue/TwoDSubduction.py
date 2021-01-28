@@ -202,8 +202,13 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
 
         # subsection Subduction 2d temperature
         try:
-            thermal_boundary_width_factor = _config["slab_thermal_boundary_width_factor"]
-            initial_temperature["Subduction 2d temperature"]["Thermal boundary width factor"] = str(thermal_boundary_width_factor)
+            thermal_boundary_width_factor_in = _config["slab_thermal_boundary_width_factor_in"]
+            initial_temperature["Subduction 2d temperature"]["Thermal boundary width factor in"] = str(thermal_boundary_width_factor_in)
+        except KeyError:
+            pass
+        try:
+            thermal_boundary_width_factor_out = _config["slab_thermal_boundary_width_factor_out"]
+            initial_temperature["Subduction 2d temperature"]["Thermal boundary width factor out"] = str(thermal_boundary_width_factor_out)
         except KeyError:
             pass
 
