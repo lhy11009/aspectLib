@@ -188,6 +188,16 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
                 eclogite_transition["Temperature width for eclogite transition"] = str(temperature_width_for_eclogite_transition)
            
             visco_plastic["Eclogite transition"] = eclogite_transition
+        try:
+            # decoupled eclogite transition
+            decoupling_eclogite_transition = _config["decoupling_eclogite_transition"]
+        except KeyError:
+            pass
+        else:
+            if decoupling_eclogite_transition == 1:
+                visco_plastic["Decoupling eclogite viscosity"] = "true"
+            else:
+                visco_plastic["Decoupling eclogite viscosity"] = "false"
             
         Inputs["Material model"]['Visco Plastic'] = visco_plastic
         return Inputs

@@ -92,7 +92,7 @@ subsection Initial temperature model
     set Model name = subduction 2d temperature
     subsection Subduction 2d temperature
         set Thermal boundary width factor in = 1.0
-        set Thermal boundary width factor out = 1.0
+        set Thermal boundary width factor out = 0.5
     end
 end
 
@@ -161,9 +161,11 @@ subsection Material model
         set Phase transition temperatures = background:1662.0, spcrust: 1173.0|1662.0, spharz:1662.0
         set Phase transition Clapeyron slopes = background:-2e6, spcrust: 0.0|-2e6, spharz:-2e6
         set Manually define phase method crust = background:0.0, spcrust: 1.2|1.2, spharz:0.0
+        set Decoupling eclogite viscosity = true
         set Thermal diffusivities = 1.0e-6, 1.0e-6, 1.0e-6, 1.0e-6,1.0e-6
         set Heat capacities = 1250.0
-        set Densities = background:3300.0|3300.0, spcrust:3000.0|3300.0|3300.0, spharz:3235.0|3300.0, opcrust:3000.0, opharz:3235.0
+        # todo
+        set Densities = background:3300.0|3943.0, spcrust:3000.0|3540.0|3943.0, spharz:3235.0|3943.0, opcrust:3000.0, opharz:3235.0
         set Thermal expansivities = 3.1e-5
         set Viscosity averaging scheme = harmonic
         set Viscous flow law = composite
@@ -196,14 +198,19 @@ subsection Material model
                                         ((r > Ro - DCS) && (Ro*(PHIM - phi) < Width)) ? 2:\
                                         ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*(PHIM - phi) < Width)) ? 3: -1
         end
+        # todo
         subsection Eclogite transition
             set Temperature for eclogite transition = 673.0
-            set Temperature width for eclogite transition = 200.0
+            set Temperature width for eclogite transition = 75.0
             set Pressure for eclogite transition = 1.5e9
             set Pressure width for eclogite transition = 0.5e9
             set Max pressure for eclogite transition = 5e9
             set Max pressure width for eclogite transition = 1.5e9
         end
+       subsection Eclogite decoupled viscosity
+          set Decoupled depth = 100e3
+          set Decoupled depth width = 10e3
+       end
     end
 end
 

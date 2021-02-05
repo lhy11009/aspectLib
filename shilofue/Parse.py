@@ -2,6 +2,8 @@ import re
 import os
 import shutil
 import json
+import sys
+import argparse
 import numpy as np
 import shilofue.Plot as Plot
 from shilofue.Utilities import my_assert, re_neat_word, WriteFileHeader
@@ -1206,6 +1208,7 @@ def GetSnapsSteps(case_dir, type_='graphical'):
     
     return snaps, times, steps
 
+
 def GetSubCases(_dir):
     '''
     get cases in a folder
@@ -1227,4 +1230,82 @@ def GetSubCases(_dir):
             case_dirs += GetSubCases(_fullsubname)
     
     return case_dirs
+
     
+def ParsePhaseInput(inputs):
+    '''
+    parse input of phases to a aspect input form
+    todo
+    '''
+    output = ""
+   
+    # read in density of the base phase
+    rho_base = inputs.get("rho_base", 3300.0)
+    my_assert(type(rho_base) == float, TypeError, "base value for density must be a float")
+    # read in the density change with each transtion
+    drho = inputs.get("drho", [0.0])
+    my_assert(type(drho) == list, TypeError, "value of density change must be a list")
+    # read in the fraction with each transtion
+    xc = inputs.get("xc", [1.0])
+    my_assert(type(xc) == list, TypeError, "value of fraction with transition must be a list")
+    # number of transition
+    total = len(drho)
+    my_assert(len(xc) == total, ValueError, "length of xc and drho must be the same")
+    
+    # compute density
+    rho = rho_base * np.ones(total + 1)
+    for i in range(total):
+        rho[i+1:] += drho[i] * xc[i]
+    
+    # generate output
+    output += "%.1f" % rho[0]
+    for i in range(1, total+1):
+        output += "|%.1f" % rho[i]
+    
+    return output
+
+
+def main():
+    '''
+    main function of this module
+    Inputs:
+        sys.arg[1](str):
+            commend
+        sys.arg[2, :](str):
+            options
+    '''
+    _commend = sys.argv[1]
+    # parse options
+    parser = argparse.ArgumentParser(description='Parse parameters')
+    parser.add_argument('-j', '--json_file', type=str,
+                        default='./config_case.json',
+                        help='Filename for json file')
+    _options = []
+    try:
+        _options = sys.argv[2: ]
+    except IndexError:
+        pass
+    arg = parser.parse_args(_options)
+
+    # commands
+
+    if _commend == 'phase_input':
+        # example:
+        #   python -m shilofue.Parse phase_input -j ./files/TwoDSubduction/pyrolite_phases_1_0.json
+        my_assert(os.access(arg.json_file, os.R_OK), FileExistsError, "Json file doesn't exist.")
+        with open(arg.json_file) as fin:
+            inputs = json.load(fin)
+
+        # get the outputs
+        outputs = "density = "
+        for key, value in inputs.items():
+            if type(value) == dict:
+                output = ParsePhaseInput(value)
+                outputs += "%s: %s, " % (key, output)
+
+        # print the output 
+        print(outputs)
+
+# run script
+if __name__ == '__main__':
+    main()
