@@ -215,6 +215,17 @@
             "color": "k",
             "line": ".-",
             "label": "Viscosity"
+        },
+        "density":
+        {
+            "name": "density",
+            "xname": "adiabatic_density",
+            "yname": "depth",
+            "yunit": "km",
+            "invert_y": 1,
+            "color": "b",
+            "line": ".-",
+            "label": "adiabatic_density"
         }
     },
     "NewtonSolver":

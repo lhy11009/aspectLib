@@ -37,7 +37,6 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
         Initiation
         """
         Parse.PARSE_OPERATIONS.__init__(self)
-        # todo
         self.ALL_OPERATIONS += ["LowerMantle", "Particle", "Phases", "InitialTemperature"]
     
     def LowerMantle(self, Inputs, _config):
@@ -204,7 +203,6 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
     
     def InitialTemperature(self, Inputs, _config):
         """
-        todo
         Initial temperature
         """
         # get the initial temperature module 
@@ -521,7 +519,7 @@ def ProjectPlot(case_dirs, _file_type, **kwargs):
         if not os.path.isdir(img_dir):
             os.mkdir(img_dir)
         
-        # todo, conditional plot for slab morph
+        # conditional plot for slab morph
         # future extra options
         # with open(arg.json_file, 'r') as fin:
         #     dict_in = json.load(fin)
@@ -544,7 +542,42 @@ def ProjectPlot(case_dirs, _file_type, **kwargs):
             filein = os.path.join(case_dir, 'output', 'slab_morph')
             # Get options
             # plot
-            Slab_morph_plot(filein, fileout=ofile)
+            if os.path.isfile(filein):
+                Slab_morph_plot(filein, fileout=ofile)
+
+
+def PlotTestResults(source_dir, **kwargs):
+        # initialize
+        _case_img_dir = kwargs.get('output_dir', './test_results')
+        if not os.path.isdir(_case_img_dir):
+            os.mkdir(_case_img_dir)
+        _file_type = kwargs.get('type', 'pdf')
+        # convert unit 
+        UnitConvert = UNITCONVERT()
+
+        # case TwoDSubduction_pyrolite_density_1_0: density depth-average plot
+        _case_output_dir = os.path.join(source_dir, 'output-TwoDSubduction_pyrolite_density_1_0')
+        assert(os.path.isdir(_case_output_dir))
+        # depth average output
+        # plot_option: plot viscosity and density profile
+        plot_options = {
+        "canvas": [1, 3],
+        "types": [
+            ["temperature", "super_adiabatic_temperature"],
+            "density",
+            "viscosity",
+        ],
+        "size": [15, 5],
+        }
+
+        DepthAverage = Plot.DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert, options=plot_options)
+        _depth_average_file = os.path.join(_case_output_dir, 'depth_average.txt')
+        assert(os.access(_depth_average_file, os.R_OK))
+        _time = 0.0
+        _ofile_route = os.path.join(_case_img_dir, 'Pyrolite_density_1_0.%s' % _file_type)
+        # plot the depth_average results
+        _ofile_exact = DepthAverage(_depth_average_file, fileout=_ofile_route, time=_time)
+        print('Plot has been generated: ', _ofile_exact)  # screen output
 
 
 def main():
@@ -892,6 +925,14 @@ def main():
         ofile = os.path.join(ASPECT_LAB_DIR, 'visit_keys_values')
         Visit_Options(ofile, extra_options)
         pass
+    
+    elif _commend == 'plot_test_results':
+        # plot the result of tests
+        # example:
+        # python -m shilofue.TwoDSubduction plot_test_results -i 
+        #  /home/lochy/softwares/aspect/build_TwoDSubduction/tests/ -o $TwoDSubduction_DIR/test_results
+        source_dir = arg.input_dir
+        PlotTestResults(source_dir, output_dir=arg.output_dir)
     
     else:
         raise ValueError('Commend %s is not available.' % _commend)
