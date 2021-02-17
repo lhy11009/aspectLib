@@ -11,5 +11,12 @@
         "rho_base": 3235.0,
         "drho": [520.0, 250.0, 670.0, 840.0, 560.0, 597.0, 1170.0],
         "xc": [0.8, 0.8, 0.0, 0.8, 0.20, 0.20, 0.20]
+    },
+    "spcrust": {
+        "_comments": ["basalt composition: total garnet in MTZ in this paper",
+                      "the 0.33, 0.67 numbers are picked up to mimic a whole mineralogy"],
+        "rho_base": 3000.0,
+        "drho": [540.0, 670.0, 1170.0],
+        "xc": [1.0, 0.33, 0.67]
     }
 }
