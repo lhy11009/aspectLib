@@ -11,6 +11,7 @@ import shilofue.Doc as Doc
 import shilofue.Plot as Plot
 import shilofue.Rheology as Rheology
 from numpy import linalg as LA
+from matplotlib import pyplot as plt
 from shilofue.Utilities import my_assert, ggr2cart2, cart2sph2, Make2dArray, UNITCONVERT
 
 
@@ -558,26 +559,45 @@ def PlotTestResults(source_dir, **kwargs):
         # case TwoDSubduction_pyrolite_density_1_0: density depth-average plot
         _case_output_dir = os.path.join(source_dir, 'output-TwoDSubduction_pyrolite_density_1_0')
         assert(os.path.isdir(_case_output_dir))
-        # depth average output
-        # plot_option: plot viscosity and density profile
-        plot_options = {
-        "canvas": [1, 3],
-        "types": [
-            ["temperature", "super_adiabatic_temperature"],
-            "density",
-            "viscosity",
-        ],
-        "size": [15, 5],
-        }
-
-        DepthAverage = Plot.DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert, options=plot_options)
+        # read data
+        DepthAverage = Plot.DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert)
         _depth_average_file = os.path.join(_case_output_dir, 'depth_average.txt')
         assert(os.access(_depth_average_file, os.R_OK))
+        data_list = DepthAverage.ReadDataStep(_depth_average_file, datatype=["depth", "adiabatic_density", "viscosity"])
+        # plot
+        fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+        axs[0].plot(data_list[0]/1e3, data_list[1], '-b', label='density')
+        axs[0].grid()
+        axs[0].set_ylabel('Density [kg/m3]')
+        axs[0].set_xlabel('Depth [km]')
+        axs[0].set_ylim((3100, 4800))
+        axs[0].legend()
+        # data from Chust 17
+        Chust17_data = np.array([
+          [0.37078107742533817, 3.1425201813692216], 
+          [0.950936590564412, 3.2249689538700497],
+          [4.289074088639609, 3.3645200063366243],
+          [13.733855181574159, 3.6325618236181016],
+          [13.913762104113376, 3.7473406677161245],
+          [15.29053749408711, 3.7902418219342437],
+          [18.542044934634184, 3.850878430998938],
+          [19.224893623385242, 3.908204043696113],
+          [22.7711869758023, 3.9795712587613234],
+          [23.26083512704819, 4.008218112771951],
+          [23.325863060256637, 4.227045194967481],
+          [29.223242999526967, 4.430894804301371],
+          [54.81555663135366, 4.7545978736862855]
+        ])
+        axs[1].plot(Chust17_data[:, 0], Chust17_data[:,1]*1000, '-k', label='Chust17_data')
+        axs[1].set_xlabel('Pressure [GPa]')
+        axs[1].set_ylim((3100, 4800))
+        axs[1].grid()
+        fig.tight_layout()
+        # save
         _time = 0.0
         _ofile_route = os.path.join(_case_img_dir, 'Pyrolite_density_1_0.%s' % _file_type)
-        # plot the depth_average results
-        _ofile_exact = DepthAverage(_depth_average_file, fileout=_ofile_route, time=_time)
-        print('Plot has been generated: ', _ofile_exact)  # screen output
+        plt.savefig(_ofile_route)
+        print('Plot has been generated: ', _ofile_route)  # screen output
 
 
 def main():
@@ -932,6 +952,7 @@ def main():
         # python -m shilofue.TwoDSubduction plot_test_results -i 
         #  /home/lochy/softwares/aspect/build_TwoDSubduction/tests/ -o $TwoDSubduction_DIR/test_results
         source_dir = arg.input_dir
+        # todo
         PlotTestResults(source_dir, output_dir=arg.output_dir)
     
     else:

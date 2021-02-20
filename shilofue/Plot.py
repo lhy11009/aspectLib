@@ -371,6 +371,42 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
             return _fname_list[0]
         else:
             return _fname_list
+        
+    def ReadDataStep(self, _filename, **kwargs):
+        '''
+        todo
+        Read data of a time step, currently only read the first time step.
+        Attributes:
+            _filename(string):
+                filename for data file
+        Returns:
+            _datalist:
+                a list of data for
+        future:
+            add in option for unit
+        '''
+        _fileout = kwargs.get('fileout', _filename + '.pdf')
+        self.ReadHeader(_filename)  # inteprate header information
+        self.ReadData(_filename)  # read data
+        self.ManageUnits()  # mange unit to output
+        self.SplitTimeStep()  # split time step data
+        
+        _t = 0.0  # t is the time of the 0th tep
+        if type(_t) not in [float, int]:
+            raise TypeError('type of values in time needs to be in [float, int, list, np.ndarrayy]')
+        _data_list = self.ManageData(_t)  # manage output data
+
+        # todo 
+        data_type = kwargs.get('datatype', None)
+        if data_type is None:
+            return _data_list
+        else:
+            _data_list_o = []
+            for _type in data_type:
+                col = self.header[_type]['col']
+                _data_list_o.append(_data_list[col])
+            return _data_list_o
+
 
     def ReadHeader(self, _filename):
         '''
