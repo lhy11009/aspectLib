@@ -228,7 +228,6 @@ create_group(){
         case_names+=("${line}")
     done <<<  "$(cat ".temp" | sed -n '1,2!'p)"
     group_dir="${local_root}/${group_name}"
-    # todo: return a create_group_case_dirs
     create_group_case_dirs=()
     for case_name in "${case_names[@]}"; do
         local case_dir="${group_dir}/${case_name}"
@@ -588,7 +587,6 @@ parse_solver_output_timestep(){
     local ndsfs=()
     local temp; local temp1
     for block_output in "${block_outputs[@]}"; do
-        # todo
         # get rnr
         parse_output_value "${block_output}" "Relative nonlinear" "residual"
         local line_="${value}"
@@ -676,7 +674,6 @@ build_aspect_project(){
 }
 
 ################################################################################
-# todo
 # build a plugin with source code in aspect
 # usage of this is to bind up source code and plugins
 # Inputs:
@@ -809,6 +806,86 @@ post_process_project(){
     process_docs
 }
 
+################################################################################
+#   affinty test on server
+#   name of tests are P*B#, * could be 16, 32, 64, 128
+#   # could be 1 or 2, this is wheter the binded option is used.
+do_affinity_test(){
+    source_dir="${ASPECT_LAB_DIR}/files/${project}/affinity_test"
+    [[ -d ${source_dir} ]] || cecho $BAD "source_dir doesn't exist"
+    # todo
+    local project_dir="${ASPECT_PROJECT_DIR}/${project}"
+    # get remote variables
+    get_remote_environment "${server_info}" "${project}_DIR"
+    local remote_root=${return_value}
+    get_remote_environment "${server_info}" "ASPECT_LAB_DIR"
+    local remote_lib_dir=${return_value}
+    
+    if [[ "${server_info}" =~ "peloton" ]]; then
+        target_dir="${project_dir}/peloton_affinity_test"
+    else
+        target_dir="${project_dir}/affinity_test"
+    fi
+    
+    [[ -d ${target_dir} ]] && rm -r "${target_dir}"
+    mkdir "${target_dir}"
+    remote_target_dir=${target_dir/"${local_root}"/"${remote_root}"} # substitution
+    ssh ${server_info} << EOF > '.temp'
+        eval "[[ -d ${remote_target_dir} ]] && rm -r ${remote_target_dir}"
+        eval "mkdir ${remote_target_dir}"
+EOF
+    
+    # make case P16
+    local remote_case_dir
+    local case_dir
+    local number_of_nodes=(1 1 1 1 1 1 1 2 2)
+    local number_of_cores=(2 4 4 8 16 32 64 64 64)
+    local bind_to_cores=(0 0 1 0 0 0 0 0 0)
+    local bind_to_threads=(0 0 0 0 0 0 0 0 1)
+    # todo
+    local _i=0
+    while ((_i<${#number_of_nodes[@]})); do
+        _n=${number_of_cores[_i]}
+        _N=${number_of_nodes[_i]}
+        _bc=${bind_to_cores[_i]}
+        _bt=${bind_to_threads[_i]}
+
+        # deal with local files 
+        case_dir="${target_dir}/N${_N}n${_n}"
+        ((${_bc}==1)) && case_dir="${case_dir}bc"
+        ((${_bt}==1)) && case_dir="${case_dir}bt"
+        [[ -d ${case_dir} ]] && rm -r "${case_dir}"  # remove previous results
+        mkdir "${case_dir}"
+        eval "cp ${source_dir}/* ${case_dir}"
+
+        # scp to remote
+        remote_case_dir=${case_dir/"${local_root}"/"${remote_root}"} # substitution
+        remote_case_prm="${remote_case_dir}/case.prm"
+        remote_out_dir="${remote_case_dir}/output"
+        local remote_target=$(dirname "${remote_case_dir}")
+        eval "${RSYNC} -r ${case_dir} ${server_info}:${remote_target}/"
+    
+        local status_
+        while [[ true ]]; do
+            ssh ${server_info} << EOF > '.temp'
+                eval "[[ -e ${remote_case_prm} ]] && echo \"0\" || echo \"1\""
+EOF
+            status_=$(cat '.temp'| sed -n '$'p)
+            ((status_==0)) && break || { cecho ${WARN} "Files haven't arrived yet, sleep for 2s"; sleep 2s; }
+        done
+    
+        # generate job.sh file
+        local addition=""
+        local flag="--hold"
+        ((${_bc}==1)) && flag="${flag} --bind_to=\"cores\""
+        ((${_bt}==1)) && flag="${flag} --bind_to=\"threads\""
+        ssh ${server_info} << EOF > ".temp"
+            eval "[[ -d ${remote_out_dir} ]] || mkdir ${remote_out_dir} "
+            eval "slurm.sh -N ${_N} -n ${_n} -t 24 ${addition} -P ${project} ${flag} ${remote_case_prm}"
+EOF
+        ((_i++))
+    done
+}
 
 main(){
     # parameter list, future
@@ -937,7 +1014,6 @@ main(){
         set_server_info "$3"
         local log_file="$4"  # optional log file
         # ./aspect_lib.sh "${project}" 'create_group'
-        # todo
         create_group "${py_script}" "${local_root}"
         [[ $? -eq 0 ]] || {  cecho ${BAD} "aspect_lib.sh create failed"; exit 1; }
         # get group name
@@ -945,7 +1021,6 @@ main(){
         # local group_name=$(echo "${_info}" | sed -n '2'p)
         # call self
         # ./aspect_lib.sh "${project}" 'submit_group' "${group_name}" "${server_info}" "${log_file}"
-        # todo
         # get remote case directory
         get_remote_environment "${server_info}" "${project}_DIR"
         local remote_root=${return_value}
@@ -1132,6 +1207,15 @@ main(){
         ssh ${server_info} << EOF
             eval "\${ASPECT_LAB_DIR}/aspect_lib.sh ${project} build $4"
 EOF
+
+    elif [[ ${_command} = "affinity_test" ]]; then
+        #  affinity test on server
+        #  example command line 
+        #       ./aspect_lib.sh TwoDSubduction affinity_test lochy@peloton.cse.ucdavis.edu
+        # todo
+        set_server_info "$3"
+
+        do_affinity_test "${project}"
 
     elif [[ ${_command} = 'test' ]]; then
         # run tests

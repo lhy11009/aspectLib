@@ -1,8 +1,11 @@
 #!/bin/bash
+# example usage:
+#  slurm.sh -N 1 -n 4 -l /home/lochy/ASPECT_PROJECT/aspectLib/.output/job.log -lt ./output/machine_time --hold
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source "${dir}/utilities.sh"
 
+# default value
 filename="test.prm"
 nnode=1
 total_tasks=1
@@ -11,6 +14,7 @@ partition="high2"
 name="task"
 mem_per_cpu=2000  # 2000M
 project="TwoDSubduction"
+hold=0  # hold jobs
 
 test_dir="${dir}/.test"  # do test in this directory
 if ! [[ -d ${test_dir} ]]; then
@@ -171,7 +175,6 @@ parse_options(){
         ;;
         #####################################
         # bind to
-	# todo
         #####################################
         -bd)
           shift
@@ -180,6 +183,12 @@ parse_options(){
         -bd=*|--bind_to=*)
           bind_to="${param#*=}"
 	;;
+        #####################################
+        # hold job
+        #####################################
+        --hold)
+          hold=1
+        ;;
       esac
       shift
     done
@@ -243,14 +252,13 @@ submit(){
       echo "" >> job.sh
     fi
 
-    # todo
     addition=""
     [[ -n ${bind_to} ]] && addition="$addition --cpu-bind=${bind_to}"
     echo "srun ${addition} ${Aspect_executable} ${filename}" >> job.sh
 
-    # submit the job
+    # submit the job, hold if the hold option is 1(todo)
 
-    eval "sbatch -p $partition job.sh"
+    (( hold == 0 )) && eval "sbatch -p $partition job.sh"
 
     # go back to previous dir
     cd "${previous_dir}"
