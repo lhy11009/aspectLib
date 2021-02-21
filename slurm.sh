@@ -169,6 +169,17 @@ parse_options(){
         -f=*|--float=*)
           float="${param#*=}"
         ;;
+        #####################################
+        # bind to
+	# todo
+        #####################################
+        -bd)
+          shift
+          bind_to="${1}"
+        ;;
+        -bd=*|--bind_to=*)
+          bind_to="${param#*=}"
+	;;
       esac
       shift
     done
@@ -232,7 +243,10 @@ submit(){
       echo "" >> job.sh
     fi
 
-    echo "srun ${Aspect_executable} ${filename}" >> job.sh
+    # todo
+    addition=""
+    [[ -n ${bind_to} ]] && addition="$addition --cpu-bind=${bind_to}"
+    echo "srun ${addition} ${Aspect_executable} ${filename}" >> job.sh
 
     # submit the job
 
@@ -368,7 +382,6 @@ main(){
 	fi
 	# output the message to be backwork compatible
 	echo "${_message}"
-	# todo
 	# bind this with aspect_lib.sh to pullout machine time
 	local sleep_duration
 	[[ -n ${float} ]] && sleep_duration="${float}" || sleep_duration=1
