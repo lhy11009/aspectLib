@@ -424,7 +424,8 @@ check_variable(){
 #   $2: standard output
 #   $3: output
 compare_outputs(){
-    if ! [[ $2 = "$3" ]]; then
+    diff_output=$(diff -nB "$2" "$3")
+    if [[ -n "${diff_output}" ]]; then
         cecho ${BAD} "$1 failed: output - ${3} is different from standard one - ${2}"
         return 1
     fi

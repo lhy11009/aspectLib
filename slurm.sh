@@ -374,8 +374,8 @@ main(){
         test_parse_command
 	test_submit
 
-    elif [[ ${_command} = "submit" ]]; then
-    	parse_options "$@"  # parse option with '-'
+  elif [[ ${_command} = "submit" && ${hold} -eq 0 ]]; then
+    parse_options "$@"  # parse option with '-'
 	# get job_id
 	local _message=$(submit)  # submit job
     	job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
@@ -399,6 +399,24 @@ main(){
         	eval "nohup ${dir}/aspect_lib.sh foo keep_write_time_log ${case_dir} ${job_id} ${log_file_time} -f ${sleep_duration}>/dev/null 2>&1 &"
 		return 0
 	fi
+    
+  elif [[ ${_command} = "submit" && ${hold} == 1 ]]; then
+    # this is different from hold = 0, in that 'hold = 1' first write to a queuing list
+    # and then handle the list accordingly
+  	parse_options "$@"  # parse option with '-'
+	  # get job_id
+	  local _message=$(submit)  # submit job
+	  # get case directory, be default it's the same as the prm file
+	  local case_dir=$(dirname "${filename}")
+	  case_dir=$(fix_route "${case_dir}")  # get a full route
+	  # call write_log from utilities.sh
+	  if [[ ${job_id} =~ ^[0-9]*$ && "${log_file}" != '' ]]; then
+		  [[ -e "${log_file}" ]] || write_log_header "${log_file}"  # write header when create a new file
+		  clean_log "${case_dir}" "${log_file}"  # clean older record of same case
+		  write_log "${case_dir}" "0000" "${log_file}"
+	  fi
+	  # output the message to be backwork compatible
+	  echo "${_message}"
 
     elif [[ ${_command} = "remote_test" ]]; then
 	# test submit to cluster
