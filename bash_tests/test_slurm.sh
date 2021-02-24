@@ -3,7 +3,7 @@
 ################################################################################
 # Tests functions for aspect_lib.sh
 # Run:
-#   ./test_slurm.sh
+#   ./test_slurm.sh TwoDSubduction lochy@peloton.cse.ucdavis.edu
 # Stdout:
 #   test results
 ################################################################################
@@ -40,6 +40,8 @@ test_slurm_submit_server1(){
         eval "cp -r ${remote_source_dir} ${remote_case_dir}"
         eval "slurm.sh -N 1 -n 16 -t 24 ${addition} -l ${remote_log_file} -lt ${remote_time_file} -P ${project} ${flag} ${remote_case_prm}"
 EOF
+    local _content=$(cat ".temp")
+    [[ ${_content} =~ "Failure" ]] && { cecho "${BAD}" "${FUNCNAME[0]}, failure in ssh process"; return 1; }
     
     # get job id
     local _info=$(cat '.temp'| sed -n '$'p)
@@ -88,6 +90,8 @@ test_slurm_submit_server2(){
         eval "cp -r ${remote_source_dir} ${remote_case_dir}"
         eval "slurm.sh -N 1 -n 16 -t 24 ${addition} -l ${remote_log_file} -lt ${remote_time_file} -P ${project} ${flag} ${remote_case_prm}"
 EOF
+    local _content=$(cat ".temp")
+    [[ ${_content} =~ "Failure" ]] && { cecho "${BAD}" "${FUNCNAME[0]}, failure in ssh process"; return 1; }
 
     # scp the job.sh file
     local job_sh_file="${ASPECT_LAB_DIR}/.test/job.sh"
@@ -95,7 +99,7 @@ EOF
 
     [[ "${server_info}" =~ "peloton" ]] && job_sh_file_std="${source_dir}/peloton_job_std.sh"
     [[ -e ${job_sh_file_std} ]] || { cecho "${BAD}" "${FUNCNAME[0]}, job_sh_file_std doesn't exist."; return 1; }
-    compare_outputs "${FUNCNAME[0]}" ${job_sh_file_std} ${job_sh_file}
+    compare_files "${FUNCNAME[0]}" ${job_sh_file_std} ${job_sh_file}
 }
 
 

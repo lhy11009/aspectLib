@@ -424,8 +424,7 @@ check_variable(){
 #   $2: standard output
 #   $3: output
 compare_outputs(){
-    diff_output=$(diff -nB "$2" "$3")
-    if [[ -n "${diff_output}" ]]; then
+    if ! [[ $2 = "$3" ]]; then
         cecho ${BAD} "$1 failed: output - ${3} is different from standard one - ${2}"
         return 1
     fi
@@ -447,7 +446,7 @@ compare_files(){
     [[ -e $3 ]] || { cecho ${BAD} "${FUNCNAME[0]}: file $3 doesn't exist"; exit 1; }
     
     # check_file
-    difference=$(diff $2 $3)
+    difference=$(diff -nB "$2" "$3")
     if [[ -n ${difference} ]]; then
         cecho ${BAD} "$1 failed: output file - ${3} is different from standard one - ${2}"
         return 1

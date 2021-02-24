@@ -189,6 +189,12 @@ parse_options(){
         --hold)
           hold=1
         ;;
+        #####################################
+        # use file
+        #####################################
+        --file=*)
+          job_file="${param#*=}"
+        ;;
       esac
       shift
     done
@@ -198,6 +204,8 @@ parse_options(){
     [[ -z ${float} || ${float} =~ ^[0-9\.]+$ ]] || { cecho ${BAD} "${FUNCNAME[0]}: entry for \${float} must be a float value"; exit 1; }
 }
 
+
+########################################
 submit(){
     # The useful part of your job goes below
 
@@ -256,13 +264,17 @@ submit(){
     [[ -n ${bind_to} ]] && addition="$addition --cpu-bind=${bind_to}"
     echo "srun ${addition} ${Aspect_executable} ${filename}" >> job.sh
 
-    # submit the job, hold if the hold option is 1(todo)
+    # submit the job, hold if the hold option is 1
 
     (( hold == 0 )) && eval "sbatch -p $partition job.sh"
 
     # go back to previous dir
     cd "${previous_dir}"
 }
+
+################################################################################
+# submit_with_file()
+################################################################################
 
 
 
@@ -369,52 +381,58 @@ test_submit(){
 
 main(){
     parse_command "$1" # parse the command
+    parse_options "$@"  # parse option with '-'
     quit_if_fail "No such command \"$1\""
     if [[ ${_command} = "test" ]]; then
         test_parse_command
 	test_submit
 
   elif [[ ${_command} = "submit" && ${hold} -eq 0 ]]; then
-    parse_options "$@"  # parse option with '-'
-	# get job_id
-	local _message=$(submit)  # submit job
-    	job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
-	# get case directory, be default it's the same as the prm file
-	local case_dir=$(dirname "${filename}")
-	case_dir=$(fix_route "${case_dir}")  # get a full route
-	# call write_log from utilities.sh
-	if [[ ${job_id} =~ ^[0-9]*$ && "${log_file}" != '' ]]; then
-		[[ -e "${log_file}" ]] || write_log_header "${log_file}"  # write header when create a new file
-		clean_log "${case_dir}" "${log_file}"  # clean older record of same case
-		write_log "${case_dir}" "${job_id}" "${log_file}"
-	fi
-	# output the message to be backwork compatible
-	echo "${_message}"
-	# bind this with aspect_lib.sh to pullout machine time
-	local sleep_duration
-	[[ -n ${float} ]] && sleep_duration="${float}" || sleep_duration=1
-	if [[ -n ${log_file_time} ]]; then
-		local log_file_time_dir=$(dirname "${log_file_time}")
-		[[ -d ${log_file_time_dir} ]] || mkdir "${log_file_time_dir}"
-        	eval "nohup ${dir}/aspect_lib.sh foo keep_write_time_log ${case_dir} ${job_id} ${log_file_time} -f ${sleep_duration}>/dev/null 2>&1 &"
-		return 0
-	fi
+    # parse_options "$@"  # parse option with '-'
+	  local _message; local case_dir
+  	if [[ -e "${job_file}" ]]; then
+  		# for this to work, the job_file need to be put in the case folder
+  		_message=$(sbatch ${job_file})
+  		# get job_id
+      		job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
+  		# get case directory, be default it's the same as the prm file
+  		case_dir=$(dirname "${job_file}")
+  		case_dir=$(fix_route "${case_dir}")  # get a full route
+  	else
+  		_message=$(submit)  # submit job
+  		# get job_id
+      		job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
+  		# get case directory, be default it's the same as the prm file
+  		case_dir=$(dirname "${filename}")
+  		case_dir=$(fix_route "${case_dir}")  # get a full route
+  	fi
+  	# call write_log from utilities.sh
+  	if [[ ${job_id} =~ ^[0-9]*$ && "${log_file}" != '' ]]; then
+  		[[ -e "${log_file}" ]] || write_log_header "${log_file}"  # write header when create a new file
+  		clean_log "${case_dir}" "${log_file}"  # clean older record of same case
+  		write_log "${case_dir}" "${job_id}" "${log_file}"
+  	fi
+  	# output the message to be backwork compatible
+  	echo "${_message}"
+  	# bind this with aspect_lib.sh to pullout machine time
+  	local sleep_duration
+  	[[ -n ${float} ]] && sleep_duration="${float}" || sleep_duration=1
+  	if [[ -n ${log_file_time} ]]; then
+  		local log_file_time_dir=$(dirname "${log_file_time}")
+  		[[ -d ${log_file_time_dir} ]] || mkdir "${log_file_time_dir}"
+          	eval "nohup ${dir}/aspect_lib.sh foo keep_write_time_log ${case_dir} ${job_id} ${log_file_time} -f ${sleep_duration}>/dev/null 2>&1 &"
+  		return 0
+  	fi
     
-  elif [[ ${_command} = "submit" && ${hold} == 1 ]]; then
+  elif [[ ${_command} = "submit" && ${hold} -eq 1 ]]; then
     # this is different from hold = 0, in that 'hold = 1' first write to a queuing list
     # and then handle the list accordingly
-  	parse_options "$@"  # parse option with '-'
+    echo "hold instead of submit"
 	  # get job_id
 	  local _message=$(submit)  # submit job
 	  # get case directory, be default it's the same as the prm file
 	  local case_dir=$(dirname "${filename}")
 	  case_dir=$(fix_route "${case_dir}")  # get a full route
-	  # call write_log from utilities.sh
-	  if [[ ${job_id} =~ ^[0-9]*$ && "${log_file}" != '' ]]; then
-		  [[ -e "${log_file}" ]] || write_log_header "${log_file}"  # write header when create a new file
-		  clean_log "${case_dir}" "${log_file}"  # clean older record of same case
-		  write_log "${case_dir}" "0000" "${log_file}"
-	  fi
 	  # output the message to be backwork compatible
 	  echo "${_message}"
 
