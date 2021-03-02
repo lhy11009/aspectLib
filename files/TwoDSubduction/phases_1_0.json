@@ -1,22 +1,23 @@
 {
     "_comments": ["This is the input of compositional phases, taken from table 1 of Arredondo& Billen 2017"],
     "background": {
-        "_comments": ["Pyrolite composition: 55% olivine, 40% pyroxene, 5% garnet"],
+        "_comments": ["Pyrolite composition: 55% olivine, 40% pyroxene, 5% garnet",
+                      "These entries are listed by depth"],
         "rho_base": 3300.0,
-        "drho": [520.0, 250.0, 670.0, 840.0, 560.0, 597.0, 1170.0],
+        "drho": [171.60, 86.790, 221.10, 298.90, 184.80, 208.04, 386.10],
         "xc": [0.55, 0.55, 0.05, 0.55, 0.4, 0.4, 0.4]
     },
     "spharz": {
         "_comments": ["Harzburgite composition: 80% olivine, 20% pyroxene"],
         "rho_base": 3235.0,
-        "drho": [520.0, 250.0, 670.0, 840.0, 560.0, 597.0, 1170.0],
+        "drho": [171.60, 86.790, 221.10, 298.90, 184.80, 208.04, 386.10],
         "xc": [0.8, 0.8, 0.0, 0.8, 0.20, 0.20, 0.20]
     },
     "spcrust": {
         "_comments": ["basalt composition: total garnet in MTZ in this paper",
                       "the 0.33, 0.67 numbers are picked up to mimic a whole mineralogy"],
         "rho_base": 3000.0,
-        "drho": [540.0, 670.0, 1170.0],
+        "drho": [540.0, 221.10, 386.10],
         "xc": [1.0, 0.33, 0.67]
     }
 }

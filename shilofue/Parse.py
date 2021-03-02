@@ -1090,15 +1090,21 @@ def UpdateProjectMd(_project_dict, _project_dir):
             _dir = os.path.join(_project_dir, key)
             _group_json = os.path.join(_dir, 'config.json')
             with open(_group_json, 'r') as fin:
-                _group_config_dict = json.load(fin)
+                try:
+                    _group_config_dict = json.load(fin)
+                except Exception:
+                    _group_config_dict = {}
             AutoMarkdownGroup(key, _group_config_dict, dirname=_dir)
         for _case in _project_dict[key]:
             # cases, as there are the value related to the key 'cases'
             # or related to the name of a group
             _case_dir = os.path.join(_dir, _case)
             _case_json = os.path.join(_case_dir, 'config.json')
-            with open(_case_json, 'r') as fin:
-                _case_config_dict = json.load(fin)
+            try:
+                with open(_case_json, 'r') as fin:
+                    _case_config_dict = json.load(fin)
+            except Exception:
+                _case_config_dict = {"config": {}, "extra":{}, "test":{}}
             AutoMarkdownCase(_case, _case_config_dict, dirname=_case_dir)
     
 
@@ -1123,10 +1129,10 @@ def UpdateProjectJson(_dir, **kwargs):
         # loop in _dir
         _fullsubname = os.path.join(_dir, _subname)
         if os.path.isdir(_fullsubname):
-            if 'config.json' in os.listdir(_fullsubname):
-                if 'case.prm' in os.listdir(_fullsubname):
-                    _cases.append(_subname)
-                else:
+            if 'case.prm' in os.listdir(_fullsubname):
+                _cases.append(_subname)
+            else:
+                if 'config.json' in os.listdir(_fullsubname):
                     _groups.append(_subname)
     # construct a output dictionary
     _odict = {"cases": _cases}
@@ -1220,7 +1226,7 @@ def GetSubCases(_dir):
     case_dirs = []
 
     # look for config.json and case.prm
-    if 'config.json' in os.listdir(dir_abs) and 'case.prm' in os.listdir(dir_abs):
+    if 'case.prm' in os.listdir(dir_abs):
         case_dirs.append(dir_abs)
 
     # loop in _dir and iteration
@@ -1291,7 +1297,7 @@ def main():
 
     if _commend == 'phase_input':
         # example:
-        #   python -m shilofue.Parse phase_input -j ./files/TwoDSubduction/pyrolite_phases_1_0.json
+        #   python -m shilofue.Parse phase_input -j ./files/TwoDSubduction/phases_1_0.json
         my_assert(os.access(arg.json_file, os.R_OK), FileExistsError, "Json file doesn't exist.")
         with open(arg.json_file) as fin:
             inputs = json.load(fin)

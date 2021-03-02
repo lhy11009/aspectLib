@@ -387,3 +387,11 @@ def AveragePhaseFunctionInputs(x1, x2):
     average[is_lower_right] = x2[is_lower_right]
     average[is_middle] = pin_point - np.sqrt((pin_point - x1[is_middle])**2.0 + (pin_point - x2[is_middle])**2.0)
     return average
+
+
+def touch(path):
+    """
+    touch a file as in unix system
+    """
+    with open(path, 'a'):
+        os.utime(path, None)

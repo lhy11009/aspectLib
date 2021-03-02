@@ -838,7 +838,7 @@ EOF
     # make case P16
     local remote_case_dir
     local case_dir
-    local number_of_nodes=(1 1 1 1 1 1 1 2 2)
+    local number_of_nodes=(1 1 1 1 1 1 1 2 1)
     local number_of_cores=(2 4 4 8 16 32 64 64 64)
     local bind_to_cores=(0 0 1 0 0 0 0 0 0)
     local bind_to_threads=(0 0 0 0 0 0 0 0 1)

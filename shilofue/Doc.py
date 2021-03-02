@@ -11,7 +11,7 @@ from matplotlib import cm
 from importlib import resources
 from shutil import copyfile
 from pathlib import Path
-from shilofue.Utilities import my_assert, re_neat_word, re_count_indent
+from shilofue.Utilities import my_assert, re_neat_word, re_count_indent, touch
 
 
 
@@ -446,8 +446,14 @@ class MKDOC():
         _extra_mkd_file = os.path.join(_dir, 'extra.md')
         
         # copy the auto.mkd file from case directory
-        assert (os.path.isfile(_auto_mkd_file))
-        copyfile(_auto_mkd_file, _filename)
+        # my_assert (os.path.isfile(_auto_mkd_file), AssertionError, "%s is unreadable" % _auto_mkd_file)
+        # copyfile(_auto_mkd_file, _filename)
+        
+        if os.path.isfile(_auto_mkd_file):
+            copyfile(_auto_mkd_file, _filename)
+        else:
+            touch(_filename)
+            
         
         # apppend contents of extra.mkd at the end of case.mkd
         if (os.path.isfile(_extra_mkd_file)):
