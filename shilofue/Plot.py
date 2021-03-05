@@ -829,3 +829,59 @@ One option is to delete incorrect file before running again" % _machine_time_fil
                     print('Plot has been generated: ', _ofile_exact)  # screen output
     
     pass
+
+
+# analyze test result
+# todo
+def analyze_affinity_test_results(test_results_dir):
+    '''
+    analyze affinity test results
+    '''
+    pass
+
+# a main function
+# todo
+def main():
+    '''
+    main function of this module
+    Inputs:
+        sys.arg[1](str):
+            commend
+        sys.arg[2, :](str):
+            options
+    '''
+    _commend = sys.argv[1]
+    # parse options
+    parser = argparse.ArgumentParser(description='Parse parameters')
+    parser.add_argument('-j', '--json_file', type=str,
+                        default='./config_case.json',
+                        help='Filename for json file')
+    _options = []
+    try:
+        _options = sys.argv[2: ]
+    except IndexError:
+        pass
+    arg = parser.parse_args(_options)
+
+    # commands
+
+    if _commend == 'phase_input':
+        # example:
+        #   python -m shilofue.Parse phase_input -j ./files/TwoDSubduction/phases_1_0.json
+        my_assert(os.access(arg.json_file, os.R_OK), FileExistsError, "Json file doesn't exist.")
+        with open(arg.json_file) as fin:
+            inputs = json.load(fin)
+
+        # get the outputs
+        outputs = "density = "
+        for key, value in inputs.items():
+            if type(value) == dict:
+                output = ParsePhaseInput(value)
+                outputs += "%s: %s, " % (key, output)
+
+        # print the output 
+        print(outputs)
+
+# run script
+if __name__ == '__main__':
+    main()

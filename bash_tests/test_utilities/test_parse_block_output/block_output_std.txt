@@ -1,0 +1,4 @@
+# Assemble Stokes system
+# Setup matrices
+155  314  314 
+18.2  18.2  18.2 

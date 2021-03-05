@@ -663,6 +663,93 @@ parse_output_value(){
     return 0
 }
 
+################################################################################
+# Parse value in output, looking for the block output of aspect
+# Inputs:
+#   $1(str): logfile
+# Outputs:
+#   ??: 
+#       entries:
+#           0: Total wallclock time elapsed since start
+#           1: Assemble Stokes system
+#           2: Assemble composition system
+#           3: Assemble temperature system
+#           4: Build Stokes preconditioner
+#           5: Build composition preconditioner
+#           6: Build temperature preconditioner
+#           7: Initialization
+#           8: Postprocessing
+#           9: Setup dof systems
+#           10: Setup initial conditions
+#           11: Setup matrices
+#           12: Solve Stokes system
+#           13: Solve composition system
+#           14: Solve temperature system
+parse_block_output(){
+    local logfile="$1"
+    local key="$2"
+    [[ -e ${logfile} ]] || cehco ${BAD} "${FUNCNAME[0]}: logfile doesn't exist"
+    # read file from the end
+    local parse_results=$(eval "awk '/${key}/{print}' ${log_file} | sed 's/${key}//g' |  awk '{print \$5}' | sed ':a;N;\$!ba;s/\n/ /g'")
+    return_values=("${parse_results}")
+}
+
+################################################################################
+# Parse value in output, looking for the block output of aspect
+# Inputs:
+#   $1(str): logfile
+#   $2(str): ofile
+#   $3-: keys
+# todo
+parse_block_output_to_file(){
+    local logfile="$1"
+    local ofile="$2"
+    # checkfile exist
+    [[ -e ${logfile} ]] || cehco ${BAD} "${FUNCNAME[0]}: logfile doesn't exist"
+
+    # loop for key
+    local i=3
+    local key=${!i}
+    local contents=""
+    local header=""
+    while [[ -n ${key} ]]; do
+        header="${header}# ${key}\n"
+        parse_block_output "${log_file}" "${key}"
+        output=$(echo ${return_values[@]} | sed -E "s/[^0-9.]/ /g")  # could be wrong when it is scientific expression
+        [[ -n ${contents} ]] && contents="${contents}\n${output}" || contents=${output}
+        ((i++))
+        key=${!i}
+    done
+
+    # output
+    printf "${header}" > "${ofile}"
+    printf "${contents}" >> "${ofile}"
+}
+
+
+################################################################################
+# flip row and column in a file
+# Inputs:
+#   $1: input string
+flip_rc(){
+    echo "$1" | awk '
+    { 
+        for (i=1; i<=NF; i++)  {
+            a[NR,i] = $i
+        }
+    }
+    NF>p { p = NF }
+    END {    
+        for(j=1; j<=p; j++) {
+            str=a[1,j]
+            for(i=2; i<=NR; i++){
+                str=str" "a[i,j];
+            }
+            print str
+        }
+    }'
+}
+
 
 ################################################################################
 # return list of groups and cases
