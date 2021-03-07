@@ -1,4 +1,6 @@
+# Total wallclock time elapsed since start
 # Assemble Stokes system
 # Setup matrices
+497  950  950 
 155  314  314 
 18.2  18.2  18.2 

@@ -4,10 +4,18 @@ import json
 import re
 import shilofue.json
 import warnings
+import argparse
+import subprocess
+import pathlib
 import numpy as np
 from importlib import resources
 from shilofue.Utilities import JsonOptions, ReadHeader, ReadHeader2, UNITCONVERT, my_assert
 from matplotlib import pyplot as plt
+
+
+# directory to the aspect Lab
+ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+
 
 class LINEARPLOT():
     '''
@@ -374,7 +382,6 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
         
     def ReadDataStep(self, _filename, **kwargs):
         '''
-        todo
         Read data of a time step, currently only read the first time step.
         Attributes:
             _filename(string):
@@ -396,7 +403,6 @@ class DEPTH_AVERAGE_PLOT(LINEARPLOT):
             raise TypeError('type of values in time needs to be in [float, int, list, np.ndarrayy]')
         _data_list = self.ManageData(_t)  # manage output data
 
-        # todo 
         data_type = kwargs.get('datatype', None)
         if data_type is None:
             return _data_list
@@ -831,14 +837,6 @@ One option is to delete incorrect file before running again" % _machine_time_fil
     pass
 
 
-# analyze test result
-# todo
-def analyze_affinity_test_results(test_results_dir):
-    '''
-    analyze affinity test results
-    '''
-    pass
-
 # a main function
 # todo
 def main():
@@ -856,6 +854,9 @@ def main():
     parser.add_argument('-j', '--json_file', type=str,
                         default='./config_case.json',
                         help='Filename for json file')
+    parser.add_argument('-i', '--inputs', type=str,
+                        default='',
+                        help='A directory that contains the input')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -865,22 +866,11 @@ def main():
 
     # commands
 
-    if _commend == 'phase_input':
+    if _commend == 'analyze_affinity_test_results':
         # example:
-        #   python -m shilofue.Parse phase_input -j ./files/TwoDSubduction/phases_1_0.json
-        my_assert(os.access(arg.json_file, os.R_OK), FileExistsError, "Json file doesn't exist.")
-        with open(arg.json_file) as fin:
-            inputs = json.load(fin)
-
-        # get the outputs
-        outputs = "density = "
-        for key, value in inputs.items():
-            if type(value) == dict:
-                output = ParsePhaseInput(value)
-                outputs += "%s: %s, " % (key, output)
-
-        # print the output 
-        print(outputs)
+        # python -m shilofue.Plot analyze_affinity_test_results
+        # -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/rene_affinity_test/results/spherical_shell_expensive_solver/peloton-ii-32tasks-core-openmpi-4.0.1
+        analyze_affinity_test_results(arg.inputs)
 
 # run script
 if __name__ == '__main__':
