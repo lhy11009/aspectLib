@@ -24,13 +24,14 @@ import pathlib, subprocess
 import numpy as np
 from matplotlib import cm
 from matplotlib import pyplot as plt
+from shilofue.Utilities import my_assert
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 
 # analyze test result
 # todo
-def analyze_affinity_test_results(test_results_dir):
+def analyze_affinity_test_results(test_results_dir, output_dir):
     '''
     analyze affinity test results
     '''
@@ -43,10 +44,13 @@ def analyze_affinity_test_results(test_results_dir):
     # go into sub dirs
     temp_file = os.path.join(ASPECT_LAB_DIR, 'temp')  # file to save partial results
     path_obj = pathlib.Path(test_results_dir).rglob("output*")
+    i = 0
     for _path in path_obj:
+        i += 1
         output_file = str(_path)
         output_path = os.path.join(test_results_dir, output_file)
         patterns = output_file.split('_')
+        print("Output file found: %s" % output_path)
         # append data
         subprocess.run("%s/bash_scripts/parse_block_output.sh  analyze_affinity_test_results %s %s" 
                        % (ASPECT_LAB_DIR, output_file, temp_file), shell=True)
@@ -61,6 +65,7 @@ def analyze_affinity_test_results(test_results_dir):
             setups.append(int(patterns[-1]))
             resolutions.append(int(patterns[-2]))
             cores.append(int(patterns[-3]))
+    my_assert(i > 0, AssertionError, "There is no output* file in the folder %s" % test_results_dir)
 
     setups = np.array(setups)
     resolutions = np.array(resolutions)
@@ -78,12 +83,12 @@ def analyze_affinity_test_results(test_results_dir):
     print("solve_stokes_system:", solve_stokes_system)
     
     # plot via matplotlib
-    odir = os.path.dirname(output_file)  # save in the save dir as the output file
-
     resolution_options = []
     for resolution in resolutions:
         if resolution not in resolution_options:
             resolution_options.append(resolution)
+    resolution_options = np.array(resolution_options)
+    resolution_options = np.sort(resolution_options)
 
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
     for i in range(len(resolution_options)):
@@ -92,31 +97,38 @@ def analyze_affinity_test_results(test_results_dir):
         xs = cores[plot_indexes]
         sequential_indexes = np.argsort(xs)
         ys1 = total_wall_clock[plot_indexes]
-        axs[0].plot(xs[sequential_indexes], ys1[sequential_indexes], ".-", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-                label='Total Wall Clock(resolution=%d)' % resolution)
+        # labels
+        _label0 = 'Total Wall Clock(resolution=%d)' % resolution
+        _label1 = 'Assemble Stokes System(resolution=%d)' % resolution
+        _label2 = 'Solve Stokes System(resolution=%d)' % resolution
+        # plot
+        axs[0].loglog(xs[sequential_indexes], ys1[sequential_indexes], ".-", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+                label=_label0)
         ys2 = assemble_stokes_system[plot_indexes]
-        axs[0].plot(xs[sequential_indexes], ys2[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-                label='Assemble Stokes System(resolution=%d)' % resolution)
+        axs[0].loglog(xs[sequential_indexes], ys2[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+                label=_label1)
         ys3 = ys2 / ys1
-        axs[1].plot(xs[sequential_indexes], ys3[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-                label='Assemble Stokes System(resolution=%d)' % resolution)
+        axs[1].semilogx(xs[sequential_indexes], ys3[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+                label=_label1)
         ys4 = solve_stokes_system[plot_indexes]
-        axs[0].plot(xs[sequential_indexes], ys4[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-                label='Solve Stokes System(resolution=%d)' % resolution)
+        axs[0].loglog(xs[sequential_indexes], ys4[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+                label=_label2)
         ys5 = ys4 / ys1
-        axs[1].plot(xs[sequential_indexes], ys5[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-                label='Solve Stokes System(resolution=%d)' % resolution)
+        axs[1].semilogx(xs[sequential_indexes], ys5[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+                label=_label2)
     axs[0].set_xlabel('Cores')
     axs[0].set_ylabel('Time [s]')
     axs[0].grid()
     axs[0].set_title('Wall Clock')
-    axs[0].legend()
+    axs[0].legend(fontsize='x-small')
     axs[1].set_xlabel('Cores')
     axs[1].set_ylabel('Percentage')
     axs[1].grid()
     axs[1].set_title('Percentage of Each Part')
+    # title and save path 
+    basename = os.path.basename(test_results_dir)
     fig.tight_layout()
-    filepath='%s/job_time.png' % odir
+    filepath='%s/%s.png' % (output_dir, basename)
     print("output file generated: ", filepath)
     plt.savefig(filepath)
 
@@ -137,6 +149,9 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='Some inputs')
+    parser.add_argument('-o', '--outputs', type=str,
+                        default='.',
+                        help='Some outputs')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -149,7 +164,7 @@ def main():
         # example:
         # python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results
         # -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/rene_affinity_test/results/spherical_shell_expensive_solver/peloton-ii-32tasks-core-openmpi-4.0.1
-        analyze_affinity_test_results(arg.inputs)
+        analyze_affinity_test_results(arg.inputs, arg.outputs)
 
 # run script
 if __name__ == '__main__':
