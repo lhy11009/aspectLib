@@ -4,12 +4,15 @@
 # Tests functions for aspect_lib.sh
 # Run:
 #   ./test_aspect_lib.sh
+# Dependency:
+#    env:
+#        ASPECT_LAB_DIR
 # Stdout:
 #   test results
 ################################################################################
 
-source "${ASPECT_LAB_DIR}/utilities.sh"
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source "${ASPECT_LAB_DIR}/bash_scripts/utilities.sh"
 test_output_dir="${ASPECT_LAB_DIR}/.test"
 test_dir="${dir}/test_utilities"
 
@@ -345,9 +348,9 @@ main(){
     ((failed_tests+=local_failed_tests))
 
     # test read_json_file
-    test_read_json_file
-    ((passed_tests+=local_passed_tests))
-    ((failed_tests+=local_failed_tests))
+    # test_read_json_file
+    # ((passed_tests+=local_passed_tests))
+    # ((failed_tests+=local_failed_tests))
 
     # test parse_stdout1
     test_parse_stdout1
