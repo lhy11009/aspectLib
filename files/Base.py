@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 r"""(one line description)
 
 This exports: 
@@ -27,6 +28,8 @@ from matplotlib import pyplot as plt
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+# directory to shilofue
+shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
 def SomeFunction(foo):
     '''
