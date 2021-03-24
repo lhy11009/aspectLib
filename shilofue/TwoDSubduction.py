@@ -186,11 +186,12 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
             activation_energies_for_diffusion_creep.data['background'].append(backgroud_lower_mantle_diffusion['E'])
             activation_volumes_for_diffusion_creep.data['background'].append(backgroud_lower_mantle_diffusion['V'])
         # spcrust
-        prefactors_for_diffusion_creep.data['spcrust'] = []
-        grain_size_exponents_for_diffusion_creep.data['spcrust'] = []
-        activation_energies_for_diffusion_creep.data['spcrust'] = []
-        activation_volumes_for_diffusion_creep.data['spcrust'] = []
-        for i in range(index_660_crust):
+        prefactors_for_diffusion_creep.data['spcrust'] = [prefactors_for_diffusion_creep.data['spcrust'][0]]
+        grain_size_exponents_for_diffusion_creep.data['spcrust'] = [grain_size_exponents_for_diffusion_creep.data['spcrust'][0]]
+        activation_energies_for_diffusion_creep.data['spcrust'] = [activation_energies_for_diffusion_creep.data['spcrust'][0]]
+        activation_volumes_for_diffusion_creep.data['spcrust'] = [activation_volumes_for_diffusion_creep.data['spcrust'][0]]
+        for i in range(1, index_660_crust):
+            # index 0 is the shear zone, it shouldn't be changed here
             prefactors_for_diffusion_creep.data['spcrust'].append(backgroud_upper_mantle_diffusion['A'])
             grain_size_exponents_for_diffusion_creep.data['spcrust'].append(backgroud_upper_mantle_diffusion['m'])
             activation_energies_for_diffusion_creep.data['spcrust'].append(backgroud_upper_mantle_diffusion['E'])
