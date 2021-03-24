@@ -49,10 +49,14 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
         if _type == 0:
             # when phase transition only happens on mantle composition
             self.LowerMantle0(Inputs, _config)
-        if _type == 1:
+        elif _type == 1:
             # when phase transition only happens on all compositions
             # There is a eclogite transition of crustal layer
             self.LowerMantle1(Inputs, _config)
+        elif _type == 2:
+            # setup lower mantle rheology for phase transition in a CDPT model
+            # There is a eclogite transition of crustal layer
+            self.LowerMantle2(Inputs, _config)
 
     def LowerMantle0(self, Inputs, _config):
         """
@@ -136,6 +140,89 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
         visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
         visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
         return Inputs
+    
+    def LowerMantle2(self, Inputs, _config):
+        """
+        calculate flow law parameters of the lower mantle for CDPT model
+        There is a eclogite transition of crustal layer
+        """
+        index_660 = 4
+        index_all = 8
+        index_660_crust = 2
+        index_all_crust = 4
+        # parse from input
+        jump = _config['upper_lower_viscosity']
+        T = _config['T660']
+        P = _config['P660']
+        V1 = _config['LowerV']
+        visco_plastic = Inputs["Material model"]['Visco Plastic']
+        prefactors_for_diffusion_creep = Parse.COMPOSITION(visco_plastic["Prefactors for diffusion creep"])
+        grain_size = float(visco_plastic["Grain size"])
+        grain_size_exponents_for_diffusion_creep  = Parse.COMPOSITION(visco_plastic["Grain size exponents for diffusion creep"])
+        activation_energies_for_diffusion_creep = Parse.COMPOSITION(visco_plastic["Activation energies for diffusion creep"])
+        activation_volumes_for_diffusion_creep  = Parse.COMPOSITION(visco_plastic["Activation volumes for diffusion creep"])
+        # call GetLowerMantleRheology to derive parameters for lower mantle flow law 
+        backgroud_upper_mantle_diffusion = {}
+        backgroud_upper_mantle_diffusion['A'] = prefactors_for_diffusion_creep.data['background'][0] 
+        backgroud_upper_mantle_diffusion['d'] = grain_size
+        backgroud_upper_mantle_diffusion['n'] = 1.0 
+        backgroud_upper_mantle_diffusion['m'] = grain_size_exponents_for_diffusion_creep.data['background'][0] 
+        backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
+        backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0] 
+        backgroud_lower_mantle_diffusion = Rheology.GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='A')
+        # background (pyrolite)
+        prefactors_for_diffusion_creep.data['background'] = []
+        grain_size_exponents_for_diffusion_creep.data['background'] = []
+        activation_energies_for_diffusion_creep.data['background'] = []
+        activation_volumes_for_diffusion_creep.data['background'] = []
+        for i in range(index_660):
+            prefactors_for_diffusion_creep.data['background'].append(backgroud_upper_mantle_diffusion['A'])
+            grain_size_exponents_for_diffusion_creep.data['background'].append(backgroud_upper_mantle_diffusion['m'])
+            activation_energies_for_diffusion_creep.data['background'].append(backgroud_upper_mantle_diffusion['E'])
+            activation_volumes_for_diffusion_creep.data['background'].append(backgroud_upper_mantle_diffusion['V'])
+        for i in range(index_660, index_all):
+            prefactors_for_diffusion_creep.data['background'].append(backgroud_lower_mantle_diffusion['A'])
+            grain_size_exponents_for_diffusion_creep.data['background'].append(backgroud_lower_mantle_diffusion['m'])
+            activation_energies_for_diffusion_creep.data['background'].append(backgroud_lower_mantle_diffusion['E'])
+            activation_volumes_for_diffusion_creep.data['background'].append(backgroud_lower_mantle_diffusion['V'])
+        # spcrust
+        prefactors_for_diffusion_creep.data['spcrust'] = []
+        grain_size_exponents_for_diffusion_creep.data['spcrust'] = []
+        activation_energies_for_diffusion_creep.data['spcrust'] = []
+        activation_volumes_for_diffusion_creep.data['spcrust'] = []
+        for i in range(index_660_crust):
+            prefactors_for_diffusion_creep.data['spcrust'].append(backgroud_upper_mantle_diffusion['A'])
+            grain_size_exponents_for_diffusion_creep.data['spcrust'].append(backgroud_upper_mantle_diffusion['m'])
+            activation_energies_for_diffusion_creep.data['spcrust'].append(backgroud_upper_mantle_diffusion['E'])
+            activation_volumes_for_diffusion_creep.data['spcrust'].append(backgroud_upper_mantle_diffusion['V'])
+        for i in range(index_660_crust, index_all_crust):
+            prefactors_for_diffusion_creep.data['spcrust'].append(backgroud_lower_mantle_diffusion['A'])
+            grain_size_exponents_for_diffusion_creep.data['spcrust'].append(backgroud_lower_mantle_diffusion['m'])
+            activation_energies_for_diffusion_creep.data['spcrust'].append(backgroud_lower_mantle_diffusion['E'])
+            activation_volumes_for_diffusion_creep.data['spcrust'].append(backgroud_lower_mantle_diffusion['V'])
+        # harz
+        prefactors_for_diffusion_creep.data['spharz'] = []
+        grain_size_exponents_for_diffusion_creep.data['spharz'] = []
+        activation_energies_for_diffusion_creep.data['spharz'] = []
+        activation_volumes_for_diffusion_creep.data['spharz'] = []
+        for i in range(index_660):
+            prefactors_for_diffusion_creep.data['spharz'].append(backgroud_upper_mantle_diffusion['A'])
+            grain_size_exponents_for_diffusion_creep.data['spharz'].append(backgroud_upper_mantle_diffusion['m'])
+            activation_energies_for_diffusion_creep.data['spharz'].append(backgroud_upper_mantle_diffusion['E'])
+            activation_volumes_for_diffusion_creep.data['spharz'].append(backgroud_upper_mantle_diffusion['V'])
+        for i in range(index_660, index_all):
+            prefactors_for_diffusion_creep.data['spharz'].append(backgroud_lower_mantle_diffusion['A'])
+            grain_size_exponents_for_diffusion_creep.data['spharz'].append(backgroud_lower_mantle_diffusion['m'])
+            activation_energies_for_diffusion_creep.data['spharz'].append(backgroud_lower_mantle_diffusion['E'])
+            activation_volumes_for_diffusion_creep.data['spharz'].append(backgroud_lower_mantle_diffusion['V'])
+      
+        # parse back
+        visco_plastic["Prefactors for diffusion creep"] = prefactors_for_diffusion_creep.parse_back()
+        visco_plastic["Grain size exponents for diffusion creep"] = grain_size_exponents_for_diffusion_creep.parse_back()
+        visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
+        visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
+        return Inputs
+
 
     def Particle(self, Inputs, _config):
         """
