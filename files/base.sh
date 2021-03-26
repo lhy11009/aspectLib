@@ -5,11 +5,15 @@
 # (Descriptions)
 #
 # Dependencies:
+#    env:
+#        ASPECT_LAB_DIR
+#        ASPECT_SOURCE_DIR
 #
 # Example Usage:
 ################################################################################
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
+# source "${ASPECT_LAB_DIR}/bash_scripts/utilities.sh"
 
 some_func(){
     ###
