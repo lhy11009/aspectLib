@@ -245,6 +245,7 @@ submit(){
     echo "#SBATCH -n $total_tasks" >> job.sh
     # tasks per node
     ((tasks_per_nodes=total_tasks/nnode))
+    echo "#SBATCH --threads-per-core=2" >> job.sh
     echo "#SBATCH --tasks-per-node=${tasks_per_nodes}" >> job.sh
     echo "#SBATCH -o $name-%j.stdout" >> job.sh
     echo "#SBATCH -e $name-%j.stderr" >> job.sh
