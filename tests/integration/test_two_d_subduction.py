@@ -3,6 +3,7 @@ import json
 import filecmp
 import shilofue.TwoDSubduction as TwoDSubduction
 import shilofue.Parse as Parse
+import shilofue.ParsePrm as ParsePrm
 import shilofue.Utilities as Utilities
 from shutil import rmtree
 
@@ -25,7 +26,7 @@ def test_generate_case():
     _standard_prm_file = os.path.join(parse_dir, 'standard_base.prm')
     # Read files
     with open(_test_prm_file, 'r') as fin:
-        _inputs = Parse.ParseFromDealiiInput(fin)
+        _inputs = ParsePrm.ParseFromDealiiInput(fin)
     with open(_config_file, 'r') as fin:
         _config = json.load(fin)
     # Initiate Class MyCase
@@ -50,7 +51,7 @@ def test_generate_case():
     _standard_prm_file = os.path.join(parse_dir, 'standard_base_1.prm')
     # Read files
     with open(_test_prm_file, 'r') as fin:
-        _inputs = Parse.ParseFromDealiiInput(fin)
+        _inputs = ParsePrm.ParseFromDealiiInput(fin)
     with open(_config_file, 'r') as fin:
         _json_inputs = json.load(fin)
         _config = _json_inputs['config']
@@ -76,7 +77,7 @@ def test_generate_case():
     _standard_prm_file = os.path.join(parse_dir, 'standard_non_linear_1e18.prm')
     # Read files
     with open(_test_prm_file, 'r') as fin:
-        _inputs = Parse.ParseFromDealiiInput(fin)
+        _inputs = ParsePrm.ParseFromDealiiInput(fin)
     with open(_config_file, 'r') as fin:
         _json_inputs = json.load(fin)
         _config = _json_inputs['config']
@@ -102,7 +103,7 @@ def test_generate_case():
     _standard_prm_file = os.path.join(parse_dir, 'crust_terminate_standard.prm')
     # Read files
     with open(_test_prm_file, 'r') as fin:
-        _inputs = Parse.ParseFromDealiiInput(fin)
+        _inputs = ParsePrm.ParseFromDealiiInput(fin)
     with open(_config_file, 'r') as fin:
         _json_inputs = json.load(fin)
         _config = _json_inputs['config']
@@ -130,7 +131,7 @@ def test_generate_group():
     os.mkdir(_odir)
     # Read files
     with open(_test_prm_file, 'r') as fin:
-        _inputs = Parse.ParseFromDealiiInput(fin)
+        _inputs = ParsePrm.ParseFromDealiiInput(fin)
     with open(_config_file, 'r') as fin:
         _json_inputs = json.load(fin)
     # Initial test group

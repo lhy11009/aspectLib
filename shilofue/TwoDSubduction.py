@@ -7,6 +7,7 @@ import warnings
 import pdb
 import numpy as np
 import shilofue.Parse as Parse
+import shilofue.ParsePrm as ParsePrm
 import shilofue.Doc as Doc
 import shilofue.Plot as Plot
 import shilofue.Rheology as Rheology
@@ -748,7 +749,7 @@ def main():
         else:
             _filename = arg.base_file
         with open(_filename, 'r') as fin:
-            _inputs = Parse.ParseFromDealiiInput(fin)
+            _inputs = ParsePrm.ParseFromDealiiInput(fin)
         if not os.path.isdir(arg.output_dir):
             os.mkdir(arg.output_dir)
             print('Now we create a group of cases:')  # screen output
@@ -800,7 +801,7 @@ def main():
         else:
             _filename = arg.base_file
         with open(_filename, 'r') as fin:
-            _inputs = Parse.ParseFromDealiiInput(fin)
+            _inputs = ParsePrm.ParseFromDealiiInput(fin)
         if not os.path.isdir(arg.output_dir):
             os.mkdir(arg.output_dir)
         # Initial a case

@@ -2,9 +2,8 @@ import os
 import sys
 import json
 import argparse
+import shilofue.ParsePrm as ParsePrm
 from shilofue.Parse import COMPOSITION
-from shilofue.Parse import ParseFromDealiiInput
-from shilofue.Parse import ParseToDealiiInput
 from shilofue.Parse import CASE, GROUP_CASE, UpdateProjectMd, UpdateProjectJson, AutoMarkdownCase, AutoMarkdownGroup
 from shilofue.Rheology import GetLowerMantleRheology
 from shilofue.Utilities import my_assert
@@ -140,12 +139,12 @@ def Parse(ifile, ofile):
     assert(os.access(ifile, os.R_OK))
     # todo
     with open(ifile, 'r') as fin:
-        inputs = ParseFromDealiiInput(fin)
+        inputs = ParsePrm.ParseFromDealiiInput(fin)
     # todo
     LowerMantle(inputs, 30.0, 1663.0, 21e9, 1.5e-6)
     # todo
     with open(ofile, 'w') as fout:
-        ParseToDealiiInput(fout, inputs)
+        ParsePrm.ParseToDealiiInput(fout, inputs)
 
 
 class MYCASE(CASE):
@@ -231,7 +230,7 @@ def main():
         else:
             _filename = arg.base_file
         with open(_filename, 'r') as fin:
-            _inputs = ParseFromDealiiInput(fin)
+            _inputs = ParsePrm.ParseFromDealiiInput(fin)
         if not os.path.isdir(arg.output_dir):
             os.mkdir(arg.output_dir)
         # create a directory under the name of the group
@@ -274,7 +273,7 @@ def main():
         else:
             _filename = arg.base_file
         with open(_filename, 'r') as fin:
-            _inputs = ParseFromDealiiInput(fin)
+            _inputs = ParsePrm.ParseFromDealiiInput(fin)
         if not os.path.isdir(arg.output_dir):
             os.mkdir(arg.output_dir)
         # Initial a case

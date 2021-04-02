@@ -6,6 +6,7 @@ import sys
 import argparse
 import numpy as np
 import shilofue.Plot as Plot
+import shilofue.ParsePrm as ParsePrm
 from shilofue.Utilities import my_assert, re_neat_word, WriteFileHeader
 
 '''
@@ -221,7 +222,7 @@ class CASE():
             # At last, export a .prm file
             _filename = os.path.join(_case_dir, 'case.prm')
             with open(_filename, 'w') as fout:
-                ParseToDealiiInput(fout, self.idict)
+                ParsePrm.ParseToDealiiInput(fout, self.idict)
 
             # output particle data to an ascii file
             if self.particle_data is not None:
@@ -239,7 +240,7 @@ class CASE():
             # export a .prm file
             _filename = kwargs.get('filename', None)
             with open(_filename, 'w') as fout:
-                ParseToDealiiInput(fout, self.idict)
+                ParsePrm.ParseToDealiiInput(fout, self.idict)
             pass
         return self.case_name
 
@@ -605,7 +606,7 @@ class BASH_OPTIONS():
         my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,
                   'BASH_OPTIONS.__init__: case prm file - %s cannot be read' % prm_file)
         with open(prm_file, 'r') as fin:
-            self.idict = ParseFromDealiiInput(fin)
+            self.idict = ParsePrm.ParseFromDealiiInput(fin)
 
         # initiate a dictionary
         self.odict = {}
@@ -766,91 +767,6 @@ class VISIT_XYZ():
         ofile = kwargs.get('ofile', None)
         if ofile is not None:
             self.Output(ofile)
-
-
-def ParseFromDealiiInput(fin):
-    """
-    ParseFromDealiiInput(fin)
-
-    Parse Dealii input file to a python dictionary
-    """
-    inputs = {}
-    line = fin.readline()
-    while line is not "":
-        # Inputs formats are
-        # comment: "# some comment"
-        # start and end of new section:
-        # "subsection name" and "end"
-        # set variables values:
-        # 'set key = val'
-        if re.match('^(\t| )*#', line):
-            # Skip comment lines, mark by '#' in file
-            pass
-        elif re.match('^(\t| )*set', line):
-            # Parse key and value
-            # from format in file as 'set key = val'
-            # to a dictionary inputs
-            # inputs[key] = val
-            temp = re.sub('^(\t| )*set ', '', line, count=1)
-            temp = temp.split('=', maxsplit=1)
-            key = temp[0]
-            key = re.sub('(\t| )*$', '', key)
-            # key = key.strip(' ')
-            value = temp[1]
-            value = re.sub('^ *', '', value)
-            value = re.sub(' *(#.*)?\n$', '', value)
-            while value[-1] == '\\':
-                # Deal with entries that extent to
-                # multiple lines
-                line = fin.readline()
-                line = re.sub(' *(#.*)?\n$', '', line)
-                value = value + '\n' + line
-            inputs[key] = value
-        elif re.match('^.*subsection', line):
-            # Start a new subsection
-            # Initialize new dictionary and interatively call function,
-            key = re.sub('^.*subsection ', '', line)
-            key = key.strip('\n')
-            try:
-                # Fix the bug where a subsection emerges
-                # multiple times
-                inputs[key]
-            except KeyError:
-                inputs[key] = ParseFromDealiiInput(fin)
-            else:
-                temp = ParseFromDealiiInput(fin)
-                inputs[key].update(temp.items())
-        elif re.match('^.*end', line):
-            # Terminate and return, marked by 'end' in file
-            return inputs
-        line = fin.readline()
-    return inputs
-
-
-def ParseToDealiiInput(fout, outputs, layer=0):
-    """
-    def ParseToDealiiInput(fout, outputs, layer=0)
-
-    Parse a python dictionary into a Dealii input file
-    """
-    indent = ' ' * 4 * layer  # Indentation of output
-    for key, value in outputs.items():
-        # output format is
-        # same as input but no comment
-        if type(value) is str:
-            fout.write(indent + 'set %s = %s\n' % (key, value))
-        elif type(value) is dict:
-            if layer == 0:
-                fout.write('\n')
-            fout.write(indent + 'subsection %s\n' % key)
-            layer1 = layer + 1
-            ParseToDealiiInput(fout, value, layer1)
-            fout.write(indent + 'end\n')
-            if layer == 0:
-                fout.write('\n')
-        else:
-            raise ValueError('Value in dict must be str')
-    return
 
 
 def GetGroupCaseFromDict(_idict):
@@ -1159,7 +1075,7 @@ def GetSnapsSteps(case_dir, type_='graphical'):
     my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,
               'case prm file - %s cannot be read' % prm_file)
     with open(prm_file, 'r') as fin:
-        idict = ParseFromDealiiInput(fin)
+        idict = ParsePrm.ParseFromDealiiInput(fin)
 
     # import statistics file
     Statistics = Plot.STATISTICS_PLOT('Statistics')
