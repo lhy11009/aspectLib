@@ -9,7 +9,10 @@
 #    env:
 #        ASPECT_SOURCE_DIR
 # Example Usage:
+#   build main program and plugins:
 #    ./build_aspect.sh all TwoDSubduction release
+#   build a plugin:
+#    ./build_aspect.sh subduction_temperature2d TwoDSubduction
 ################################################################################
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
@@ -106,6 +109,10 @@ main(){
         ##
     	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
         build_aspect_project "$2" "$3"
+    else
+    	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
+        local build_dir="${ASPECT_SOURCE_DIR}/build_$2"
+        build_aspect_plugin "${build_dir}" "${command}"
     fi
 }
 
