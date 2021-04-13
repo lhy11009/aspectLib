@@ -1,4 +1,6 @@
+# -*- coding: utf-8 -*-
 r"""Generates submission scripts (slurm-style) For the aspect performance benchmarks
+
 haoyuan: this scripts test for different number of cores as well as different level of refinement
 a tasks_per_node option is chosen, default is 32
 make sure that you have the right commands in slurm before submitting them.
@@ -19,16 +21,20 @@ Examples of usage:
 """ 
 
 import numpy as np
-import matplotlib
-matplotlib.use('PS')
-import matplotlib.pyplot as plt  # haoyuan: I don't think this is used
+import sys
 
 # from subprocess import run
 import os
 
+# directory to the aspect Lab
+ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+# directory to shilofue
+shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+
 # Haoyuan: in this file, the field to change are marked with capital letters.
 # e.g.  set Output directory                       = OUTPUT_DIRECTORY
-base_input = "setups/spherical_shell_expensive_solver.prm"     # The 'base' input file that gets modified
+# The 'base' input file that gets modified
+base_input = os.path.join(ASPECT_LAB_DIR, 'files', 'AffinityTest', 'spherical_shell_expensive_solver.prm')
 #cluster_label = "PI4CS_aspect-2.0-pre-40tasks"
 #cluster_label = "peloton-ii-64tasks-hwthread-openmpi-4.0.1"
 #cluster_label = "peloton-ii-32tasks-core-openmpi-4.0.1"
@@ -68,8 +74,9 @@ def generate_input_file(base_file_name,output_file_name,dictionary):
     fh.close()
     ofh.close()
 
+
 def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile):
-    """Write the slurm file"""
+    """Write the slurm file for peloton"""
     # haoyuan:
     # This function set up the slurm file for one job
     fh = open(slurm_file_name,'w')
@@ -99,6 +106,53 @@ def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prm
     fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
     #fh.write("mpirun -n {:d} ./aspect-impi {:s}\n".format(ncpu,prmfile))
     fh.close()
+
+
+def generate_slurm_file_peloton_rome(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile):
+    """Write the slurm file for peloton roma
+    
+       Roma is the new partition for Magali's group 
+    """
+    # haoyuan:
+    # This function set up the slurm file for one job
+    fh = open(slurm_file_name,'w')
+    fh.write("#!/bin/bash\n")
+    fh.write("#SBATCH -p high2\n")
+    fh.write("#SBATCH -n {:d}\n".format(ncpu))
+    fh.write("#SBATCH --exclusive\n")
+    fh.write("#SBATCH --mem=0\n")
+    fh.write("#SBATCH --ntasks-per-node={:d}\n".format(tasks_per_node))
+    #fh.write("#SBATCH -c 2\n")
+    fh.write("#SBATCH --time=02:00:00\n")
+    fh.write("#SBATCH --job-name={:s}\n".format(job_name))
+    fh.write("#SBATCH --switches=1\n")
+    fh.write("set -x\n")
+    fh.write(environment_setup_commands + "\n")
+    fh.write("module list\n")
+    fh.write("ulimit -l unlimited\n")
+    #fh.write("srun ./aspect {:s}\n".format(prmfile))
+    #fh.write("mpirun -n {:d} --mca btl_openib_use_eager_rdma 1 --mca mpi_leave_pinned 1 --bind-to-core --report-bindings --mca btl_openib_allow_ib 1 ./aspect {:s}\n".format(ncpu,prmfile))
+    #fh.write("mpirun -n {:d} --mca btl ^tcp --report-bindings ./aspect {:s}\n".format(ncpu,prmfile))
+    # haoyuan: --bind-to core is always choosen as the default
+    # one need to change the path to aspect to make this function
+    # moreover, there could be a load library issure for openib
+    # fh.write("mpirun -n {:d} --bind-to core --mca btl_openib_allow_ib 1 --mca btl openib,self,vader --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
+    # haoyuan: unload previous openmpi and reload a new one
+    fh.write("module unload openmpi\nexport PATH=/home/rudolph/sw/openmpi-4.0.5/bin:$PATH\n")
+    fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
+    #fh.write("mpirun -n {:d} ./aspect-impi {:s}\n".format(ncpu,prmfile))
+    fh.close()
+
+
+def generate_slurm_file_stempede2(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile):
+    """Write the slurm file"""
+    # haoyuan:
+    # This function set up the slurm file for one job
+    fh = open(slurm_file_name,'w')
+    fh.write("#!/bin/bash\n")
+    fh.write("#SBATCH -p skx-normal\n")
+    fh.write("#SBATCH -n {:d}\n".format(ncpu))
+
 
 def generate_slurm_file_stempede2(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile):
     """Write the slurm file"""
@@ -132,42 +186,6 @@ def generate_slurm_file_stempede2(slurm_file_name,ncpu,tasks_per_node,job_name,p
     #fh.write("mpirun -n {:d} ./aspect-impi {:s}\n".format(ncpu,prmfile))
     fh.close()
 
-def main():
-    '''
-    main function of this module
-    Inputs:
-        sys.arg[1](str):
-            server
-    '''
-    server = sys.argv[1] # server name
-    for core_count in core_counts:
-        for resolution in refinement_levels:
-            if( core_count >= minimum_core_count_for_refinement_level[resolution]
-                and
-                core_count <= maximum_core_count_for_refinement_level[resolution]):
-                for setup in setups:
-                    jobname = "run_{:d}_{:d}_{:d}".format(core_count,resolution,setup)
-                    output_file = "tmp/{:s}/output_{:d}_{:d}_{:d}".format(cluster_label,core_count,resolution,setup)
-                    input_file = "tmp/{:s}/input_{:d}_{:d}_{:d}".format(cluster_label,core_count,resolution,setup)
-                    print(output_file)
-                    parameters = dict([])
-                    parameters['OUTPUT_DIRECTORY'] = output_file
-                    parameters['RESOLUTION'] = resolution
-                    
-                    # do string replacement on the base input file
-                    generate_input_file(base_input,input_file,parameters)
-                    slurm_file = input_file + ".slurm"
-                    # haoyuan: calls function to generate slurm file for one job
-                    if server == "peloton"
-                        generate_slurm_file_peloton(slurm_file,core_count,tasks_per_node,jobname,input_file)
-                    elif server == "stampede2"
-                        generate_slurm_file_stampede2(slurm_file,core_count,tasks_per_node,jobname,input_file)
-                    # haoyuan: submit the job
-                    # os.system("sbatch " + slurm_file)
-                
-# run script
-if __name__ == '__main__':
-    main()
 
 def main():
     '''
@@ -180,6 +198,12 @@ def main():
     '''
     server = sys.argv[1] # server name
     _path = sys.argv[2] # path to the files
+
+    tmp_dir = os.path.join(_path, 'tmp')
+    if os.path.isdir(tmp_dir):
+        os.remove(tmp_dir)
+    os.mkdir(temp_dir)
+
     for core_count in core_counts:
         for resolution in refinement_levels:
             if( core_count >= minimum_core_count_for_refinement_level[resolution]
@@ -198,13 +222,17 @@ def main():
                     generate_input_file(base_input,input_file,parameters)
                     slurm_file = input_file + ".slurm"
                     # haoyuan: calls function to generate slurm file for one job
-                    if server == "peloton"
+                    if server == "peloton":
                         generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,input_file)
-                    elif server == "stampede2"
+                    elif server == "stampede2":
                         generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,input_file)
+                    if server == "peloton-rome":
+                        generate_slurm_file_peloton_rome(slurm_file,core_count,tasks_per_node,jobname,input_file)
+                        # os.system("sbatch " + slurm_file)
                     # haoyuan: submit the job
                     # os.system("sbatch " + slurm_file)
-                
+
+
 # run script
 if __name__ == '__main__':
     main()
