@@ -11,8 +11,9 @@
 ################################################################################
 
 set -x
-cluster=peloton-ii-32tasks-core-openmpi-4.0.1
+cluster=peloton-rome-96tasks-core-openmpi-4.0.5
 mkdir results/spherical_shell_expensive_solver/${cluster}
+
 for i in `ls tmp/$cluster | grep output`
 do
 echo=1
