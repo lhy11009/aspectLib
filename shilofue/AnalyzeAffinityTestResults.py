@@ -1,8 +1,11 @@
 r"""Analyze affinity test results
 
+To this end, this scripts required an organized results of affinity tests to run. To run this scripts, a bash script 'organize_result.sh' should be ran beforehand.
+Upon this, this scripts pull out the time results and plot figures.
+
 This exports: 
 
-  -
+  - a figure of results
 
 This depends on:
 
@@ -15,8 +18,6 @@ Examples of usage:
         python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results
         -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/rene_affinity_test/results/spherical_shell_expensive_solver/peloton-ii-32tasks-core-openmpi-4.0.1
 
-To this end, this scripts required an organized results of affinity tests to run. Upon this, this scripts pull out the time results
-and plot figures.
 """ 
 import numpy as np
 import sys, os, argparse

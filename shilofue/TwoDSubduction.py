@@ -10,6 +10,7 @@ import shilofue.Parse as Parse
 import shilofue.ParsePrm as ParsePrm
 import shilofue.Doc as Doc
 import shilofue.Plot as Plot
+from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 import shilofue.Rheology as Rheology
 from numpy import linalg as LA
 from matplotlib import pyplot as plt
@@ -649,7 +650,7 @@ def PlotTestResults(source_dir, **kwargs):
         _case_output_dir = os.path.join(source_dir, 'output-TwoDSubduction_pyrolite_density_1_0')
         assert(os.path.isdir(_case_output_dir))
         # read data
-        DepthAverage = Plot.DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert)
+        DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert)
         _depth_average_file = os.path.join(_case_output_dir, 'depth_average.txt')
         assert(os.access(_depth_average_file, os.R_OK))
         data_list = DepthAverage.ReadDataStep(_depth_average_file, datatype=["depth", "adiabatic_density", "viscosity"])
