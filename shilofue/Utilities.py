@@ -1,7 +1,7 @@
 import json
 import re
 import os
-import shilofue.json
+import shilofue.json_files
 import numpy as np
 from importlib import resources
 from pathlib import Path
@@ -25,7 +25,7 @@ def JsonOptions(prefix, _dir=None):
     _options = {}  # options is a dictionary
     if _dir == None:
         # default option
-        for _filename in resources.contents(shilofue.json):
+        for _filename in resources.contents(shilofue.json_files):
             # this resources.contents return a interable from a sub-package,
             # entries in this interable are filenames
             if re.match("^" + prefix + '_', _filename):
@@ -35,7 +35,7 @@ def JsonOptions(prefix, _dir=None):
                 # _name is 'Number_of_Cells'
                 _name = _filename.split('_', maxsplit=1)[1]
                 _name = _name.rsplit(".", maxsplit=1)[0]
-                with resources.open_text(shilofue.json, _filename) as fin:
+                with resources.open_text(shilofue.json_files, _filename) as fin:
                     _options[_name] = json.load(fin)  # values are entries in this file
     else:
         pathlist = Path(_dir).rglob('%s_*.json' % prefix)
@@ -174,7 +174,7 @@ class UNITCONVERT():
         '''
         _filename = kwargs.get('filename', None)
         if _filename is None:
-            with resources.open_text(shilofue.json, 'UnitConvert.json') as fin:
+            with resources.open_text(shilofue.json_files, 'UnitConvert.json') as fin:
                 _data = json.load(fin)
         else:
             with open(_filename, 'r') as fin:

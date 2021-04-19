@@ -17,7 +17,7 @@ Examples of usage:
 
   - default usage:
 
-        python run_all.py
+        python shilofue/run_all.py peloton-rome /home/lochy/ASPECT_PROJECT/TwoDSubduction/rene_affinity_test/
   
   - hard in the code:
 
@@ -128,7 +128,7 @@ def generate_slurm_file_peloton_rome(slurm_file_name,ncpu,tasks_per_node,job_nam
     # haoyuan: unload previous openmpi and reload a new one
     fh.write("module unload openmpi\nexport PATH=/home/rudolph/sw/openmpi-4.0.5/bin:$PATH\n")
     # command to run 
-    fh.write("mpirun -n {:d} --bind-to core --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
+    fh.write("mpirun -n {:d} --bind-to socket --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
     # fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
     fh.close()
 
@@ -207,7 +207,7 @@ def main():
     tasks_per_node = 64
     openmpi = "4.0.5"
     
-    cluster_label = "%s-%stasks-core-openmpi-%s" % (server, tasks_per_node, openmpi) # ?
+    cluster_label = "%s-%stasks-socket-openmpi-%s" % (server, tasks_per_node, openmpi) # ?
 
     tmp_dir = os.path.join(_path, 'tmp')
     if not os.path.isdir(tmp_dir):

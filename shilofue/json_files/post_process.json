@@ -151,7 +151,7 @@
     "DepthAverage":{
         "canvas": [2, 2],
         "types": [
-            ["temperature", "super_adiabatic_temperature"],
+            ["temperature", "adiabatic_temperature", "super_adiabatic_temperature"],
             "viscosity",
             "velocity_magnitude",
             "vertical_heat_flux"
@@ -167,7 +167,19 @@
             "invert_y": 1,
             "color": "c",
             "line": ".-",
-            "label": "Super Adiabatic Temperature"
+            "label": "Super-Adiabatic"
+        },
+        "adiabatic_temperature":
+        {
+            "name": "adiabatic_temperature",
+            "xname": "adiabatic_temperature",
+            "xunit": "K",
+            "yname": "depth",
+            "yunit": "km",
+            "invert_y": 1,
+            "color": "b",
+            "line": ".-",
+            "label": "Adiabat"
         },
         "temperature":
         {

@@ -2,7 +2,7 @@ import sys
 import os
 import json
 import re
-import shilofue.json
+import shilofue.json_files
 import warnings
 import argparse
 import subprocess
@@ -39,7 +39,7 @@ class LINEARPLOT():
         assert(self.dim in [1, 2, 3])  # dimension must be 1, 2, 3
 
         # reset the options with a option in the kwargs
-        with resources.open_text(shilofue.json, 'post_process.json') as fin:
+        with resources.open_text(shilofue.json_files, 'post_process.json') as fin:
             all_options = json.load(fin)
         self.options = all_options.get(self.name, {})
         try:

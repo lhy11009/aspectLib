@@ -3,7 +3,7 @@ import json
 import os
 import re
 import filecmp
-import shilofue.json
+import shilofue.json_files
 import pdb
 import shilofue.Plot as Plot
 from matplotlib import pyplot as plt
@@ -45,7 +45,7 @@ class DDOC():
             self.layout = _layout
         except KeyError:
             _layout_json = kwargs.get('layout_json', 'DocLayout.json')
-            with resources.open_text(shilofue.json, _layout_json) as fin:
+            with resources.open_text(shilofue.json_files, _layout_json) as fin:
                 _layout = json.load(fin)
             my_assert(type(_layout) == dict, TypeError, "layout must be a dictionary")
             self.layout = _layout
