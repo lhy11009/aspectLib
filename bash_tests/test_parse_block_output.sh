@@ -26,13 +26,13 @@ test_parse_block_output()
     # test 1: parse the block output at the end of a log file
     local log_file="${test_dir}/log.txt"
     parse_block_output_wallclock "${log_file}"
-    compare_outputs "${FUNCNAME[0]}" "497s 950s 950s" "${return_values[@]}"
+    compare_outputs "${FUNCNAME[0]}" "497s 950s 950s" "${return_values[*]}"
     parse_block_output "${log_file}" "Assemble Stokes system" 
-    compare_outputs "${FUNCNAME[0]}" "155s 314s 314s" "${return_values[@]}"
+    compare_outputs "${FUNCNAME[0]}" "155s 314s 314s" "${return_values[*]}"
     parse_block_output "${log_file}" "Initialization" 
-    compare_outputs "${FUNCNAME[0]}" "0.892s 0.892s 0.892s" "${return_values[@]}"
+    compare_outputs "${FUNCNAME[0]}" "0.892s 0.892s 0.892s" "${return_values[*]}"
     parse_block_output "${log_file}" "Setup matrices" 
-    compare_outputs "${FUNCNAME[0]}" "18.2s 18.2s 18.2s" "${return_values[@]}"
+    compare_outputs "${FUNCNAME[0]}" "18.2s 18.2s 18.2s" "${return_values[*]}"
     if [[ $? = 0 ]]; then
         ((local_passed_tests++))
     else
@@ -42,7 +42,7 @@ test_parse_block_output()
     # test 2: parse the block output at the end of a log file, contains a e+00 input this time
     local log_file="${test_dir}/log1.txt"
     parse_block_output_wallclock "${log_file}"
-    compare_outputs "${FUNCNAME[0]}" "534s 1.05e+03s 1.05e+03s" "${return_values[@]}"
+    compare_outputs "${FUNCNAME[0]}" "534s 1.05e+03s 1.05e+03s" "${return_values[*]}"
     if [[ $? = 0 ]]; then
         ((local_passed_tests++))
     else

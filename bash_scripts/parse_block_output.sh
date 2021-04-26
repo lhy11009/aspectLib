@@ -6,10 +6,16 @@
 # Dependencies:
 #
 # Example Usage:
-#    ./bash_scripts/parse_block_output.sh analyze_affinity_test_results 
+#    analyse affinity results:
+#        ./bash_scripts/parse_block_output.sh analyze_affinity_test_results 
 # /home/lochy/ASPECT_PROJECT/TwoDSubduction/rene_affinity_test/results/spherical_shell_expensive_solver/peloton-ii-32tasks-core-openmpi-4.0.1/output_16_2_1 
-# temp
+#    
+#    case runtime info:
+#        ./parse_block_output.sh case_runtime /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/bsq
 ################################################################################
+
+dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
+source "${ASPECT_LAB_DIR}/bash_scripts/utilities.sh"
 
 
 parse_block_output(){
@@ -40,7 +46,7 @@ parse_block_output(){
     [[ -e ${logfile} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile doesn't exist"
     # read file from the end
     local parse_results=$(eval "awk '/${key}/{print}' ${logfile} | sed 's/${key}//g' |  awk '{print \$5}' | sed ':a;N;\$!ba;s/\n/ /g'")
-    return_values=("${parse_results}")
+    IFS=' '; return_values=(${parse_results})
 }
 
 parse_block_output_wallclock(){
@@ -52,7 +58,7 @@ parse_block_output_wallclock(){
     [[ -e ${logfile} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile doesn't exist"
     # read file from the end
     local parse_results=$(eval "awk '/${key}/{print}' ${logfile} | sed 's/${key}//g' |  awk '{print \$3}' | sed ':a;N;\$!ba;s/\n/ /g'")
-    return_values=("${parse_results}")
+    IFS=' '; return_values=(${parse_results})
 }
 
 
@@ -95,14 +101,31 @@ parse_block_output_to_file(){
 main(){
     if [[ "$1" = "parse_block_results" ]]; then
         # this doesn't work for $3 with whitespace in it.
+	[[ -n "$2" ]] || { cecho "${BAD}" "no log file given (\$2)"; exit 1; }
+	[[ -n "$3" ]] || { cecho "${BAD}" "no key given (\$3)"; exit 1; }
         parse_block_output "$2" "$3"
         printf "${return_values}"
-    fi
-
-    if [[ "$1" = "analyze_affinity_test_results" ]]; then
+    
+    elif [[ "$1" = "analyze_affinity_test_results" ]]; then
+	# analyze affinity test results
         local log_file="$2"
         local ofile="$3"
         parse_block_output_to_file "${log_file}" "${ofile}" "Assemble Stokes system" "Solve Stokes system"
+
+    elif [[ "$1" = "case_runtime" ]]; then
+	# case runtime info
+	local case_dir="$2"
+        local log_file="${case_dir}/output/log.txt"
+	local key="Total wallclock time elapsed since start"
+       	# get total wallclock
+	parse_block_output_wallclock "${log_file}"
+	local time_step=0
+	local total_wall_clock=${return_values[-1]}
+	# TODO: convert to hours
+	# local total_wall_clock_hrs=$(echo "scale=4; (${total_wall_clock}/3600.0)" | bc)
+	printf "${time_step}\t ${total_wall_clock}\n"
+    else
+	cecho "${BAD}" "option ${1} is not valid\n"
     fi
 }
 

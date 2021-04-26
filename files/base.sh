@@ -39,6 +39,9 @@ main(){
         ##
         some_funct()
         printf "${return_values}"
+    else
+	cecho "${BAD}" "option ${1} is not valid\n"
+    fi
     fi
 }
 
@@ -50,3 +53,12 @@ set +a  # return to default setting
 if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
 	main $@
 fi
+
+## notes
+
+#trouble shooting
+# [[ -n "$2" ]] || { cecho "${BAD}" "no log file given ($2)"; exit 1; }
+
+#debuging output
+# printf "${FUNCNAME[0]}, return_values: ${return_values[@]}\n" # debug
+
