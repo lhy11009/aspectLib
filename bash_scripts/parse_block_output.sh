@@ -49,6 +49,39 @@ parse_block_output(){
     IFS=' '; return_values=(${parse_results})
 }
 
+
+parse_block_output_stepwise(){
+    ##
+    # Parse value in output, looking for the block output of aspect with step information.
+    # TODO
+    #
+    # Inputs:
+    #   $1(str): logfile
+    # Outputs:
+    #   ??: 
+    #       entries:
+    #           0: Total wallclock time elapsed since start
+    #           1: Assemble Stokes system
+    #           2: Assemble composition system
+    #           3: Assemble temperature system
+    #           4: Build Stokes preconditioner
+    #           5: Build composition preconditioner
+    #           6: Build temperature preconditioner
+    #           7: Initialization
+    #           8: Postprocessing
+    #           9: Setup dof systems
+    #           10: Setup initial conditions
+    #           11: Setup matrices
+    #           12: Solve Stokes system
+    #           13: Solve composition system
+    #           14: Solve temperature system
+    local logfile="$1"
+    local key="$2"
+    [[ -e ${logfile} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile doesn't exist"
+    return_values=''
+}
+
+
 parse_block_output_wallclock(){
     ##
     # Parse value in output, looking for Total wallclock time
