@@ -16,6 +16,7 @@ Examples of usage:
         python -m shilofue.TwoDSubduction0.CreateCases
 lower_mantle -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba/case1.prm 
 -j files/TwoDSubduction/eba_lower_mantle.json
+-o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_intial_T/case_o.prm
 
 descriptions
 """ 
@@ -238,6 +239,65 @@ def LowerMantle1(Inputs, _config):
     return Inputs, backgroud_lower_mantle_diffusion
 
 
+def LowerMantle2(Inputs, _config):
+    """
+    calculate flow law parameters, when phase transition are described by the CDPT model
+    There is a eclogite transition of crustal layer
+    """
+    # parse from input
+    jump = _config['upper_lower_viscosity']
+    T = _config['T660']
+    P = _config['P660']
+    V1 = _config['LowerV']
+    visco_plastic = Inputs["Material model"]['Visco Plastic']
+    prefactors_for_diffusion_creep = Parse.COMPOSITION(visco_plastic["Prefactors for diffusion creep"])
+    grain_size = float(visco_plastic["Grain size"])
+    grain_size_exponents_for_diffusion_creep  = Parse.COMPOSITION(visco_plastic["Grain size exponents for diffusion creep"])
+    activation_energies_for_diffusion_creep = Parse.COMPOSITION(visco_plastic["Activation energies for diffusion creep"])
+    activation_volumes_for_diffusion_creep  = Parse.COMPOSITION(visco_plastic["Activation volumes for diffusion creep"])
+    # call GetLowerMantleRheology to derive parameters for lower mantle flow law 
+    backgroud_upper_mantle_diffusion = {}
+    backgroud_upper_mantle_diffusion['A'] = prefactors_for_diffusion_creep.data['background'][0] 
+    backgroud_upper_mantle_diffusion['d'] = grain_size
+    backgroud_upper_mantle_diffusion['n'] = 1.0 
+    backgroud_upper_mantle_diffusion['m'] = grain_size_exponents_for_diffusion_creep.data['background'][0] 
+    backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
+    backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0] 
+    backgroud_lower_mantle_diffusion = GetLowerMantleRheology(backgroud_upper_mantle_diffusion, jump, T, P, V1=V1, strategy='A')
+    # write them back
+    # background composition
+    upper_mantle_index = 4 
+    total_index = 8
+    for i in range(upper_mantle_index, total_index):
+        prefactors_for_diffusion_creep.data['background'][i] = backgroud_lower_mantle_diffusion['A']
+        grain_size_exponents_for_diffusion_creep.data['background'][i] = backgroud_lower_mantle_diffusion['m']
+        activation_energies_for_diffusion_creep.data['background'][i] = backgroud_lower_mantle_diffusion['E']
+        activation_volumes_for_diffusion_creep.data['background'][i] = backgroud_lower_mantle_diffusion['V']
+    # spcrust composition
+    upper_mantle_index = 2
+    total_index = 4
+    for i in range(upper_mantle_index, total_index):
+        prefactors_for_diffusion_creep.data['spcrust'][i] = backgroud_lower_mantle_diffusion['A']
+        grain_size_exponents_for_diffusion_creep.data['spcrust'][i] = backgroud_lower_mantle_diffusion['m']
+        activation_energies_for_diffusion_creep.data['spcrust'][i] = backgroud_lower_mantle_diffusion['E']
+        activation_volumes_for_diffusion_creep.data['spcrust'][i] = backgroud_lower_mantle_diffusion['V']
+    # spharz composition
+    upper_mantle_index = 4
+    total_index = 8
+    for i in range(upper_mantle_index, total_index):
+        prefactors_for_diffusion_creep.data['spharz'][i] = backgroud_lower_mantle_diffusion['A']
+        grain_size_exponents_for_diffusion_creep.data['spharz'][i] = backgroud_lower_mantle_diffusion['m']
+        activation_energies_for_diffusion_creep.data['spharz'][i] = backgroud_lower_mantle_diffusion['E']
+        activation_volumes_for_diffusion_creep.data['spharz'][i] = backgroud_lower_mantle_diffusion['V']
+    # parse back
+    visco_plastic["Prefactors for diffusion creep"] = prefactors_for_diffusion_creep.parse_back()
+    visco_plastic["Grain size exponents for diffusion creep"] = grain_size_exponents_for_diffusion_creep.parse_back()
+    visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
+    visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
+    return Inputs, backgroud_lower_mantle_diffusion
+
+
+
 class MYCASE(Parse.CASE):
     '''
     Inherit from class CASE in Parse.py
@@ -306,6 +366,9 @@ def main():
     parser.add_argument('-j', '--json', type=str,
                         default='',
                         help='json file inputs')
+    parser.add_argument('-o', '--outputs', type=str,
+                        default='case_o.prm',
+                        help='Some outputs(prm file)')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -325,8 +388,12 @@ def main():
             _inputs = ParsePrm.ParseFromDealiiInput(fin)
         with open(arg.json, 'r') as fin:
             _config = json.load(fin)
-        outputs, lower_mantle_diffusion = LowerMantle1(_inputs, _config)
+        outputs, lower_mantle_diffusion = LowerMantle2(_inputs, _config)
+        # screen output
         print(lower_mantle_diffusion)
+        # file output
+        with open(arg.outputs, 'w') as fout:
+            ParsePrm.ParseToDealiiInput(fout, outputs)
 
 # run script
 if __name__ == '__main__':
