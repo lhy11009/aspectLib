@@ -41,6 +41,7 @@ parse_block_output(){
     #           12: Solve Stokes system
     #           13: Solve composition system
     #           14: Solve temperature system
+    unset return_values
     local logfile="$1"
     local key="$2"
     [[ -e ${logfile} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile doesn't exist"
@@ -50,42 +51,11 @@ parse_block_output(){
 }
 
 
-parse_block_output_stepwise(){
-    ##
-    # Parse value in output, looking for the block output of aspect with step information.
-    # TODO
-    #
-    # Inputs:
-    #   $1(str): logfile
-    # Outputs:
-    #   ??: 
-    #       entries:
-    #           0: Total wallclock time elapsed since start
-    #           1: Assemble Stokes system
-    #           2: Assemble composition system
-    #           3: Assemble temperature system
-    #           4: Build Stokes preconditioner
-    #           5: Build composition preconditioner
-    #           6: Build temperature preconditioner
-    #           7: Initialization
-    #           8: Postprocessing
-    #           9: Setup dof systems
-    #           10: Setup initial conditions
-    #           11: Setup matrices
-    #           12: Solve Stokes system
-    #           13: Solve composition system
-    #           14: Solve temperature system
-    local logfile="$1"
-    local key="$2"
-    [[ -e ${logfile} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile doesn't exist"
-    return_values=''
-}
-
-
 parse_block_output_wallclock(){
     ##
     # Parse value in output, looking for Total wallclock time
     # It turns output the previous one doesn't work for wallclock time
+    unset return_values
     local logfile="$1"
     local key="Total wallclock time elapsed since start"
     [[ -e ${logfile} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile doesn't exist"
@@ -131,34 +101,22 @@ parse_block_output_to_file(){
     printf "${contents}" >> "${ofile}"
 }
 
+
 main(){
     if [[ "$1" = "parse_block_results" ]]; then
         # this doesn't work for $3 with whitespace in it.
-	[[ -n "$2" ]] || { cecho "${BAD}" "no log file given (\$2)"; exit 1; }
-	[[ -n "$3" ]] || { cecho "${BAD}" "no key given (\$3)"; exit 1; }
+	    [[ -n "$2" ]] || { cecho "${BAD}" "no log file given (\$2)"; exit 1; }
+	    [[ -n "$3" ]] || { cecho "${BAD}" "no key given (\$3)"; exit 1; }
         parse_block_output "$2" "$3"
         printf "${return_values}"
     
     elif [[ "$1" = "analyze_affinity_test_results" ]]; then
-	# analyze affinity test results
+	    # analyze affinity test results
         local log_file="$2"
         local ofile="$3"
         parse_block_output_to_file "${log_file}" "${ofile}" "Assemble Stokes system" "Solve Stokes system"
-
-    elif [[ "$1" = "case_runtime" ]]; then
-	# case runtime info
-	local case_dir="$2"
-        local log_file="${case_dir}/output/log.txt"
-	local key="Total wallclock time elapsed since start"
-       	# get total wallclock
-	parse_block_output_wallclock "${log_file}"
-	local time_step=0
-	local total_wall_clock=${return_values[-1]}
-	# TODO: convert to hours
-	# local total_wall_clock_hrs=$(echo "scale=4; (${total_wall_clock}/3600.0)" | bc)
-	printf "${time_step}\t ${total_wall_clock}\n"
     else
-	cecho "${BAD}" "option ${1} is not valid\n"
+    	cecho "${BAD}" "option ${1} is not valid\n"
     fi
 }
 

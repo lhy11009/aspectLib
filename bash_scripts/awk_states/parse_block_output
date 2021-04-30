@@ -1,0 +1,26 @@
+#!/usr/bin/awk -f
+
+################################################################################
+# Generate runtime information(time and wall clock) from a ASPECT log file
+# 
+# Example Usage:
+#   eval "awk -f ${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output ${log_file} > ${ofile}"
+################################################################################
+
+BEGIN {
+  print "# 1: Time step number\n# 2: Time\n# 3: Wall Clock (s)"
+}
+
+{
+  if(lastLine ~ /*** Timestep/ && $0 ~ /^\| Total wallclock/) {
+    len = length($9)
+    wallClock = substr($9, 0, len-1)
+    printf "%s %12s %10s\n", timeStep, time, wallClock
+  }
+  else if ($0 ~ /*** Timestep/) {
+    lastLine = $0
+    len = length($3)
+    timeStep = substr($3, 0, len-1)
+    time = substr($4, 3)
+  }
+}
