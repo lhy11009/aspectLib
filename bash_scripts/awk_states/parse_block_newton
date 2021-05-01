@@ -4,6 +4,7 @@
 # Generate runtime information(newton solver) from a ASPECT log file
 # 
 # Example Usage:
+#  eval "awk -f ${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_newton ${log_file} > ${ofile}"
 #   
 ################################################################################
 
