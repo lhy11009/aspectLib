@@ -9,15 +9,15 @@
 ################################################################################
 
 BEGIN {
-  print "# 1: Time step number\n# 2: Number of Cheap Stokes interations\n# 3: Number of Expensive Stokes interations# 2: Index of nonlinear iteration\n# 3: Relative nonlinear residual\n# 4: Norms of the rhs\n# 5: Newton Derivative Scaling Factor"
+  print "# 1: Time step number\n# 2: Number of Cheap Stokes interations\n# 3: Number of Expensive Stokes interations\n# 4: Index of nonlinear iteration\n# 5: Relative nonlinear residual\n# 6: Norms of the rhs\n# 7: Newton Derivative Scaling Factor"
 }
 
 {
   if(lastLine ~ /*** Timestep/ && $0 ~ /Solving Stokes system/) {
     # stoke iteration
     split($4, array, "+")
-    stokes_iteration_cheap = array[0]
-    stokes_iteration_expensive = array[1]
+    stokes_iteration_cheap = array[1]
+    stokes_iteration_expensive = array[2]
   }
   else if(lastLine ~ /*** Timestep/ && $0 ~ /Relative nonlinear residual/) {
     len = length($10)

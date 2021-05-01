@@ -44,9 +44,28 @@ def test_plot_run_time():
     '''
     ifile = os.path.join(source_dir, "log.txt")
     o_path = os.path.join(test_dir, "RunTime.png")
+    if os.path.isfile(o_path):
+        os.remove(o_path)
     PlotRunTime.PlotFigure(ifile, o_path) 
 
     # assert something 
+    assert(os.path.isfile(o_path))  # assert figure is generated
+
+
+def test_plot_run_time_newtion():
+    '''
+    test read from a log file and then generate run time plot of newton solver
+    Asserts:
+    '''
+    ifile = os.path.join(source_dir, "log.txt")
+    o_path_base = os.path.join(test_dir, "RunTimeNewton.png")
+    o_path_std = os.path.join(test_dir, "RunTimeNewton_s000000.png")
+    if os.path.isfile(o_path_std):
+        os.remove(o_path_std)
+    o_path = PlotRunTime.PlotNewtonSolver(ifile, o_path_base) 
+
+    # assert something 
+    assert(o_path == o_path_std)
     assert(os.path.isfile(o_path))  # assert figure is generated
 
     
