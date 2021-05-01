@@ -1,0 +1,46 @@
+#!/usr/bin/awk -f
+
+################################################################################
+# Generate runtime information(newton solver) from a ASPECT log file
+# 
+# Example Usage:
+#   
+################################################################################
+
+BEGIN {
+  print "# 1: Time step number\n# 2: Number of Cheap Stokes interations\n# 3: Number of Expensive Stokes interations# 2: Index of nonlinear iteration\n# 3: Relative nonlinear residual\n# 4: Norms of the rhs\n# 5: Newton Derivative Scaling Factor"
+}
+
+{
+  if(lastLine ~ /*** Timestep/ && $0 ~ /Solving Stokes system/) {
+    # stoke iteration
+    split($4, array, "+")
+    stokes_iteration_cheap = array[0]
+    stokes_iteration_expensive = array[1]
+  }
+  else if(lastLine ~ /*** Timestep/ && $0 ~ /Relative nonlinear residual/) {
+    len = length($10)
+    nonlinear_iteration = substr($10, 0, len-1)
+    len = length($11)
+    residual = substr($11, 0, len-1)
+    
+    # Norm of rhs
+    norm_rhs = $16
+    sub(",", "", norm_rhs)
+
+    # scaling factor
+    if (length($18) == 0){
+      scaling_factor = "0"
+    }
+    else{
+      scaling_factor = $18
+    }
+
+    printf "%s %10s %10s %15s %15s %15s %15s\n", timeStep, stokes_iteration_cheap, stokes_iteration_expensive, nonlinear_iteration, residual, norm_rhs, scaling_factor
+  }
+  else if ($0 ~ /*** Timestep/) {
+    lastLine = $0
+    len = length($3)
+    timeStep = substr($3, 0, len-1)
+  }
+}

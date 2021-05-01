@@ -106,6 +106,20 @@ test_parse_block_output_to_file()
         ((local_failed_tests++))
     fi
     
+    # test 4, parse a file, looking for newton solver information
+    local log_file="${test_dir}/log2.txt"
+    local ofile="${test_output_dir}/block_output3.txt"
+    eval "awk -f ${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_newton ${log_file} > ${ofile}"
+    # compare
+    std_ofile="${test_dir}/block_output_std3.txt"
+    [[ -e ${std_ofile} ]] || cecho ${BAD} "${FUNC_NAME[0]}: std_ofile doesn't exists"
+    compare_files "${FUNCNAME[0]}" "${std_ofile}" "${ofile}"
+    if [[ $? = 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+    
     # message
     final_message ${FUNCNAME[0]} ${local_passed_tests} ${local_failed_tests}
     return 0
