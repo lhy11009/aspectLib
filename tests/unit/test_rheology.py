@@ -123,7 +123,16 @@ def test_Convert2AspectInput():
 
     check1 = CreepRheologyInAspectViscoPlastic(dislocation_creep_aspect, 1e-15, 10e9, 1300 + 273.15)
     assert(abs((check1 - check_result[1]) / check_result[1]) < tolerance)
+
+
     
+def test_Convert2AspectInput():
+    """
+    compare different rheologies
+    """
+    pass
+
+
 # notes
     
 # to check for error message
