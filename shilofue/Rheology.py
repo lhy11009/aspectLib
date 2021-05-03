@@ -1,15 +1,103 @@
+# -*- coding: utf-8 -*-
+r"""(one line description)
+
+This exports: 
+
+  -
+
+This depends on:
+
+  -  
+
+Examples of usage:
+
+  - convert parameters of some type of rheology to aspect input:
+
+        python -m shilofue.Rheology convert_to_ASPECT -r HK03
+
+        options for "-r":
+            HK03 - Hirth & Kohlstedt 2003
+            AB17 - Arredondo & Billen 2017
+
+descriptions
+""" 
+
 import json
 import os
 import sys
 import math
+import argparse
 import numpy as np
 from matplotlib import pyplot as plt
 
 R = 8.314
 
+ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 
 class CheckValueError(Exception):
     pass
+
+
+class RHEOLOGY_PRM():
+    """
+    class for rheologies
+    """
+    def __init__(self):
+        '''
+        Initiation, initiate rheology parameters
+        '''
+        # dislocation creep in Hirth & Kohlstedt 2003
+        self.HK03_disl = \
+            {
+                "A": 90,
+                "p": 0.0,
+                "r": 1.2,
+                "n": 3.5,
+                "E": 480e3,
+                "V": 11e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0
+            }
+
+        # diffusion creep in Hirth & Kohlstedt 2003
+        self.HK03_diff = \
+            {
+                "A" : 1.0e6,
+                "p" : 3.0,
+                "r" : 1.0,
+                "n" : 1.0,
+                "E" : 335e3,
+                "V" : 4e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0
+            }
+        
+        # dislocation creep in Arredondo & Billen 2017
+        self.AB17_disl = \
+            {
+                "A": 2.57e-20,
+                "p": 0.0,
+                "r": 1.2,
+                "n": 3.5,
+                "E": 496e3,
+                "V": 11e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0
+            }
+        
+        # diffusion creep in Arredondo & Billen 2017
+        self.AB17_diff = \
+            {
+                "A" : 2.85e6,
+                "p" : 3.0,
+                "r" : 1.0,
+                "n" : 1.0,
+                "E" : 317e3,
+                "V" : 4e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0
+            }
+
 
 def Config(_kwargs, _name, _default):
     """
@@ -131,63 +219,6 @@ def Convert2AspectInput(creep_type):
     return aspect_creep_type
 
 
-def CheckHirthKohlstedt(filename='Hirth_Kohlstedt.json'):
-    """
-    def CheckHirthKohlstedt(filename='Hirth_Kohlstedt.json')
-
-    Check with parameters from Hirth and Kohstedt, 2003 to make sure everything is write
-    Tolerence set to be 1%
-    """
-
-    # check file exist
-    if not os.access(filename, os.R_OK):
-        print("Read access not permitted on %s" % filename)
-        sys.exit(1)
-
-    check_result = [.2991, .3006, 3.8348e19, 1.2024e17]
-    creep_types = json.load(open(filename, 'r'))
-    diffusion_creep = creep_types['diffusion_creep']
-    dislocation_creep = creep_types['dislocation_creep']
-    # check for two values
-    check0 = CreepStress(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 1000.0)
-    if abs((check0 - check_result[0]) / check_result[0]) > 0.01:
-        raise CheckValueError("%.4e vs %.4e check value for rheology Hirth and Kohstedt, 2003 failed" % (check0, check_result[0]))
-    check1 = CreepStress(dislocation_creep, 2.5e-12, 1e9, 1400 + 273.15, 1e4, 1000.0)
-    if abs((check1 - check_result[1]) / check_result[1]) > 0.01:
-        raise CheckValueError("%.4e vs %.4e check value for rheology Hirth and Kohstedt, 2003 failed" % (check1, check_result[1]))
-    # check for viscosity
-    check2 = CreepRheology(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 1000.0)
-    if abs((check2 - check_result[2]) / check_result[2]) > 0.01:
-        raise CheckValueError("%.4e vs %.4e check value for rheology Hirth and Kohstedt, 2003 failed" % (check2, check_result[2]))
-    check3 = CreepRheology(dislocation_creep, 2.5e-12, 1e9, 1400 + 273.15, 1e4, 1000.0)
-    if abs((check3 - check_result[3]) / check_result[3]) > 0.01:
-        raise CheckValueError("%.4e vs %.4e check value for rheology Hirth and Kohstedt, 2003 failed" % (check3, check_result[3]))
-    print("check value for rheology Hirth and Kohstedt: succeed")
-
-
-def CheckAspectExample(filename='aspect_rheology_example.json'):
-    """
-    def CheckAspectExample(filename='aspect_rheology_example.json'):
-
-    Check with parameters an example from an aspect input file to make sure everything is write
-    Tolerence set to be 1%
-    """
-    
-    # check file exist
-    if not os.access(filename, os.R_OK):
-        print("Read access not permitted on %s" % filename)
-        sys.exit(1)
-
-    check_result = [9.1049e+20]
-    creep_types = json.load(open(filename, 'r'))
-    diffusion_creep = creep_types['diffusion_creep']
-    dislocation_creep = creep_types['dislocation_creep']
-    check0 = CreepRheologyInAspectViscoPlastic(diffusion_creep, 1e-15, 10e9, 1300 + 273.15)
-    if abs((check0 - check_result[0]) / check_result[0]) > 0.01:
-        raise CheckValueError("%.4e vs %.4e check value for aspect example failed" % (check0, check_result[0]))
-    print("check value for rheology aspect example: succeed")
-
-
 def GetLowerMantleRheology(upper_mantle_creep_method, jump, T, P, **kwargs):
     """
     get flow law parameters in lower mantle based on upper mantle viscosity and jump in viscosity
@@ -216,9 +247,7 @@ def GetLowerMantleRheology(upper_mantle_creep_method, jump, T, P, **kwargs):
     return lower_mantle_creep_method
 
 
-
-
-def CheckConvert2AspectInput(filename='Hirth_Kohlstedt.json'):
+def CheckConvert2AspectInput():
     """
     def CheckConvert2AspectInput(filename='Hirth_Kohlstedt.json')
 
@@ -228,9 +257,7 @@ def CheckConvert2AspectInput(filename='Hirth_Kohlstedt.json'):
     """
     
     # check file exist
-    if not os.access(filename, os.R_OK):
-        print("Read access not permitted on %s" % filename)
-        sys.exit(1)
+    filename = os.path.join(ASPECT_LAB_DIR, "files", "Hirth_Kohlstedt.json")
     # read in standard flow law parameters
     check_result = [0.0, 0.0]
     creep_types = json.load(open(filename, 'r'))
@@ -251,13 +278,49 @@ def CheckConvert2AspectInput(filename='Hirth_Kohlstedt.json'):
         raise CheckValueError("%.4e vs %.4e check value for converting to aspect parametrs and yielding the same viscosity failed" % (check1, check_result[1]))
     print("check value for for converting to aspect parametrs and yielding the same viscosity: succeed")
 
+
 def main():
-    CheckHirthKohlstedt()
-    CheckAspectExample()
-    CheckConvert2AspectInput()
-    # creep_types = json.load(open('Hirth_Kohlstedt.json', 'r'))
-    creep_types = json.load(open('ab17.json', 'r'))
-    upper_mantle_creep_method = creep_types['dislocation_creep']
-    upper_mantle_creep_method_aspect = Convert2AspectInput(upper_mantle_creep_method)
-    lower_mantle_creep_method_aspect = GetLowerMantleRheology(upper_mantle_creep_method_aspect, 30.0, 1663, 21.0e9, V1=1.5e-6, strategy='d')
-    breakpoint()
+    '''
+    main function of this module
+    Inputs:
+        sys.arg[1](str):
+            commend
+        sys.arg[2, :](str):
+            options
+    '''
+    _commend = sys.argv[1]
+    # parse options
+    parser = argparse.ArgumentParser(description='Parse parameters')
+    parser.add_argument('-i', '--inputs', type=str,
+                        default='',
+                        help='Some inputs')
+    parser.add_argument('-r', '--rheology', type=str,
+                        default='HK03',
+                        help='Type of rheology to use')
+    _options = []
+    try:
+        _options = sys.argv[2: ]
+    except IndexError:
+        pass
+    arg = parser.parse_args(_options)
+
+    # commands
+    if _commend == 'convert_to_ASPECT':
+        rheology = arg.rheology
+        # read in standard flow law parameters
+        RheologyPrm = RHEOLOGY_PRM()
+        diffusion_creep = getattr(RheologyPrm, rheology + "_diff")
+        dislocation_creep = getattr(RheologyPrm, rheology + "_disl")
+        # convert 2 aspect
+        diffusion_creep_aspect = Convert2AspectInput(diffusion_creep)
+        dislocation_creep_aspect = Convert2AspectInput(dislocation_creep)
+        # screen output
+        print("ASPECT diffusion creep: ")
+        print(diffusion_creep_aspect)
+        print("ASPECT dislocation creep: ")
+        print(dislocation_creep_aspect)
+
+
+# run script
+if __name__ == '__main__':
+    main()
