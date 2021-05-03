@@ -15,6 +15,23 @@
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
 # source "${ASPECT_LAB_DIR}/bash_scripts/utilities.sh"
 
+
+#parse_options(){
+#    ###
+#    # parse options
+#    ###
+#    while [ -n "$1" ]; do
+#      param="$1"
+#      case $param in
+#        -h|--help)
+#          usage  # help information
+#          exit 0
+#        ;;
+#      esac
+#      shift
+#    done
+#}
+
 some_func(){
     ###
     # (Descriptions)
@@ -62,3 +79,6 @@ fi
 #debuging output
 # printf "${FUNCNAME[0]}, return_values: ${return_values[@]}\n" # debug
 
+# parse options
+        # shift
+        # parse_options() $@
