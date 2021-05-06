@@ -45,10 +45,13 @@ import math
 import argparse
 import numpy as np
 from matplotlib import pyplot as plt
+from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 
 R = 8.314
 
+# directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 
 class CheckValueError(Exception):
     pass
@@ -126,6 +129,7 @@ def Config(_kwargs, _name, _default):
     except KeyError:
         value = _default
     return value
+
 
 def CreepStress(creep_type, strain_rate, P, T, d, Coh):
     """
@@ -239,6 +243,7 @@ def Convert2AspectInput(creep_type, **kwargs):
         F = 1.0
     # prepare values for aspect
     aspect_creep_type = {}
+    # stress in the original equation is in Mpa, grain size is in um
     aspect_creep_type['A'] = 1e6**(-p) * (2e6)**(-n) * Coh**r * A / F**n  # F term: use effective strain rate
     aspect_creep_type['d'] = d / 1e6
     aspect_creep_type['n'] = n
@@ -274,6 +279,61 @@ def GetLowerMantleRheology(upper_mantle_creep_method, jump, T, P, **kwargs):
     else:
         lower_mantle_creep_method['d'] = jump**(n / m) * d * math.exp(P * (V-V1) / (m * R * T))
     return lower_mantle_creep_method
+
+
+def PlotAlongAspectProfile(depth_average_path,  fig_path):
+    """
+    plot along a T, P profile in aspect
+    """
+    # check file exist
+    assert(os.access(depth_average_path, os.R_OK))
+    # read that
+    DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
+    DepthAverage.ReadHeader(depth_average_path)
+    DepthAverage.ReadData(depth_average_path)
+    DepthAverage.SplitTimeStep()
+    i0 = DepthAverage.time_step_indexes[0][-1] * DepthAverage.time_step_length
+    i1 = DepthAverage.time_step_indexes[1][0] * DepthAverage.time_step_length
+    data = DepthAverage.data[i0:i1, :]
+    col_depth = DepthAverage.header['depth']['col']
+    col_P = DepthAverage.header['adiabatic_pressure']['col']
+    col_T = DepthAverage.header['temperature']['col']
+    depths = data[:, col_depth]
+    pressures = data[:, col_P]
+    temperatures = data[:, col_T]
+
+    # compute viscosity
+    rheology = 'HK03'
+    RheologyPrm = RHEOLOGY_PRM()
+    diffusion_creep = getattr(RheologyPrm, rheology + "_diff")
+    dislocation_creep = getattr(RheologyPrm, rheology + "_disl")
+    strain_rate = 1e-15
+    eta_diff = CreepRheology(diffusion_creep, strain_rate, pressures, temperatures)
+    eta_disl = CreepRheology(dislocation_creep, strain_rate, pressures, temperatures, use_effective_strain_rate=True)
+    # plot
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    color = 'tab:blue'
+    axs[0].plot(pressures/1e9, depths/1e3, color=color, label='pressure')
+    axs[0].set_ylabel('Depth [km]') 
+    axs[0].set_xlabel('Pressure [GPa]', color=color) 
+    axs[0].invert_yaxis()
+    # ax2: temperature
+    color = 'tab:red'
+    ax2 = axs[0].twiny()
+    ax2.plot(temperatures, depths/1e3, color=color, label='temperature')
+    ax2.set_xlabel('Temperature [K]', color=color) 
+    # second: viscosity
+    axs[1].semilogx(eta_diff, depths/1e3, 'c', label='diffusion creep')
+    axs[1].semilogx(eta_disl, depths/1e3, 'g', label='dislocation creep(%.2e)' % strain_rate)
+    axs[1].set_xlim([1e18,1e25])
+    axs[1].invert_yaxis()
+    axs[1].grid()
+    axs[1].set_ylabel('Depth [km]') 
+    axs[1].set_xlabel('Viscosity [Pa*s]') 
+    axs[1].legend()
+
+    plt.savefig(fig_path)
+    print("New figure: %s" % fig_path)
 
 
 def main():
@@ -362,6 +422,14 @@ def main():
         # screen output
         print("eta_diff = %4e" % eta_diff)
         print("eta_disl = %4e" % eta_disl)
+    
+    elif _commend == 'plot_along_aspect_profile':
+        # todo
+        fig_path = os.path.join(RESULT_DIR, 'along_profile_rhoelogy.png')
+        PlotAlongAspectProfile(arg.inputs, fig_path)
+    
+    else:
+        raise CheckValueError('%s is not a valid commend' % _commend)
 
 
 

@@ -19,9 +19,10 @@ descriptions
 	Originally, it only has diffusion creep rheology
 """ 
 
-
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.special import erf
 
 #Physical Constants
 R=8.314 #J/mol*K
@@ -185,13 +186,13 @@ def plot_upper_mantle_viscosity():
     
     # Temperature for Half-space Cooling Model
     age = 80e6*sec2yrs
-    T = rheo.temperature_halfspace(depth,age,0) # K
+    T = temperature_halfspace(depth,age,0) # K
     
     # temperature for flow law
     mad = 0.5715  # deg/km, approximating adiabat to match T(CMB) in Aspect
     Tad = T + mad*depth/km2m
     
-    P = rheo.pressure_from_lithostatic(depth,Tad,0)  # Pa
+    P = pressure_from_lithostatic(depth,Tad,0)  # Pa
     
     ptplt = 0
     if ptplt == 1: 
@@ -286,6 +287,81 @@ def plot_upper_mantle_viscosity():
     pdffile = mech + '_' + flver + '.pdf'
     fig1.savefig(pdffile,bbox_inches='tight')
 
+
+# Half-space cooling model 
+# t in seconds
+# z in meters
+def temperature_halfspace(z,t,p):
+	# Physical constants
+	kappa = 1e-6  # thermal diffusivity (m^2/s)
+	T_s = 273  # surface temperature (C)
+	T_m = 1673 # mantle temperature (C)
+
+	T = T_s + (T_m - T_s)*erf(z/(2*np.sqrt(kappa*t)))
+	
+	if p == 1:
+		fig = plt.figure()
+		ax = fig.add_subplot(1,3,1)
+		ax.plot(T,z/1000)  # plot in kilometers
+		ax.set_ylim(150,0)
+		ax.grid(True)
+		ax.set_xlabel('Temperature (C)')
+		ax.set_ylabel('Depth (km)')
+	
+	return T
+
+
+# Pressure as a function of depth from the compressibility using Equation 4-321 
+# (Turcotte and Schubert, Geodynamics 2nd edition, p. 190). 
+# z in meters
+def pressure_from_compessibility(z,p):
+	# Physical constants
+	beta = 4.3e-12  # compressiblity (1/Pa)
+	rho_m = 3300    # reference density (kg/m^3)
+	g = 9.81        # gravitational acceleration (m/s^2)
+	
+	P = (-1/beta)*np.log(1 - rho_m*g*beta*z)  # pressure (Pa)
+	if p == 1:
+		fig = plt.figure()
+		ax = fig.add_subplot(1,3,1)
+		ax.plot(P/1e9,z/1000,color='blue')
+		ax.set_ylim(150,0)
+		ax.grid(True)
+		ax.set_xlabel('Pressure (GPa)')
+		ax.set_ylabel('Depth (km)')
+	return P
+
+
+# Pressure profile from lithostatic density
+# Aspect uses total pressure, so this includes a lithostatic pressure
+# even if using incompressible formulation
+# This requires the temperature as a function of depth (including adiabatic gradient)
+
+def pressure_from_lithostatic(z,Tad,p):
+	
+	# Density Profile
+	refrho = 3300  # kg/m^3
+	refT = 1673		# K
+	alpha = 3.1e-5  # 1/K
+	g = 9.81 # m/s^2
+	density = refrho*(1-alpha*(Tad-refT))
+
+	# start loop at 1 because P[0] = 0
+	dz = z[1]-z[0]
+	P = np.zeros(np.size(z))
+	for i in range(1, np.size(z)):
+		P[i] = P[i-1] + 0.5*(density[i]+density[i-1])*g*dz
+	
+	if p == 1:
+		fig = plt.figure()
+		ax = fig.add_subplot(1,3,1)
+		ax.plot(P/1e9,z/1000,color='blue')
+		ax.set_ylim(150,0)
+		ax.grid(True)
+		ax.set_xlabel('Pressure (GPa)')
+		ax.set_ylabel('Depth (km)')
+	return P
+
     
 def main():
     '''
@@ -297,9 +373,9 @@ def main():
             options
     '''
     _commend = sys.argv[1]
-	
-	if _commend == 'plot_upper_mantle_viscosity':
+    if _commend == 'plot_upper_mantle_viscosity':
         plot_upper_mantle_viscosity()
+
 
 
 # run script
