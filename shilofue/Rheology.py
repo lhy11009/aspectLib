@@ -35,6 +35,12 @@ Examples of usage:
 
         there is no '-E' option, as F should be incorporated in A in ASPECT's rheology
 
+  - plot along a profile from aspect to check different parameterazition
+
+        python -m shilofue.Rheology plot_along_aspect_profile -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re/output/depth_average.txt -im MB
+
+        -im : LHY(default) or MB, use my implementation of formula or Magali's (in script flow_law_function)
+
 descriptions
 """ 
 
@@ -46,6 +52,7 @@ import argparse
 import numpy as np
 from matplotlib import pyplot as plt
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
+from shilofue.flow_law_functions import visc_diff_HK
 
 R = 8.314
 
@@ -281,7 +288,7 @@ def GetLowerMantleRheology(upper_mantle_creep_method, jump, T, P, **kwargs):
     return lower_mantle_creep_method
 
 
-def PlotAlongAspectProfile(depth_average_path,  fig_path):
+def PlotAlongAspectProfile(depth_average_path, fig_path_base, **kwargs):
     """
     plot along a T, P profile in aspect
     """
@@ -303,13 +310,33 @@ def PlotAlongAspectProfile(depth_average_path,  fig_path):
     temperatures = data[:, col_T]
 
     # compute viscosity
+    eta_annotation = '' # use this to annotate figure title
     rheology = 'HK03'
     RheologyPrm = RHEOLOGY_PRM()
     diffusion_creep = getattr(RheologyPrm, rheology + "_diff")
     dislocation_creep = getattr(RheologyPrm, rheology + "_disl")
     strain_rate = 1e-15
-    eta_diff = CreepRheology(diffusion_creep, strain_rate, pressures, temperatures)
+    
+    # diffusion creep
+    implementation = kwargs.get('implementation', 'LHY')
+    if implementation == 'LHY':
+        eta_diff = CreepRheology(diffusion_creep, strain_rate, pressures, temperatures)
+        eta_annotation += rheology
+    elif implementation == 'MB':
+        # use magali's implementation
+        d = 1e4
+        coh = 1000
+        water = 'con' # 'wet, dry, con'
+        mod = 'orig'
+        Edev = 'mid'
+        Vdev = 'mid'
+        eta_diff = visc_diff_HK(temperatures,pressures,d,coh,water,mod,Edev,Vdev)
+        eta_annotation += '%s_%s_E%s_V%s' % (water,mod, Edev, Vdev)
+    else:
+        raise CheckValueError('%s is not a valid implementation' % implementation)
+    # dislocation creep
     eta_disl = CreepRheology(dislocation_creep, strain_rate, pressures, temperatures, use_effective_strain_rate=True)
+
     # plot
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
     color = 'tab:blue'
@@ -329,9 +356,14 @@ def PlotAlongAspectProfile(depth_average_path,  fig_path):
     axs[1].invert_yaxis()
     axs[1].grid()
     axs[1].set_ylabel('Depth [km]') 
-    axs[1].set_xlabel('Viscosity [Pa*s]') 
+    axs[1].set_xlabel('Viscosity [Pa*s]')
+    _title = 'Viscosity (%s)' % eta_annotation
+    axs[1].set_title(_title)
     axs[1].legend()
 
+    fig_path_base0 = fig_path_base.rpartition('.')[0]
+    fig_path_type = fig_path_base.rpartition('.')[2]
+    fig_path = "%s_%s.%s" % (fig_path_base0, implementation, fig_path_type)
     plt.savefig(fig_path)
     print("New figure: %s" % fig_path)
 
@@ -369,6 +401,9 @@ def main():
     parser.add_argument('-E', '--use_effective_strain_rate', type=int,
                         default=0,
                         help='If use effective strain rate instead of experimental value (0 or 1)')
+    parser.add_argument('-im', '--implementation', type=str,
+                        default='LHY',
+                        help='implementation of rheology(LHY or MB)')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -426,7 +461,7 @@ def main():
     elif _commend == 'plot_along_aspect_profile':
         # todo
         fig_path = os.path.join(RESULT_DIR, 'along_profile_rhoelogy.png')
-        PlotAlongAspectProfile(arg.inputs, fig_path)
+        PlotAlongAspectProfile(arg.inputs, fig_path, implementation=arg.implementation)
     
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)
