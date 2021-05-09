@@ -40,6 +40,15 @@ Examples of usage:
         python -m shilofue.Rheology plot_along_aspect_profile -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re/output/depth_average.txt -im MB
 
         -im : LHY(default) or MB, use my implementation of formula or Magali's (in script flow_law_function)
+  
+  - plot along a profile from aspect, using rheology parameterization from a prm file to check implementation in code
+
+        python -m shilofue.Rheology plot_along_aspect_profile_with_json 
+        -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re/output/depth_average.txt 
+        -j /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re/case.prm
+
+        -i: depth_average file
+        -j: prm file / json file, in case of a json file, it contains diffusion + dislocation creep(as output from the convert_to_ASPECT command)
 
 descriptions
 """ 
@@ -53,6 +62,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.flow_law_functions import visc_diff_HK
+from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic
 
 R = 8.314
 
@@ -288,9 +298,18 @@ def GetLowerMantleRheology(upper_mantle_creep_method, jump, T, P, **kwargs):
     return lower_mantle_creep_method
 
 
-def PlotAlongAspectProfile(depth_average_path, fig_path_base, **kwargs):
+def ComputeComposite(eta_diff, eta_disl):
+    '''
+    compute value of composite viscosity from value of diffusion creep and 
+    dislocation creep.
+    '''
+    eta = 1.0 / (1.0/eta_diff + 1.0/eta_disl)
+    return eta
+
+
+def ReadAspectProfile(depth_average_path):
     """
-    plot along a T, P profile in aspect
+    read a T,P profile from aspect's depth average file
     """
     # check file exist
     assert(os.access(depth_average_path, os.R_OK))
@@ -308,7 +327,13 @@ def PlotAlongAspectProfile(depth_average_path, fig_path_base, **kwargs):
     depths = data[:, col_depth]
     pressures = data[:, col_P]
     temperatures = data[:, col_T]
+    return depths, pressures, temperatures
 
+
+def PlotAlongProfile(depths, pressures, temperatures, fig_path_base, **kwargs):
+    '''
+    plot along a T, P profile in aspect
+    '''
     # compute viscosity
     eta_annotation = '' # use this to annotate figure title
     rheology = 'HK03'
@@ -316,15 +341,18 @@ def PlotAlongAspectProfile(depth_average_path, fig_path_base, **kwargs):
     diffusion_creep = getattr(RheologyPrm, rheology + "_diff")
     dislocation_creep = getattr(RheologyPrm, rheology + "_disl")
     strain_rate = 1e-15
+
+    # grain size
+    d = kwargs.get('d', 1e4)
     
     # diffusion creep
     implementation = kwargs.get('implementation', 'LHY')
     if implementation == 'LHY':
+        diffusion_creep['d'] = d
         eta_diff = CreepRheology(diffusion_creep, strain_rate, pressures, temperatures)
         eta_annotation += rheology
     elif implementation == 'MB':
         # use magali's implementation
-        d = 1e4
         coh = 1000
         water = 'con' # 'wet, dry, con'
         mod = 'orig'
@@ -335,7 +363,9 @@ def PlotAlongAspectProfile(depth_average_path, fig_path_base, **kwargs):
     else:
         raise CheckValueError('%s is not a valid implementation' % implementation)
     # dislocation creep
+    dislocation_creep['d'] = d
     eta_disl = CreepRheology(dislocation_creep, strain_rate, pressures, temperatures, use_effective_strain_rate=True)
+    eta = ComputeComposite(eta_diff, eta_disl)
 
     # plot
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
@@ -343,27 +373,106 @@ def PlotAlongAspectProfile(depth_average_path, fig_path_base, **kwargs):
     axs[0].plot(pressures/1e9, depths/1e3, color=color, label='pressure')
     axs[0].set_ylabel('Depth [km]') 
     axs[0].set_xlabel('Pressure [GPa]', color=color) 
-    axs[0].invert_yaxis()
+    # axs[0].invert_yaxis()
+    ylim=[660.0, 0.0]
+    axs[0].set_ylim(ylim)
     # ax2: temperature
     color = 'tab:red'
     ax2 = axs[0].twiny()
+    ax2.set_ylim(ylim)
     ax2.plot(temperatures, depths/1e3, color=color, label='temperature')
     ax2.set_xlabel('Temperature [K]', color=color) 
     # second: viscosity
     axs[1].semilogx(eta_diff, depths/1e3, 'c', label='diffusion creep')
     axs[1].semilogx(eta_disl, depths/1e3, 'g', label='dislocation creep(%.2e)' % strain_rate)
+    axs[1].semilogx(eta, depths/1e3, 'r--', label='Composite')
     axs[1].set_xlim([1e18,1e25])
-    axs[1].invert_yaxis()
+    axs[1].set_ylim(ylim)
+    # axs[1].invert_yaxis()
     axs[1].grid()
     axs[1].set_ylabel('Depth [km]') 
     axs[1].set_xlabel('Viscosity [Pa*s]')
     _title = 'Viscosity (%s)' % eta_annotation
     axs[1].set_title(_title)
     axs[1].legend()
-
+    fig.tight_layout()
     fig_path_base0 = fig_path_base.rpartition('.')[0]
     fig_path_type = fig_path_base.rpartition('.')[2]
-    fig_path = "%s_%s.%s" % (fig_path_base0, implementation, fig_path_type)
+    fig_path = "%s_%s_d%.2e_%s.%s" % (fig_path_base0, rheology, d, implementation, fig_path_type)
+    plt.savefig(fig_path)
+    print("New figure: %s" % fig_path)
+
+
+def PlotAlongProfileJson(depths, pressures, temperatures, file_path, fig_path_base):
+    '''
+    plot along a T, P profile in aspect
+    '''
+    # compute viscosity
+    eta_annotation = '' # use this to annotate figure title
+    rheology = 'Aspect'
+    eta_annotation += rheology
+    strain_rate = 1e-15
+
+    if (file_path.rpartition('.')[-1] == 'json'):
+        with open(file_path, 'r') as fin:
+            Rheology = json.load(fin)
+        diffusion_creep = Rheology['diffusion_creep']
+        dislocation_creep = Rheology['dislocation_creep']
+        eta_annotation += '-json'
+    elif (file_path.rpartition('.')[-1] == 'prm'):
+        with open(file_path, 'r') as fin:
+            inputs = ParseFromDealiiInput(fin)
+        diffusion_creep, dislocation_creep = UpperMantleRheologyViscoPlastic(inputs)
+        eta_annotation += '-prm'
+    else:
+        raise FileNotFoundError('Configuration file must be json or prm')
+
+    # screen output 
+    print('read rheology parameterization(diff, disl):')
+    print(diffusion_creep)
+    print(dislocation_creep)
+    
+
+    # diffusion creep
+    eta_diff = CreepRheologyInAspectViscoPlastic(diffusion_creep, strain_rate, pressures, temperatures)
+   
+    # dislocation creep
+    eta_disl = CreepRheologyInAspectViscoPlastic(dislocation_creep, strain_rate, pressures, temperatures)
+    
+    eta = ComputeComposite(eta_diff, eta_disl)
+
+    # plot
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    color = 'tab:blue'
+    axs[0].plot(pressures/1e9, depths/1e3, color=color, label='pressure')
+    axs[0].set_ylabel('Depth [km]') 
+    axs[0].set_xlabel('Pressure [GPa]', color=color) 
+    # axs[0].invert_yaxis()
+    ylim=[660.0, 0.0]
+    axs[0].set_ylim(ylim)
+    # ax2: temperature
+    color = 'tab:red'
+    ax2 = axs[0].twiny()
+    ax2.set_ylim(ylim)
+    ax2.plot(temperatures, depths/1e3, color=color, label='temperature')
+    ax2.set_xlabel('Temperature [K]', color=color) 
+    # second: viscosity
+    axs[1].semilogx(eta_diff, depths/1e3, 'c', label='diffusion creep')
+    axs[1].semilogx(eta_disl, depths/1e3, 'g', label='dislocation creep(%.2e)' % strain_rate)
+    axs[1].semilogx(eta, depths/1e3, 'r--', label='Composite')
+    axs[1].set_xlim([1e18,1e25])
+    axs[1].set_ylim(ylim)
+    # axs[1].invert_yaxis()
+    axs[1].grid()
+    axs[1].set_ylabel('Depth [km]') 
+    axs[1].set_xlabel('Viscosity [Pa*s]')
+    _title = 'Viscosity (%s)' % eta_annotation
+    axs[1].set_title(_title)
+    axs[1].legend()
+    fig.tight_layout()
+    fig_path_base0 = fig_path_base.rpartition('.')[0]
+    fig_path_type = fig_path_base.rpartition('.')[2]
+    fig_path = "%s_%s_d%.2e.%s" % (fig_path_base0, rheology, diffusion_creep['d'], fig_path_type)
     plt.savefig(fig_path)
     print("New figure: %s" % fig_path)
 
@@ -389,6 +498,9 @@ def main():
     parser.add_argument('-r', '--rheology', type=str,
                         default='HK03',
                         help='Type of rheology to use')
+    parser.add_argument('-d', '--grain_size', type=float,
+                        default=1e4,
+                        help='Grain Size')
     parser.add_argument('-P', '--pressure', type=float,
                         default=10e9,
                         help='Pressure (Pa)')
@@ -461,7 +573,13 @@ def main():
     elif _commend == 'plot_along_aspect_profile':
         # todo
         fig_path = os.path.join(RESULT_DIR, 'along_profile_rhoelogy.png')
-        PlotAlongAspectProfile(arg.inputs, fig_path, implementation=arg.implementation)
+        depths, pressures, temperatures = ReadAspectProfile(arg.inputs)
+        PlotAlongProfile(depths, pressures, temperatures, fig_path, d=arg.grain_size, implementation=arg.implementation)
+    
+    elif _commend == 'plot_along_aspect_profile_with_json':
+        fig_path = os.path.join(RESULT_DIR, 'along_profile_rhoelogy.png')
+        depths, pressures, temperatures = ReadAspectProfile(arg.inputs)
+        PlotAlongProfileJson(depths, pressures, temperatures, arg.json, fig_path)
     
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)

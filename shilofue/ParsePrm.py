@@ -29,6 +29,7 @@ import re
 import numpy as np
 # from matplotlib import cm
 # from matplotlib import pyplot as plt
+from shilofue.Parse import COMPOSITION
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -353,6 +354,38 @@ def MaterialModel(Inputs, _config):
             model['Maximum viscosity'] = str(maximum_viscosity)
         # parse back
         Inputs['Material model']['Visco Plastic'] = model
+
+
+def UpperMantleRheologyViscoPlastic(Inputs):
+    '''
+    parse upper mante rheology
+    '''
+    visco_plastic = Inputs["Material model"]['Visco Plastic']
+    grain_size = float(visco_plastic["Grain size"])
+    prefactors_for_diffusion_creep = COMPOSITION(visco_plastic["Prefactors for diffusion creep"])
+    grain_size_exponents_for_diffusion_creep  = COMPOSITION(visco_plastic["Grain size exponents for diffusion creep"])
+    activation_energies_for_diffusion_creep = COMPOSITION(visco_plastic["Activation energies for diffusion creep"])
+    activation_volumes_for_diffusion_creep  = COMPOSITION(visco_plastic["Activation volumes for diffusion creep"])
+    prefactors_for_dislocation_creep = COMPOSITION(visco_plastic["Prefactors for dislocation creep"])
+    activation_energies_for_dislocation_creep = COMPOSITION(visco_plastic["Activation energies for dislocation creep"])
+    activation_volumes_for_dislocation_creep  = COMPOSITION(visco_plastic["Activation volumes for dislocation creep"])
+    stress_exponents_for_dislocation_creep = COMPOSITION(visco_plastic["Stress exponents for dislocation creep"])
+    # call GetLowerMantleRheology to derive parameters for lower mantle flow law 
+    backgroud_upper_mantle_diffusion = {}
+    backgroud_upper_mantle_diffusion['A'] = prefactors_for_diffusion_creep.data['background'][0] 
+    backgroud_upper_mantle_diffusion['d'] = grain_size
+    backgroud_upper_mantle_diffusion['n'] = 1.0 
+    backgroud_upper_mantle_diffusion['m'] = grain_size_exponents_for_diffusion_creep.data['background'][0] 
+    backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
+    backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0]
+    backgroud_upper_mantle_dislocation = {}
+    backgroud_upper_mantle_dislocation['A'] = prefactors_for_dislocation_creep.data['background'][0] 
+    backgroud_upper_mantle_dislocation['d'] = grain_size
+    backgroud_upper_mantle_dislocation['n'] = stress_exponents_for_dislocation_creep.data['background'][0]
+    backgroud_upper_mantle_dislocation['m'] = 1.0
+    backgroud_upper_mantle_dislocation['E'] = activation_energies_for_dislocation_creep.data['background'][0] 
+    backgroud_upper_mantle_dislocation['V'] = activation_volumes_for_dislocation_creep.data['background'][0]
+    return backgroud_upper_mantle_diffusion, backgroud_upper_mantle_dislocation
 
 
 def FastZeroStep(Inputs):

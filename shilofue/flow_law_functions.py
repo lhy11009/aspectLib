@@ -16,14 +16,18 @@ Examples of usage:
         python -m 
 
 descriptions
-	Originally, it only has diffusion creep rheology
+    Originally, it only has diffusion creep rheology
 """ 
 
 import sys
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import erf
 
+
+ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 #Physical Constants
 R=8.314 #J/mol*K
 
@@ -45,20 +49,20 @@ R=8.314 #J/mol*K
  
 def convert_OH_fugacity(T,P,coh):
 
-	# T [K] 			Temperature
-	# P [MPa]			Pressure
-	# coh [ppm-H/si]	OH content (note can convert C_h2o = Coh/16.25, confirmed by Ohuchi)
-	
-	# Per e-mail from Ohuchi, use data from the table in Keppler & Bolfan-Casanova, 2006
+    # T [K]             Temperature
+    # P [MPa]            Pressure
+    # coh [ppm-H/si]    OH content (note can convert C_h2o = Coh/16.25, confirmed by Ohuchi)
+    
+    # Per e-mail from Ohuchi, use data from the table in Keppler & Bolfan-Casanova, 2006
     # to related C_H2O to f_H2O, checked against Kohlstedt et al 1996 data. 
     # I used Kohlstedt et al., 1996 data to show that CH2O = COH/16.25
     # substituting this leads to multiply Ah2o by 16.25Then change units
     # bars to MPa... the resulting value (87.75 ppm-H/Si/MPAa) is very close to the 
     # Ah2o in Zhao (90 # ppm-H/Si/MPa +/- 10) but we ignore the iron content dependence.  
        
-    Ah2o = 0.54*(10)*16.25 			# (ppm/bar)*(MPa/bar)*COH/CH2O
-    Eh2o = 50e3 					# J/mol +/-2e3
-    Vh2o = 10.6e-6 					# m^3/mol+/-1
+    Ah2o = 0.54*(10)*16.25             # (ppm/bar)*(MPa/bar)*COH/CH2O
+    Eh2o = 50e3                     # J/mol +/-2e3
+    Vh2o = 10.6e-6                     # m^3/mol+/-1
     fH2O = coh/(Ah2o*np.exp(-(Eh2o + P*Vh2o)/(R*T)))       #MPa
     
     return fH2O
@@ -71,100 +75,100 @@ def convert_OH_fugacity(T,P,coh):
 # wet or dry or con
 # uses "mid" reported values, 
 # and define dE or dV, which is +/- below
-  	 
+       
 def get_diff_HK_params(water,mod,Edev,Vdev):
-	p = 3 
-	
-	if water == 'dry':
-		r = 0
-		if mod == 'orig':
-			A = 1.5e9/(1e6)**p # MPa^(-n-r) * m^p * s^-1 (converted from microns to meters)
-			E = 375e3  	# J/mol 
-			V = 6e-6   	# m^3/mol, Mid value form range in Table 1 of HK 03.
-			dE = 50  	# error on activation energy
-			dV = 4e-6  	# error on activation volume 
-		else: 
-			A = 10**(-10.40) #MPa^(-n-r) * m^p * s^-1       (Hansen et al (2011); grain size diff) & convert microns to meters 
-			E = 375e3       # J/mol     
-			V = 8.2e-6      # m^3/mol       Nishihara et al. (2014) for forsterite   8.2 +/- 0.9 cm^3.mol
-			dE = 50  		# error on activation energy from HK03
-			dV = 0.9e-6  	# error on activation volume from Nishihara         
-	elif water == 'wet':  	# HK03 wet diffusion, (NOT constant COH)
-		r = 1
-		if mod == 'orig':
-			A = 10**(-10.6) # MPa^(-n-r) * m^p * s^-1 # 2.5e7 converted from microns to meters        
-			E = 375e3 		# J/mol                                    
-			V = 10e-6  		# m^/mol, from HK03   
-			dE = 75  		# error on activation energy, from HK03
-			dV = 10e-6  	# error on activation volume, from HK03  
-		else: 
-			A = 10**(-10.6) #MPa^(-n-r) * m^p * s^-1 # 2.5e7 converted from microns to meters        
-			E = 375e3  # J/mol                                    
-			V = 21e-6  # m^/mol, Ohuchi et al. (2012)   
-			dE = 75    # error on activation energy from HK03
-			dV = 1e-6  # NEED TO CHECK Ohuchi et al, 2012
-	elif water == 'con': 
-		print('Using Diffusion Constant-COH') 	
-		r = 1        
-		A = 1.0e6/(1e6)**p # Pa^(-n-r) * m^p * s^-1 (converted from microns to meters)      
-		E = 335e3 		# J/mol                                    
-		V = 4e-6  		# m^/mol, from HK03   
-		dE = 75  		# error on activation energy, from HK03
-		dV = 4e-6  	    # use error for from HK03  
-		if mod != 'orig':
-			print("Error no modified versions for Constant-COH HK03, using originals")
-	else:
-		print("water must be dry, wet or con")
-    				
-	if Edev == 'min':  
-		E = E - dE  
-	elif Edev == 'max':
-		E = E + dE  
+    p = 3 
+    
+    if water == 'dry':
+        r = 0
+        if mod == 'orig':
+            A = 1.5e9/(1e6)**p # MPa^(-n-r) * m^p * s^-1 (converted from microns to meters)
+            E = 375e3      # J/mol 
+            V = 6e-6       # m^3/mol, Mid value form range in Table 1 of HK 03.
+            dE = 50      # error on activation energy
+            dV = 4e-6      # error on activation volume 
+        else: 
+            A = 10**(-10.40) #MPa^(-n-r) * m^p * s^-1       (Hansen et al (2011); grain size diff) & convert microns to meters 
+            E = 375e3       # J/mol     
+            V = 8.2e-6      # m^3/mol       Nishihara et al. (2014) for forsterite   8.2 +/- 0.9 cm^3.mol
+            dE = 50          # error on activation energy from HK03
+            dV = 0.9e-6      # error on activation volume from Nishihara         
+    elif water == 'wet':      # HK03 wet diffusion, (NOT constant COH)
+        r = 1
+        if mod == 'orig':
+            A = 10**(-10.6) # MPa^(-n-r) * m^p * s^-1 # 2.5e7 converted from microns to meters        
+            E = 375e3         # J/mol                                    
+            V = 10e-6          # m^/mol, from HK03   
+            dE = 75          # error on activation energy, from HK03
+            dV = 10e-6      # error on activation volume, from HK03  
+        else: 
+            A = 10**(-10.6) #MPa^(-n-r) * m^p * s^-1 # 2.5e7 converted from microns to meters        
+            E = 375e3  # J/mol                                    
+            V = 21e-6  # m^/mol, Ohuchi et al. (2012)   
+            dE = 75    # error on activation energy from HK03
+            dV = 1e-6  # NEED TO CHECK Ohuchi et al, 2012
+    elif water == 'con': 
+        print('Using Diffusion Constant-COH')     
+        r = 1        
+        A = 1.0e6/(1e6)**p # Pa^(-n-r) * m^p * s^-1 (converted from microns to meters)      
+        E = 335e3         # J/mol                                    
+        V = 4e-6          # m^/mol, from HK03   
+        dE = 75          # error on activation energy, from HK03
+        dV = 4e-6          # use error for from HK03  
+        if mod != 'orig':
+            print("Error no modified versions for Constant-COH HK03, using originals")
+    else:
+        print("water must be dry, wet or con")
+                    
+    if Edev == 'min':  
+        E = E - dE  
+    elif Edev == 'max':
+        E = E + dE  
 
-	if Vdev == 'min':  
-		V = V - dV  
-	elif Vdev == 'max':
-		V = V + dV
-		
-	return(A,E,V,r)
+    if Vdev == 'min':  
+        V = V - dV  
+    elif Vdev == 'max':
+        V = V + dV
+        
+    return(A,E,V,r)
     
 # Olivine diffusion creep: strain-rate
 def edot_diff_HK(T,P,d,sigd,coh,water,mod,Edev,Vdev):   
-	n = 1
-	p = 3
+    n = 1
+    p = 3
 
-	A, E, V, r = get_diff_HK_params(water,mod,Edev,Vdev)    
+    A, E, V, r = get_diff_HK_params(water,mod,Edev,Vdev)    
 
-	if water == 'con': # use constant COH equation/values from HK03
-		edot = A*(sigd)**n*(d/1e6)**(-p)*((coh)**r)*np.exp(-(E+P*V)/(R*T)) #s^-1
-	else:
-		fh2o = convert_OH_fugacity(T,P,coh) # Convert coh to water fugacity
-		edot = A*(sigd)**n*(d/1e6)**(-p)*((fh2o)**r)*np.exp(-(E+P*V)/(R*T)) #s^-1
+    if water == 'con': # use constant COH equation/values from HK03
+        edot = A*(sigd)**n*(d/1e6)**(-p)*((coh)**r)*np.exp(-(E+P*V)/(R*T)) #s^-1
+    else:
+        fh2o = convert_OH_fugacity(T,P,coh) # Convert coh to water fugacity
+        edot = A*(sigd)**n*(d/1e6)**(-p)*((fh2o)**r)*np.exp(-(E+P*V)/(R*T)) #s^-1
 
-	return edot
+    return edot
 
 # Olivine diffusion creep: viscosity  
 # Note that A in this case needs to be convert from MPa to Pa to give visc in Pa-s
 # instead of MPa-s 
 def visc_diff_HK(T,P,d,coh,water,mod,Edev,Vdev):   
-	n = 1
-	p = 3
-	
-	A, E, V, r = get_diff_HK_params(water,mod,Edev,Vdev)    
-	dm = d/1e6  # convert from microns to meters
-	Am = A/1e6  # convert from MPa^-1 to Pa^-1
-		
-	if water == 'con': # use constant COH equation/values from HK03
-	    
-		visc = 0.5*(dm)**p/(Am*coh**r)*np.exp((E + P*V)/(R*T)) # Pa s
-	else: 	
-		fh2o = convert_OH_fugacity(T,P,coh)	# Convert coh to water fugacity
-		visc = 0.5*(dm)**p/(Am*fh2o**r)*np.exp((E + P*V)/(R*T)) # Pa s
+    n = 1
+    p = 3
+    
+    A, E, V, r = get_diff_HK_params(water,mod,Edev,Vdev)    
+    dm = d/1e6  # convert from microns to meters
+    Am = A/1e6  # convert from MPa^-1 to Pa^-1
+        
+    if water == 'con': # use constant COH equation/values from HK03
+        
+        visc = 0.5*(dm)**p/(Am*coh**r)*np.exp((E + P*V)/(R*T)) # Pa s
+    else:     
+        fh2o = convert_OH_fugacity(T,P,coh)    # Convert coh to water fugacity
+        visc = 0.5*(dm)**p/(Am*fh2o**r)*np.exp((E + P*V)/(R*T)) # Pa s
 
-	return visc
+    return visc
 
 
-def plot_upper_mantle_viscosity():
+def plot_upper_mantle_viscosity(**kwargs):
     '''
     plot upper mantle viscosity, I got this from Magali
     '''
@@ -194,35 +198,35 @@ def plot_upper_mantle_viscosity():
     
     P = pressure_from_lithostatic(depth,Tad,0)  # Pa
     
-    ptplt = 0
+    ptplt = kwargs.get('ptplt', 0)
     if ptplt == 1: 
-    	fig = plt.figure()
-    	ax = fig.add_subplot(2,3,1)
-    	ax.plot(P/1e9,depth/km2m,color='blue')
-    	ax.set_ylim(zmax/km2m,0)
-    	ax.grid(True)
-    	ax.set_xlabel('Pressure (GPa)')
-    	ax.set_ylabel('Depth (km)')
+        fig = plt.figure()
+        ax = fig.add_subplot(2,3,1)
+        ax.plot(P/1e9,depth/km2m,color='blue')
+        ax.set_ylim(zmax/km2m,0)
+        ax.grid(True)
+        ax.set_xlabel('Pressure (GPa)')
+        ax.set_ylabel('Depth (km)')
     
-    	ax = fig.add_subplot(2,3,2)
-    	ax.plot(T,depth/km2m,color='green')  # plot in kilometers
-    	ax.plot(Tad,depth/km2m,color='blue')  # plot in kilometers
-    	ax.set_ylim(zmax/km2m,0)
-    	ax.grid(True)
-    	ax.set_xlabel('Temperature (C)')
-    	ax.set_ylabel('Depth (km)')
-    	
-    	plt.tight_layout()
-    	pdffile = 'profile_pt.pdf'
-    	fig.savefig(pdffile,bbox_inches='tight')
-    	
+        ax = fig.add_subplot(2,3,2)
+        ax.plot(T,depth/km2m,color='green')  # plot in kilometers
+        ax.plot(Tad,depth/km2m,color='blue')  # plot in kilometers
+        ax.set_ylim(zmax/km2m,0)
+        ax.grid(True)
+        ax.set_xlabel('Temperature (K)')
+        ax.set_ylabel('Depth (km)')
+        
+        plt.tight_layout()
+        pdffile = os.path.join(RESULT_DIR, 'profile_pt.pdf')
+        fig.savefig(pdffile,bbox_inches='tight')
+        
     # Use for testing at a single value
     #T = 1400 + 273
     #P = 1e9
     #print(f'etad {etadf:0.3g}')
     
     # constant grain size and strain rate
-    d = 5e3 	  # microns (= 5 mm = 0.5 cm)
+    d = 5e3       # microns (= 5 mm = 0.5 cm)
     edot = 1e-15  # background mantle strain-RateLimiter
     
     # Which flow law?
@@ -238,53 +242,54 @@ def plot_upper_mantle_viscosity():
     cnt = 1
     fig1 = plt.figure(figsize=[7.5,9.0])
     for i in range(3):
-    	print('Edev',Edeva[i])
-    	Edev = Edeva[i]
-    	
-    	for j in range(3):
-    		print('Vdev',Vdeva[j])	
-    		Vdev = Vdeva[j]
-    		
-    		titext1 = 'E: ' + Edev + ', V:' + Vdev
-    		# Water: choose wet or dry and indicate water content for wet
-    		water = 'wet'
-    		coh = 1000  # ppm H/Si
-    		etadf_wet = visc_diff_HK(T,P,d,coh,water,flver,Edev,Vdev)
+        print('Edev',Edeva[i])
+        Edev = Edeva[i]
+        
+        for j in range(3):
+            print('Vdev',Vdeva[j])    
+            Vdev = Vdeva[j]
+            
+            titext1 = 'E: ' + Edev + ', V:' + Vdev
+            # Water: choose wet or dry and indicate water content for wet
+            water = 'wet'
+            coh = 1000  # ppm H/Si
+            etadf_wet = visc_diff_HK(Tad,P,d,coh,water,flver,Edev,Vdev)
     
-    		water = 'dry'
-    		coh = 50  # ppm H/Si
-    		etadf_dry = visc_diff_HK(T,P,d,coh,water,flver,Edev,Vdev)
+            water = 'dry'
+            coh = 50  # ppm H/Si
+            etadf_dry = visc_diff_HK(Tad,P,d,coh,water,flver,Edev,Vdev)
     
-    		water = 'con'
-    		coh = 1000  # ppm H/Si
-    		etadf_con = visc_diff_HK(T,P,d,coh,water,flver,Edev,Vdev)
-    		
-    		print(cnt)
-    		ax = fig1.add_subplot(3,3,cnt)
-    		ax.semilogx(etadf_wet,depth/km2m,label='wet')
-    		ax.semilogx(etadf_dry,depth/km2m,label='dry')
-    		ax.semilogx(etadf_con,depth/km2m,label='const')
-    		ax.set_ylim(zmax/km2m,0)
-    		ax.set_xlim(1e18,1e25)
-    		ax.grid(True)
-    		ax.minorticks_on()	
-    		ax.set_xticks([1e18, 1e19, 1e20, 1e21, 1e22, 1e23, 1e24])
-    		
-    		ax.legend(fontsize=8)
-    		if i == 2:
-    			ax.set_xlabel('Viscosity (Pa s)')
-    		if j == 0:
-    			ax.set_ylabel('Depth (km)')
-    		if cnt == 1:
-    			titext2 = mech + '(' + flver + ') ' + titext1
-    			ax.set_title(titext2, fontsize=10)
-    		else:
-    			ax.set_title(titext1, fontsize=10)
-    		cnt = cnt + 1
-    		
+            water = 'con'
+            coh = 1000  # ppm H/Si
+            etadf_con = visc_diff_HK(Tad,P,d,coh,water,flver,Edev,Vdev)
+            print('temperature: %4e, pressure: %4e' % (Tad[-1], P[-1]))  # debug
+            print('viscosity: %.4e' % etadf_con[-1])
+
+            ax = fig1.add_subplot(3,3,cnt)
+            ax.semilogx(etadf_wet,depth/km2m,label='wet')
+            ax.semilogx(etadf_dry,depth/km2m,label='dry')
+            ax.semilogx(etadf_con,depth/km2m,label='const')
+            ax.set_ylim(zmax/km2m,0)
+            ax.set_xlim(1e18,1e25)
+            ax.grid(True)
+            ax.minorticks_on()    
+            ax.set_xticks([1e18, 1e19, 1e20, 1e21, 1e22, 1e23, 1e24])
+            
+            ax.legend(fontsize=8)
+            if i == 2:
+                ax.set_xlabel('Viscosity (Pa s)')
+            if j == 0:
+                ax.set_ylabel('Depth (km)')
+            if cnt == 1:
+                titext2 = mech + '(' + flver + ') ' + titext1
+                ax.set_title(titext2, fontsize=10)
+            else:
+                ax.set_title(titext1, fontsize=10)
+            cnt = cnt + 1
+            
     
     plt.tight_layout()
-    pdffile = mech + '_' + flver + '.pdf'
+    pdffile = os.path.join(RESULT_DIR, mech + '_' + flver + '.pdf')
     fig1.savefig(pdffile,bbox_inches='tight')
 
 
@@ -292,44 +297,44 @@ def plot_upper_mantle_viscosity():
 # t in seconds
 # z in meters
 def temperature_halfspace(z,t,p):
-	# Physical constants
-	kappa = 1e-6  # thermal diffusivity (m^2/s)
-	T_s = 273  # surface temperature (C)
-	T_m = 1673 # mantle temperature (C)
+    # Physical constants
+    kappa = 1e-6  # thermal diffusivity (m^2/s)
+    T_s = 273  # surface temperature (K)
+    T_m = 1673 # mantle temperature (K)
 
-	T = T_s + (T_m - T_s)*erf(z/(2*np.sqrt(kappa*t)))
-	
-	if p == 1:
-		fig = plt.figure()
-		ax = fig.add_subplot(1,3,1)
-		ax.plot(T,z/1000)  # plot in kilometers
-		ax.set_ylim(150,0)
-		ax.grid(True)
-		ax.set_xlabel('Temperature (C)')
-		ax.set_ylabel('Depth (km)')
-	
-	return T
+    T = T_s + (T_m - T_s)*erf(z/(2*np.sqrt(kappa*t)))
+    
+    if p == 1:
+        fig = plt.figure()
+        ax = fig.add_subplot(1,3,1)
+        ax.plot(T,z/1000)  # plot in kilometers
+        ax.set_ylim(150,0)
+        ax.grid(True)
+        ax.set_xlabel('Temperature (C)')
+        ax.set_ylabel('Depth (km)')
+    
+    return T
 
 
 # Pressure as a function of depth from the compressibility using Equation 4-321 
 # (Turcotte and Schubert, Geodynamics 2nd edition, p. 190). 
 # z in meters
 def pressure_from_compessibility(z,p):
-	# Physical constants
-	beta = 4.3e-12  # compressiblity (1/Pa)
-	rho_m = 3300    # reference density (kg/m^3)
-	g = 9.81        # gravitational acceleration (m/s^2)
-	
-	P = (-1/beta)*np.log(1 - rho_m*g*beta*z)  # pressure (Pa)
-	if p == 1:
-		fig = plt.figure()
-		ax = fig.add_subplot(1,3,1)
-		ax.plot(P/1e9,z/1000,color='blue')
-		ax.set_ylim(150,0)
-		ax.grid(True)
-		ax.set_xlabel('Pressure (GPa)')
-		ax.set_ylabel('Depth (km)')
-	return P
+    # Physical constants
+    beta = 4.3e-12  # compressiblity (1/Pa)
+    rho_m = 3300    # reference density (kg/m^3)
+    g = 9.81        # gravitational acceleration (m/s^2)
+    
+    P = (-1/beta)*np.log(1 - rho_m*g*beta*z)  # pressure (Pa)
+    if p == 1:
+        fig = plt.figure()
+        ax = fig.add_subplot(1,3,1)
+        ax.plot(P/1e9,z/1000,color='blue')
+        ax.set_ylim(150,0)
+        ax.grid(True)
+        ax.set_xlabel('Pressure (GPa)')
+        ax.set_ylabel('Depth (km)')
+    return P
 
 
 # Pressure profile from lithostatic density
@@ -338,29 +343,29 @@ def pressure_from_compessibility(z,p):
 # This requires the temperature as a function of depth (including adiabatic gradient)
 
 def pressure_from_lithostatic(z,Tad,p):
-	
-	# Density Profile
-	refrho = 3300  # kg/m^3
-	refT = 1673		# K
-	alpha = 3.1e-5  # 1/K
-	g = 9.81 # m/s^2
-	density = refrho*(1-alpha*(Tad-refT))
+    
+    # Density Profile
+    refrho = 3300  # kg/m^3
+    refT = 1673        # K
+    alpha = 3.1e-5  # 1/K
+    g = 9.81 # m/s^2
+    density = refrho*(1-alpha*(Tad-refT))
 
-	# start loop at 1 because P[0] = 0
-	dz = z[1]-z[0]
-	P = np.zeros(np.size(z))
-	for i in range(1, np.size(z)):
-		P[i] = P[i-1] + 0.5*(density[i]+density[i-1])*g*dz
-	
-	if p == 1:
-		fig = plt.figure()
-		ax = fig.add_subplot(1,3,1)
-		ax.plot(P/1e9,z/1000,color='blue')
-		ax.set_ylim(150,0)
-		ax.grid(True)
-		ax.set_xlabel('Pressure (GPa)')
-		ax.set_ylabel('Depth (km)')
-	return P
+    # start loop at 1 because P[0] = 0
+    dz = z[1]-z[0]
+    P = np.zeros(np.size(z))
+    for i in range(1, np.size(z)):
+        P[i] = P[i-1] + 0.5*(density[i]+density[i-1])*g*dz
+    
+    if p == 1:
+        fig = plt.figure()
+        ax = fig.add_subplot(1,3,1)
+        ax.plot(P/1e9,z/1000,color='blue')
+        ax.set_ylim(150,0)
+        ax.grid(True)
+        ax.set_xlabel('Pressure (GPa)')
+        ax.set_ylabel('Depth (km)')
+    return P
 
     
 def main():
@@ -374,7 +379,7 @@ def main():
     '''
     _commend = sys.argv[1]
     if _commend == 'plot_upper_mantle_viscosity':
-        plot_upper_mantle_viscosity()
+        plot_upper_mantle_viscosity(ptplt=True)
 
 
 
