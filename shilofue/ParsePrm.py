@@ -16,7 +16,7 @@ Examples of usage:
   - default usage:
     
     generate .prm file with fast zero step:
-        python shilofue/ParsePrm.py fast_zero_step -i case.prm -o case_test.prm
+        python -m shilofue.ParsePrm fast_zero_step -i case.prm -o case_test.prm
 
 descriptions:
     copy and pasted all the function in the origin PARSE_OPERATION class
@@ -29,12 +29,59 @@ import re
 import numpy as np
 # from matplotlib import cm
 # from matplotlib import pyplot as plt
-from shilofue.Parse import COMPOSITION
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+
+
+class COMPOSITION():
+    """
+    store value like
+      'background:4.0e-6|1.5e-6, spcrust:0.0, spharz:4.0e-6, opcrust:4.0e-6, opharz:4.0e-6 '
+    or parse value back
+    """
+    def __init__(self, line):
+        # parse the format:
+        # key1: val1|val2, key2: val3|val4
+        # to a dictionary data where
+        # data[key1] = [val1, val2]
+        self.data = {}
+        parts = line.split(',')
+        for part in parts:
+            key_str = part.split(':')[0]
+            key = re_neat_word(key_str)
+            values_str = part.split(':')[1].split('|')
+            # convert string to float
+            values = [float(re_neat_word(val)) for val in values_str]
+            self.data[key] = values
+
+    def parse_back(self):
+        """
+        def parse_back(self)
+
+        parse data back to a string
+        """
+        line = ''
+        j = 0
+        for key, values in self.data.items():
+            # construct the format:
+            # key1: val1|val2, key2: val3|val4
+            if j > 0:
+                part_of_line = ', ' + key + ':'
+            else:
+                part_of_line = key + ':'
+            i = 0
+            for val in values:
+                if i == 0:
+                    part_of_line += '%.4e' % val
+                else:
+                    part_of_line += '|' + '%.4e' % val
+                i += 1
+            line += part_of_line
+            j += 1
+        return line
 
 
 def ParseFromDealiiInput(fin):

@@ -14,6 +14,12 @@ Examples of usage:
   - default usage:
 
         python -m shilofue.PlotDepthAverage plot_by_time -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_intial_T/output/depth_average.txt 
+    
+  - plot case result:
+        
+        python -m shilofue.PlotDepthAverage plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re_mesh
+
+        going to fix output name and time
 
 descriptions
 """ 
@@ -227,6 +233,85 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
             self.header['vertical_heat_flux']['unit'] = 'mw/m^2'
 
 
+def PlotDaFigure(depth_average_path, fig_path_base):
+    '''
+    plot figure
+    '''
+    assert(os.access(depth_average_path, os.R_OK))
+    # read that
+    DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
+    DepthAverage.ReadHeader(depth_average_path)
+    DepthAverage.ReadData(depth_average_path)
+    # manage data
+    DepthAverage.SplitTimeStep()
+    i0 = DepthAverage.time_step_indexes[0][-1] * DepthAverage.time_step_length
+    i1 = DepthAverage.time_step_indexes[1][0] * DepthAverage.time_step_length
+    data = DepthAverage.data[i0:i1, :]
+    # get depth
+    col_depth = DepthAverage.header['depth']['col']
+    depths = data[:, col_depth]
+    # get pressure
+    col_P = DepthAverage.header['adiabatic_pressure']['col']
+    pressures = data[:, col_P]
+    # get temperature
+    col_T = DepthAverage.header['temperature']['col']
+    temperatures = data[:, col_T]
+    col_Tad = DepthAverage.header['adiabatic_temperature']['col']
+    adiabat = data[:, col_Tad]
+    # get viscosity
+    col_eta = DepthAverage.header['viscosity']['col']
+    eta = data[:, col_eta]
+    # heat_flux
+    col_hf = DepthAverage.header['vertical_heat_flux']['col']
+    hf = data[:, col_hf]
+    # heat_flux
+    col_mf = DepthAverage.header['vertical_mass_flux']['col']
+    mf = data[:, col_mf]
+
+    # plot
+    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+    color = 'tab:blue'
+    axs[0, 0].plot(pressures/1e9, depths/1e3, color=color, label='pressure')
+    axs[0, 0].invert_yaxis()
+    axs[0, 0].set_ylabel('Depth [km]') 
+    axs[0, 0].set_xlabel('Pressure [GPa]', color=color) 
+    # axs[0].invert_yaxis()
+    # ax2: temperature
+    color = 'tab:red'
+    ax2 = axs[0, 0].twiny()
+    ax2.plot(temperatures, depths/1e3, color=color, label='temperature')
+    ax2.plot(adiabat, depths/1e3, '--', color=color, label='adiabat')
+    ax2.set_xlabel('Temperature [K]', color=color) 
+    ax2.legend()
+    # second: viscosity
+    axs[0, 1].semilogx(eta, depths/1e3, 'c', label='Viscosity')
+    axs[0, 1].set_xlim([1e18,1e25])
+    axs[0, 1].invert_yaxis()
+    axs[0, 1].grid()
+    axs[0, 1].set_ylabel('Depth [km]') 
+    axs[0, 1].set_xlabel('Viscosity [Pa*s]')
+    axs[0, 1].legend()
+    # third: heat flux
+    axs[1, 0].plot(hf, depths/1e3, color='r', label='vertical heat flux')
+    axs[1, 0].invert_yaxis()
+    axs[1, 0].grid()
+    axs[1, 0].set_ylabel('Depth [km]') 
+    axs[1, 0].set_xlabel('Heat Flux [W / m2]') 
+    # fourth: mass flux
+    yr_to_s = 365 * 24 * 3600
+    axs[1, 1].plot(mf * yr_to_s, depths/1e3, color='b', label='vertical mass flux')
+    axs[1, 1].invert_yaxis()
+    axs[1, 1].grid()
+    axs[1, 1].set_ylabel('Depth [km]') 
+    axs[1, 1].set_xlabel('Mass Flux [kg / m2 / yr]') 
+    # layout
+    fig.tight_layout()
+    fig_path_base0 = fig_path_base.rpartition('.')[0]
+    fig_path_type = fig_path_base.rpartition('.')[2]
+    fig_path = "%s.%s" % (fig_path_base0, fig_path_type)
+    plt.savefig(fig_path)
+    print("New figure: %s" % fig_path)
+
 
 def main():
     '''
@@ -277,6 +362,12 @@ def main():
         if not os.path.isdir(os.path.dirname(arg.outputs)):
             os.mkdir(os.path.dirname(arg.outputs))
         DepthAverage(arg.inputs, fileout=arg.outputs, time=arg.time)
+
+    # commands
+    if _commend == 'plot_case':
+        depth_average_path = os.path.join(arg.inputs, 'output', 'depth_average.txt')
+        fig_path_base = os.path.join(arg.inputs, 'img', 'DepthAverage.png')
+        PlotDaFigure(depth_average_path, fig_path_base)
 
 # run script
 if __name__ == '__main__':
