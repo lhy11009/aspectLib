@@ -281,7 +281,7 @@ but you will get a blank one for this field name' % _yname,
             _ax.legend()
 
 
-class STATISTICS_PLOT(LINEARPLOT):
+class STATISTICS_PLOT_OLD(LINEARPLOT):
     '''
     Class for plotting depth average file.
     This is an inheritage of the LINEARPLOT class
@@ -515,7 +515,7 @@ def ProjectPlot(case_dirs, _file_type, **kwargs):
 
     # plot statistics ouput
     plot_options = pdict.get('Statistics', {})
-    Statistics = STATISTICS_PLOT('Statistics', unit_convert=UnitConvert, options=plot_options)
+    Statistics = STATISTICS_PLOT_OLD('Statistics', unit_convert=UnitConvert, options=plot_options)
     # depth average output
     plot_options = pdict.get('DepthAverage', {})
     DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert, options=plot_options)

@@ -15,9 +15,9 @@
 ################################################################################
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
-shilofue_dir = "${ASPECT_LAB_DIR}/shilofue"
-py_run_time = "${shilofue_dir}/PlotRunTime.py"
-py_depth_average = "${shilofue_dir}/PlotDepthAverage.py"
+shilofue_dir="${ASPECT_LAB_DIR}/shilofue"
+py_run_time="${shilofue_dir}/PlotRunTime.py"
+py_depth_average="${shilofue_dir}/PlotDepthAverage.py"
 # source "${ASPECT_LAB_DIR}/bash_scripts/utilities.sh"
 
 
@@ -46,17 +46,20 @@ TwoDSubduction_post_process(){
     # Return:
     # Global variables as output(changed):
     ###
-    local case_dir = "$1"
+    local case_dir="$1"
     # go to parental directory
-    local _dir = $(pwd)
+    local _dir=$(pwd)
     cd "${ASPECT_LAB_DIR}"
     # run time
     eval "python -m shilofue.PlotRunTime plot_case -i ${case_dir}"
+    # statistics
+    eval "python -m shilofue.PlotStatistics plot_case -i ${case_dir}"
     # newton solver
-    eval "python -m shilofue.PlotRunTime"
+    local log_file_path="${case_dir}/output/log.txt"
+    local newton_fig_path="${case_dir}/img/NewtonSolver.png"
+    eval "python -m shilofue.PlotRunTime plot_newton_solver_step -i ${log_file_path} -o ${newton_fig_path}"
     # depth average
-    local depth_average_path = "${case_dir}/output/depth_average.txt"
-    eval "python -m shilofue.PlotDepthAverage plot_by_time -i ${depth_average_path}"
+    eval "python -m shilofue.PlotDepthAverage plot_case -i ${case_dir}"
 
     # go back to original directory
     cd "${_dir}"
@@ -76,7 +79,7 @@ main(){
         # Terninal Outputs
         ##
         shift
-        case_dir = "$1"
+        case_dir="$1"
         TwoDSubduction_post_process "${case_dir}"
     else
 	    cecho "${BAD}" "option ${1} is not valid\n"

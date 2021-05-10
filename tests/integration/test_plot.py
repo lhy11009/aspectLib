@@ -35,7 +35,7 @@ def test_plot_statistics():
     # Init the UnitConvert class
     UnitConvert = UNITCONVERT()
     # plot statistics ouput #####
-    Statistics = Plot.STATISTICS_PLOT('Statistics', unit_convert=UnitConvert, options=plot_options)
+    Statistics = Plot.STATISTICS_PLOT_OLD('Statistics', unit_convert=UnitConvert, options=plot_options)
     Statistics(test_file, fileout=_ofile)
     assert(os.path.isfile(_ofile))  # assert that the file is generated successfully
     # os.remove('Statistics.pdf')  # remove this file after finished

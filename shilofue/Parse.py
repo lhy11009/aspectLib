@@ -612,7 +612,7 @@ class BASH_OPTIONS():
         self.odict = {}
 
         # initiate a statistic data
-        self.Statistics = Plot.STATISTICS_PLOT('Statistics')
+        self.Statistics = Plot.STATISTICS_PLOT_OLD('Statistics')
         statistic_file = os.path.join(self._output_dir, 'statistics')
         self.Statistics.ReadHeader(statistic_file)
         self.Statistics.ReadData(statistic_file)
@@ -1078,7 +1078,7 @@ def GetSnapsSteps(case_dir, type_='graphical'):
         idict = ParsePrm.ParseFromDealiiInput(fin)
 
     # import statistics file
-    Statistics = Plot.STATISTICS_PLOT('Statistics')
+    Statistics = Plot.STATISTICS_PLOT_OLD('Statistics')
     statistic_file = os.path.join(case_output_dir, 'statistics')
     my_assert(os.access(statistic_file, os.R_OK), FileNotFoundError,
               'case statistic file - %s cannot be read' % prm_file)

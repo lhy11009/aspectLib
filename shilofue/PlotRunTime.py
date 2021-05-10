@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-r"""(one line description)
+r"""Plot run time information
 
 This exports: 
 
@@ -77,6 +77,7 @@ def PlotFigure(log_path, fig_path):
     # save figure
     fig.tight_layout()
     plt.savefig(fig_path) 
+    print("New figure: %s" % fig_path)
 
 
 def PlotNewtonSolver(log_path, fig_path_base, **kwargs):
@@ -127,6 +128,7 @@ def PlotNewtonSolver(log_path, fig_path_base, **kwargs):
     fig_path_type = fig_path_base.rpartition('.')[2]
     fig_path = "%s_s%06d.%s" % (fig_path_base0, step, fig_path_type)
     plt.savefig(fig_path)
+    print("New figure: %s" % fig_path)
     return fig_path
 
 
@@ -161,7 +163,7 @@ def main():
         # example:
         PlotFigure(arg.inputs, arg.outputs)
     
-    if _commend == 'plot_case':
+    elif _commend == 'plot_case':
         # example:
         log_file = os.path.join(arg.inputs, 'output', 'log.txt')
         assert(log_file)
@@ -170,7 +172,7 @@ def main():
             os.mkdir(os.path.dirname(fig_path))
         PlotFigure(log_file, fig_path)
     
-    if _commend == "plot_newton_solver_step":
+    elif _commend == "plot_newton_solver_step":
         # plot newton solver output
         o_path = PlotNewtonSolver(arg.inputs, arg.outputs) 
 
