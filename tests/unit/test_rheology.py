@@ -44,7 +44,7 @@ def test_HirthKohlstedt():
         values computed from the rheology
     """
     # read parameters
-    check_result = [.2991, .3006, 3.8348e19, 1.2024e17]
+    check_result = [.2991, .3006, 3.8348e19, 1.2024e17, 1e6, 90.0]
     RheologyPrm = RHEOLOGY_PRM()
     diffusion_creep = RheologyPrm.HK03_diff
     dislocation_creep = RheologyPrm.HK03_disl
@@ -63,6 +63,13 @@ def test_HirthKohlstedt():
     
     check3 = CreepRheology(dislocation_creep, 2.5e-12, 1e9, 1400 + 273.15, 1e4, 1000.0)
     assert(abs((check3 - check_result[3]) / check_result[3]) < tolerance)
+
+    # compute A
+    check4 = CreepComputeA(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 3.8348e19, 1e4, 1000.0)
+    assert(abs((check4 - check_result[4]) / check_result[4]) < tolerance)
+    
+    check5 = CreepComputeA(dislocation_creep, 2.5e-12, 1e9, 1400 + 273.15, 1.2024e17, 1e4, 1000.0)
+    assert(abs((check5 - check_result[5]) / check_result[5]) < tolerance)
 
 
 def test_AspectExample():

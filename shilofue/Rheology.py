@@ -37,7 +37,7 @@ Examples of usage:
 
   - plot along a profile from aspect to check different parameterazition
 
-        python -m shilofue.Rheology plot_along_aspect_profile -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re/output/depth_average.txt -im MB
+        python -m shilofue.Rheology plot_along_aspect_profile -r HK03 -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re/output/depth_average.txt -im MB
 
         -im : LHY(default) or MB, use my implementation of formula or Magali's (in script flow_law_function)
   
@@ -63,6 +63,8 @@ from matplotlib import pyplot as plt
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.flow_law_functions import visc_diff_HK
 from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic
+from scipy.interpolate import interp1d
+from mpl_toolkits.mplot3d import Axes3D
 
 R = 8.314
 
@@ -133,6 +135,144 @@ class RHEOLOGY_PRM():
                 "d" : 1e4,
                 "Coh" : 1000.0
             }
+        
+        # modify dislocation creep in Hirth & Kohlstedt 2003
+        self.HK03v1_disl = \
+            {
+                "A": 0.9,
+                "p": 0.0,
+                "r": 1.2,
+                "n": 3.5,
+                "E": 480e3,
+                "V": 11e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0
+            }
+
+        # diffusion creep in Hirth & Kohlstedt 2003
+        self.HK03v1_diff = \
+            {
+                "A" : 1.0e6,
+                "p" : 3.0,
+                "r" : 1.0,
+                "n" : 1.0,
+                "E" : 335e3,
+                "V" : 4e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0
+            }
+
+
+class RHEOLOGY_OPR():
+    '''
+    rheology operation, do some complex staff
+    Attributes:
+        RheologyPrm: an initiation of the class RHEOLOGY_PRM
+        depths(ndarray): depth profile
+        pressures: pressure profile
+        temperatures: temperature profile
+    '''
+    pass
+
+    def __init__(self):
+        self.RheologyPrm = RHEOLOGY_PRM()
+        self.depths = None
+        self.pressures = None
+        self.tempertures = None
+        pass
+    
+    def ReadProfile(self, file_path):
+        self.depths, self.pressures, self.temperatures = ReadAspectProfile(file_path)
+
+    def ConstrainRheology(self, **kwargs):
+        '''
+        varying around a give rheology with variation with applied constraints
+        inputs: 
+            kwargs(dict):
+                rheology: type of initial rheology
+        '''
+        constrained_rheologies = []
+        constrained_ds = []
+        constrained_Vdisls = []
+        constrained_Vdiffs = []
+        rheology = kwargs.get('rheology', 'HK03')
+        diffusion_creep = getattr(self.RheologyPrm, rheology + "_diff")
+        dislocation_creep = getattr(self.RheologyPrm, rheology + "_disl")
+        strain_rate = 1e-15
+        
+        T_func = interp1d(self.depths, self.temperatures, assume_sorted=True)
+        P_func = interp1d(self.depths, self.pressures, assume_sorted=True)
+
+        # grain size
+        d_mean = kwargs.get('d', 0.75e4)
+
+        Vdiff_sigma = 4e-6
+        Vdisl_sigma = 11e-6
+        d_sigma = 5e3
+
+        # random walk
+        eta660range = [4e20, 1e21]
+        N = 10000
+        Vdiffs = np.random.normal(diffusion_creep['V'], Vdiff_sigma, N)
+        Vdisls = np.random.normal(dislocation_creep['V'], Vdisl_sigma, N)
+        ds = np.random.normal(d_mean, d_sigma, N)
+        for i in range(N):
+            Vdiff = Vdiffs[i]
+            Vdisl = Vdisls[i]
+            d = ds[i]
+            if Vdiff < 0.0 or Vdisl < 0.0 or d <= 0.0:
+                continue
+            diffusion_creep['V'] = Vdiff
+            diffusion_creep['d'] = d
+            dislocation_creep['V'] = Vdisl
+            dislocation_creep['d'] = d
+
+            # solve for A
+            depth1 = 250e3
+            T1 = T_func(depth1)
+            P1 = P_func(depth1)
+            # diffusion creep
+            eta_diff1 = 2e20
+            diff_A = CreepComputeA(diffusion_creep, strain_rate, P1, T1, eta_diff1)
+            diffusion_creep['A'] = diff_A
+            eta_disl1 = 2e20
+            disl_A = CreepComputeA(dislocation_creep, strain_rate, P1, T1, eta_disl1, use_effective_strain_rate=True)
+            dislocation_creep['A'] = disl_A
+
+            # 660 km 
+            # diffusion creep
+            T660 = T_func(660e3)
+            P660 = P_func(660e3)
+            eta_diff660 = CreepRheology(diffusion_creep, strain_rate, P660, T660)
+            # dislocation creep
+            eta_disl660 = CreepRheology(dislocation_creep, strain_rate, P660, T660, use_effective_strain_rate=True)
+            eta660 = ComputeComposite(eta_diff660, eta_disl660)
+            
+            # other constraints
+            depth2 = 300e3
+            Ttemp = T_func(depth2)
+            Ptemp = P_func(depth2)
+            # diffusion creep
+            eta_diff2 = CreepRheology(diffusion_creep, strain_rate, Ptemp, Ttemp)
+            # dislocation creep
+            eta_disl2 = CreepRheology(dislocation_creep, strain_rate, Ptemp, Ttemp, use_effective_strain_rate=True)
+
+            if eta660 >= eta660range[0] and eta660 <= eta660range[1] and eta_disl2 < eta_diff2:
+                new_pair = {'diff': diffusion_creep, 'disl': dislocation_creep}
+                constrained_rheologies.append(new_pair)
+                constrained_ds.append(d)
+                constrained_Vdisls.append(Vdisl)
+                constrained_Vdiffs.append(Vdiff)
+        
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.scatter(constrained_Vdiffs, constrained_Vdisls, constrained_ds)
+        ax.set_xlabel('Vdiff [m^3/mol]')
+        ax.set_ylabel('Vdisl [m^3/mol]')
+        # ax.set_zlabel('d [um]')
+        fig_name = 'constrained_rheology_%s_N%d.png' % (rheology, N)
+        fig_path = os.path.join(RESULT_DIR, fig_name)
+        fig.savefig(fig_path)
 
 
 def Config(_kwargs, _name, _default):
@@ -204,7 +344,43 @@ def CreepRheology(creep_type, strain_rate, P, T, d=None, Coh=None, **kwargs):
         Coh = creep_type['Coh']
     # calculate B
     B = A * d**(-p) * Coh**r
-    return F * (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T)) * 1e6
+    eta = F * (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T)) * 1e6
+    return eta
+
+
+def CreepComputeA(creep_type, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
+    """
+    def CreepRheology(creep_type, strain_rate, P, T, d, Coh):
+
+    Calculate viscosity by flow law in form of (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T))
+    Units:
+     - P: Pa
+     - T: K
+     - d: mu m
+     - Coh: H / 10^6 Si
+     - Return value: Pa*s
+    Pay attention to pass in the right value, this custom is inherited
+    """
+    p = creep_type['p']
+    r = creep_type['r']
+    n = creep_type['n']
+    E = creep_type['E']
+    V = creep_type['V']
+    # compute value of F(pre factor)
+    use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
+    if use_effective_strain_rate:
+        F = 1 / (2**((n-1)/n)*3**((n+2)/2/n))
+    else:
+        F = 1.0
+
+    if d is None:
+        d = creep_type['d']
+    if Coh is None:
+        Coh = creep_type['Coh']
+    # calculate B
+    B = (F/eta)**n * strain_rate**(1-n) * np.exp((E+P*V)/(R*T)) * (1e6)**n
+    A = B * d**p * Coh**(-r)
+    return A
 
 
 def CreepRheologyInAspectViscoPlastic(creep_type, strain_rate, P, T):
@@ -336,7 +512,7 @@ def PlotAlongProfile(depths, pressures, temperatures, fig_path_base, **kwargs):
     '''
     # compute viscosity
     eta_annotation = '' # use this to annotate figure title
-    rheology = 'HK03'
+    rheology = kwargs.get('rheology', 'HK03')
     RheologyPrm = RHEOLOGY_PRM()
     diffusion_creep = getattr(RheologyPrm, rheology + "_diff")
     dislocation_creep = getattr(RheologyPrm, rheology + "_disl")
@@ -477,6 +653,19 @@ def PlotAlongProfileJson(depths, pressures, temperatures, file_path, fig_path_ba
     print("New figure: %s" % fig_path)
 
 
+def ConstrainASPECT(file_path):
+    '''
+    Figure out contrain of rheology by random walk
+    Inputs:
+        file_path(str): a profile from ASPECT
+    '''
+    Operator = RHEOLOGY_OPR()
+    # read profile
+    Operator.ReadProfile(file_path)
+    # do a random walk
+    Operator.ConstrainRheology()
+    
+
 def main():
     '''
     main function of this module
@@ -574,12 +763,15 @@ def main():
         # todo
         fig_path = os.path.join(RESULT_DIR, 'along_profile_rhoelogy.png')
         depths, pressures, temperatures = ReadAspectProfile(arg.inputs)
-        PlotAlongProfile(depths, pressures, temperatures, fig_path, d=arg.grain_size, implementation=arg.implementation)
+        PlotAlongProfile(depths, pressures, temperatures, fig_path, rheology=arg.rheology, d=arg.grain_size, implementation=arg.implementation)
     
     elif _commend == 'plot_along_aspect_profile_with_json':
         fig_path = os.path.join(RESULT_DIR, 'along_profile_rhoelogy.png')
         depths, pressures, temperatures = ReadAspectProfile(arg.inputs)
         PlotAlongProfileJson(depths, pressures, temperatures, arg.json, fig_path)
+
+    elif _commend == 'constrain_aspect_rheology':
+        ConstrainASPECT(arg.inputs)
     
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)

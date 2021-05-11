@@ -14,34 +14,6 @@ _test_source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test-plo
 assert(os.path.isdir(_test_source_dir))
 
 
-def test_plot_statistics():
-    '''
-    A test on ploting statistics results
-    '''
-    _ofile = os.path.join(_test_dir, 'Statistics.pdf')
-    if(os.path.isfile(_ofile)):
-        # remove previous files
-        os.remove(_ofile)
-    test_file = os.path.join(_test_source_dir, 'statistics')
-    assert(os.access(test_file, os.R_OK))
-
-    # use a json file
-    json_file = os.path.join(_test_source_dir, 'linear_plot.json')
-    assert(os.access(json_file, os.R_OK))
-    with open(json_file, 'r') as fin:
-        json_options = json.load(fin)
-    plot_options = json_options.get('Statistics', {})
-
-    # Init the UnitConvert class
-    UnitConvert = UNITCONVERT()
-    # plot statistics ouput #####
-    Statistics = Plot.STATISTICS_PLOT_OLD('Statistics', unit_convert=UnitConvert, options=plot_options)
-    Statistics(test_file, fileout=_ofile)
-    assert(os.path.isfile(_ofile))  # assert that the file is generated successfully
-    # os.remove('Statistics.pdf')  # remove this file after finished
-
-
-    assert(os.path.isfile(_ofile))  # assert that the file is generated successfully
 
 
 def test_plot_newton_solver():

@@ -244,8 +244,17 @@ def PlotDaFigure(depth_average_path, fig_path_base):
     DepthAverage.ReadData(depth_average_path)
     # manage data
     DepthAverage.SplitTimeStep()
-    i0 = DepthAverage.time_step_indexes[0][-1] * DepthAverage.time_step_length
-    i1 = DepthAverage.time_step_indexes[1][0] * DepthAverage.time_step_length
+    time_step = 0
+    try:
+        i0 = DepthAverage.time_step_indexes[time_step][-1] * DepthAverage.time_step_length
+        if time_step == len(DepthAverage.time_step_times) - 1:
+            # this is the last step
+            i1 = DepthAverage.data.shape[0]
+        else:
+            i1 = DepthAverage.time_step_indexes[time_step + 1][0] * DepthAverage.time_step_length
+    except IndexError:
+        print("PlotDaFigure: File may not contain any depth average output, abort")
+        return
     data = DepthAverage.data[i0:i1, :]
     # get depth
     col_depth = DepthAverage.header['depth']['col']

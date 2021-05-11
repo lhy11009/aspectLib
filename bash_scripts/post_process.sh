@@ -12,6 +12,8 @@
 #        This script depends on other post-process scripts(see below):
 #
 # Example Usage:
+#  - generate plots of a case
+#       ./bash_scripts/post_process.sh TwoDSubduction_case /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re_rheo
 ################################################################################
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
