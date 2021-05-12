@@ -313,8 +313,12 @@ def PlotDaFigure(depth_average_path, fig_path_base):
     axs[1, 1].grid()
     axs[1, 1].set_ylabel('Depth [km]') 
     axs[1, 1].set_xlabel('Mass Flux [kg / m2 / yr]') 
-    # layout
+    # layout:w
     fig.tight_layout()
+    # check directory
+    fig_dir = os.path.dirname(fig_path_base)
+    if not os.path.isdir(fig_dir):
+        os.mkdir(fig_dir)
     fig_path_base0 = fig_path_base.rpartition('.')[0]
     fig_path_type = fig_path_base.rpartition('.')[2]
     fig_path = "%s.%s" % (fig_path_base0, fig_path_type)

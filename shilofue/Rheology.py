@@ -65,6 +65,7 @@ from shilofue.flow_law_functions import visc_diff_HK
 from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic
 from scipy.interpolate import interp1d
 from mpl_toolkits.mplot3d import Axes3D
+from shutil import rmtree
 
 R = 8.314
 
@@ -198,24 +199,38 @@ class RHEOLOGY_OPR():
         rheology = kwargs.get('rheology', 'HK03')
         diffusion_creep = getattr(self.RheologyPrm, rheology + "_diff")
         dislocation_creep = getattr(self.RheologyPrm, rheology + "_disl")
+        lm_diff = {}
         strain_rate = 1e-15
+        radius = kwargs.get('radius', 6371e3)  # earth radius
         
         T_func = interp1d(self.depths, self.temperatures, assume_sorted=True)
         P_func = interp1d(self.depths, self.pressures, assume_sorted=True)
 
+        # lower mantle
+        depth_lm = 660e3
+        T_lm_mean = T_func(1700e3)
+        P_lm_mean = P_func(1700e3)
+        depth_max = self.depths[-1] - 10e3
+        lm_grad_T = (T_func(depth_max) - T_func(depth_lm)) / (depth_max - depth_lm)
+        lm_grad_P = (P_func(depth_max) - P_func(depth_lm)) / (depth_max - depth_lm)
+
         # grain size
         d_mean = kwargs.get('d', 0.75e4)
 
-        Vdiff_sigma = 4e-6
-        Vdisl_sigma = 11e-6
+        Vdiff_sigma = 2e-6
+        Vdisl_sigma = 5.5e-6
         d_sigma = 5e3
 
         # random walk
-        eta660range = [4e20, 1e21]
-        N = 10000
+        N = 1001
         Vdiffs = np.random.normal(diffusion_creep['V'], Vdiff_sigma, N)
         Vdisls = np.random.normal(dislocation_creep['V'], Vdisl_sigma, N)
         ds = np.random.normal(d_mean, d_sigma, N)
+        include_lower_mantle = kwargs.get('include_lower_mantle', None)
+        mask_um = (self.depths < depth_lm)  # a mask to get the components of the upper mantle
+        mask_lm = (self.depths >= depth_lm)  # a mask to get the components of the lower mantle
+        eta660range = [4e20, 1e21]
+        average_range = [0.65e21, 1.1e21]
         for i in range(N):
             Vdiff = Vdiffs[i]
             Vdisl = Vdisls[i]
@@ -233,7 +248,7 @@ class RHEOLOGY_OPR():
             P1 = P_func(depth1)
             # diffusion creep
             eta_diff1 = 2e20
-            diff_A = CreepComputeA(diffusion_creep, strain_rate, P1, T1, eta_diff1)
+            diff_A = CreepComputeA(diffusion_creep, strain_rate, P1, T1, eta_diff1) # key word 'd' is not used
             diffusion_creep['A'] = diff_A
             eta_disl1 = 2e20
             disl_A = CreepComputeA(dislocation_creep, strain_rate, P1, T1, eta_disl1, use_effective_strain_rate=True)
@@ -241,8 +256,8 @@ class RHEOLOGY_OPR():
 
             # 660 km 
             # diffusion creep
-            T660 = T_func(660e3)
-            P660 = P_func(660e3)
+            T660 = T_func(depth_lm)
+            P660 = P_func(depth_lm)
             eta_diff660 = CreepRheology(diffusion_creep, strain_rate, P660, T660)
             # dislocation creep
             eta_disl660 = CreepRheology(dislocation_creep, strain_rate, P660, T660, use_effective_strain_rate=True)
@@ -257,22 +272,133 @@ class RHEOLOGY_OPR():
             # dislocation creep
             eta_disl2 = CreepRheology(dislocation_creep, strain_rate, Ptemp, Ttemp, use_effective_strain_rate=True)
 
+            if include_lower_mantle is not None:
+                # lower mantle rheology
+                diff_lm = diffusion_creep.copy()
+                diff_lm['V'] = LowerMantleV(diffusion_creep['E'], T_lm_mean, P_lm_mean, lm_grad_T, lm_grad_P)
+                diff_lm['A'] = CreepComputeA(diff_lm, strain_rate, P660, T660, eta660*include_lower_mantle)
+
+            
+            # 1000km integral
+            eta_diff = CreepRheology(diffusion_creep, strain_rate, self.pressures, self.temperatures)
+            eta_disl = CreepRheology(dislocation_creep, strain_rate, self.pressures, self.temperatures, use_effective_strain_rate=True)
+            eta = ComputeComposite(eta_diff, eta_disl)
+            lith_depth = 100e3
+            integral_depth = 1400e3
+            mask_integral = (self.depths > lith_depth) & (self.depths < integral_depth)
+            integral_cores = 4 * np.pi * (radius - self.depths)**2.0
+            # upper mantle
+            mask_um_integral = (mask_um & mask_integral)
+            integral_um = np.trapz(eta[mask_um_integral] * integral_cores[mask_um_integral], self.depths[mask_um_integral])
+            # lower mantle
+            integral_lm = 0.0
+            if include_lower_mantle is not None:
+                mask_lm_integral = (mask_lm & mask_integral)
+                eta_diff_lm = CreepRheology(diff_lm, strain_rate, self.pressures, self.temperatures)
+                integral_lm = np.trapz(eta_diff_lm[mask_lm_integral] * integral_cores[mask_lm_integral], self.depths[mask_lm_integral])
+            else:
+                integral_lm = 4.0 / 3 * np.pi * ((radius - depth_lm)**3.0 - (radius - integral_depth)**3.0) * eta660 * 30.0 # assume 30 times jump
+            volume = 4.0 / 3 * np.pi * ((radius - lith_depth)**3.0 - (radius - integral_depth)**3.0)
+            average_eta = (integral_um + integral_lm) / volume
+
+            conds = [(eta660 >= eta660range[0]) and (eta660 <= eta660range[1]), (eta_disl2 < eta_diff),\
+            (average_eta >= average_range[0]) and (average_eta <= average_range[1])]
+
+            condition_indexes = [0, 1]
+            cond_combined = True
+            for i in condition_indexes:
+                cond_combined = (cond_combined and conds[i])  #TODO
+            
             if eta660 >= eta660range[0] and eta660 <= eta660range[1] and eta_disl2 < eta_diff2:
-                new_pair = {'diff': diffusion_creep, 'disl': dislocation_creep}
-                constrained_rheologies.append(new_pair)
                 constrained_ds.append(d)
                 constrained_Vdisls.append(Vdisl)
                 constrained_Vdiffs.append(Vdiff)
-        
+                if include_lower_mantle is not None:
+                    constrained_rheologies.append({'diff': diffusion_creep.copy(), 'disl': dislocation_creep.copy(), 'diff_lm': diff_lm.copy(),\
+                    'average_upper_region': average_eta})
+                else:
+                    constrained_rheologies.append({'diff': diffusion_creep.copy(), 'disl': dislocation_creep.copy(),\
+                    'average_upper_region': average_eta})
+
+        # make a new directory
+        fig_dir = os.path.join(RESULT_DIR, 'constrained_rheology_%s_N%d' % (rheology, N))
+        if not os.path.isdir(fig_dir):
+            os.mkdir(fig_dir)
+        else:
+            rmtree(fig_dir)
+            os.mkdir(fig_dir)
+
         fig = plt.figure()
         ax = Axes3D(fig)
         ax.scatter(constrained_Vdiffs, constrained_Vdisls, constrained_ds)
         ax.set_xlabel('Vdiff [m^3/mol]')
         ax.set_ylabel('Vdisl [m^3/mol]')
-        # ax.set_zlabel('d [um]')
+        ax.set_zlabel('d [um]')
         fig_name = 'constrained_rheology_%s_N%d.png' % (rheology, N)
-        fig_path = os.path.join(RESULT_DIR, fig_name)
+        fig_path = os.path.join(fig_dir, fig_name)
         fig.savefig(fig_path)
+        print("New figure: %s" % fig_path)
+        plt.close()
+
+        # plot profiles
+        save_profile = kwargs.get('save_profile', 0)
+        i = 0  # index
+        for constrained_rheology in constrained_rheologies:
+            # dump json
+            Vdiff = constrained_rheology['diff']['V']
+            Vdisl = constrained_rheology['disl']['V']
+            d = constrained_rheology['disl']['d']
+            json_path = os.path.join(fig_dir, "constrained_profile_Vdiff%.4e_Vdisl%.4e_d%.4e.json" % (Vdiff, Vdisl, d))
+            with open(json_path, 'w') as fout:
+                json.dump(constrained_rheology, fout)
+                print("[%d / %d], New json: %s" % (i, len(constrained_rheologies), json_path))
+            # save profile
+            if save_profile == 1:
+                eta_diff = CreepRheology(constrained_rheology['diff'], strain_rate, self.pressures, self.temperatures)
+                eta_disl = CreepRheology(constrained_rheology['disl'], strain_rate, self.pressures, self.temperatures, use_effective_strain_rate=True)
+                eta = ComputeComposite(eta_diff, eta_disl)
+                # plots
+                fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+                color = 'tab:blue'
+                axs[0].plot(self.pressures/1e9, self.depths/1e3, color=color, label='pressure')
+                axs[0].set_ylabel('Depth [km]') 
+                axs[0].set_xlabel('Pressure [GPa]', color=color) 
+                # axs[0].invert_yaxis()
+                if include_lower_mantle is None:
+                    ylim=[660.0, 0.0]
+                else:
+                    ylim=[2890, 0.0]
+                axs[0].set_ylim(ylim)
+                # ax2: temperature
+                color = 'tab:red'
+                ax2 = axs[0].twiny()
+                ax2.set_ylim(ylim)
+                ax2.plot(self.temperatures, self.depths/1e3, color=color, label='temperature')
+                ax2.set_xlabel('Temperature [K]', color=color) 
+                # second: viscosity
+                #   upper mantle
+                axs[1].semilogx(eta_diff[mask_um], self.depths[mask_um]/1e3, 'c', label='diffusion creep')
+                axs[1].semilogx(eta_disl[mask_um], self.depths[mask_um]/1e3, 'g', label='dislocation creep(%.2e)' % strain_rate)
+                axs[1].semilogx(eta[mask_um], self.depths[mask_um]/1e3, 'r--', label='Composite')
+                axs[1].set_xlim([1e18,1e25])
+                axs[1].set_ylim(ylim)
+                # axs[1].invert_yaxis()
+                axs[1].grid()
+                axs[1].set_ylabel('Depth [km]')
+                axs[1].legend()
+                if include_lower_mantle:
+                    # include lower mantle info as title:
+                    diff_lm = constrained_rheology['diff_lm']
+                    eta_diff_lm = CreepRheology(constrained_rheology['diff_lm'], strain_rate, self.pressures, self.temperatures)
+                    axs[1].semilogx(eta_diff_lm[mask_lm], self.depths[mask_lm]/1e3, 'c')
+                    title_str = "lm_jump%.2d_Vlm%.4e_avg%.4e" % (include_lower_mantle, diff_lm['V'], constrained_rheology['average_upper_region'])
+                    axs[1].set_title(title_str)
+                # save figure
+                fig_path = os.path.join(fig_dir, "constrained_profile_Vdiff%.4e_Vdisl%.4e_d%.4e.png" % (Vdiff, Vdisl, d))
+                fig.savefig(fig_path)
+                print("[%d / %d], New figure: %s" % (i, len(constrained_rheologies), fig_path))
+                plt.close()
+            i = i + 1
 
 
 def Config(_kwargs, _name, _default):
@@ -494,8 +620,13 @@ def ReadAspectProfile(depth_average_path):
     DepthAverage.ReadHeader(depth_average_path)
     DepthAverage.ReadData(depth_average_path)
     DepthAverage.SplitTimeStep()
-    i0 = DepthAverage.time_step_indexes[0][-1] * DepthAverage.time_step_length
-    i1 = DepthAverage.time_step_indexes[1][0] * DepthAverage.time_step_length
+    time_step = 0
+    i0 = DepthAverage.time_step_indexes[time_step][-1] * DepthAverage.time_step_length
+    if time_step == len(DepthAverage.time_step_times) - 1:
+        # this is the last step
+        i1 = DepthAverage.data.shape[0]
+    else:
+        i1 = DepthAverage.time_step_indexes[time_step + 1][0] * DepthAverage.time_step_length
     data = DepthAverage.data[i0:i1, :]
     col_depth = DepthAverage.header['depth']['col']
     col_P = DepthAverage.header['adiabatic_pressure']['col']
@@ -651,9 +782,18 @@ def PlotAlongProfileJson(depths, pressures, temperatures, file_path, fig_path_ba
     fig_path = "%s_%s_d%.2e.%s" % (fig_path_base0, rheology, diffusion_creep['d'], fig_path_type)
     plt.savefig(fig_path)
     print("New figure: %s" % fig_path)
+    
+
+def LowerMantleV(E, Tmean, Pmean, grad_T, grad_P):
+    '''
+    compute the value of activation volume for the lower mantle
+    based on the criteria of a nearly constant viscosity
+    '''    
+    V = E * grad_T / (grad_P * Tmean - Pmean * grad_T)
+    return V
 
 
-def ConstrainASPECT(file_path):
+def ConstrainASPECT(file_path, **kwargs):
     '''
     Figure out contrain of rheology by random walk
     Inputs:
@@ -663,7 +803,9 @@ def ConstrainASPECT(file_path):
     # read profile
     Operator.ReadProfile(file_path)
     # do a random walk
-    Operator.ConstrainRheology()
+    save_profile = kwargs.get('save_profile', 0)
+    include_lower_mantle = kwargs.get('include_lower_mantle', None)
+    Operator.ConstrainRheology(save_profile=save_profile, include_lower_mantle=include_lower_mantle)
     
 
 def main():
@@ -705,6 +847,12 @@ def main():
     parser.add_argument('-im', '--implementation', type=str,
                         default='LHY',
                         help='implementation of rheology(LHY or MB)')
+    parser.add_argument('-sf', '--save_profile', type=int,
+                        default=1,
+                        help='Save profile when constraining rheology')
+    parser.add_argument('-ilm', '--include_lower_mantle', type=float,
+                        default=None,
+                        help='Include lower mantle in the computation of rheology')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -771,7 +919,7 @@ def main():
         PlotAlongProfileJson(depths, pressures, temperatures, arg.json, fig_path)
 
     elif _commend == 'constrain_aspect_rheology':
-        ConstrainASPECT(arg.inputs)
+        ConstrainASPECT(arg.inputs, save_profile=arg.save_profile, include_lower_mantle=arg.include_lower_mantle)
     
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)
