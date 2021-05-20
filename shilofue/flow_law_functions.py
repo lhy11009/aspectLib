@@ -21,6 +21,7 @@ descriptions
 
 import sys
 import os
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import erf
@@ -30,6 +31,7 @@ ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 #Physical Constants
 R=8.314 #J/mol*K
+
 
 # Input parameter choices as:
 # T = temperature               (K)
@@ -85,35 +87,35 @@ def get_diff_HK_params(water,mod,Edev,Vdev):
             A = 1.5e9/(1e6)**p # MPa^(-n-r) * m^p * s^-1 (converted from microns to meters)
             E = 375e3      # J/mol 
             V = 6e-6       # m^3/mol, Mid value form range in Table 1 of HK 03.
-            dE = 50      # error on activation energy
+            dE = 50e3      # error on activation energy
             dV = 4e-6      # error on activation volume 
         else: 
-            A = 10**(-10.40) #MPa^(-n-r) * m^p * s^-1       (Hansen et al (2011); grain size diff) & convert microns to meters 
+            A = 10**(-10.40) #MPa^(-n-r) * m^p * s^-1  Hansen et al (2011), Table A2 logAdif=7.6 MPa, microns, K; grain size difference; convert microns to meters 
             E = 375e3       # J/mol     
             V = 8.2e-6      # m^3/mol       Nishihara et al. (2014) for forsterite   8.2 +/- 0.9 cm^3.mol
-            dE = 50          # error on activation energy from HK03
+            dE = 50e3          # error on activation energy from HK03
             dV = 0.9e-6      # error on activation volume from Nishihara         
     elif water == 'wet':      # HK03 wet diffusion, (NOT constant COH)
         r = 1
         if mod == 'orig':
-            A = 10**(-10.6) # MPa^(-n-r) * m^p * s^-1 # 2.5e7 converted from microns to meters        
+            A = 10**(-10.6) # MPa^(-n-r) * m^p * s^-1 # HK03: 2.5e7 converted from microns to meters        
             E = 375e3         # J/mol                                    
             V = 10e-6          # m^/mol, from HK03   
             dE = 75          # error on activation energy, from HK03
             dV = 10e-6      # error on activation volume, from HK03  
         else: 
-            A = 10**(-10.6) #MPa^(-n-r) * m^p * s^-1 # 2.5e7 converted from microns to meters        
+            A = (10**(-10.6))/3.5 #MPa^(-n-r) * m^p * s^-1 # 2.5e7 converted from microns to meters; bell03 water correction        
             E = 375e3  # J/mol                                    
-            V = 21e-6  # m^/mol, Ohuchi et al. (2012)   
-            dE = 75    # error on activation energy from HK03
-            dV = 1e-6  # NEED TO CHECK Ohuchi et al, 2012
+            V = 23e-6  # m^/mol, Ohuchi et al. (2012)   
+            dE = 75e3    # error on activation energy from HK03
+            dV = 4.5e-6  # Ohuchi et al, 2012
     elif water == 'con': 
         print('Using Diffusion Constant-COH')     
         r = 1        
         A = 1.0e6/(1e6)**p # Pa^(-n-r) * m^p * s^-1 (converted from microns to meters)      
         E = 335e3         # J/mol                                    
         V = 4e-6          # m^/mol, from HK03   
-        dE = 75          # error on activation energy, from HK03
+        dE = 75e3          # error on activation energy, from HK03
         dV = 4e-6          # use error for from HK03  
         if mod != 'orig':
             print("Error no modified versions for Constant-COH HK03, using originals")
@@ -130,14 +132,114 @@ def get_diff_HK_params(water,mod,Edev,Vdev):
     elif Vdev == 'max':
         V = V + dV
         
-    return(A,E,V,r)
+    return(A,E,V,p,r)
+    
+    
+def get_disl_HK_params(water,mod,Edev,Vdev):
+    p = 0   # no grain size dependence
+    
+    if water == 'dry':
+        r = 0
+        n = 3.5
+        dn = 0.3
+        if mod == 'orig':
+            A = 1.1e5 # MPa^(-n-r) * s^-1 (=10^5.04)
+            E = 530e3      # J/mol 
+            V = 18e-6   # m^3/mol, Mid value from range in Table 2 of HK 03.
+            dE = 4e3      # error on activation energy
+            dV = 4.0e-6      # error on activation volume 
+        else: 
+            A = 1.1e5 # MPa^(-n-r) * s^-1 (=10^5.04)
+            E = 530e3      # J/mol 
+            V = 17e-6   # m^3/mol, from Kawazoe etal., 2009            
+            dE = 4e3      # error on activation energy
+            dV = 2.5e-6      # error on activation volume     
+    elif water == 'wet':      # HK03 wet diffusion, (NOT constant COH)
+        r = 1.2
+        dr = 0.4
+        n = 3.5
+        dn = 0.3
+        if mod == 'orig':
+            A = 1600         # MPa^(-n-r) # HK03 (=10^3.2)
+            E = 520e3         # J/mol                                    
+            V = 22e-6          # m^/mol, from HK03   
+            dE = 40e3          # error on activation energy, from HK03
+            dV = 11e-6      # error on activation volume, from HK03  
+        else: 
+            A = 1600/3.5 #MPa^(-n-r) s^-1 # HK03 modified for Bell_etal 03: (=10^2.66)
+            E = 520e3  # J/mol                                    
+            V = 24e-6  # m^/mol, Ohuchi et al. (2012)   
+            dE = 40e3    # error on activation energy from HK03
+            dV = 3e-6  # NEED TO CHECK Ohuchi et al, 2012
+    elif water == 'con': 
+        print('Using Dislocation Constant-COH')     
+        r = 1.2 
+        dr = 0.4
+        n = 3.5
+        dn = 0.3       
+        A = 90 # MPa^(-n-r) * s^-1     
+        E = 480e3         # J/mol                                    
+        V = 11e-6          # m^/mol, from HK03   
+        dE = 40e3          # error on activation energy, from HK03
+        dV = 5e-6          # use error for from HK03  
+        if mod != 'orig':
+            print("Error no modified versions for Constant-COH HK03, using originals")
+    else:
+        print("water must be dry, wet or con")
+                    
+    if Edev == 'min':  
+        E = E - dE  
+    elif Edev == 'max':
+        E = E + dE  
+
+    if Vdev == 'min':  
+        V = V - dV  
+    elif Vdev == 'max':
+        V = V + dV
+        
+    return(A,E,V,n,r)
+
+# Preferred dislocation creep parameters from Kawazoe 
+def get_disl_KAW09_params(water,mod,Edev,Vdev):
+    p = 0   # no grain size dependence
+    
+    if water == 'dry':  # same as modified HK03
+        r = 0
+        n = 3.5
+        dn = 0.3
+        A = 1.1e5 # MPa^(-n-r) * s^-1 (=10^5.04)
+        E = 530e3      # J/mol 
+        V = 17e-6   # m^3/mol, from Kawazoe etal., 2009            
+        dE = 4e3      # error on activation energy
+        dV = 2.5e-6      # error on activation volume    
+    elif water == 'wet':      # HK03 wet diffusion, (NOT constant COH)
+        r = 1.2
+        dr = 0.4
+        n = 3.0
+        dn = 0.1
+        A = 10**2.9 #MPa^(-n-r) s^-1 # HK03 modified for Bell_etal 03: (=10^2.66)
+        E = 470e3  # J/mol                                    
+        V = 24e-6  # m^/mol,  
+        dE = 40e3  #
+        dV = 3e-6  # 
+    else:
+        print("water must be dry or wet")
+                    
+    if Edev == 'min':  
+        E = E - dE  
+    elif Edev == 'max':
+        E = E + dE  
+
+    if Vdev == 'min':  
+        V = V - dV  
+    elif Vdev == 'max':
+        V = V + dV
+    return(A,E,V,n,r)    
     
 # Olivine diffusion creep: strain-rate
 def edot_diff_HK(T,P,d,sigd,coh,water,mod,Edev,Vdev):   
-    n = 1
-    p = 3
 
-    A, E, V, r = get_diff_HK_params(water,mod,Edev,Vdev)    
+    A, E, V, p, r = get_diff_HK_params(water,mod,Edev,Vdev)    
 
     if water == 'con': # use constant COH equation/values from HK03
         edot = A*(sigd)**n*(d/1e6)**(-p)*((coh)**r)*np.exp(-(E+P*V)/(R*T)) #s^-1
@@ -146,27 +248,76 @@ def edot_diff_HK(T,P,d,sigd,coh,water,mod,Edev,Vdev):
         edot = A*(sigd)**n*(d/1e6)**(-p)*((fh2o)**r)*np.exp(-(E+P*V)/(R*T)) #s^-1
 
     return edot
+    
+# Olivine dislocation creep: strain-rate
+def edot_disc_HK(T,P,sigd,coh,water,mod,Edev,Vdev):   
+    
+    A, E, V, n, r = get_disc_HK_params(water,mod,Edev,Vdev)    
+
+    if water == 'con': # use constant COH equation/values from HK03
+        edot = A*(sigd)**n*((coh)**r)*np.exp(-(E+P*V)/(n*R*T)) #s^-1
+    else:
+        fh2o = convert_OH_fugacity(T,P,coh) # Convert coh to water fugacity
+        edot = A*(sigd)**n*((fh2o)**r)*np.exp(-(E+P*V)/(n*R*T)) #s^-1
+
+    return edot
+    
+# Olivine dislocation creep: strain-rate
+def edot_disc_KAW09(T,P,sigd,coh,water,mod,Edev,Vdev):   
+    
+    A, E, V, n, r = get_disc_KAW09_params(water,mod,Edev,Vdev)    
+
+    fh2o = convert_OH_fugacity(T,P,coh) # Convert coh to water fugacity
+    edot = A*(sigd)**n*((fh2o)**r)*np.exp(-(E+P*V)/(n*R*T)) #s^-1
+
+    return edot
 
 # Olivine diffusion creep: viscosity  
 # Note that A in this case needs to be convert from MPa to Pa to give visc in Pa-s
 # instead of MPa-s 
 def visc_diff_HK(T,P,d,coh,water,mod,Edev,Vdev):   
-    n = 1
-    p = 3
-    
-    A, E, V, r = get_diff_HK_params(water,mod,Edev,Vdev)    
+
+    A, E, V, p, r = get_diff_HK_params(water,mod,Edev,Vdev)
     dm = d/1e6  # convert from microns to meters
     Am = A/1e6  # convert from MPa^-1 to Pa^-1
         
-    if water == 'con': # use constant COH equation/values from HK03
-        
+    if water == 'con': # use constant COH equation/values from HK03        
         visc = 0.5*(dm)**p/(Am*coh**r)*np.exp((E + P*V)/(R*T)) # Pa s
     else:     
         fh2o = convert_OH_fugacity(T,P,coh)    # Convert coh to water fugacity
         visc = 0.5*(dm)**p/(Am*fh2o**r)*np.exp((E + P*V)/(R*T)) # Pa s
 
     return visc
+    
+# Olivine dislocation creep: viscosity  
+# Note that A in this case needs to be convert from MPa to Pa to give visc in Pa-s
+# instead of MPa-s 
+def visc_disl_HK(T,P,edot,coh,water,mod,Edev,Vdev):   
+    
+    A, E, V, n, r = get_disl_HK_params(water,mod,Edev,Vdev)    
+    Am = A/(1e6)**n  # convert from MPa^-1 to Pa^-1
+        
+    if water == 'con': # use constant COH equation/values from HK03        
+        visc = 0.5*edot**(1/n - 1)/(Am*coh**r)**(1/n)*np.exp((E + P*V)/(n*R*T)) # Pa s
+    else:     
+        fh2o = convert_OH_fugacity(T,P,coh)    # Convert coh to water fugacity
+        visc =  0.5*edot**(1/n - 1)/(Am*fh2o**r)**(1/n)*np.exp((E + P*V)/(n*R*T)) # Pa s
 
+    return visc
+
+# Olivine dislocation creep: viscosity  
+# Note that A in this case needs to be convert from MPa to Pa to give visc in Pa-s
+# instead of MPa-s 
+# For Kawazoe et al., 2009 preferred values    
+def visc_disl_KAW09(T,P,edot,coh,water,mod,Edev,Vdev):   
+    
+    A, E, V, n, r = get_disl_KAW09_params(water,mod,Edev,Vdev)    
+    Am = A/(1e6)**n  # convert from MPa^-1 to Pa^-1
+        
+    fh2o = convert_OH_fugacity(T,P,coh)    # Convert coh to water fugacity
+    visc =  0.5*edot**(1/n - 1)/(Am*fh2o**r)**(1/n)*np.exp((E + P*V)/(n*R*T)) # Pa s
+
+    return visc
 
 def plot_upper_mantle_viscosity(**kwargs):
     '''
@@ -234,7 +385,7 @@ def plot_upper_mantle_viscosity(**kwargs):
     
     # Calculate diffusion creep viscosity (water, modified?, Edev, Vdev)
     # Which flow law version?
-    flver = 'orig'
+    flver = kwargs.get('flavor', 'orig')
     
     # Use top or bottom of error range (deviation from mid?) min/mid/max
     Edeva = ['min','mid','max']
@@ -378,8 +529,22 @@ def main():
             options
     '''
     _commend = sys.argv[1]
+    parser = argparse.ArgumentParser(description='Parse parameters')
+    parser.add_argument('-i', '--inputs', type=str,
+                        default='',
+                        help='Some inputs')
+    parser.add_argument('-f', '--flavor', type=str,
+                        default='orig',
+                        help='The flavor to use in computing of the HK03 rhoelogy')
+    # parse options 
+    try:
+        _options = sys.argv[2: ]
+    except IndexError:
+        pass
+    arg = parser.parse_args(_options)
+    
     if _commend == 'plot_upper_mantle_viscosity':
-        plot_upper_mantle_viscosity(ptplt=True)
+        plot_upper_mantle_viscosity(ptplt=True, flavor=arg.flavor)
 
 
 

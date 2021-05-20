@@ -27,6 +27,7 @@ import os
 # from matplotlib import pyplot as plt
 # from shutil import rmtree  # for remove directories
 from shilofue.Rheology import *
+from shilofue.flow_law_functions import visc_diff_HK
 
 test_dir = ".test"
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse')
@@ -44,32 +45,70 @@ def test_HirthKohlstedt():
         values computed from the rheology
     """
     # read parameters
-    check_result = [.2991, .3006, 3.8348e19, 1.2024e17, 1e6, 90.0]
     RheologyPrm = RHEOLOGY_PRM()
     diffusion_creep = RheologyPrm.HK03_diff
     dislocation_creep = RheologyPrm.HK03_disl
-
+    
     # check for stress
     tolerance = 0.01
     check0 = CreepStress(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 1000.0)
-    assert(abs(check0 - check_result[0]) / check_result[0] < tolerance)
+    assert(abs(check0 - 0.2991) / 0.2991 < tolerance)
     
     check1 = CreepStress(dislocation_creep, 2.5e-12, 1e9, 1400 + 273.15, 1e4, 1000.0)
-    assert(abs((check1 - check_result[1]) / check_result[1]) < tolerance)
+    assert(abs((check1 - 0.3006) / 0.3006) < tolerance)
     
     # check for viscosity
     check2 = CreepRheology(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 1000.0)
-    assert(abs((check2 - check_result[2]) / check_result[2]) < tolerance)
+    assert(abs((check2 - 1.917382525013947e+19) / 1.917382525013947e+19) < tolerance)
+    
+    check2_mg = visc_diff_HK(1400 + 273.15,1e9,1e4,1000.0,'con','orig','mid','mid')
     
     check3 = CreepRheology(dislocation_creep, 2.5e-12, 1e9, 1400 + 273.15, 1e4, 1000.0)
-    assert(abs((check3 - check_result[3]) / check_result[3]) < tolerance)
+    assert(abs((check3 - 6.0119447368476904e+16) / check3) < tolerance)
 
     # compute A
     check4 = CreepComputeA(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 3.8348e19, 1e4, 1000.0)
-    assert(abs((check4 - check_result[4]) / check_result[4]) < tolerance)
+    assert(abs((check4 - 999990.8861030287) / check4) < tolerance)
     
     check5 = CreepComputeA(dislocation_creep, 2.5e-12, 1e9, 1400 + 273.15, 1.2024e17, 1e4, 1000.0)
-    assert(abs((check5 - check_result[5]) / check_result[5]) < tolerance)
+    assert(abs((check5 - 89.99710450882286) / check5) < tolerance)
+
+
+def test_HirthKohlstedt_wet_modified():
+    """
+    test the implementation of equations from Hirth & Kohlstedt, 2003(filename='Hirth_Kohlstedt.json')
+    with a modified rheology, see magali's 
+    Tolerence set to be 1%
+    Asserts:
+        My implementation yield same result with Magali's
+    """
+    # get rheology
+    rheology = 'HK03_wet_mod'
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+
+    tolerance = 0.01
+
+    check0 = CreepRheology(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 1000.0)
+    check0_std = visc_diff_HK(1400 + 273.15,1e9,1e4,1000.0,'wet','new','mid','mid')
+    assert(abs(check0 - check0_std) / check0 < tolerance)
+    pass
+
+
+def test_creep_compute_V():
+    # test CreepComputeV
+    tolerance = 1e-6
+    rheology = 'HK03_wet_mod'
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+    # test 1: diffusion creep
+    eta = CreepRheology(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 1000.0)
+    V = CreepComputeV(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, eta)
+    assert(abs((V - diffusion_creep['V'])/V) < tolerance)
+
+    # test 2: dislocation creep
+    eta = CreepRheology(dislocation_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=1)
+    V = CreepComputeV(dislocation_creep, 7.8e-15, 1e9, 1400 + 273.15, eta, use_effective_strain_rate=1)
+    assert(abs((V - dislocation_creep['V'])/V) < tolerance)
+
 
 
 def test_AspectExample():
