@@ -179,7 +179,7 @@ class RHEOLOGY_PRM():
         self.HK03_wet_mod_diff = \
             {
                 # "A" : 10**6.9,  # MPa^(-n-r)*um**p/s
-                "A" : 7.176818e6,  # MPa^(-n-r)*um**p/s
+                "A" : 7.1768e6,  # MPa^(-n-r)*um**p/s
                 "p" : 3.0,
                 "r" : 1.0,
                 "n" : 1.0,
@@ -320,6 +320,70 @@ class RHEOLOGY_OPR():
     
     def ReadProfile(self, file_path):
         self.depths, self.pressures, self.temperatures = ReadAspectProfile(file_path)
+
+    def MantleRheology_v0(self, **kwargs):
+        '''
+        Derive mantle rheology from an aspect profile
+        TODO
+        '''
+        strain_rate = kwargs.get('strain_rate', 1e-15)
+        eta_diff = np.ones(self.depths.size)
+        eta_disl = np.ones(self.depths.size)
+        # get rheology
+        dVdiff = -5.5e-6
+        rheology = kwargs.get('rheology', 'HK03_wet_mod')
+        diffusion_creep, dislocation_creep = GetRheology(rheology)
+        diffusion_creep['V'] += dVdiff
+
+        # < 410 km
+        depth_up = 410e3
+        mask_up = (self.depths < depth_up)
+        eta_diff[mask_up] = CreepRheology(diffusion_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up])
+        eta_disl[mask_up] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up], use_effective_strain_rate=True)
+
+        # MTZ
+
+        # lower mantle
+
+        # composite viscosity
+        eta = ComputeComposite(eta_diff, eta_disl)
+        
+        # plot
+        save_profile = kwargs.get('save_profile', 0)
+        if save_profile == 1:
+            # plots
+            fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+            color = 'tab:blue'
+            axs[0].plot(self.pressures/1e9, self.depths/1e3, color=color, label='pressure')
+            axs[0].set_ylabel('Depth [km]') 
+            axs[0].set_xlabel('Pressure [GPa]', color=color) 
+            # axs[0].invert_yaxis()
+            ylim=[2890, 0.0]
+            axs[0].set_ylim(ylim)
+            # ax2: temperature
+            color = 'tab:red'
+            ax2 = axs[0].twiny()
+            ax2.set_ylim(ylim)
+            ax2.plot(self.temperatures, self.depths/1e3, color=color, label='temperature')
+            ax2.set_xlabel('Temperature [K]', color=color) 
+            # second: viscosity
+            #   upper mantle
+            axs[1].semilogx(eta_diff, self.depths/1e3, 'c', label='diffusion creep')
+            axs[1].semilogx(eta_disl, self.depths/1e3, 'g', label='dislocation creep(%.2e)' % strain_rate)
+            axs[1].semilogx(eta, self.depths/1e3, 'r--', label='Composite')
+            axs[1].set_xlim([1e18,1e25])
+            axs[1].set_ylim(ylim)
+            # axs[1].invert_yaxis()
+            axs[1].grid()
+            axs[1].set_ylabel('Depth [km]')
+            axs[1].legend()
+            axs[1].set_title('%s_dVdiff%.4e' % (rheology, dVdiff))
+            # save figure
+            fig_path = os.path.join(RESULT_DIR, "mantle_profile_%s.png" % (rheology))
+            fig.savefig(fig_path)
+            print("New figure: %s" % fig_path)
+            plt.close()
+            pass
     
     def ConstrainRheology_v0(self, **kwargs):
         '''
@@ -1274,7 +1338,27 @@ def ConstrainASPECT(file_path, **kwargs):
         Operator.ConstrainRheology_v0(save_profile=save_profile, include_lower_mantle=include_lower_mantle)
     elif version == 1:
         Operator.ConstrainRheology_v1(save_profile=save_profile, include_lower_mantle=include_lower_mantle)
-    
+
+
+def DeriveMantleRheology(file_path, **kwargs):
+    '''
+    Derive a Mantle rheology profile following certain procedures
+    Inputs:
+        file_path(str): a profile from ASPECT
+    TODO
+    '''
+    Operator = RHEOLOGY_OPR()
+    # read profile
+    Operator.ReadProfile(file_path)
+    # do a random walk
+    save_profile = kwargs.get('save_profile', 0)
+    include_lower_mantle = kwargs.get('include_lower_mantle', None)
+    version = kwargs.get('version', 0)
+    if version == 0:
+        Operator.MantleRheology_v0(save_profile=save_profile)
+    else:
+        raise CheckValueError('%d is not a valid version of Mantle Rheology' % version)
+
 
 def main():
     '''
@@ -1394,6 +1478,10 @@ def main():
 
     elif _commend == 'constrain_aspect_rheology':
         ConstrainASPECT(arg.inputs, save_profile=arg.save_profile, include_lower_mantle=arg.include_lower_mantle, version=arg.version)
+
+    elif _commend == 'derive_mantle_rheology':
+        # TODO
+        DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version)
     
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)
