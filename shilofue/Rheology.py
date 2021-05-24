@@ -1056,7 +1056,7 @@ def GetLowerMantleRheology(upper_mantle_creep_method, jump, T, P, **kwargs):
 
     lower_mantle_creep_method = dict(upper_mantle_creep_method)
     lower_mantle_creep_method['V'] = V1
-    if strategy is 'A':
+    if strategy == 'A':
         lower_mantle_creep_method['A'] = jump**(-n) * A * math.exp(P * (V1 - V) / (R * T))
     else:
         lower_mantle_creep_method['d'] = jump**(n / m) * d * math.exp(P * (V-V1) / (m * R * T))
