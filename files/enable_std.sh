@@ -1,6 +1,7 @@
 export ASPECT_PROJECT_DIR="$HOME/ASPECT_PROJECT"
 export ASPECT_LAB_DIR="$HOME/ASPECT_PROJECT/aspectLib"
 export TwoDSubduction_DIR="$HOME/ASPECT_PROJECT/TwoDSubduction"
+export TwoDSubduction_ucd_DIR="$HOME/ASPECT_PROJECT/TwoDSubduction"
 alias TwoDSubduction_update="${ASPECT_LAB_DIR}/aspect_lib.sh TwoDSubduction post_process"
 alias TwoDSubduction_build="${ASPECT_LAB_DIR}/bash_scripts/build_aspect.sh all TwoDSubduction release"
 alias plt_connect='ssh -X lochy@peloton.cse.ucdavis.edu'

@@ -18,6 +18,31 @@
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
 source "${ASPECT_LAB_DIR}/bash_scripts/utilities.sh"
+SERVER_LIST="${ASPECT_LAB_DIR}/env/server_list"
+
+usage(){
+  # TODO
+  # usage of this script
+    _text="
+${BASH_SOURCE[0]}
+
+Dependencies:
+   env:
+       ASPECT_LAB_DIR
+       ASPECT_SOURCE_DIR
+
+Example Usage:
+   sync from remote:
+       ./bash_scripts/rsync_case.sh peloton TwoDSubduction non_linear30/eba_re
+   sync to remote:
+       ./bash_scripts/rsync_case.sh peloton TwoDSubduction non_linear30/eba_re -f true
+
+   sync aspect work place
+       ./bash_scripts/rsync_case.sh ucd TwoDSubduction
+"
+    printf "${_text}"
+
+}
 
 parse_options(){
     # parse options
@@ -61,12 +86,24 @@ rsync_peloton(){
     return 0
 }
 
+rsync_workplace(){
+    ### 
+    # rsync the work place from server(figures, docs)
+    ###
+    local root_dir=$1
+    [[ -n "${root_dir}" ]] || { cecho "${BAD}" "no root directory given (\$1}"; exit 1; }
+
+    echo "rsync -avur --progress $2/* --include=\"case.prm\" --include=\"log.txt\" --include=\"*img/*\" --include=\"*/\" --exclude=* ${root_dir}/"
+    eval "rsync -avur --progress $2/* --include=\"case.prm\" --include=\"log.txt\" --include=\"*img/*\" --include=\"*/\" --exclude=* ${root_dir}/"
+}
 
 main(){
     ###
     # main function
     ###
-    if [[ "$1" = "peloton" && "$2" = "TwoDSubduction" ]]; then
+    if [[ "$1" = "-h" ]]; then
+        usage
+    elif [[ "$1" = "peloton" && "$2" = "TwoDSubduction" ]]; then
         ##
         # (Descriptions)
         # Innputs:
@@ -78,8 +115,15 @@ main(){
         local_dir=${TwoDSubduction_DIR}
         peloton_dir=$(awk '{if ($2 ~ /TwoDSubduction_DIR/){split($2, array, "="); gsub("\"", "", array[2]) ;print array[2]}}' "${ASPECT_LAB_DIR}/env/enable_peloton.sh")
         rsync_peloton "${case_dir}" "${local_dir}" "${peloton_dir}"
+    elif [[ "$1" = "ucd" && "$2" = "TwoDSubduction" ]]; then
+        # TODO
+        # rsync workplace
+        local ucd_addr=$(eval "awk '{ if(\$1 == \"${1}\") print \$2;}' $SERVER_LIST")
+        rsync_workplace "${TwoDSubduction_DIR}" "${ucd_addr}:${TwoDSubduction_ucd_DIR}"
     else
-	    cecho "${BAD}" "option ${1} is not valid\n"
+        ## TODO
+        parse_options
+	      cecho "${BAD}" "option ${1} is not valid\n"
     fi
 }
 

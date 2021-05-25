@@ -3,17 +3,28 @@
 
 ################################################################################
 # (Descriptions)
-#
-# Dependencies:
-#    env:
-#        ASPECT_LAB_DIR
-#        ASPECT_SOURCE_DIR
-#
-# Example Usage:
 ################################################################################
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
 # source "${ASPECT_LAB_DIR}/bash_scripts/utilities.sh"
+
+usage(){
+  # usage of this script
+    _text="
+${BASH_SOURCE[0]}
+
+(Descriptions)
+
+Dependencies:
+   env:
+       ASPECT_LAB_DIR
+       ASPECT_SOURCE_DIR
+
+Example Usage:
+"
+    printf "${_text}"
+
+}
 
 
 #parse_options(){
@@ -48,7 +59,9 @@ main(){
     ###
     # main function
     ###
-    if [[ "$1" = "foo" ]]; then
+    if [[ "$1" = "-h" ]]; then
+        usage
+    elif [[ "$1" = "foo" ]]; then
         ##
         # (Descriptions)
         # Innputs:
