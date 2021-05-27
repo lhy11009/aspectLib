@@ -93,8 +93,17 @@ rsync_workplace(){
     local root_dir=$1
     [[ -n "${root_dir}" ]] || { cecho "${BAD}" "no root directory given (\$1}"; exit 1; }
 
+    # project, e.g. TwoDSubduction
+    local project=$3
+
     echo "rsync -avur --progress $2/* --include=\"case.prm\" --include=\"log.txt\" --include=\"*img/*\" --include=\"*/\" --exclude=* ${root_dir}/"
     eval "rsync -avur --progress $2/* --include=\"case.prm\" --include=\"log.txt\" --include=\"*img/*\" --include=\"*/\" --exclude=* ${root_dir}/"
+    echo "rsync -avur --progress ${root_dir}/* --include=\"case.prm\" --include=\"log.txt\" --include=\"*img/*\" --include=\"*/\" --exclude=* ${2}/"
+    eval "rsync -avur --progress ${root_dir}/* --include=\"case.prm\" --include=\"log.txt\" --include=\"*img/*\" --include=\"*/\" --exclude=* ${2}/"
+    if [[ "${project}" = "TwoDSubduction" ]]; then
+        echo "rsync -avur --progress $2/* --include=\"*.md\" --include=\"*.mkd\" --include=\"*.json\" --include=\"particle.dat\" --include=\"*.sh\" --include=\"*/\" --exclude=* ${root_dir}/"  # mkd, particle and job
+        eval "rsync -avur --progress $2/* --include=\"*.md\" --include=\"*.mkd\" --include=\"*.json\" --include=\"particle.dat\" --include=\"*.sh\" --include=\"*/\" --exclude=* ${root_dir}/"  # mkd, particle and job
+    fi
 }
 
 main(){
@@ -119,7 +128,7 @@ main(){
         # TODO
         # rsync workplace
         local ucd_addr=$(eval "awk '{ if(\$1 == \"${1}\") print \$2;}' $SERVER_LIST")
-        rsync_workplace "${TwoDSubduction_DIR}" "${ucd_addr}:${TwoDSubduction_ucd_DIR}"
+        rsync_workplace "${TwoDSubduction_DIR}" "${ucd_addr}:${TwoDSubduction_ucd_DIR}" "$2"
     else
         ## TODO
         parse_options
