@@ -157,6 +157,7 @@ def test_Convert2AspectInput():
     RheologyPrm = RHEOLOGY_PRM()
     diffusion_creep = RheologyPrm.HK03_diff
     dislocation_creep = RheologyPrm.HK03_disl
+    # test 1: convert without computing the strain tensor invarant
     # calculate viscosity by standard form
     check_result[0] = CreepRheology(diffusion_creep, 1e-15, 10e9, 1300 + 273.15)
     check_result[1] = CreepRheology(dislocation_creep, 1e-15, 10e9, 1300 + 273.15)
@@ -168,6 +169,22 @@ def test_Convert2AspectInput():
     assert (abs((check0 - check_result[0]) / check_result[0]) < tolerance)
 
     check1 = CreepRheologyInAspectViscoPlastic(dislocation_creep_aspect, 1e-15, 10e9, 1300 + 273.15)
+    assert(abs((check1 - check_result[1]) / check_result[1]) < tolerance)
+    
+    # test 2: convert with computing the strain tensor invarant
+    # calculate viscosity by standard form
+    check_result[0] = CreepRheology(diffusion_creep, 1e-15, 10e9, 1300 + 273.15)
+    check_result[1] = CreepRheology(dislocation_creep, 1e-15, 10e9, 1300 + 273.15, use_effective_strain_rate=True)
+    print(check_result[1])  # debug
+    # convert to aspect inputs
+    diffusion_creep_aspect = Convert2AspectInput(diffusion_creep)
+    dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=True)
+    # check for viscosity
+    check0 = CreepRheologyInAspectViscoPlastic(diffusion_creep_aspect, 1e-15, 10e9, 1300 + 273.15)
+    assert (abs((check0 - check_result[0]) / check_result[0]) < tolerance)
+
+    check1 = CreepRheologyInAspectViscoPlastic(dislocation_creep_aspect, 1e-15, 10e9, 1300 + 273.15)
+    print(check1)
     assert(abs((check1 - check_result[1]) / check_result[1]) < tolerance)
 
 
