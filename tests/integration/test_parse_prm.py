@@ -68,3 +68,17 @@ def test_fast_first_step():
     # assert something 
     assert(filecmp.cmp(out_path, std_path))
 
+
+def test_UpperMantleRheologyViscoPlastic():
+    '''
+    test UpperMantleRheologyViscoPlastic
+    Asserts:
+        The two read-in dictionaries are identical to standard
+    '''
+    _path = os.path.join(source_dir, 'case2.prm')
+    inputs = ParsePrm.ReadPrmFile(_path)
+    diffusion_creep, dislocation_creep = ParsePrm.UpperMantleRheologyViscoPlastic(inputs)
+    a = str(diffusion_creep)
+    b = str(dislocation_creep)
+    assert(a == "{'A': 8.1787e-17, 'd': 0.01, 'n': 1.0, 'm': 3.0, 'E': 300000.0, 'V': 6.9e-06}")
+    assert(b == "{'A': 5.9076e-16, 'd': 0.01, 'n': 3.5, 'm': 0.0, 'E': 510000.0, 'V': 1.74e-05}")

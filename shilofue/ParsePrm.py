@@ -430,7 +430,7 @@ def UpperMantleRheologyViscoPlastic(Inputs):
     backgroud_upper_mantle_dislocation['A'] = prefactors_for_dislocation_creep.data['background'][0] 
     backgroud_upper_mantle_dislocation['d'] = grain_size
     backgroud_upper_mantle_dislocation['n'] = stress_exponents_for_dislocation_creep.data['background'][0]
-    backgroud_upper_mantle_dislocation['m'] = 1.0
+    backgroud_upper_mantle_dislocation['m'] = 0.0
     backgroud_upper_mantle_dislocation['E'] = activation_energies_for_dislocation_creep.data['background'][0] 
     backgroud_upper_mantle_dislocation['V'] = activation_volumes_for_dislocation_creep.data['background'][0]
     return backgroud_upper_mantle_diffusion, backgroud_upper_mantle_dislocation
