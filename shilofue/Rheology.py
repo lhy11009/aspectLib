@@ -61,6 +61,10 @@ Examples of usage:
         --save_profile: save separate accepted profile to png files
         --include_lower_mantle: jump between lower mantle / upper mantle rheology
 
+  - hand modify the rheology parameters and see the plotting
+
+        python -m shilofue.Rheology derive_mantle_rheology -i files/TwoDSubduction/reference/depth_average.txt  -v 0 --save_profile 1
+
 descriptions
 """ 
 
@@ -204,93 +208,35 @@ class RHEOLOGY_PRM():
             }
         
         # modified creep laws from Hirth & Kohlstedt 2003
+        # I bring the values to the limit of the range
         # for detail, refer to magali's explain_update_modHK03_rheology.pdf file
-        # this version is from a email with Magali(05/18/2021), where the upper mantle rheology is reproduced
-        self.HK03_wet_mod05182021_diff = \
+        self.HK03_wet_mod1_diff = \
             {
                 # "A" : 10**6.9,  # MPa^(-n-r)*um**p/s
-                "A" : 7.176818e6,  # MPa^(-n-r)*um**p/s
+                "A" : 7.1768e6,  # MPa^(-n-r)*um**p/s
                 "p" : 3.0,
                 "r" : 1.0,
                 "n" : 1.0,
-                "E" : 365e3,
-                "V" : 13e-6,
+                "E" : 375e3 - 25e3,
+                "V" : 23e-6 -5.5e-6,
                 "d" : 1e4,
                 "Coh" : 1000.0,
                 "wet": 1.0  # I use this to mark this is a wet rheology, so I need to account for V and E for water later.
             }
 
-        self.HK03_wet_mod05182021_disl = \
+        self.HK03_wet_mod1_disl = \
             {
                 "A" : 10**2.65,
                 "p" : 0.0,
                 "r" : 1.0,
                 "n" : 3.5,
-                "E" : 510e3,
-                "V" : 27e-6,
+                "E" : 520e3 + 40e3,
+                "V" : 24e-6 + 4e-6,
                 "d" : 1e4,
                 "Coh" : 1000.0,
                 "wet" : 1.0
             }
         
-        # modified creep laws from Hirth & Kohlstedt 2003
-        # for detail, refer to magali's explain_update_modHK03_rheology.pdf file
-        self.HK03_wet_mod05192021_diff = \
-            {
-                # "A" : 10**6.9,  # MPa^(-n-r)*um**p/s
-                "A" : 7.176818e6,  # MPa^(-n-r)*um**p/s
-                "p" : 3.0,
-                "r" : 1.0,
-                "n" : 1.0,
-                "E" : 352.384510108e3,
-                "V" : 21.50604e-6,
-                "d" : 4905.094490919593,
-                "Coh" : 1000.0,
-                "wet": 1.0  # I use this to mark this is a wet rheology, so I need to account for V and E for water later.
-            }
-
-        self.HK03_wet_mod05192021_disl = \
-            {
-                "A" : 10**2.65,
-                "p" : 0.0,
-                "r" : 1.0,
-                "n" : 3.5,
-                "E" : 567.701356899e3,
-                "V" : 25.63464e-6,
-                "d" : 4905.094490919593,
-                "Coh" : 1000.0,
-                "wet" : 1.0
-            }
-        
-        # modified creep laws from Hirth & Kohlstedt 2003
-        # for detail, refer to magali's explain_update_modHK03_rheology.pdf file
-        # I modify from the previous one, and change values to integers
-        self.HK03_wet_mod05192021_1_diff = \
-            {
-                # "A" : 10**6.9,  # MPa^(-n-r)*um**p/s
-                "A" : 7.176818e6,  # MPa^(-n-r)*um**p/s
-                "p" : 3.0,
-                "r" : 1.0,
-                "n" : 1.0,
-                "E" : 352e3,
-                "V" : 21.5e-6,
-                "d" : 5000,
-                "Coh" : 1000.0,
-                "wet": 1.0  # I use this to mark this is a wet rheology, so I need to account for V and E for water later.
-            }
-
-        self.HK03_wet_mod05192021_1_disl = \
-            {
-                "A" : 10**2.65,
-                "p" : 0.0,
-                "r" : 1.0,
-                "n" : 3.5,
-                "E" : 568e3,
-                "V" : 25.6e-6,
-                "d" : 5000,
-                "Coh" : 1000.0,
-                "wet" : 1.0
-            }
         
         self.water = \
             {
@@ -329,24 +275,76 @@ class RHEOLOGY_OPR():
         strain_rate = kwargs.get('strain_rate', 1e-15)
         eta_diff = np.ones(self.depths.size)
         eta_disl = np.ones(self.depths.size)
+        eta = np.ones(self.depths.size)
         # get rheology
-        dVdiff = -5.5e-6
+        dEdiff = -25e3  # -50 - 50e3
+        dEdisl = 40.0e3  # -40 - 40e3
+        dVdiff = -5.5e-6  # -5.5 - 5.5e-6
+        dVdisl = 4.0e-6  # -4.0 - 4.0e-6
         rheology = kwargs.get('rheology', 'HK03_wet_mod')
         diffusion_creep, dislocation_creep = GetRheology(rheology)
+        diffusion_creep['E'] += dEdiff
+        dislocation_creep['E'] += dEdisl
         diffusion_creep['V'] += dVdiff
+        dislocation_creep['V'] += dVdisl
+
+        # convert T, P as function
+        T_func = interp1d(self.depths, self.temperatures, assume_sorted=True)
+        P_func = interp1d(self.depths, self.pressures, assume_sorted=True)
 
         # < 410 km
         depth_up = 410e3
+        depth_low = 660e3
         mask_up = (self.depths < depth_up)
         eta_diff[mask_up] = CreepRheology(diffusion_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up])
         eta_disl[mask_up] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up], use_effective_strain_rate=True)
+        eta[mask_up] = ComputeComposite(eta_diff[mask_up], eta_disl[mask_up])
+
 
         # MTZ
-
+        mask_mtz = (self.depths > depth_up) & (self.depths < depth_low)
+        if True:
+            # MTZ from olivine rheology
+            eta_diff[mask_mtz] = CreepRheology(diffusion_creep, strain_rate, self.pressures[mask_mtz], self.temperatures[mask_mtz])
+            eta_disl[mask_mtz] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_mtz], self.temperatures[mask_mtz], use_effective_strain_rate=True)
+            eta[mask_mtz] = ComputeComposite(eta_diff[mask_mtz], eta_disl[mask_mtz])
+        
         # lower mantle
+        # diffusion creep
+        mask_low = (self.depths > depth_low)
+        jump_lower_mantle = kwargs.get('jump_lower_mantle', 30.0)
+        # values for computing V
+        depth_lm = 660e3
+        T_lm_mean = T_func(1700e3)
+        P_lm_mean = P_func(1700e3)
+        depth_max = self.depths[-1] - 10e3
+        lm_grad_T = (T_func(depth_max) - T_func(depth_lm)) / (depth_max - depth_lm)
+        lm_grad_P = (P_func(depth_max) - P_func(depth_lm)) / (depth_max - depth_lm)
+        T660 = T_func(depth_lm)
+        P660 = P_func(depth_lm)
+        eta_diff660 = CreepRheology(diffusion_creep, strain_rate, P660, T660)
+        # dislocation creep
+        eta_disl660 = CreepRheology(dislocation_creep, strain_rate, P660, T660, use_effective_strain_rate=True)
+        eta660 = ComputeComposite(eta_diff660, eta_disl660)
+        diff_lm = diffusion_creep.copy()
+        diff_lm['V'] = LowerMantleV(diffusion_creep['E'], T_lm_mean, P_lm_mean, lm_grad_T, lm_grad_P)
+        diff_lm['A'] = CreepComputeA(diff_lm, strain_rate, P660, T660, eta660*jump_lower_mantle)
+        eta_diff[mask_low] = CreepRheology(diff_lm, strain_rate, self.pressures[mask_low], self.temperatures[mask_low])
+        eta_disl[mask_low] = None  # this is just for visualization
+        eta[mask_low] = eta_diff[mask_low]  # diffusion creep is activated in lower mantle
 
-        # composite viscosity
-        eta = ComputeComposite(eta_diff, eta_disl)
+        # haskel constraint
+        radius = 6371e3
+        lith_depth = 100e3
+        integral_depth = 1400e3
+        mask_integral = (self.depths > lith_depth) & (self.depths < integral_depth)
+        integral_cores = 4 * np.pi * (radius - self.depths)**2.0
+        # upper mantle
+        # use harmonic average
+        # lower mantle
+        integral = np.trapz(integral_cores[mask_integral] * np.log10(eta[mask_integral]), self.depths[mask_integral])
+        volume = np.trapz(integral_cores[mask_integral], self.depths[mask_integral])
+        average_log_eta = integral / volume
         
         # plot
         save_profile = kwargs.get('save_profile', 0)
@@ -377,9 +375,9 @@ class RHEOLOGY_OPR():
             axs[1].grid()
             axs[1].set_ylabel('Depth [km]')
             axs[1].legend()
-            axs[1].set_title('%s_dVdiff%.4e' % (rheology, dVdiff))
+            axs[1].set_title('%s_haskell%.2f' % (rheology, average_log_eta))
             # save figure
-            fig_path = os.path.join(RESULT_DIR, "mantle_profile_%s.png" % (rheology))
+            fig_path = os.path.join(RESULT_DIR, "mantle_profile_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.png" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
             fig.savefig(fig_path)
             print("New figure: %s" % fig_path)
             plt.close()
@@ -1420,8 +1418,7 @@ def main():
         rheology = arg.rheology
         # read in standard flow law parameters
         RheologyPrm = RHEOLOGY_PRM()
-        diffusion_creep = getattr(RheologyPrm, rheology + "_diff")
-        dislocation_creep = getattr(RheologyPrm, rheology + "_disl")
+        diffusion_creep, dislocation_creep = GetRheology(rheology)
         # convert 2 aspect
         diffusion_creep_aspect = Convert2AspectInput(diffusion_creep)
         dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=True)

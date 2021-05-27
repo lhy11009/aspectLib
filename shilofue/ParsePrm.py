@@ -29,6 +29,7 @@ import re
 import numpy as np
 # from matplotlib import cm
 # from matplotlib import pyplot as plt
+from shilofue.Utilities import my_assert, re_neat_word
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
