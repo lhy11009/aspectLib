@@ -270,7 +270,6 @@ class RHEOLOGY_OPR():
     def MantleRheology_v0(self, **kwargs):
         '''
         Derive mantle rheology from an aspect profile
-        TODO
         '''
         strain_rate = kwargs.get('strain_rate', 1e-15)
         eta_diff = np.ones(self.depths.size)
@@ -354,7 +353,7 @@ class RHEOLOGY_OPR():
             color = 'tab:blue'
             axs[0].plot(self.pressures/1e9, self.depths/1e3, color=color, label='pressure')
             axs[0].set_ylabel('Depth [km]') 
-            axs[0].set_xlabel('Pressure [GPa]', color=color) 
+            axs[0].set_xlabel('Pressure [GPa] P660: %.4e' % (P660), color=color) 
             # axs[0].invert_yaxis()
             ylim=[2890, 0.0]
             axs[0].set_ylim(ylim)
@@ -363,7 +362,7 @@ class RHEOLOGY_OPR():
             ax2 = axs[0].twiny()
             ax2.set_ylim(ylim)
             ax2.plot(self.temperatures, self.depths/1e3, color=color, label='temperature')
-            ax2.set_xlabel('Temperature [K]', color=color) 
+            ax2.set_xlabel('Temperature [K] T660: %.4e' % (T660), color=color) 
             # second: viscosity
             #   upper mantle
             axs[1].semilogx(eta_diff, self.depths/1e3, 'c', label='diffusion creep')
@@ -375,7 +374,7 @@ class RHEOLOGY_OPR():
             axs[1].grid()
             axs[1].set_ylabel('Depth [km]')
             axs[1].legend()
-            axs[1].set_title('%s_haskell%.2f' % (rheology, average_log_eta))
+            axs[1].set_title('%s_lowerV_%.4e_haskell%.2f' % (rheology, diff_lm['V'], average_log_eta))
             # save figure
             fig_path = os.path.join(RESULT_DIR, "mantle_profile_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.png" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
             fig.savefig(fig_path)
@@ -1343,7 +1342,6 @@ def DeriveMantleRheology(file_path, **kwargs):
     Derive a Mantle rheology profile following certain procedures
     Inputs:
         file_path(str): a profile from ASPECT
-    TODO
     '''
     Operator = RHEOLOGY_OPR()
     # read profile

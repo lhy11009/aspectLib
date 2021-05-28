@@ -18,6 +18,12 @@ lower_mantle -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba/case1
 -j files/TwoDSubduction/eba_lower_mantle.json
 -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_intial_T/case_o.prm
 
+  - setup rheology in prm file
+        python -m shilofue.TwoDSubduction0.CreateCases rheology_cdpt
+-i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/case.prm
+-j /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/rheology.json 
+-o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/case_o.prm
+
 descriptions
 """ 
 import numpy as np
@@ -189,6 +195,129 @@ def LowerMantle0(Inputs, _config):
     visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
     visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
     return Inputs, backgroud_lower_mantle_diffusion
+
+
+def RheologyCDPT(Inputs, _config):
+    """
+    calculate flow law parameters, when phase transition only happens on mantle composition
+    """
+    # creep
+    diff = _config['diffusion_creep']
+    disl = _config['dislocation_creep']
+    # shear zone
+    shear_zone = _config['shear_zone']
+    spcrust_diff = shear_zone['viscosity']
+    spcrust_disl = 1e31
+    # lower mantle
+    lower_mantle = _config['lower_mantle']
+    jump = lower_mantle['upper_lower_viscosity']
+    T = lower_mantle['T660']
+    P = lower_mantle['P660']
+    V1 = lower_mantle['LowerV']
+    diff_lm = GetLowerMantleRheology(diff, jump, T, P, V1=V1, strategy='A')
+    disl_lm = {'A': 5e-32, 'E': 0.0, 'V': 0.0, 'n': 1.0, 'm':0.0}
+    # fix input file
+    visco_plastic = Inputs["Material model"]['Visco Plastic']
+    prefactors_for_diffusion_creep = Parse.COMPOSITION()
+    grain_size_exponents_for_diffusion_creep = Parse.COMPOSITION()
+    activation_energies_for_diffusion_creep = Parse.COMPOSITION()
+    activation_volumes_for_diffusion_creep = Parse.COMPOSITION()
+    # diffusion creep
+    # background composition
+    background_up = 4
+    background_low = 4
+    prefactors_for_diffusion_creep.data['background'] = [diff['A'] for i in range(background_up)] + [diff_lm['A'] for i in range(background_low)]
+    grain_size_exponents_for_diffusion_creep.data['background'] = [diff['m'] for i in range(background_up)] + [diff_lm['m'] for i in range(background_low)]
+    activation_energies_for_diffusion_creep.data['background'] = [diff['E'] for i in range(background_up)] + [diff_lm['E'] for i in range(background_low)]
+    activation_volumes_for_diffusion_creep.data['background'] = [diff['V'] for i in range(background_up)] + [diff_lm['V'] for i in range(background_low)]
+    # spcrust
+    spcrust_sz = 1
+    spcrust_up = 1
+    spcrust_low = 2
+    prefactors_for_diffusion_creep.data['spcrust'] = [0.5/spcrust_diff for i in range(spcrust_sz)]\
+    + [diff['A'] for i in range(spcrust_up)] + [diff_lm['A'] for i in range(spcrust_low)]
+    grain_size_exponents_for_diffusion_creep.data['spcrust'] = [0.0 for i in range(spcrust_sz)]\
+    + [diff['m'] for i in range(spcrust_up)] + [diff_lm['m'] for i in range(spcrust_low)]
+    activation_energies_for_diffusion_creep.data['spcrust'] = [0.0 for i in range(spcrust_sz)]\
+    + [diff['E'] for i in range(spcrust_up)] + [diff_lm['E'] for i in range(spcrust_low)]
+    activation_volumes_for_diffusion_creep.data['spcrust'] = [0.0 for i in range(spcrust_sz)]\
+    + [diff['V'] for i in range(spcrust_up)] + [diff_lm['V'] for i in range(spcrust_low)]
+    # spharz
+    spharz_up = 4
+    spharz_low = 4
+    prefactors_for_diffusion_creep.data['spharz'] = [diff['A'] for i in range(spharz_up)] + [diff_lm['A'] for i in range(spharz_low)]
+    grain_size_exponents_for_diffusion_creep.data['spharz'] = [diff['m'] for i in range(spharz_up)] + [diff_lm['m'] for i in range(spharz_low)]
+    activation_energies_for_diffusion_creep.data['spharz'] = [diff['E'] for i in range(spharz_up)] + [diff_lm['E'] for i in range(spharz_low)]
+    activation_volumes_for_diffusion_creep.data['spharz'] = [diff['V'] for i in range(spharz_up)] + [diff_lm['V'] for i in range(spharz_low)]
+    # opcrust
+    opcrust_up = 1
+    opcrust_low = 0
+    prefactors_for_diffusion_creep.data['opcrust'] = [diff['A'] for i in range(opcrust_up)] + [diff_lm['A'] for i in range(opcrust_low)]
+    grain_size_exponents_for_diffusion_creep.data['opcrust'] = [diff['m'] for i in range(opcrust_up)] + [diff_lm['m'] for i in range(opcrust_low)]
+    activation_energies_for_diffusion_creep.data['opcrust'] = [diff['E'] for i in range(opcrust_up)] + [diff_lm['E'] for i in range(opcrust_low)]
+    activation_volumes_for_diffusion_creep.data['opcrust'] = [diff['V'] for i in range(opcrust_up)] + [diff_lm['V'] for i in range(opcrust_low)]
+    # spharz
+    opharz_up = 1
+    opharz_low = 0
+    prefactors_for_diffusion_creep.data['opharz'] = [diff['A'] for i in range(opharz_up)] + [diff_lm['A'] for i in range(opharz_low)]
+    grain_size_exponents_for_diffusion_creep.data['opharz'] = [diff['m'] for i in range(opharz_up)] + [diff_lm['m'] for i in range(opharz_low)]
+    activation_energies_for_diffusion_creep.data['opharz'] = [diff['E'] for i in range(opharz_up)] + [diff_lm['E'] for i in range(opharz_low)]
+    activation_volumes_for_diffusion_creep.data['opharz'] = [diff['V'] for i in range(opharz_up)] + [diff_lm['V'] for i in range(opharz_low)]
+    # dislocation creep
+    prefactors_for_dislocation_creep = Parse.COMPOSITION()
+    stress_exponents_for_dislocation_creep = Parse.COMPOSITION()
+    activation_energies_for_dislocation_creep = Parse.COMPOSITION()
+    activation_volumes_for_dislocation_creep = Parse.COMPOSITION()
+    # background composition
+    background_up = 4
+    background_low = 4
+    prefactors_for_dislocation_creep.data['background'] = [disl['A'] for i in range(background_up)] + [disl_lm['A'] for i in range(background_low)]
+    stress_exponents_for_dislocation_creep.data['background'] = [disl['n'] for i in range(background_up)] + [disl_lm['n'] for i in range(background_low)]
+    activation_energies_for_dislocation_creep.data['background'] = [disl['E'] for i in range(background_up)] + [disl_lm['E'] for i in range(background_low)]
+    activation_volumes_for_dislocation_creep.data['background'] = [disl['V'] for i in range(background_up)] + [disl_lm['V'] for i in range(background_low)]
+    # spcrust
+    spcrust_sz = 1
+    spcrust_up = 1
+    spcrust_low = 2
+    prefactors_for_dislocation_creep.data['spcrust'] = [0.5/spcrust_disl for i in range(spcrust_sz)]\
+    + [disl['A'] for i in range(spcrust_up)] + [disl_lm['A'] for i in range(spcrust_low)]
+    stress_exponents_for_dislocation_creep.data['spcrust'] = [1.0 for i in range(spcrust_sz)]\
+    + [disl['n'] for i in range(spcrust_up)] + [disl_lm['n'] for i in range(spcrust_low)]
+    activation_energies_for_dislocation_creep.data['spcrust'] = [0.0 for i in range(spcrust_sz)]\
+    + [disl['E'] for i in range(spcrust_up)] + [disl_lm['E'] for i in range(spcrust_low)]
+    activation_volumes_for_dislocation_creep.data['spcrust'] = [0.0 for i in range(spcrust_sz)]\
+    + [disl['V'] for i in range(spcrust_up)] + [disl_lm['V'] for i in range(spcrust_low)]
+    # spharz
+    spharz_up = 4
+    spharz_low = 4
+    prefactors_for_dislocation_creep.data['spharz'] = [disl['A'] for i in range(spharz_up)] + [disl_lm['A'] for i in range(spharz_low)]
+    stress_exponents_for_dislocation_creep.data['spharz'] = [disl['n'] for i in range(spharz_up)] + [disl_lm['n'] for i in range(spharz_low)]
+    activation_energies_for_dislocation_creep.data['spharz'] = [disl['E'] for i in range(spharz_up)] + [disl_lm['E'] for i in range(spharz_low)]
+    activation_volumes_for_dislocation_creep.data['spharz'] = [disl['V'] for i in range(spharz_up)] + [disl_lm['V'] for i in range(spharz_low)]
+    # opcrust
+    opcrust_up = 1
+    opcrust_low = 0
+    prefactors_for_dislocation_creep.data['opcrust'] = [disl['A'] for i in range(opcrust_up)] + [disl_lm['A'] for i in range(opcrust_low)]
+    stress_exponents_for_dislocation_creep.data['opcrust'] = [disl['n'] for i in range(opcrust_up)] + [disl_lm['n'] for i in range(opcrust_low)]
+    activation_energies_for_dislocation_creep.data['opcrust'] = [disl['E'] for i in range(opcrust_up)] + [disl_lm['E'] for i in range(opcrust_low)]
+    activation_volumes_for_dislocation_creep.data['opcrust'] = [disl['V'] for i in range(opcrust_up)] + [disl_lm['V'] for i in range(opcrust_low)]
+    # spharz
+    opharz_up = 1
+    opharz_low = 0
+    prefactors_for_dislocation_creep.data['opharz'] = [disl['A'] for i in range(opharz_up)] + [disl_lm['A'] for i in range(opharz_low)]
+    stress_exponents_for_dislocation_creep.data['opharz'] = [disl['n'] for i in range(opharz_up)] + [disl_lm['n'] for i in range(opharz_low)]
+    activation_energies_for_dislocation_creep.data['opharz'] = [disl['E'] for i in range(opharz_up)] + [disl_lm['E'] for i in range(opharz_low)]
+    activation_volumes_for_dislocation_creep.data['opharz'] = [disl['V'] for i in range(opharz_up)] + [disl_lm['V'] for i in range(opharz_low)]
+
+    visco_plastic["Prefactors for diffusion creep"] = prefactors_for_diffusion_creep.parse_back()
+    visco_plastic["Grain size exponents for diffusion creep"] = grain_size_exponents_for_diffusion_creep.parse_back()
+    visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
+    visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
+    visco_plastic["Prefactors for dislocation creep"] = prefactors_for_dislocation_creep.parse_back()
+    visco_plastic["Stress exponents for dislocation creep"] = stress_exponents_for_dislocation_creep.parse_back()
+    visco_plastic["Activation energies for dislocation creep"] = activation_energies_for_dislocation_creep.parse_back()
+    visco_plastic["Activation volumes for dislocation creep"] = activation_volumes_for_dislocation_creep.parse_back()
+    return Inputs
 
 
 def LowerMantle1(Inputs, _config):
@@ -391,6 +520,23 @@ def main():
         outputs, lower_mantle_diffusion = LowerMantle2(_inputs, _config)
         # screen output
         print(lower_mantle_diffusion)
+        # file output
+        with open(arg.outputs, 'w') as fout:
+            ParsePrm.ParseToDealiiInput(fout, outputs)
+    
+    if _commend == 'rheology_cdpt':
+        # derive parameterization of lower mantle from a prm file and configurations
+        # check file existence
+        assert(os.access(arg.inputs, os.R_OK))
+        assert(os.access(arg.json, os.R_OK))
+        
+        # read parameters and configuration
+        with open(arg.inputs, 'r') as fin:
+            _inputs = ParsePrm.ParseFromDealiiInput(fin)
+        with open(arg.json, 'r') as fin:
+            _config = json.load(fin)
+        outputs = RheologyCDPT(_inputs, _config)
+        # screen output
         # file output
         with open(arg.outputs, 'w') as fout:
             ParsePrm.ParseToDealiiInput(fout, outputs)

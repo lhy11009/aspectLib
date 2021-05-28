@@ -1,7 +1,7 @@
 {
     "_comment": "configuration for lower mantle rheology with eba models",
-    "T660": 1930.0,
-    "P660": 21e9, 
-    "LowerV": 3e-6,
+    "T660": 1968.9,
+    "P660": 20.332e9, 
+    "LowerV": 3.7316e-6,
     "upper_lower_viscosity": 30.0
 }
