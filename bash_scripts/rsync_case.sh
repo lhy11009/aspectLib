@@ -78,9 +78,11 @@ rsync_peloton(){
     [[ -n "${peloton_dir}" ]] || { cecho "${BAD}" "fail to read peloton directory"; exit 1; }
     if [[ -n "${g_from_local}" ]]; then
         local parental_dir=$(dirname "${peloton_dir}/${case_dir}")
+        echo "rsync -avur --progress ${local_dir}/${case_dir} lochy@peloton.cse.ucdavis.edu:${parental_dir}/"
         eval "rsync -avur --progress ${local_dir}/${case_dir} lochy@peloton.cse.ucdavis.edu:${parental_dir}/"
     else
         local parental_dir=$(dirname "${local_dir}/${case_dir}")
+        echo "rsync -avur --progress lochy@peloton.cse.ucdavis.edu:${peloton_dir}/${case_dir} ${parental_dir}/"
         eval "rsync -avur --progress lochy@peloton.cse.ucdavis.edu:${peloton_dir}/${case_dir} ${parental_dir}/"
     fi
     return 0

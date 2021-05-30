@@ -24,6 +24,9 @@ lower_mantle -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba/case1
 -j /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/rheology.json 
 -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/case_o.prm
 
+  - init new case:
+        python -m shilofue.TwoDSubduction0.CreateCases create -j ~/ASPECT_PROJECT/TwoDSubduction/non_linear32/init.json
+
 descriptions
 """ 
 import numpy as np
@@ -34,9 +37,10 @@ import json #, re
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from shutil import rmtree, copy2
 import shilofue.Parse as Parse
 import shilofue.ParsePrm as ParsePrm
-from shilofue.Rheology import GetLowerMantleRheology
+from shilofue.Rheology import GetLowerMantleRheology, CreepRheologyInAspectViscoPlastic, ComputeComposite
 from shilofue.Utilities import my_assert, ggr2cart2, cart2sph2
 
 # directory to the aspect Lab
@@ -202,6 +206,7 @@ def RheologyCDPT(Inputs, _config):
     calculate flow law parameters, when phase transition only happens on mantle composition
     """
     # creep
+    strain_rate = _config['strain_rate']
     diff = _config['diffusion_creep']
     disl = _config['dislocation_creep']
     # shear zone
@@ -210,11 +215,15 @@ def RheologyCDPT(Inputs, _config):
     spcrust_disl = 1e31
     # lower mantle
     lower_mantle = _config['lower_mantle']
+    strategy = lower_mantle.get('strategy', 'composite')  # see comments in json file
     jump = lower_mantle['upper_lower_viscosity']
     T = lower_mantle['T660']
     P = lower_mantle['P660']
     V1 = lower_mantle['LowerV']
-    diff_lm = GetLowerMantleRheology(diff, jump, T, P, V1=V1, strategy='A')
+    eta_diff_660 = CreepRheologyInAspectViscoPlastic(diff, strain_rate, P, T)
+    eta_disl_660 = CreepRheologyInAspectViscoPlastic(disl, strain_rate, P, T)
+    eta_660 = ComputeComposite(eta_diff_660, eta_disl_660)
+    diff_lm = GetLowerMantleRheology(diff, jump, T, P, V1=V1, strategy=strategy, eta=eta_660)
     disl_lm = {'A': 5e-32, 'E': 0.0, 'V': 0.0, 'n': 1.0, 'm':0.0}
     # fix input file
     visco_plastic = Inputs["Material model"]['Visco Plastic']
@@ -309,6 +318,7 @@ def RheologyCDPT(Inputs, _config):
     activation_energies_for_dislocation_creep.data['opharz'] = [disl['E'] for i in range(opharz_up)] + [disl_lm['E'] for i in range(opharz_low)]
     activation_volumes_for_dislocation_creep.data['opharz'] = [disl['V'] for i in range(opharz_up)] + [disl_lm['V'] for i in range(opharz_low)]
 
+    visco_plastic["Reference strain rate"] = str(strain_rate)
     visco_plastic["Prefactors for diffusion creep"] = prefactors_for_diffusion_creep.parse_back()
     visco_plastic["Grain size exponents for diffusion creep"] = grain_size_exponents_for_diffusion_creep.parse_back()
     visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
@@ -424,6 +434,40 @@ def LowerMantle2(Inputs, _config):
     visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
     visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
     return Inputs, backgroud_lower_mantle_diffusion
+        
+
+def CreateNew(config):
+    """        
+        create cases under a directory
+        read json file and prm file
+        location of prm file is given by the json file
+    """
+    # read parameters
+    paths = config['path']
+    _root = paths['root']
+    prm_path = paths['prm']
+    particle_path = paths['particle']
+    with open(prm_path, 'r') as fin:
+        inputs = ParsePrm.ParseFromDealiiInput(fin)
+    pass
+    # rheology
+    outputs = RheologyCDPT(inputs, config)
+    # folder
+    case_name = paths['base']
+    case_dir = os.path.join(_root, case_name)
+    if os.path.isdir(case_dir):
+       # remove old ones 
+       rmtree(case_dir)
+    os.mkdir(case_dir)
+    # file output
+    prm_out_path = os.path.join(case_dir, "case.prm")  # prm for running the case
+    prm_fast_out_path = os.path.join(case_dir, "case_f.prm")  # prm for running the first step
+    outputs_fast = outputs.copy()  # dictionary for running the first step
+    ParsePrm.FastZeroStep(outputs_fast)
+    ParsePrm.WritePrmFile(prm_fast_out_path, outputs_fast)
+    ParsePrm.WritePrmFile(prm_out_path, outputs)
+    particle_out_path = os.path.join(case_dir, "particle.dat")  # now deal with particle file
+    copy2(particle_path, particle_out_path)
 
 
 
@@ -540,6 +584,15 @@ def main():
         # file output
         with open(arg.outputs, 'w') as fout:
             ParsePrm.ParseToDealiiInput(fout, outputs)
+    
+    if _commend == 'create':
+        # create cases under a directory
+        # read json file and prm file
+        # location of prm file is given by the json file
+        assert(os.access(arg.json, os.R_OK))
+        with open(arg.json, 'r') as fin:
+            _config = json.load(fin)
+        CreateNew(_config)
 
 # run script
 if __name__ == '__main__':

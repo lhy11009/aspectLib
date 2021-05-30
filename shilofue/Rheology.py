@@ -1119,6 +1119,28 @@ def GetLowerMantleRheology(upper_mantle_creep_method, jump, T, P, **kwargs):
     lower_mantle_creep_method['V'] = V1
     if strategy == 'A':
         lower_mantle_creep_method['A'] = jump**(-n) * A * math.exp(P * (V1 - V) / (R * T))
+    elif strategy == 'composite':
+        # composite: prescribe a P and a V here, as well as pressure and temperature at 660 km depth. 
+        # The composite viscosity of upper mantle is used as the base,
+        # and a upper_lower_viscosity factor will be multiplied on that.
+        eta_lower = kwargs['eta'] * jump # viscosity at 660 km
+        lower_mantle_creep_method['V'] = V1
+        lower_mantle_creep_method['A'] = 0.5/eta_lower * d**m * math.exp((E + P*V1) / (R*T)) # diffusion, thus n = 1
+    elif strategy == 'c12':
+        # c12: use P and V value from cizcova et al 2012, compute A using value of pressure and temperature at 660 km depth
+        eta_lower = kwargs['eta'] * jump # viscosity at 660 km
+        V1 = 1.1e-6
+        E = 2e5
+        lower_mantle_creep_method['V'] = V1
+        lower_mantle_creep_method['E'] = E
+        lower_mantle_creep_method['A'] = 0.5/eta_lower * d**m * math.exp((E + P*V1) / (R*T)) # diffusion, thus n = 1
+    elif strategy == 'c12_const':
+        # c12_const: only use the value of constrainted, 3-4e22
+        eta_lower = 3.5e22
+        lower_mantle_creep_method['V'] = 0.0
+        lower_mantle_creep_method['E'] = 0.0
+        lower_mantle_creep_method['m'] = 0.0
+        lower_mantle_creep_method['A'] = 0.5/eta_lower
     else:
         lower_mantle_creep_method['d'] = jump**(n / m) * d * math.exp(P * (V-V1) / (m * R * T))
     return lower_mantle_creep_method
@@ -1475,7 +1497,6 @@ def main():
         ConstrainASPECT(arg.inputs, save_profile=arg.save_profile, include_lower_mantle=arg.include_lower_mantle, version=arg.version)
 
     elif _commend == 'derive_mantle_rheology':
-        # TODO
         DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version)
     
     else:

@@ -198,6 +198,27 @@ def test_Convert2AspectInput1():
     assert(abs((check1 - check_result[1]) / check_result[1]) < tolerance)
 
 
+def test_Convert2AspectInputLowerMantle():
+    """
+    check the implementation of GetLowerMantleRheology
+    """
+    tolerance = 1e-6
+    diffusion_creep = {
+        "A": 8.17868945868946e-17,
+        "d": 0.01,
+        "n": 1.0,
+        "m": 3.0,
+        "E": 300000.0,
+        "V": 6.899999999999998e-06}
+    P660 = 20e9
+    T660 = 2000
+    V1 = 4e-6
+    jump = 30.0
+    diff_lm = GetLowerMantleRheology(diffusion_creep, jump, T660, P660, V1=V1, strategy='composite', eta=1e21)
+    eta_lower = CreepRheologyInAspectViscoPlastic(diff_lm, 1e-15, P660, T660)
+
+    assert(abs(eta_lower - jump * 1e21)/1e21 < tolerance)
+
     
 def test_Convert2AspectInput():
     """
