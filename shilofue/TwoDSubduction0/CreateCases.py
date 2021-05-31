@@ -41,6 +41,7 @@ from shutil import rmtree, copy2
 import shilofue.Parse as Parse
 import shilofue.ParsePrm as ParsePrm
 from shilofue.Rheology import GetLowerMantleRheology, CreepRheologyInAspectViscoPlastic, ComputeComposite
+from shilofue.Cases import CASE
 from shilofue.Utilities import my_assert, ggr2cart2, cart2sph2
 
 # directory to the aspect Lab
@@ -434,9 +435,16 @@ def LowerMantle2(Inputs, _config):
     visco_plastic["Activation energies for diffusion creep"] = activation_energies_for_diffusion_creep.parse_back()
     visco_plastic["Activation volumes for diffusion creep"] = activation_volumes_for_diffusion_creep.parse_back()
     return Inputs, backgroud_lower_mantle_diffusion
+
+
+def RefinementOption(config):
+    """
+    options for refinements
+    """
+    pass
         
 
-def CreateNew(config):
+def CreateNew(config, **kwargs):
     """        
         create cases under a directory
         read json file and prm file
@@ -447,28 +455,21 @@ def CreateNew(config):
     _root = paths['root']
     prm_path = paths['prm']
     particle_path = paths['particle']
-    with open(prm_path, 'r') as fin:
-        inputs = ParsePrm.ParseFromDealiiInput(fin)
-    pass
-    # rheology
-    outputs = RheologyCDPT(inputs, config)
-    # folder
+    # create case, using the interface defined in Cases.py.
     case_name = paths['base']
-    case_dir = os.path.join(_root, case_name)
-    if os.path.isdir(case_dir):
-       # remove old ones 
-       rmtree(case_dir)
-    os.mkdir(case_dir)
-    # file output
-    prm_out_path = os.path.join(case_dir, "case.prm")  # prm for running the case
-    prm_fast_out_path = os.path.join(case_dir, "case_f.prm")  # prm for running the first step
-    outputs_fast = outputs.copy()  # dictionary for running the first step
-    ParsePrm.FastZeroStep(outputs_fast)
-    ParsePrm.WritePrmFile(prm_fast_out_path, outputs_fast)
-    ParsePrm.WritePrmFile(prm_out_path, outputs)
-    particle_out_path = os.path.join(case_dir, "particle.dat")  # now deal with particle file
-    copy2(particle_path, particle_out_path)
-
+    newCase = CASE(case_name, prm_path)
+    newCase.configure(RheologyCDPT, config)  # rheology
+    newCase.add_extra_file(particle_path)  # add an extra file
+    # I include options in order to generate multiple cases at a time
+    options = kwargs.get('options', None)
+    if options != None:
+        assert(type(options) == dict)
+        for key, value in options.items():
+            if key == 'refinemment':
+                newCase.add_new_option(RefinementOption, value)
+    else:
+        # no options, create case
+        newCase.create(_root, fast_first_step=1)
 
 
 class MYCASE(Parse.CASE):
@@ -539,6 +540,9 @@ def main():
     parser.add_argument('-j', '--json', type=str,
                         default='',
                         help='json file inputs')
+    parser.add_argument('-p', '--options', type=str,
+                        default=None,
+                        help='json file inputs for additional options')
     parser.add_argument('-o', '--outputs', type=str,
                         default='case_o.prm',
                         help='Some outputs(prm file)')
@@ -592,7 +596,14 @@ def main():
         assert(os.access(arg.json, os.R_OK))
         with open(arg.json, 'r') as fin:
             _config = json.load(fin)
-        CreateNew(_config)
+
+        if arg.options != None: 
+            assert(os.access(arg.options, os.R_OK))
+            with open(arg.options, 'r') as fin:
+                options = json.load(fin)
+        else:
+            options = None
+        CreateNew(_config, options=options)
 
 # run script
 if __name__ == '__main__':
