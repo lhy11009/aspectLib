@@ -1,0 +1,6 @@
+{
+    "_comment": ["I use this json file to configure cases, in order to generate multiple cases at a time",
+                "options for max_refinement: change the maximum level of refinemment"],
+    "key": "max_refinement",
+    "values": [11, 12]
+}

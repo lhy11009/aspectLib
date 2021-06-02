@@ -132,6 +132,76 @@ def PlotNewtonSolver(log_path, fig_path_base, **kwargs):
     return fig_path
 
 
+def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
+    '''
+    Read runtime info from log file and then plot
+    Inputs:
+        log_path(str) - path to log file
+    Returns:
+        SolverHistory.png
+    '''
+    # read log file
+    temp_path = os.path.join(RESULT_DIR, 'run_time_output_newton')
+    os.system("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
+    Plotter = Plot.LINEARPLOT('SolverHistory', {})
+    Plotter.ReadHeader(temp_path)
+    Plotter.ReadData(temp_path)
+    col_step = Plotter.header['Time_step_number']['col']
+    col_number_of_iteration = Plotter.header['Index_of_nonlinear_iteration']['col']
+    col_residual = Plotter.header['Relative_nonlinear_residual']['col']
+    end_step = int(Plotter.data[-1, col_step])
+    steps = [i for i in range(end_step)]
+    number_of_iterations = np.zeros(end_step)
+    residuals = np.zeros(end_step)
+    residuals_at_iteration0 = np.zeros(end_step)
+    residuals_at_iteration1 = np.zeros(end_step)
+    query_iteration0 = kwargs.get('query', 10)  # number of iteration to query
+    query_iteration1 = kwargs.get('query', 20)  # number of iteration to query
+
+    for step in steps:
+        mask_step = (Plotter.data[:, col_step] == step)
+        data = Plotter.data[mask_step, :]
+        number_of_iterations[step] = data[-1, col_number_of_iteration]
+        residuals[step] = data[-1, col_residual]
+        # query residual of iteration 'query_iteration'
+        try:
+            residuals_at_iteration0[step] = data[query_iteration0, col_residual]
+        except IndexError:
+            residuals_at_iteration0[step] = data[-1, col_residual]
+        try:
+            residuals_at_iteration1[step] = data[query_iteration1, col_residual]
+        except IndexError:
+            residuals_at_iteration1[step] = data[-1, col_residual]
+   
+    # line1: residual
+    fig, ax = plt.subplots(figsize=(5, 5)) 
+    color = 'tab:blue'
+    # residual of iteration
+    ax.semilogy(steps, residuals, '-', linewidth=1.5, color=color, label='Residuals') 
+    # query residual of iteration 'query_iteration'
+    ax.semilogy(steps, residuals_at_iteration0, '--', linewidth=0.5, color='tab:orange', label='Residuals at iteration %d' % query_iteration0) 
+    ax.semilogy(steps, residuals_at_iteration1, '--', linewidth=0.5, color='tab:green', label='Residuals at iteration %d' % query_iteration1) 
+    ax.set_ylabel('Relative non-linear residual', color=color) 
+    ax.set_xlabel('Steps') 
+    ax.set_title('Solver History')
+    ax.tick_params(axis='y', labelcolor=color)
+    ax.legend()
+    # line 2: scaling factor
+    ax2 = ax.twinx()
+    color = 'tab:red'
+    ax2.plot(steps, number_of_iterations, '.', color=color, label='Numbers of Iterations') 
+    ax2.set_ylabel('Numbers of Iterations', color=color) 
+    ax2.tick_params(axis='y', labelcolor=color)
+
+    # save figure 
+    fig.tight_layout()
+    fig_path_base0 = fig_path_base.rpartition('.')[0]
+    fig_path_type = fig_path_base.rpartition('.')[2]
+    fig_path = "%s.%s" % (fig_path_base0, fig_path_type)
+    plt.savefig(fig_path)
+    print("New figure: %s" % fig_path)
+    return fig_path
+
 
 def main():
     '''
@@ -151,6 +221,9 @@ def main():
     parser.add_argument('-o', '--outputs', type=str,
                         default='',
                         help='Some outputs')
+    parser.add_argument('-s', '--step', type=int,
+                        default=0,
+                        help='time step')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -174,7 +247,15 @@ def main():
     
     elif _commend == "plot_newton_solver_step":
         # plot newton solver output
-        o_path = PlotNewtonSolver(arg.inputs, arg.outputs) 
+        o_path = PlotNewtonSolver(arg.inputs, arg.outputs, step=arg.step) 
+    
+    elif _commend == "plot_newton_solver_history":
+        # plot newton solver output
+        o_path = PlotNewtonSolverHistory(arg.inputs, arg.outputs, endstep=arg.step) 
+    
+    else:
+        # commend not right
+        raise ValueError('%s is not a valid commend' % _commend)
 
 # run script
 if __name__ == '__main__':

@@ -96,6 +96,9 @@ def PlotFigure(file_path, fig_path):
         pdict = json.load(fin)
     plot_options = pdict.get('Statistics', {})
     Plotter = STATISTICS_PLOT('Statistics', unit_convert=UnitConvert, options=plot_options)
+    fig_dir = os.path.dirname(fig_path)
+    if not os.path.isdir(fig_dir):
+        os.mkdir(fig_dir)
     fig_generated_path = Plotter(file_path, fileout=fig_path)  # plot figure
     print("New figure: %s" % fig_generated_path)
     return fig_generated_path

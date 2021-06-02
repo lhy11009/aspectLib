@@ -28,6 +28,9 @@ lower_mantle -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba/case1
         python -m shilofue.TwoDSubduction0.CreateCases create -j ~/ASPECT_PROJECT/TwoDSubduction/non_linear32/init.json
 
 descriptions
+    available configuretions of case generating
+    available options of of case generating:
+        max_refinement: change the maximum level of refinemment, appendix: '_MRf%d'
 """ 
 import numpy as np
 import sys, os, argparse
@@ -437,10 +440,16 @@ def LowerMantle2(Inputs, _config):
     return Inputs, backgroud_lower_mantle_diffusion
 
 
-def RefinementOption(config):
+def MaxRefinement(inputs, value):
     """
-    options for refinements
+    options for max_refinement: change the maximum level of refinemment
     """
+    isosurfaces_input = '10, %s, spcrust: 0.5 | 1.0; 9, %s, \
+spharz: 0.5 | 1.0;  9, %s, opcrust: 0.5 | 1.0; 8, %s, \
+opharz: 0.5 | 1.0; 9, %s, Temperature: 270.0 | 1173.0' % (value, value, value, value, value)
+    inputs['Mesh refinement']['Initial adaptive refinement'] = str(value - 1 - int(inputs['Mesh refinement']['Initial global refinement']))
+    inputs['Mesh refinement']['Isosurfaces']['Isosurfaces'] = isosurfaces_input
+    return inputs, '_MRf%d' % value  # second entry is an appendix to case name
     pass
         
 
@@ -460,16 +469,37 @@ def CreateNew(config, **kwargs):
     newCase = CASE(case_name, prm_path)
     newCase.configure(RheologyCDPT, config)  # rheology
     newCase.add_extra_file(particle_path)  # add an extra file
-    # I include options in order to generate multiple cases at a time
-    options = kwargs.get('options', None)
-    if options != None:
-        assert(type(options) == dict)
-        for key, value in options.items():
-            if key == 'refinemment':
-                newCase.add_new_option(RefinementOption, value)
+    # hold, then only return
+    hold = kwargs.get('hold', 0)
+    if hold == 1:
+        pass
     else:
-        # no options, create case
         newCase.create(_root, fast_first_step=1)
+    return newCase
+
+
+def CreateNewWithOptions(config, options, **kwargs):
+    """        
+        create cases under a directory
+        read json file and prm file
+        location of prm file is given by the json file
+    """
+    # create case, using the interface defined in Cases.py.
+    paths = config['path']
+    _root = paths['root']
+    key = options['key']
+    values = options['values']
+    newCases = []
+    # I include options in order to generate multiple cases at a time
+    for i in range(len(values)):
+        newCase = CreateNew(config, hold=1)
+        if key == 'max_refinement':
+            newCase.configure(MaxRefinement, values[i], rename=1)
+        newCases.append(newCase)
+    # Create cases
+    for newCase in newCases:
+        newCase.create(_root, fast_first_step=1)
+        
 
 
 class MYCASE(Parse.CASE):
@@ -596,14 +626,20 @@ def main():
         assert(os.access(arg.json, os.R_OK))
         with open(arg.json, 'r') as fin:
             _config = json.load(fin)
-
-        if arg.options != None: 
-            assert(os.access(arg.options, os.R_OK))
-            with open(arg.options, 'r') as fin:
-                options = json.load(fin)
-        else:
-            options = None
-        CreateNew(_config, options=options)
+        CreateNew(_config)
+        
+    if _commend == 'create_with_options':
+        # create cases under a directory
+        # read json file and prm file
+        # location of prm file is given by the json file
+        assert(os.access(arg.json, os.R_OK))
+        with open(arg.json, 'r') as fin:
+            _config = json.load(fin)
+        # also read a 2nd json for options
+        assert(os.access(arg.options, os.R_OK))
+        with open(arg.options, 'r') as fin:
+            options = json.load(fin)
+        CreateNewWithOptions(_config, options)
 
 # run script
 if __name__ == '__main__':

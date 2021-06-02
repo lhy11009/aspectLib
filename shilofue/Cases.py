@@ -97,15 +97,23 @@ class CASE():
             base_name = os.path.basename(path)
             path_out = os.path.join(case_dir, base_name)
             copy2(path, path_out)
+        print("New case created: %s" % case_dir)
 
-    def configure(self, func, config):
+    def configure(self, func, config, **kwargs):
         '''
         applies configuration for this case
         Inputs:
             func(a function), the form of it is:
                 outputs = func(inputs, config)
         '''
-        self.idict = func(self.idict, config)
+        rename = kwargs.get('rename', None)
+        if rename != None:
+            # rename the case with the configuration
+            self.idict, appendix = func(self.idict, config)
+            self.case_name += appendix
+        else:
+            # just apply the configuration
+            self.idict = func(self.idict, config)
 
     def add_extra_file(self, path):
         '''
