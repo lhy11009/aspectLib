@@ -18,7 +18,7 @@
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
 source "${ASPECT_LAB_DIR}/bash_scripts/utilities.sh"
-SERVER_LIST="${ASPECT_LAB_DIR}/env/server_list"
+SERVER_LIST="${ASPECT_LAB_DIR}/env/server_list"  # in this list, one need to include the address of servers they are using
 
 usage(){
   # TODO
@@ -62,7 +62,7 @@ parse_options(){
     done
 }
 
-rsync_peloton(){
+rsync_server(){
     ###
     # rsync from peloton
     # Inputs:
@@ -72,18 +72,19 @@ rsync_peloton(){
     ###
     local case_dir=$1
     local local_dir=$2
-    local peloton_dir=$3
+    local server_dir=$3
+    local addr=$4
     [[ -n "${case_dir}" ]] || { cecho "${BAD}" "no case given (\$1}"; exit 1; }
     [[ -n "${local_dir}" ]] || { cecho "${BAD}" "fail to read local directory"; exit 1; }
-    [[ -n "${peloton_dir}" ]] || { cecho "${BAD}" "fail to read peloton directory"; exit 1; }
+    [[ -n "${server_dir}" ]] || { cecho "${BAD}" "fail to read peloton directory"; exit 1; }
     if [[ -n "${g_from_local}" ]]; then
-        local parental_dir=$(dirname "${peloton_dir}/${case_dir}")
-        echo "rsync -avur --progress ${local_dir}/${case_dir} lochy@peloton.cse.ucdavis.edu:${parental_dir}/"
-        eval "rsync -avur --progress ${local_dir}/${case_dir} lochy@peloton.cse.ucdavis.edu:${parental_dir}/"
+        local parental_dir=$(dirname "${server_dir}/${case_dir}")
+        echo "rsync -avur --progress ${local_dir}/${case_dir} ${addr}:${parental_dir}/"
+        eval "rsync -avur --progress ${local_dir}/${case_dir} ${addr}:${parental_dir}/"
     else
         local parental_dir=$(dirname "${local_dir}/${case_dir}")
-        echo "rsync -avur --progress lochy@peloton.cse.ucdavis.edu:${peloton_dir}/${case_dir} ${parental_dir}/"
-        eval "rsync -avur --progress lochy@peloton.cse.ucdavis.edu:${peloton_dir}/${case_dir} ${parental_dir}/"
+        echo "rsync -avur --progress ${addr}:${server_dir}/${case_dir} ${parental_dir}/"
+        eval "rsync -avur --progress ${addr}:${server_dir}/${case_dir} ${parental_dir}/"
     fi
     return 0
 }
@@ -116,7 +117,7 @@ main(){
         usage
     elif [[ "$1" = "peloton" && "$2" = "TwoDSubduction" ]]; then
         ##
-        # (Descriptions)
+        # tranfer data to & from peloton
         # Innputs:
         # Terninal Outputs
         ##
@@ -125,7 +126,21 @@ main(){
         parse_options $@
         local_dir=${TwoDSubduction_DIR}
         peloton_dir=$(awk '{if ($2 ~ /TwoDSubduction_DIR/){split($2, array, "="); gsub("\"", "", array[2]) ;print array[2]}}' "${ASPECT_LAB_DIR}/env/enable_peloton.sh")
-        rsync_peloton "${case_dir}" "${local_dir}" "${peloton_dir}"
+        local peloton_addr=$(eval "awk '{ if(\$1 == \"peloton\") print \$2;}' $SERVER_LIST")
+        rsync_server "${case_dir}" "${local_dir}" "${peloton_dir}" "${peloton_addr}"
+    elif [[ "$1" = "stampede2" && "$2" = "TwoDSubduction" ]]; then
+        ##
+        # tranfer data to & from stampede2
+        # Innputs:
+        # Terninal Outputs
+        ##
+        shift; shift
+        case_dir="$1"; shift
+        parse_options $@
+        local_dir=${TwoDSubduction_DIR}
+        stampede2_dir=$(awk '{if ($2 ~ /TwoDSubduction_DIR/){split($2, array, "="); gsub("\"", "", array[2]) ;print array[2]}}' "${ASPECT_LAB_DIR}/env/enable_stampede2.sh")
+        local stampede2_addr=$(eval "awk '{ if(\$1 == \"stampede2\") print \$2;}' $SERVER_LIST")
+        rsync_server "${case_dir}" "${local_dir}" "${stampede2_dir}" "${stampede2_addr}"
     elif [[ "$1" = "ucd" && "$2" = "TwoDSubduction" ]]; then
         # TODO
         # rsync workplace

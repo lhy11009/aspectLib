@@ -36,7 +36,8 @@ build_aspect_project(){
     fi
 
     # get the list of plugins
-    plugins=("prescribe_field" "subduction_temperature2d" "slab2d_statistics" "subduction_temperature2d_ellipse")
+    # plugins=("prescribe_field" "subduction_temperature2d" "slab2d_statistics" "subduction_temperature2d_ellipse")
+    plugins=("prescribe_field" "subduction_temperature2d" "slab2d_statistics" "subduction_temperature2d_ellipse" "visco_plastic_TwoD" "isosurfaces")
 
     # build
     local current_dir=$(pwd)
