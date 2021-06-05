@@ -1,0 +1,6 @@
+{
+    "_comment": ["I use this json file to configure cases, in order to generate multiple cases at a time",
+                "options for decoupling_eclogite_transition: whether to decouple phase transiton from viscosity change"],
+    "key": "decoupling_eclogite_transiton",
+    "values": ["CET"]
+}

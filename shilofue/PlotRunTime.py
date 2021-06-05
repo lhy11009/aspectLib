@@ -17,6 +17,11 @@ Examples of usage:
         -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re/output/log.txt 
         -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re/img/run_time.png
 
+  - plot newton solver history
+         python -m shilofue.PlotRunTime plot_newton_solver_history
+         -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20/output/log.txt
+         -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20/img/newton_solver_history.png 
+
 descriptions
 """ 
 import numpy as np

@@ -430,7 +430,7 @@ plot_visit_case(){
     [ -d "${visit_temp_dir}" ] || mkdir "${visit_temp_dir}" ]
     # dir for image output
     local img_dir="${case_dir}/img"
-    [ -d "${img_dir}" ] || mkdir "${img_dir}" ]
+    [ -d "${img_dir}" ] || mkdir "${img_dir}"
 
     # get a list of scripts to plot
     visit_script_bases=("slab.py")

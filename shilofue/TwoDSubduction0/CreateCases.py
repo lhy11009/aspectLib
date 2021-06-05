@@ -451,6 +451,18 @@ opharz: 0.5 | 1.0; 9, %s, Temperature: 270.0 | 1173.0' % (value, value, value, v
     inputs['Mesh refinement']['Isosurfaces']['Isosurfaces'] = isosurfaces_input
     return inputs, '_MRf%d' % value  # second entry is an appendix to case name
     pass
+
+
+def DecouplingEclogiteTransiton(inputs, value):
+    """
+    options for decoupling_eclogite_transition: whether to decouple phase transiton from viscosity change
+    """
+    if value == 'CET':
+        inputs['Material model']['Visco Plastic']['Decoupling eclogite viscosity'] = 'false'
+    elif value == 'DET':
+        inputs['Material model']['Visco Plastic']['Decoupling eclogite viscosity'] = 'true'
+    return inputs, '_%s' % value  # second entry is an appendix to case name
+
         
 
 def CreateNew(config, **kwargs):
@@ -495,6 +507,8 @@ def CreateNewWithOptions(config, options, **kwargs):
         newCase = CreateNew(config, hold=1)
         if key == 'max_refinement':
             newCase.configure(MaxRefinement, values[i], rename=1)
+        if key == 'decoupling_eclogite_transiton':
+            newCase.configure(DecouplingEclogiteTransiton, values[i], rename=1)
         newCases.append(newCase)
     # Create cases
     for newCase in newCases:
