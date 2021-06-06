@@ -475,12 +475,13 @@ def CreateNew(config, **kwargs):
     paths = config['path']
     _root = paths['root']
     prm_path = paths['prm']
-    particle_path = paths['particle']
+    extra_paths = paths['extra']
     # create case, using the interface defined in Cases.py.
     case_name = paths['base']
     newCase = CASE(case_name, prm_path)
     newCase.configure(RheologyCDPT, config)  # rheology
-    newCase.add_extra_file(particle_path)  # add an extra file
+    for extra_path in extra_paths:
+        newCase.add_extra_file(extra_path)  # add an extra file
     # hold, then only return
     hold = kwargs.get('hold', 0)
     if hold == 1:
