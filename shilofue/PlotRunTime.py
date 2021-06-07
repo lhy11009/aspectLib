@@ -42,7 +42,7 @@ RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
 
-def PlotFigure(log_path, fig_path):
+def PlotFigure(log_path, fig_path, **kwargs):
     '''
     Read runtime info from log file and then plot
     Inputs:
@@ -50,33 +50,57 @@ def PlotFigure(log_path, fig_path):
     Returns:
         RunTime.png
     '''
+    hr = 3600.0  # hr to s
     # read log file
     temp_path = os.path.join(RESULT_DIR, 'run_time_output')
     os.system("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
 
-    # plot statistics ouput #####
     Plotter = Plot.LINEARPLOT('RunTime', {})
     Plotter.ReadHeader(temp_path)
     Plotter.ReadData(temp_path)
     col_time = Plotter.header['Time']['col']
+    unit_time = Plotter.header['Time']['unit']
     col_step = Plotter.header['Time_step_number']['col']
     col_wallclock = Plotter.header['Wall_Clock']['col']
+    unit_wallclock = Plotter.header['Wall_Clock']['unit']
     times = Plotter.data[:, col_time]
     steps = Plotter.data[:, col_step]
     wallclocks = Plotter.data[:, col_wallclock]
+    # fix restart
+    re_inds = []
+    fix_restart = kwargs.get('fix_restart', False)
+    if fix_restart:
+        last_step = -1
+        i = 0
+        for step in steps:
+            if step <= last_step:
+                re_inds.append(i)  # step < last step is a marker for restart
+            last_step = step
+            i = i+1
+        for i in range(len(re_inds)-1):
+            re_ind = re_inds[i]
+            re_ind_next = re_ind[i+1]
+            wallclocks[re_ind: re_ind_next] += wallclocks[re_ind - 1]
+        re_ind = re_inds[-1]  # deal with the last one seperately
+        wallclocks[re_ind: ] += wallclocks[re_ind - 1]
+        
     # line 1: time
     fig, ax1 = plt.subplots(figsize=(5, 5)) 
     color = 'tab:blue'
-    ax1.plot(steps, times, '-', color=color, label='Time') 
-    ax1.set_ylabel('Time [yr]', color=color) 
+    ax1.plot(steps, times / 1e6, '-', color=color, label='Time') 
+    if fix_restart:
+        ax1.plot(steps[re_inds], times[re_inds] / 1e6, 'o', color=color, label='Restart') 
+    ax1.set_ylabel('Time [myr]', color=color) 
     ax1.set_xlabel('Step') 
     ax1.tick_params(axis='y', labelcolor=color)
     ax1.set_title('Run Time')
     # line 2: wall clock
     ax2 = ax1.twinx()
     color = 'tab:red'
-    ax2.plot(steps, wallclocks, '-', color=color, label='Wall Clock [s]') 
-    ax2.set_ylabel('Wall Clock [s]', color=color) 
+    ax2.plot(steps, wallclocks / hr, '-', color=color, label='Wall Clock [s]') 
+    if fix_restart:
+        ax2.plot(steps[re_inds], wallclocks[re_inds] / hr, 'o', color=color, label='Restart') 
+    ax2.set_ylabel('Wall Clock [hr]', color=color) 
     ax2.set_xlabel('Step') 
     ax2.tick_params(axis='y', labelcolor=color)
     # save figure
@@ -239,7 +263,7 @@ def main():
     # commands
     if _commend == 'plot':
         # example:
-        PlotFigure(arg.inputs, arg.outputs)
+        PlotFigure(arg.inputs, arg.outputs, fix_restart=True)
     
     elif _commend == 'plot_case':
         # example:
@@ -248,7 +272,7 @@ def main():
         fig_path = os.path.join(arg.inputs, 'img', 'run_time.png')
         if not os.path.isdir(os.path.dirname(fig_path)):
             os.mkdir(os.path.dirname(fig_path))
-        PlotFigure(log_file, fig_path)
+        PlotFigure(log_file, fig_path, fix_restart=True)
     
     elif _commend == "plot_newton_solver_step":
         # plot newton solver output
