@@ -8,6 +8,7 @@ import numpy as np
 import shilofue.Plot as Plot
 import shilofue.ParsePrm as ParsePrm
 from shilofue.Utilities import my_assert, re_neat_word, WriteFileHeader
+from pathlib import Path 
 
 '''
 For now, my strategy is first defining a method to parse inputs for every key word,
@@ -17,6 +18,9 @@ Future:
     b. add method for functions
 '''
 
+# directory to the aspect Lab
+ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 
 class COMPOSITION():
     """
@@ -1188,6 +1192,45 @@ def ParsePhaseInput(inputs):
     return output
 
 
+def SaveLastSnapShot(case_dir):
+    '''
+    save last snap shot to a separate directory
+    '''
+    output_dir = os.path.join(case_dir, 'output')
+    log_file = os.path.join(output_dir, 'log.txt')
+    assert(os.access(log_file, os.R_OK))
+    snap_shot_dir = os.path.join(case_dir, 'snap_shot')
+    if not os.path.isdir(snap_shot_dir):
+        os.mkdir(snap_shot_dir)
+
+    # snapshot files
+    pathlist = Path(output_dir).rglob('restart*') 
+
+    # get time & step for the last snapshot
+    temp_path = os.path.join(RESULT_DIR, 'snapshot_output')
+    os.system("awk -f %s/bash_scripts/awk_states/parse_snapshot %s > %s" % (ASPECT_LAB_DIR, log_file, temp_path)) # use awk to parse log.txt
+    # use self defined class to read, an overkill, but would work
+    Plotter = Plot.LINEARPLOT('SnapShot', {})
+    Plotter.ReadHeader(temp_path)
+    Plotter.ReadData(temp_path)
+    col_time = Plotter.header['Time']['col']
+    col_step = Plotter.header['Time_step_number']['col']
+    times = Plotter.data[:, col_time]
+    steps = Plotter.data[:, col_step]
+    step = steps[-1]
+    time = times[-1]
+    snap_shot_output_dir = os.path.join(snap_shot_dir, 's%d_t%.2fmyr' % (step, time/1e6))
+    if not os.path.isdir(snap_shot_output_dir):
+        os.mkdir(snap_shot_output_dir)
+        print('saved last snapshot: %s' % snap_shot_output_dir)
+        for path in pathlist:
+            shutil.copy2(str(path), snap_shot_output_dir)
+    else:
+        # if these files have been saved previous, do nothing
+        pass
+
+
+
 def main():
     '''
     main function of this module
@@ -1200,6 +1243,9 @@ def main():
     _commend = sys.argv[1]
     # parse options
     parser = argparse.ArgumentParser(description='Parse parameters')
+    parser.add_argument('-i', '--inputs', type=str,
+                        default='',
+                        help='Some inputs')
     parser.add_argument('-j', '--json_file', type=str,
                         default='./config_case.json',
                         help='Filename for json file')
@@ -1228,6 +1274,9 @@ def main():
 
         # print the output 
         print(outputs)
+    
+    if _commend == 'save_case_last_snapshot':
+        SaveLastSnapShot(arg.inputs)
 
 # run script
 if __name__ == '__main__':
