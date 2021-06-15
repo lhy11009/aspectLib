@@ -1203,8 +1203,15 @@ def SaveLastSnapShot(case_dir):
     if not os.path.isdir(snap_shot_dir):
         os.mkdir(snap_shot_dir)
 
+    pathlist=[]
     # snapshot files
-    pathlist = Path(output_dir).rglob('restart*') 
+    pathlist0 = Path(output_dir).rglob('restart*') 
+    pathlist += pathlist0
+    # outputs
+    pathlist1 = Path(output_dir).rglob('*.txt') 
+    pathlist += pathlist1
+    pathlist2 = Path(output_dir).rglob('statistics') 
+    pathlist += pathlist2
 
     # get time & step for the last snapshot
     temp_path = os.path.join(RESULT_DIR, 'snapshot_output')

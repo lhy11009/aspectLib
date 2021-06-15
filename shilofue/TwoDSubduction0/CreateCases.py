@@ -40,7 +40,8 @@ import json #, re
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
-from shutil import rmtree, copy2
+from shutil import rmtree, copy2, copytree
+from pathlib import Path 
 import shilofue.Parse as Parse
 import shilofue.ParsePrm as ParsePrm
 from shilofue.Rheology import GetLowerMantleRheology, CreepRheologyInAspectViscoPlastic, ComputeComposite
@@ -463,6 +464,14 @@ def DecouplingEclogiteTransiton(inputs, value):
         inputs['Material model']['Visco Plastic']['Decoupling eclogite viscosity'] = 'true'
     return inputs, '_%s' % value  # second entry is an appendix to case name
 
+
+def Restart(inputs, value):
+    """
+    calculate flow law parameters, when phase transition only happens on mantle composition
+    """
+    inputs['Resume computation'] = 'true'
+    return inputs
+
         
 
 def CreateNew(config, **kwargs):
@@ -514,6 +523,63 @@ def CreateNewWithOptions(config, options, **kwargs):
     # Create cases
     for newCase in newCases:
         newCase.create(_root, fast_first_step=1)
+
+
+def CreateNewFromSnapshot(case_dir, output_dir, **kwargs):
+    """        
+        create cases under a directory
+        read json file and prm file
+        location of prm file is given by the json file
+    """
+    # read parameters
+    prm_path = os.path.join(case_dir, 'case.prm')
+    snapshot_dir = os.path.join(case_dir, 'snap_shot')
+    assert(os.path.isdir(snapshot_dir))
+
+    # select snapshots
+    snapshots = []
+    message = ''
+    for dirname, dirnames, filenames in os.walk(snapshot_dir): 
+        i = 0
+        for subdirname in dirnames: 
+            print(subdirname)  # debug
+            snapshots.append(subdirname)
+            message += '\t%d: %s\n' % (i, os.path.basename(subdirname))
+            i += 1
+    i_s = int(input('select snapshot(enter the index in front):\n %s' % message))
+    snapshot_selected = snapshots[i_s]
+    print('selected snapshot: %s' % snapshot_selected)
+
+    # look for extra files
+    print('extra files attached: ')
+    extra_paths = []
+    pathlist = Path(case_dir).rglob('*.dat') 
+    for path in pathlist: 
+        path_in_str = str(path)
+        extra_paths.append(path_in_str)
+        print('\t%s' % path_in_str)
+    pathlist = Path(case_dir).rglob('*.sh') 
+    for path in pathlist: 
+        path_in_str = str(path)
+        extra_paths.append(path_in_str)
+        print('\t%s' % path_in_str)
+   
+    # create case, using the interface defined in Cases.py.
+    case_name = os.path.basename(case_dir) + '_' + snapshot_selected
+    newCase = CASE(case_name, prm_path)
+    newCase.configure(Restart, {})  # rheology
+    # add files
+    for path in extra_paths:
+        newCase.add_extra_file(path)  # add an extra file
+    # hold, then only return
+    hold = kwargs.get('hold', 0)
+    if hold == 1:
+        pass
+    else:
+        newCase.create(output_dir)
+    # copy snap_shot directory
+    copytree(os.path.join(snapshot_dir, snapshot_selected), os.path.join(output_dir, case_name, 'output'))
+    return newCase
         
 
 
@@ -655,6 +721,10 @@ def main():
         with open(arg.options, 'r') as fin:
             options = json.load(fin)
         CreateNewWithOptions(_config, options)
+    
+    if _commend == 'create_from_snapshot':
+        # create cases under a directory from one snapshot of a previous case
+        CreateNewFromSnapshot(arg.inputs, arg.outputs)
 
 # run script
 if __name__ == '__main__':

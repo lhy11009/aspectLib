@@ -79,7 +79,7 @@ def PlotFigure(log_path, fig_path, **kwargs):
             i = i+1
         for i in range(len(re_inds)-1):
             re_ind = re_inds[i]
-            re_ind_next = re_ind[i+1]
+            re_ind_next = re_inds[i+1]
             wallclocks[re_ind: re_ind_next] += wallclocks[re_ind - 1]
         re_ind = re_inds[-1]  # deal with the last one seperately
         wallclocks[re_ind: ] += wallclocks[re_ind - 1]
