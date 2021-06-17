@@ -36,8 +36,17 @@ build_aspect_project(){
     fi
 
     # get the list of plugins
-    # plugins=("prescribe_field" "subduction_temperature2d" "slab2d_statistics" "subduction_temperature2d_ellipse")
-    plugins=("prescribe_field" "subduction_temperature2d" "slab2d_statistics" "subduction_temperature2d_ellipse" "visco_plastic_TwoD" "isosurfaces")
+    local plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
+    [[ -d ${plugins_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: ${plugins_dir} doesn't exist"; exit 1; }
+    # plugins=("prescribe_field" "subduction_temperature2d" "slab2d_statistics" "subduction_temperature2d_ellipse" "visco_plastic_TwoD" "isosurfaces")
+    plugins=()
+    for folder in ${plugins_dir}/*; do
+        if [[ -d ${folder} ]]; then
+            plugin=$(basename "$folder")
+            plugins+=("${plugin}") 
+        fi
+    done
+    echo "plugins: ${plugins[@]}"  # debug
 
     # build
     local current_dir=$(pwd)
@@ -55,7 +64,6 @@ build_aspect_project(){
     quit_if_fail "${FUNCNAME[0]}: make inside ${build_dir} failed"
 
     # build plugins
-    plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
     for plugin in ${plugins[@]}; do
         build_aspect_plugin "${build_dir}" "${plugin}"
     done
