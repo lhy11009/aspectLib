@@ -544,7 +544,7 @@ def peierls_approx_visc(flv,gam,P,T,edot):
 	
 	s = (E/(R*T))*p*q*((1-gam**p)**(q-1))*(gam**p)
 	x = 1/(s+n)
-	visc = (0.5*gam*sigp*edot**(x-1))/( ((A*(gam*sigp)**n)**x)*np.exp( (E*(1-gam**p)**q)/(R*T*(s+n)) ) )
+	visc = (0.5*gam*sigp*edot**(x-1))/( ((A*(gam*sigp)**n)**x)*np.exp( -(E*(1-gam**p)**q)/(R*T*(s+n)) ) )
 	
 	return visc
 
