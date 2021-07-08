@@ -107,7 +107,7 @@ class LINEARPLOT():
         # import data via numpy buid in method
         # catch warning of empty file and return 1
         with warnings.catch_warnings(record=True) as w:
-            self.data = np.genfromtxt(_filename, comments='#')
+            self.data = np.genfromtxt(_filename, comments='#', filling_values=0.0)
             if (len(w) > 0):
                 assert(issubclass(w[-1].category, UserWarning))
                 assert('Empty input file' in str(w[-1].message))
@@ -361,7 +361,7 @@ class NEWTON_SOLVER_PLOT(LINEARPLOT):
         if self.step is None:
             # plot for all
             _fname = _fileout
-        else:
+        else
             _fname_base = _fileout.rpartition('.')[0]
             _fname_type = _fileout.rpartition('.')[2]
             _fname = "%s_s%07d.%s" % (_fname_base, self.step, _fname_type)

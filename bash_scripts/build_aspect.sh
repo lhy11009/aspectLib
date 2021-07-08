@@ -10,9 +10,11 @@
 #        ASPECT_SOURCE_DIR
 # Example Usage:
 #   build main program and plugins:
-#    ./build_aspect.sh all TwoDSubduction release
+#    ./bash_scripts/build_aspect.sh all TwoDSubduction release
 #   build a plugin:
-#    ./build_aspect.sh subduction_temperature2d TwoDSubduction
+#    ./bash_scripts/build_aspect.sh subduction_temperature2d TwoDSubduction
+#   build all plugins separately
+#    ./bash_scripts/build_aspect.sh all_plugins master_TwoD_hefesto
 ################################################################################
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
@@ -69,6 +71,33 @@ build_aspect_project(){
     done
 }
 
+build_all_plugins_separately(){
+    # todo
+    # build plugins separately for a project in aspect
+    # usage of this is to bind up source code and plugins
+    # built objects are aimed to be used in tests
+    # Inputs:
+    #   project: name of the project
+    local build_dir="${ASPECT_SOURCE_DIR}/build_$1"
+    local build_plugin_dir="${ASPECT_SOURCE_DIR}/build_plugins"
+    local plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
+    [[ -d ${plugins_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: ${plugins_dir} doesn't exist"; exit 1; }
+    [[ -d ${build_plugin_dir} ]] || mkdir "${build_plugin_dir}"
+    # list of plugins
+    plugins=()
+    for folder in ${plugins_dir}/*; do
+        if [[ -d ${folder} ]]; then
+            plugin=$(basename "$folder")
+            plugins+=("${plugin}") 
+        fi
+    done
+    echo "plugins: ${plugins[@]}"  # debug
+    # build
+    for plugin in ${plugins[@]}; do
+        build_aspect_plugin "${build_dir}" "${plugin}" "${build_plugin_dir}"
+    done
+}
+
 build_aspect_plugin(){
     ###
     # build a plugin with source code in aspect
@@ -80,6 +109,8 @@ build_aspect_plugin(){
     local build_dir="$1"
     [[ -d ${build_dir} ]] || mkdir ${build_dir}
     local plugin="$2"
+    local target_dir
+    [[ -z $3 ]] && target_dir="${build_dir}" || target_dir="$3"
     
     # copy plugins
     plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
@@ -88,10 +119,11 @@ build_aspect_plugin(){
     [[ -d ${plugin_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: plugin(i.e. ${plugin_dir}) doesn't exist"; exit 1; }
     
     # remove old ones
-    plugin_to_dir="${build_dir}/${plugin}"
+    plugin_to_dir="${target_dir}/${plugin}"
+    echo "plugin_to_dir: ${plugin_to_dir}"  # debug
     [[ -d ${plugin_to_dir} ]] && rm -r ${plugin_to_dir}
     # copy new ones
-    eval "cp -r ${plugin_dir} ${build_dir}/"
+    eval "cp -r ${plugin_dir} ${target_dir}/"
     cecho ${GOOD} "${FUNCNAME[0]}: copyied plugin(i.e. ${plugin})"
 
     # build 
@@ -118,6 +150,14 @@ main(){
         ##
     	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
         build_aspect_project "$2" "$3"
+    elif [[ "${command}" = "all_plugins" ]]; then
+        ##
+        # Build all the plugins separately
+        # Inputs:
+        # Terninal Outputs
+        ##
+    	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
+        build_all_plugins_separately "$2"
     else
     	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
         local build_dir="${ASPECT_SOURCE_DIR}/build_$2"
