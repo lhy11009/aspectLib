@@ -12,7 +12,10 @@
 #   build main program and plugins:
 #    ./bash_scripts/build_aspect.sh all TwoDSubduction release
 #   build a plugin:
+#    (build it in a build directory of aspect)
 #    ./bash_scripts/build_aspect.sh subduction_temperature2d TwoDSubduction
+#    (build it in a seperate folder)
+#    ./bash_scripts/build_aspect.sh visco_plastic_TwoD master_TwoD ${ASPECT_SOURCE_DIR}/build_plugins
 #   build all plugins separately
 #    ./bash_scripts/build_aspect.sh all_plugins master_TwoD_hefesto
 ################################################################################
@@ -161,7 +164,7 @@ main(){
     else
     	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
         local build_dir="${ASPECT_SOURCE_DIR}/build_$2"
-        build_aspect_plugin "${build_dir}" "${command}"
+        [[ -z $3 ]] && build_aspect_plugin "${build_dir}" "${command}" || build_aspect_plugin "${build_dir}" "${command}" "$3"
     fi
 }
 

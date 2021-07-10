@@ -361,7 +361,7 @@ class NEWTON_SOLVER_PLOT(LINEARPLOT):
         if self.step is None:
             # plot for all
             _fname = _fileout
-        else
+        else:
             _fname_base = _fileout.rpartition('.')[0]
             _fname_type = _fileout.rpartition('.')[2]
             _fname = "%s_s%07d.%s" % (_fname_base, self.step, _fname_type)
