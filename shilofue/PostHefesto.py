@@ -15,6 +15,10 @@ Examples of usage:
 
         python -m shilofue.PostHefesto process -i large_data_files/fort.69 -o output/test_table
 
+  - check hefesto table format
+
+        python -m shilofue.PostHefesto check -i large_data_files/fort.69
+
 descriptions
 """ 
 import numpy as np
@@ -36,111 +40,123 @@ RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
 
-def PlotHefesto(path):
-    '''
-    Plot the Hefesto lookup table
+class HEFESTO():
 
-    Inputs:
-        -
-    Returns:
-        -
-    '''
-    # read data
-    Plotter = LINEARPLOT('hefesto', {})
-    Plotter.ReadHeader(path)
-    Plotter.ReadData(path)
-    # get data and interpolate
-    print(Plotter.header)
-    col_pi = Plotter.header['depth_pi']['col']
-    pis = Plotter.data[:, col_pi]
-    col_T = Plotter.header['Ti']['col']
-    Ts = Plotter.data[:, col_T]
-    col_PI = Plotter.header['Pi']['col']
-    PIs = Plotter.data[:, col_PI]
-    # interpolater = interpolate.RectBivariateSpline(pis, Ts, PIs) 
-    pass
+    def __init__(self):
+        '''
+        initiate class
+        '''
+        self.header = {}
+        self.data = []
+        self.version = "1.0.0"
+        self.min1 = 0.0 
+        self.delta1 = 0.0 
+        self.number1 = 0
+        self.min2 = 0.0
+        self.delta2 = 0.0
+        self.number2 = 0
 
+    def read_table(self, path):
+        '''
+        read data
+        '''
+        Plotter = LINEARPLOT('hefesto', {})
+        print("Reading Header: %s" % path)
+        Plotter.ReadHeader(path)
+        print("Reading Data: %s" % path)
+        Plotter.ReadData(path)
+        self.header = Plotter.header
+        self.data = Plotter.data
 
-def ProcessHefesto(path, o_path, **kwargs):
-    '''
-    Process the Hefesto lookup table for aspect
+    def CheckHefesto(self, **kwargs):
+        '''
+        Checkt the Hefesto lookup table
+    
+        Inputs:
+            kwargs: options
+                version: version of this file
+        Outputs:
+            Output to sceen whether the contents are a rectangular table
+        '''
+        # read dimension info
+        print("Read information of the 1st dimension")
+        col_P = self.header['Pi']['col']
+        min1, delta1, number1 = ReadFirstDimension(self.data[:, col_P])
+        print("Dimention 1 has %d entries" % number1)
+        print("Checking data")
+        is_correct = CheckDataDimension(self.data[:, col_P], min1, delta1, number1)
+        if is_correct:
+            print('Everything is all right of this file')
+        else:
+            raise Exception('Something is wrong')
+    
+    def ProcessHefesto(self, o_path, **kwargs):
+        '''
+        Process the Hefesto lookup table for aspect
+    
+        Inputs:
+            o_path: a output path
+            kwargs: options
+        Outputs:
+            Output of this function is the Perplex file form that could be recognized by aspect
+        Returns:
+            -
+        '''
+        # read dimension info
+        col_P = self.header['Pi']['col']
+        col_T = self.header['Ti']['col']
+        self.min1, self.delta1, self.number1 = ReadFirstDimension(self.data[:, col_P])
+        self.min2, self.delta2, self.number2 = ReadSecondDimension(self.data[:, col_T])
+        # output
+        self.OutputHefesto(o_path)
 
-    Inputs:
-        path: a lookup table from Hefesto
-        o_path: a output path
-        kwargs: options
-            version: version of this file
-    Outputs:
-        Output of this function is the Perplex file form that could be recognized by aspect
-    Returns:
-        -
-    '''
-    # read data
-    Plotter = LINEARPLOT('hefesto', {})
-    print("Reading Header: %s" % path)
-    Plotter.ReadHeader(path)
-    print("Reading Data: %s" % path)
-    Plotter.ReadData(path)
-    col_pi = Plotter.header['depth_pi']['col']
-    col_T = Plotter.header['Ti']['col']
-    col_P = Plotter.header['Pi']['col']
-    col_alpagg = Plotter.header['alpagg']['col']
-    # read dimension info
-    min1, delta1, number1 = ReadFirstDimension(Plotter.data[:, col_P])
-    min2, delta2, number2 = ReadSecondDimension(Plotter.data[:, col_T])
-    # output
-    version = kwargs.get('version', '1.0.0')
-    odata = np.zeros((Plotter.data.shape[0], 3))
-    odata[:, 0] = Plotter.data[:, col_P]
-    odata[:, 1] = Plotter.data[:, col_T]
-    odata[:, 2] = Plotter.data[:, col_alpagg]
-    print("Outputing Data: %s" % path)
-    with open(o_path, 'a') as fout: 
-        fout.write(version + '\n')  # version
-        fout.write(os.path.basename(o_path) + '\n') # filenamea
-        fout.write('2\n')  # dimension
-        fout.write('P(bar)\n')
-        fout.write('\t%s\n' % min1)
-        fout.write('\t%s\n' % delta1)
-        fout.write('\t%s\n' % number1)
-        fout.write('T(K)\n')
-        fout.write('\t%s\n' % min2)
-        fout.write('\t%s\n' % delta2)
-        fout.write('\t%s\n' % number2)
-        fout.write('\t%s\n' % odata.shape[1])
-        fout.write('%-20s%-20s%-20s\n' % ('P(bar)', 'T(k)', 'alpha,1/K'))  # column info
-        np.savetxt(fout, odata, fmt='%-20.8e')
-    print("New file generated: %s" % o_path) 
+    def OutputHefesto(self, o_path):
+        '''
+        Process the Hefesto lookup table for aspect
+    
+        Inputs:
+            odata: data to be outputed
+            o_path: a output path
+            kwargs: options
+                version: version of this file
+        Outputs:
+            Output of this function is the Perplex file form that could be recognized by aspect
+        Returns:
+            -
+        '''
+        print("Outputing Data: %s" % o_path)
+        col_P = self.header['Pi']['col']
+        col_T = self.header['Ti']['col']
+        col_alpagg = self.header['alpagg']['col']
+        columns = [col_P, col_T, col_alpagg]
+        with open(o_path, 'a') as fout: 
+            fout.write(self.version + '\n')  # version
+            fout.write(os.path.basename(o_path) + '\n') # filenamea
+            fout.write('2\n')  # dimension
+            fout.write('P(bar)\n')
+            fout.write('\t%s\n' % self.min1)
+            fout.write('\t%s\n' % self.delta1)
+            fout.write('\t%s\n' % self.number1)
+            fout.write('T(K)\n')
+            fout.write('\t%s\n' % self.min2)
+            fout.write('\t%s\n' % self.delta2)
+            fout.write('\t%s\n' % self.number2)
+            fout.write('\t%s\n' % len(columns))
+            fout.write('%-20s%-20s%-20s\n' % ('P(bar)', 'T(k)', 'alpha,1/K'))  # column info
+            np.savetxt(fout, self.data[:, columns], fmt='%-20.8e')
+        print("New file generated: %s" % o_path) 
 
+    def PlotHefesto(self):
+        '''
+        Plot the Hefesto lookup table
+    
+        Inputs:
+            -
+        Returns:
+            -
+        '''
+        pass
 
-def CheckHefesto(path, **kwargs):
-    '''
-    Checkt the Hefesto lookup table
-
-    Inputs:
-        path: a lookup table from Hefesto
-        kwargs: options
-            version: version of this file
-    Outputs:
-        Output to sceen whether the contents are a rectangular table
-    '''
-    # read data
-    Plotter = LINEARPLOT('hefesto', {})
-    print("Reading Header: %s" % path)
-    Plotter.ReadHeader(path)
-    print("Reading Data: %s" % path)
-    Plotter.ReadData(path)
-    col_P = Plotter.header['Pi']['col']
-    # read dimension info
-    print("Read information of the 1st dimension")
-    min1, delta1, number1 = ReadFirstDimension(Plotter.data[:, col_P])
-    print("Dimention 1 has %d entries" % number1)
-    print("Checking data")
-    is_correct = CheckDataDimension(Plotter.data[:, col_P], min1, delta1, number1)
-    if is_correct:
-        print('Everything is all right of this file')
-    else:
-        raise Exception('Something is wrong')
 
 def CheckDataDimension(nddata, min1, delta1, number1):
     tolerance = 1e-6
@@ -150,6 +166,8 @@ def CheckDataDimension(nddata, min1, delta1, number1):
     while True:
         value1 = min1 + delta1 * i1
         if i >= nddata.shape[0]:
+            if i1 < number1 - 1:
+                print('entry %d(index of row in the data part) is incorrect(missing at the end), the correct value is %.7f' % (i, value1))
             break
         elif i1 >= number1:
             # index in the first dimension exceed maximum
@@ -158,7 +176,7 @@ def CheckDataDimension(nddata, min1, delta1, number1):
         elif abs(nddata[i] - value1) > tolerance:
             # value in the first dimension doesn't match
             # shoot message and move over to the next value of the second dimension in our data
-            print('entry %d(index of raw in the data part) is incorrect(%.7f), the correct value is %.7f' % (i, nddata[i], value1))
+            print('entry %d(index of row in the data part) is incorrect(%.7f), the correct value is %.7f' % (i, nddata[i], value1))
             is_correct = False
             i1 = 0
             while nddata[i] < nddata[i+1]:

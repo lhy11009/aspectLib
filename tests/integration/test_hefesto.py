@@ -51,7 +51,9 @@ def test_read_n_output():
     if os.path.isfile(fileout):
         os.remove(fileout)
     # call processfunction
-    ProcessHefesto(filein, fileout)
+    Hefesto = HEFESTO()
+    Hefesto.read_table(filein)
+    Hefesto.ProcessHefesto(fileout)
     # assert something 
     assert(os.path.isfile(fileout))
 
