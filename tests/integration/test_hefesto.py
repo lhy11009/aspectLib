@@ -25,6 +25,7 @@ import os
 import filecmp  # for compare file contents
 import numpy as np
 from shilofue.Plot import LINEARPLOT
+from shilofue.Utilities import UNITCONVERT
 from shilofue.PostHefesto import * # import test module
 # from shilofue.Utilities import 
 # from matplotlib import pyplot as plt
@@ -53,7 +54,7 @@ def test_read_n_output():
     # call processfunction
     Hefesto = HEFESTO()
     Hefesto.read_table(filein)
-    Hefesto.ProcessHefesto(fileout)
+    Hefesto.Process(fileout)
     # assert something 
     assert(os.path.isfile(fileout))
 

@@ -31,7 +31,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from shilofue.Plot import LINEARPLOT
 from scipy import interpolate
-from shilofue.Utilities import my_assert
+from shilofue.Utilities import my_assert, UNITCONVERT
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -55,6 +55,11 @@ class HEFESTO():
         self.min2 = 0.0
         self.delta2 = 0.0
         self.number2 = 0
+        self.oheader = { 'Temperature': 'T(K)',  'Pressure': 'P(bar)' ,  'Density': 'rho,kg/m3',\
+        'Thermal_expansivity': 'alpha,1/K', 'Isobaric_heat_capacity': 'cp,J/K/kg',\
+        'VP': 'vp,km/s', 'VS': 'vs,km/s', 'Enthalpy': 'h,J/kg' }
+        # unit to output
+        self.ounit = {'Temperature': 'K', 'Pressure': 'bar', 'Thermal_expansivity': '1/K', 'Isobaric_heat_capacity': 'J/K/kg', 'Density': 'kg/m3'}
 
     def read_table(self, path):
         '''
@@ -68,9 +73,10 @@ class HEFESTO():
         self.header = Plotter.header
         self.data = Plotter.data
 
-    def CheckHefesto(self, **kwargs):
+    def Check(self, first_dimension_name, **kwargs):
         '''
-        Checkt the Hefesto lookup table
+        Checkt the Hefesto lookup table, this only check that the first dimension
+        is aligned and no data is missings.
     
         Inputs:
             kwargs: options
@@ -80,17 +86,17 @@ class HEFESTO():
         '''
         # read dimension info
         print("Read information of the 1st dimension")
-        col_P = self.header['Pi']['col']
-        min1, delta1, number1 = ReadFirstDimension(self.data[:, col_P])
+        col_first = self.header[first_dimension_name]['col']
+        min1, delta1, number1 = ReadFirstDimension(self.data[:, col_first])
         print("Dimention 1 has %d entries" % number1)
         print("Checking data")
-        is_correct = CheckDataDimension(self.data[:, col_P], min1, delta1, number1)
+        is_correct = CheckDataDimension(self.data[:, col_first], min1, delta1, number1)
         if is_correct:
             print('Everything is all right of this file')
         else:
             raise Exception('Something is wrong')
     
-    def ProcessHefesto(self, o_path, **kwargs):
+    def Process(self, field_names, o_path, **kwargs):
         '''
         Process the Hefesto lookup table for aspect
     
@@ -103,14 +109,16 @@ class HEFESTO():
             -
         '''
         # read dimension info
-        col_P = self.header['Pi']['col']
-        col_T = self.header['Ti']['col']
-        self.min1, self.delta1, self.number1 = ReadFirstDimension(self.data[:, col_P])
-        self.min2, self.delta2, self.number2 = ReadSecondDimension(self.data[:, col_T])
+        first_dimension_name = kwargs.get('first_dimension', 'Pressure')
+        second_dimension_name = kwargs.get('second_dimension', 'Temperature')
+        col_first = self.header[first_dimension_name]['col']
+        col_second = self.header[second_dimension_name]['col']
+        self.min1, self.delta1, self.number1 = ReadFirstDimension(self.data[:, col_first])
+        self.min2, self.delta2, self.number2 = ReadSecondDimension(self.data[:, col_second])
         # output
-        self.OutputHefesto(o_path)
+        self.OutputHefesto(field_names, o_path)
 
-    def OutputHefesto(self, o_path):
+    def OutputHefesto(self, field_names, o_path):
         '''
         Process the Hefesto lookup table for aspect
     
@@ -119,31 +127,43 @@ class HEFESTO():
             o_path: a output path
             kwargs: options
                 version: version of this file
+            field_names: field_name to output, the first two are the first and second dimension
         Outputs:
             Output of this function is the Perplex file form that could be recognized by aspect
         Returns:
             -
         '''
+        UnitConvert = UNITCONVERT()
         print("Outputing Data: %s" % o_path)
-        col_P = self.header['Pi']['col']
-        col_T = self.header['Ti']['col']
-        col_alpagg = self.header['alpagg']['col']
-        columns = [col_P, col_T, col_alpagg]
-        with open(o_path, 'a') as fout: 
+        # columns
+        print("Outputing fields: %s" % field_names)  # debug
+        my_assert(len(field_names) >= 2, ValueError, 'Entry of field_names must have more than 2 components')
+        columns = []
+        for field_name in field_names:
+            columns.append(self.header[field_name]['col'])
+        # compute the unit_factors
+        unit_factors = []
+        for field_name in field_names:
+            unit_factors.append(UnitConvert(self.header[field_name]['unit'], self.ounit[field_name]))
+        with open(o_path, 'w') as fout: 
             fout.write(self.version + '\n')  # version
             fout.write(os.path.basename(o_path) + '\n') # filenamea
             fout.write('2\n')  # dimension
-            fout.write('P(bar)\n')
-            fout.write('\t%s\n' % self.min1)
-            fout.write('\t%s\n' % self.delta1)
+            fout.write('%s\n' % self.oheader[field_names[0]])
+            fout.write('\t%.8f\n' % (float(self.min1) * unit_factors[0]))
+            fout.write('\t%.8f\n' % (float(self.delta1) * unit_factors[0]))
             fout.write('\t%s\n' % self.number1)
-            fout.write('T(K)\n')
-            fout.write('\t%s\n' % self.min2)
-            fout.write('\t%s\n' % self.delta2)
+            fout.write('%s\n' % self.oheader[field_names[1]])
+            fout.write('\t%.8f\n' % (float(self.min2) * unit_factors[1]))
+            fout.write('\t%.8f\n' % (float(self.delta2) * unit_factors[1]))
             fout.write('\t%s\n' % self.number2)
             fout.write('\t%s\n' % len(columns))
-            fout.write('%-20s%-20s%-20s\n' % ('P(bar)', 'T(k)', 'alpha,1/K'))  # column info
-            np.savetxt(fout, self.data[:, columns], fmt='%-20.8e')
+            temp = ''
+            for field_name in field_names:
+                temp += '%-20s' % self.oheader[field_name]
+            temp += '\n'
+            fout.write(temp)
+            np.savetxt(fout, self.data[:, columns] * unit_factors, fmt='%-19.8e')
         print("New file generated: %s" % o_path) 
 
     def PlotHefesto(self):
@@ -153,7 +173,7 @@ class HEFESTO():
         Inputs:
             -
         Returns:
-            -
+            -col_alpagg
         '''
         pass
 
@@ -187,7 +207,7 @@ def CheckDataDimension(nddata, min1, delta1, number1):
             # move to the next value
             i1 += 1
             i += 1
-    return is_correct
+        return is_correct
 
 
 def ReadFirstDimension(nddata):
@@ -242,6 +262,30 @@ def ReadSecondDimension(nddata):
     return min, delta, number
 
 
+def ProcessHefesto(filein, fileout):
+    # input file
+    assert(os.path.isfile(filein))
+    # call processfunction
+    Hefesto = HEFESTO()
+    Hefesto.read_table(filein)
+    # todo
+    field_names = ['Pressure', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity']
+    Hefesto.Process(field_names, fileout)
+    # assert something 
+    assert(os.path.isfile(fileout))
+
+
+def CheckHefesto(filein, first_dimension_name):
+    '''
+    check the data format of a HeFESTo lookup table
+    '''
+    # input file
+    assert(os.path.isfile(filein))
+    Hefesto = HEFESTO()
+    Hefesto.read_table(filein)
+    Hefesto.Check(first_dimension_name)
+
+
 def main():
     '''
     main function of this module
@@ -278,7 +322,7 @@ def main():
 
     elif _commend == 'check':
         # Checkt the Hefesto lookup table
-        CheckHefesto(arg.inputs)
+        CheckHefesto(arg.inputs, 'Pressure')
 
 # run script
 if __name__ == '__main__':
