@@ -62,7 +62,9 @@ class HEFESTO():
         'Thermal_expansivity': 'alpha,1/K', 'Isobaric_heat_capacity': 'cp,J/K/kg',\
         'VP': 'vp,km/s', 'VS': 'vs,km/s', 'Enthalpy': 'h,J/kg' }
         # unit to output
-        self.ounit = {'Temperature': 'K', 'Pressure': 'bar', 'Thermal_expansivity': '1/K', 'Isobaric_heat_capacity': 'J/K/kg', 'Density': 'kg/m3'}
+        # todo add other fields
+        self.ounit = {'Temperature': 'K', 'Pressure': 'bar', 'Thermal_expansivity': '1/K',\
+        'Isobaric_heat_capacity': 'J/K/kg', 'Density': 'kg/m3', 'VP':'km/s', 'VS':'km/s', 'Enthalpy': 'J/kg'}
 
     def read_table(self, path):
         '''
@@ -122,8 +124,8 @@ class HEFESTO():
         # output
         interval1 = kwargs.get('interval1', 1)
         interval2 = kwargs.get('interval2', 1)
-        self.indexes = self.IndexesByInterval(interval1, interval2)  # todo, work out indexes
-        self.number_out1 = self.number1 // interval1 # todo: number of output
+        self.indexes = self.IndexesByInterval(interval1, interval2)  # work out indexes
+        self.number_out1 = self.number1 // interval1 # number of output
         self.number_out2 = self.number2 // interval2
         self.OutputHefesto(field_names, o_path)
 
@@ -146,7 +148,7 @@ class HEFESTO():
         print("Outputing Data: %s" % o_path)
         # columns
         print("Outputing fields: %s" % field_names)  # debug
-        print('subsize: ', self.number_out1, ", size: ", self.number_out2)
+        print('first dimension: ', self.number_out1, ", second dimension: ", self.number_out2, ", size:", self.number_out1 * self.number_out2)
         my_assert(len(field_names) >= 2, ValueError, 'Entry of field_names must have more than 2 components')
         columns = []
         for field_name in field_names:
@@ -161,7 +163,7 @@ class HEFESTO():
             fout.write('%s\n' % self.oheader[field_names[0]])
             fout.write('\t%.8f\n' % (float(self.min1) * unit_factors[0]))
             fout.write('\t%.8f\n' % (float(self.delta1) * unit_factors[0]))
-            fout.write('\t%s\n' % self.number_out1)  # todo: number of output
+            fout.write('\t%s\n' % self.number_out1)  # number of output
             fout.write('%s\n' % self.oheader[field_names[1]])
             fout.write('\t%.8f\n' % (float(self.min2) * unit_factors[1]))
             fout.write('\t%.8f\n' % (float(self.delta2) * unit_factors[1]))
@@ -172,14 +174,13 @@ class HEFESTO():
                 temp += '%-20s' % self.oheader[field_name]
             temp += '\n'
             fout.write(temp)
-            # todo, add indexes
+            # data is indexes, so that only part of the table is output
             np.savetxt(fout, self.data[np.ix_(self.indexes, columns)] * unit_factors, fmt='%-19.8e')
         print("New file generated: %s" % o_path) 
 
     def IndexesByInterval(self, interval1, interval2):
         '''
         Work out indexes by giving interval(default is 1, i.e. consecutive)
-        todo
         '''
         my_assert(type(interval1) == int and type(interval2) == int, TypeError, "interval1(%s) or interval2(%s) is not int" % (interval1, interval2))
         # indexes in 
@@ -282,9 +283,9 @@ def ReadSecondDimension(nddata):
             sub_size = i + 1
             break
     # number
-    print('subsize: ', sub_size, ", size: ", nddata.size)
     my_assert(nddata.size % sub_size == 0, ValueError, 'the table is not regular(rectangle)')
     number = nddata.size // sub_size
+    print('first dimension: ', sub_size, ", second dimension: ", number, ", total size: ", nddata.size)
     return min, delta, number
 
 
@@ -295,7 +296,8 @@ def ProcessHefesto(filein, fileout, interval1, interval2):
     Hefesto = HEFESTO()
     Hefesto.read_table(filein)
     # fields to read in
-    field_names = ['Pressure', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity']
+    # todo: add other fields
+    field_names = ['Pressure', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity', 'VP', 'VS', 'Enthalpy']
     Hefesto.Process(field_names, fileout, interval1=interval1, interval2=interval2)
     # assert something 
     assert(os.path.isfile(fileout))
