@@ -55,6 +55,9 @@ class HEFESTO():
         self.min2 = 0.0
         self.delta2 = 0.0
         self.number2 = 0
+        self.indexes = []  # indexes of output data
+        self.number_out1 = 0 # number of output
+        self.number_out2 = 0
         self.oheader = { 'Temperature': 'T(K)',  'Pressure': 'P(bar)' ,  'Density': 'rho,kg/m3',\
         'Thermal_expansivity': 'alpha,1/K', 'Isobaric_heat_capacity': 'cp,J/K/kg',\
         'VP': 'vp,km/s', 'VS': 'vs,km/s', 'Enthalpy': 'h,J/kg' }
@@ -103,6 +106,7 @@ class HEFESTO():
         Inputs:
             o_path: a output path
             kwargs: options
+                interval1 & 2: interval in the first & second dimension
         Outputs:
             Output of this function is the Perplex file form that could be recognized by aspect
         Returns:
@@ -116,6 +120,11 @@ class HEFESTO():
         self.min1, self.delta1, self.number1 = ReadFirstDimension(self.data[:, col_first])
         self.min2, self.delta2, self.number2 = ReadSecondDimension(self.data[:, col_second])
         # output
+        interval1 = kwargs.get('interval1', 1)
+        interval2 = kwargs.get('interval2', 1)
+        self.indexes = self.IndexesByInterval(interval1, interval2)  # todo, work out indexes
+        self.number_out1 = self.number1 // interval1 # todo: number of output
+        self.number_out2 = self.number2 // interval2
         self.OutputHefesto(field_names, o_path)
 
     def OutputHefesto(self, field_names, o_path):
@@ -137,11 +146,11 @@ class HEFESTO():
         print("Outputing Data: %s" % o_path)
         # columns
         print("Outputing fields: %s" % field_names)  # debug
+        print('subsize: ', self.number_out1, ", size: ", self.number_out2)
         my_assert(len(field_names) >= 2, ValueError, 'Entry of field_names must have more than 2 components')
         columns = []
         for field_name in field_names:
             columns.append(self.header[field_name]['col'])
-        # compute the unit_factors
         unit_factors = []
         for field_name in field_names:
             unit_factors.append(UnitConvert(self.header[field_name]['unit'], self.ounit[field_name]))
@@ -152,19 +161,36 @@ class HEFESTO():
             fout.write('%s\n' % self.oheader[field_names[0]])
             fout.write('\t%.8f\n' % (float(self.min1) * unit_factors[0]))
             fout.write('\t%.8f\n' % (float(self.delta1) * unit_factors[0]))
-            fout.write('\t%s\n' % self.number1)
+            fout.write('\t%s\n' % self.number_out1)  # todo: number of output
             fout.write('%s\n' % self.oheader[field_names[1]])
             fout.write('\t%.8f\n' % (float(self.min2) * unit_factors[1]))
             fout.write('\t%.8f\n' % (float(self.delta2) * unit_factors[1]))
-            fout.write('\t%s\n' % self.number2)
+            fout.write('\t%s\n' % self.number_out2)
             fout.write('\t%s\n' % len(columns))
             temp = ''
             for field_name in field_names:
                 temp += '%-20s' % self.oheader[field_name]
             temp += '\n'
             fout.write(temp)
-            np.savetxt(fout, self.data[:, columns] * unit_factors, fmt='%-19.8e')
+            # todo, add indexes
+            np.savetxt(fout, self.data[np.ix_(self.indexes, columns)] * unit_factors, fmt='%-19.8e')
         print("New file generated: %s" % o_path) 
+
+    def IndexesByInterval(self, interval1, interval2):
+        '''
+        Work out indexes by giving interval(default is 1, i.e. consecutive)
+        todo
+        '''
+        my_assert(type(interval1) == int and type(interval2) == int, TypeError, "interval1(%s) or interval2(%s) is not int" % (interval1, interval2))
+        # indexes in 
+        indexes_1 = range(0, self.number1, interval1) 
+        indexes_2 = range(0, self.number2, interval2)
+        # work out the overall indexes
+        indexes = []
+        for index_2 in indexes_2:
+            for index_1 in indexes_1: 
+                indexes.append(index_1 + self.number1 * index_2)
+        return indexes
 
     def PlotHefesto(self):
         '''
@@ -262,15 +288,15 @@ def ReadSecondDimension(nddata):
     return min, delta, number
 
 
-def ProcessHefesto(filein, fileout):
+def ProcessHefesto(filein, fileout, interval1, interval2):
     # input file
     assert(os.path.isfile(filein))
     # call processfunction
     Hefesto = HEFESTO()
     Hefesto.read_table(filein)
-    # todo
+    # fields to read in
     field_names = ['Pressure', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity']
-    Hefesto.Process(field_names, fileout)
+    Hefesto.Process(field_names, fileout, interval1=interval1, interval2=interval2)
     # assert something 
     assert(os.path.isfile(fileout))
 
@@ -301,6 +327,12 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='Some inputs')
+    parser.add_argument('-i1', '--interval1', type=int,
+                        default=1,
+                        help='Interval in the first dimension')
+    parser.add_argument('-i2', '--interval2', type=int,
+                        default=1,
+                        help='Interval in the second dimension')
     parser.add_argument('-o', '--outputs', type=str,
                         default='',
                         help='Some outputs')
@@ -318,7 +350,7 @@ def main():
     
     elif _commend == 'process':
         # Process the Hefesto lookup table for aspect
-        ProcessHefesto(arg.inputs, arg.outputs)
+        ProcessHefesto(arg.inputs, arg.outputs, arg.interval1, arg.interval2)
 
     elif _commend == 'check':
         # Checkt the Hefesto lookup table

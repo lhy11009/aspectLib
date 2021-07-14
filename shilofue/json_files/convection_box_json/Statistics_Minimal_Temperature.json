@@ -1,0 +1,8 @@
+{
+    "name": "Minimal_Temperature", 
+    "xname": "Time", 
+    "yname": "Minimal_temperature", 
+    "color": "g", 
+    "line": ".",
+    "label": "Minimal Temperature"
+}

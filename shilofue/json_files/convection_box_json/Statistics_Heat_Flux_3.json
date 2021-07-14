@@ -1,0 +1,8 @@
+{
+    "name": "Statistics_Heat_Flux_3",
+    "xname": "Time",
+    "yname": "Outward_heat_flux_through_boundary_with_indicator_3",
+    "color": "b",
+    "line": ".",
+    "label": "Heat Flux 3"
+}

@@ -25,7 +25,6 @@ import os
 import filecmp  # for compare file contents
 import numpy as np
 from shilofue.Plot import LINEARPLOT
-from shilofue.Utilities import UNITCONVERT
 from shilofue.PostHefesto import * # import test module
 # from shilofue.Utilities import 
 # from matplotlib import pyplot as plt
@@ -54,7 +53,8 @@ def test_read_n_output():
     # call processfunction
     Hefesto = HEFESTO()
     Hefesto.read_table(filein)
-    Hefesto.Process(fileout)
+    field_names = ['Pressure', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity']
+    Hefesto.Process(field_names, fileout)
     # assert something 
     assert(os.path.isfile(fileout))
 
@@ -70,15 +70,15 @@ def test_read_dimensions():
     Plotter = LINEARPLOT('hefesto', {})
     Plotter.ReadHeader(filein)
     Plotter.ReadData(filein)
-    col_P = Plotter.header['Pi']['col']
+    col_P = Plotter.header['Pressure']['col']
     min, delta, number = ReadFirstDimension(Plotter.data[:, col_P])
     # check results
     tolerance = 1e-6
     assert(abs(min - 0.0) < tolerance)
     assert(abs(delta - 0.01) / 0.01 < tolerance)
-    assert(abs(number - 4) / 4 < tolerance)
+    assert(abs(number - 5) / 4 < tolerance)
     # second dimension
-    col_T = Plotter.header['Ti']['col']
+    col_T = Plotter.header['Temperature']['col']
     min, delta, number = ReadSecondDimension(Plotter.data[:, col_T])
     assert(abs(min - 800.0) / 800.0 < tolerance)
     assert(abs(delta - 1.0) / 1.0 < tolerance)
