@@ -58,6 +58,8 @@ class HEFESTO():
         self.indexes = []  # indexes of output data
         self.number_out1 = 0 # number of output
         self.number_out2 = 0
+        self.delta_out1 = 0.0  # intervals used to outptu
+        self.delta_out2 = 0.0 
         self.oheader = { 'Temperature': 'T(K)',  'Pressure': 'P(bar)' ,  'Density': 'rho,kg/m3',\
         'Thermal_expansivity': 'alpha,1/K', 'Isobaric_heat_capacity': 'cp,J/K/kg',\
         'VP': 'vp,km/s', 'VS': 'vs,km/s', 'Enthalpy': 'h,J/kg' }
@@ -125,8 +127,11 @@ class HEFESTO():
         interval1 = kwargs.get('interval1', 1)
         interval2 = kwargs.get('interval2', 1)
         self.indexes = self.IndexesByInterval(interval1, interval2)  # work out indexes
-        self.number_out1 = self.number1 // interval1 # number of output
-        self.number_out2 = self.number2 // interval2
+        self.number_out1 = int(np.ceil(self.number1 / interval1)) # number of output
+        self.number_out2 = int(np.ceil(self.number2 / interval2))
+        # todo
+        self.delta_out1 = self.delta1 * interval1 # output intervals
+        self.delta_out2 = self.delta2 * interval2 # output intervals
         self.OutputHefesto(field_names, o_path)
 
     def OutputHefesto(self, field_names, o_path):
@@ -156,17 +161,27 @@ class HEFESTO():
         unit_factors = []
         for field_name in field_names:
             unit_factors.append(UnitConvert(self.header[field_name]['unit'], self.ounit[field_name]))
+        # todo: check the output values
+        # note that self.indexes[self.number_out1] gives the index of the second member in the second dimension
+        tolerance = 1e-5
+        temp1 = self.data[self.indexes[1], columns[0]] - self.data[self.indexes[0], columns[0]]
+        temp2 = self.data[self.indexes[self.number_out1], columns[1]] - self.data[self.indexes[0], columns[1]]  
+        my_assert( (abs(temp1 - self.delta_out1) / self.delta_out1) < tolerance,
+        ValueError, "Output interval(self.delta_out1) doesn't match the interval in data")
+        my_assert( (abs(temp2 - self.delta_out2) / self.delta_out2) < tolerance,
+        ValueError, "Output interval(self.delta_out2) doesn't match the interval in data")
+        # output
         with open(o_path, 'w') as fout: 
             fout.write(self.version + '\n')  # version
             fout.write(os.path.basename(o_path) + '\n') # filenamea
             fout.write('2\n')  # dimension
             fout.write('%s\n' % self.oheader[field_names[0]])
-            fout.write('\t%.8f\n' % (float(self.min1) * unit_factors[0]))
-            fout.write('\t%.8f\n' % (float(self.delta1) * unit_factors[0]))
+            fout.write('\t%.8f\n' % (float(self.min1) * unit_factors[0])) # min value
+            fout.write('\t%.8f\n' % (float(self.delta_out1) * unit_factors[0]))  # difference, todo: use the output value
             fout.write('\t%s\n' % self.number_out1)  # number of output
             fout.write('%s\n' % self.oheader[field_names[1]])
             fout.write('\t%.8f\n' % (float(self.min2) * unit_factors[1]))
-            fout.write('\t%.8f\n' % (float(self.delta2) * unit_factors[1]))
+            fout.write('\t%.8f\n' % (float(self.delta_out2) * unit_factors[1]))
             fout.write('\t%s\n' % self.number_out2)
             fout.write('\t%s\n' % len(columns))
             temp = ''

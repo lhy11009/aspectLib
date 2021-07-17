@@ -59,4 +59,5 @@ done
 [[ -z ${project} ]] && executable="${ASPECT_SOURCE_DIR}/build/aspect" || executable="${ASPECT_SOURCE_DIR}/build_${project}/aspect"
 
 cd ${dir}
+echo "mpirun -np $total_tasks $executable $filename >\"job.stdout\" 2>\"job.stderr\" &"
 mpirun -np $total_tasks $executable $filename >"job.stdout" 2>"job.stderr" &
