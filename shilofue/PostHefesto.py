@@ -13,7 +13,9 @@ Examples of usage:
 
   - process hefesto table:
 
-        python -m shilofue.PostHefesto process -i large_data_files/fort.69 -o output/test_table
+        python -m shilofue.PostHefesto process -i large_data_files/fort.56 -i1 4 -i2 4 -o output/test_table
+
+            i1, and i2 are intervals in the first and second dimension, default is 1.
 
   - check hefesto table format
 
@@ -64,7 +66,6 @@ class HEFESTO():
         'Thermal_expansivity': 'alpha,1/K', 'Isobaric_heat_capacity': 'cp,J/K/kg',\
         'VP': 'vp,km/s', 'VS': 'vs,km/s', 'Enthalpy': 'h,J/kg' }
         # unit to output
-        # todo add other fields
         self.ounit = {'Temperature': 'K', 'Pressure': 'bar', 'Thermal_expansivity': '1/K',\
         'Isobaric_heat_capacity': 'J/K/kg', 'Density': 'kg/m3', 'VP':'km/s', 'VS':'km/s', 'Enthalpy': 'J/kg'}
 
@@ -129,7 +130,7 @@ class HEFESTO():
         self.indexes = self.IndexesByInterval(interval1, interval2)  # work out indexes
         self.number_out1 = int(np.ceil(self.number1 / interval1)) # number of output
         self.number_out2 = int(np.ceil(self.number2 / interval2))
-        # todo
+        # output intervals
         self.delta_out1 = self.delta1 * interval1 # output intervals
         self.delta_out2 = self.delta2 * interval2 # output intervals
         self.OutputHefesto(field_names, o_path)
@@ -156,12 +157,36 @@ class HEFESTO():
         print('first dimension: ', self.number_out1, ", second dimension: ", self.number_out2, ", size:", self.number_out1 * self.number_out2)
         my_assert(len(field_names) >= 2, ValueError, 'Entry of field_names must have more than 2 components')
         columns = []
+
+        missing_last = self.data.shape[1]
+        missing_fix_values = []
         for field_name in field_names:
-            columns.append(self.header[field_name]['col'])
+            # attach size(field_names) if failed
+            try:
+                columns.append(self.header[field_name]['col'])
+            except KeyError:
+                # first check that T or P is not missing
+                # then append an imaginary column
+                if field_name == 'Temperature':
+                    raise KeyError('Abort: Temperature field is missing')
+                elif field_name == 'Pressure':
+                    raise KeyError('Abort: Pressure field is missing')
+                else:
+                    # assign an append value
+                    print('field %s is missing, going to append manually' % field_name)
+                    columns.append(missing_last)
+                    missing_last += 1
+                    # ask for value
+                    missing_fix_value = float(input('Input value:'))
+                    missing_fix_values.append(missing_fix_value)
         unit_factors = []
         for field_name in field_names:
-            unit_factors.append(UnitConvert(self.header[field_name]['unit'], self.ounit[field_name]))
-        # todo: check the output values
+            # attach 1 if failed
+            try:
+                unit_factors.append(UnitConvert(self.header[field_name]['unit'], self.ounit[field_name]))
+            except KeyError:
+                unit_factors.append(1.0)
+        # check the output values
         # note that self.indexes[self.number_out1] gives the index of the second member in the second dimension
         tolerance = 1e-5
         temp1 = self.data[self.indexes[1], columns[0]] - self.data[self.indexes[0], columns[0]]
@@ -170,6 +195,11 @@ class HEFESTO():
         ValueError, "Output interval(self.delta_out1) doesn't match the interval in data")
         my_assert( (abs(temp2 - self.delta_out2) / self.delta_out2) < tolerance,
         ValueError, "Output interval(self.delta_out2) doesn't match the interval in data")
+        # mend self.data if needed
+        if missing_last > self.data.shape[1]:
+            print("Concatenating missing data")
+            new_data = np.ones((self.data.shape[0], missing_last - self.data.shape[1])) *  missing_fix_values
+            self.data = np.concatenate((self.data, new_data), axis=1)
         # output
         with open(o_path, 'w') as fout: 
             fout.write(self.version + '\n')  # version
@@ -177,7 +207,7 @@ class HEFESTO():
             fout.write('2\n')  # dimension
             fout.write('%s\n' % self.oheader[field_names[0]])
             fout.write('\t%.8f\n' % (float(self.min1) * unit_factors[0])) # min value
-            fout.write('\t%.8f\n' % (float(self.delta_out1) * unit_factors[0]))  # difference, todo: use the output value
+            fout.write('\t%.8f\n' % (float(self.delta_out1) * unit_factors[0]))  # difference, use the output value
             fout.write('\t%s\n' % self.number_out1)  # number of output
             fout.write('%s\n' % self.oheader[field_names[1]])
             fout.write('\t%.8f\n' % (float(self.min2) * unit_factors[1]))
@@ -311,7 +341,6 @@ def ProcessHefesto(filein, fileout, interval1, interval2):
     Hefesto = HEFESTO()
     Hefesto.read_table(filein)
     # fields to read in
-    # todo: add other fields
     field_names = ['Pressure', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity', 'VP', 'VS', 'Enthalpy']
     Hefesto.Process(field_names, fileout, interval1=interval1, interval2=interval2)
     # assert something 
@@ -370,7 +399,7 @@ def main():
         ProcessHefesto(arg.inputs, arg.outputs, arg.interval1, arg.interval2)
 
     elif _commend == 'check':
-        # Checkt the Hefesto lookup table
+        # Check the Hefesto lookup table
         CheckHefesto(arg.inputs, 'Pressure')
 
 # run script
