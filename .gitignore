@@ -150,7 +150,6 @@ __pycache__/
 # sub-folders
 Subduction-Dynamics-Tools/
 large_data_files/
-vtk_test/
 
 # test outputs
 .test/

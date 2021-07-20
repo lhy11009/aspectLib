@@ -53,6 +53,7 @@ def PlotFigure(log_path, fig_path, **kwargs):
     hr = 3600.0  # hr to s
     # read log file
     temp_path = os.path.join(RESULT_DIR, 'run_time_output')
+    print("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
     os.system("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
 
     Plotter = Plot.LINEARPLOT('RunTime', {})
@@ -77,12 +78,13 @@ def PlotFigure(log_path, fig_path, **kwargs):
                 re_inds.append(i)  # step < last step is a marker for restart
             last_step = step
             i = i+1
-        for i in range(len(re_inds)-1):
-            re_ind = re_inds[i]
-            re_ind_next = re_inds[i+1]
-            wallclocks[re_ind: re_ind_next] += wallclocks[re_ind - 1]
-        re_ind = re_inds[-1]  # deal with the last one seperately
-        wallclocks[re_ind: ] += wallclocks[re_ind - 1]
+        if re_inds != []:
+            for i in range(len(re_inds)-1):
+                re_ind = re_inds[i]
+                re_ind_next = re_inds[i+1]
+                wallclocks[re_ind: re_ind_next] += wallclocks[re_ind - 1]
+            re_ind = re_inds[-1]  # deal with the last one seperately
+            wallclocks[re_ind: ] += wallclocks[re_ind - 1]
         
     # line 1: time
     fig, ax1 = plt.subplots(figsize=(5, 5)) 
@@ -171,10 +173,14 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     '''
     # read log file
     temp_path = os.path.join(RESULT_DIR, 'run_time_output_newton')
+    print("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
     os.system("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
     Plotter = Plot.LINEARPLOT('SolverHistory', {})
     Plotter.ReadHeader(temp_path)
-    Plotter.ReadData(temp_path)
+    try:
+        Plotter.ReadData(temp_path)
+    except ValueError as e:
+        raise ValueError('Value error(columns are not uniform): check file %s' % temp_path)
     col_step = Plotter.header['Time_step_number']['col']
     col_number_of_iteration = Plotter.header['Index_of_nonlinear_iteration']['col']
     col_residual = Plotter.header['Relative_nonlinear_residual']['col']

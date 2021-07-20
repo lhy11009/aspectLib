@@ -18,6 +18,8 @@
 #    ./bash_scripts/build_aspect.sh visco_plastic_TwoD master_TwoD ${ASPECT_SOURCE_DIR}/build_plugins
 #   build all plugins separately
 #    ./bash_scripts/build_aspect.sh all_plugins master_TwoD_hefesto
+#   fix test
+#    ./bash_scripts/build_aspect.sh fix_test "${ASPECT_SOURCE_DIR}" "build_master_TwoD" TwoDSubduction_HeFESTo_steinberg
 ################################################################################
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
@@ -139,6 +141,35 @@ build_aspect_plugin(){
     quit_if_fail "${FUNCNAME[0]}: make inside ${plugin_to_dir} failed"
 }
 
+fix_test(){
+    # Inputs:
+    #   $1: a folder of build
+    #   $2: a test
+    local aspect_dir="$1"
+    local build_dir="$2"
+    local name_of_test="$3"
+    # fix all files
+    test_source_dir="${aspect_dir}/tests/${name_of_test}"
+    test_output_dir="${aspect_dir}/${build_dir}/tests/output-${name_of_test}"
+    [[ -d ${test_source_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: ${test_source_dir} doesn't exist"; exit 1; }
+    [[ -d ${test_output_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: ${test_output_dir} doesn't exist"; exit 1; }
+    echo "Fixing test $3"
+    for _file in ${test_source_dir}/*; do
+        file_name=$(basename "${_file}")
+        _file_out="${test_output_dir}/${file_name}"
+        [[ -e ${_file_out} ]] || { cecho ${BAD} "${FUNCNAME[0]}: ${_file_out} doesn't exist, please run the test first"; exit 1; }
+        cp "${_file_out}" "${test_source_dir}"
+    done
+    # redo the test
+    local current_dir=$(pwd)
+    cd "${aspect_dir}/${build_dir}"
+    echo "remake tests"
+    eval "make setup_tests"
+    echo "redo test ${name_of_test}"
+    eval "ctest -R ${name_of_test}"
+    cd "${current_dir}"
+}
+
 
 main(){
     ###
@@ -161,6 +192,17 @@ main(){
         ##
     	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
         build_all_plugins_separately "$2"
+    elif [[ "${command}" = "fix_test" ]]; then
+        ##
+        # todo
+        # Fix test
+        # Inputs:
+        # Terninal Outputs
+        ##
+    	[[ -n "$2" ]] || cecho $BAD "\$2 must be a test source folder (aspect/tests)"
+    	[[ -n "$3" ]] || cecho $BAD "\$3 must be a name of build folder"
+    	[[ -n "$4" ]] || cecho $BAD "\$4 must be a name of test"
+        fix_test "$2" "$3" "$4"
     else
     	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
         local build_dir="${ASPECT_SOURCE_DIR}/build_$2"

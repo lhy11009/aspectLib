@@ -18,13 +18,14 @@ Examples of usage:
 descriptions
 """ 
 import numpy as np
-import sys, os, argparse
+import sys, os, argparse, re
 # import json, re
 # import pathlib
 # import subprocess
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from shilofue.ParsePrm import ReadPrmFile
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
 
@@ -42,24 +43,39 @@ def PlotCaseRun(case_path):
     Returns:
         -
     '''
+    # todo: get case parameters
+    prm_path = os.path.join(case_path, 'case.prm')
+    inputs = ReadPrmFile(prm_path)
+    # todo: get solver scheme
+    solver_scheme = inputs.get('Nonlinear solver scheme', 'single Advection, single Stokes')
+
     log_file = os.path.join(case_path, 'output', 'log.txt')
     assert(os.access(log_file, os.R_OK))
     statistic_file = os.path.join(case_path, 'output', 'statistics')
     assert(os.access(statistic_file, os.R_OK))
     
     # statistic
+    print('Ploting statistic results')
     fig_path = os.path.join(case_path, 'img', 'Statistic.png')
     PlotStatistics.PlotFigure(statistic_file, fig_path)
 
     # run time
+    print('Ploting run time')
     fig_path = os.path.join(case_path, 'img', 'run_time.png')
     if not os.path.isdir(os.path.dirname(fig_path)):
         os.mkdir(os.path.dirname(fig_path))
     PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True)
 
     # Newton history
+    # todo: determine whether newton is used
+    print('solver_scheme, ', solver_scheme) # debug
     fig_path = os.path.join(case_path, 'img', 'newton_solver_history.png')
-    PlotRunTime.PlotNewtonSolverHistory(log_file, fig_path) 
+    match_obj = re.search('Newton', solver_scheme)
+    if match_obj:
+        print("Plotting newton solver history")
+        PlotRunTime.PlotNewtonSolverHistory(log_file, fig_path) 
+    else:
+        print("Skipping newton solver history")
 
 
 def main():
