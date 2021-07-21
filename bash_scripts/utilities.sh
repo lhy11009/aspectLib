@@ -49,6 +49,38 @@ fix_route() {
     echo "${output}"
 }
 
+utilities_tranlate_script(){
+    # Translate a script: substitute keys with values
+    # Inputs:
+    #    $1: name of the script
+    #    $2: output path
+    #    keys: keys to translate
+    #    values: values to translate
+    # check variable
+    # check_variable 'keys'
+    # check_variable 'values'
+    # check_variable 'filein'
+    # check_variable 'fileout'
+
+    filein="$1"
+    fileout="$2"
+
+    [[ -e "${filein}" ]] || { cecho "${BAD}" "file doesn\'t exist ${filein}"; exit 1; }
+    # read file
+    contents=$(cat ${filein})
+    
+    # do substutions
+    local i=0
+    for key in ${keys[@]}; do
+        value="${values[i]}"
+        contents=${contents//"$key"/"${value}"}  # substitute key with value
+        ((i++))
+    done
+
+    # output
+    echo "${contents}" > "${fileout}"
+}
+
 ################################################################################
 # Colours for progress and error reporting
 BAD="\033[1;31m"
