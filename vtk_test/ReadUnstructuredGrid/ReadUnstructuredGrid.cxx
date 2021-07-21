@@ -83,8 +83,8 @@ int main(int argc, char* argv[])
   
   // Create a grid of points to interpolate over
   std::cout << "Generate new grid" << std::endl;
-  const int rSize = 100;
-  const int phiSize = 200;
+  const int rSize = 1000;
+  const int phiSize = 2000;
   const double rMax = 6370e3;
   const double rMin = 2980e3;
   const double rIntr = (rMax - rMin) / double(rSize);
