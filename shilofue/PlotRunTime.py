@@ -31,7 +31,8 @@ import sys, os, argparse
 import subprocess
 import numpy as np
 import shilofue.Plot as Plot
-from shilofue.Utilities import UNITCONVERT
+import warnings
+import shilofue.Utilities as Utilities
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 
@@ -59,6 +60,15 @@ def PlotFigure(log_path, fig_path, **kwargs):
     Plotter = Plot.LINEARPLOT('RunTime', {})
     Plotter.ReadHeader(temp_path)
     Plotter.ReadData(temp_path)
+
+    # give warning if there is no data
+    # future: reorder error messages
+    if Plotter.data.size == 0:
+        warning_message = "func %s: There is no block data in file %s, Do nothing" % (Utilities.func_name(), log_path)
+        warnings.warn(warning_message, Utilities.WarningTypes.FileHasNoContentWarning)
+        return 0
+
+    # fix indexes 
     col_time = Plotter.header['Time']['col']
     unit_time = Plotter.header['Time']['unit']
     col_step = Plotter.header['Time_step_number']['col']

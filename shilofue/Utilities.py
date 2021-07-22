@@ -1,6 +1,7 @@
 import json
 import re
 import os
+import inspect
 import shilofue.json_files
 import numpy as np
 from importlib import resources
@@ -143,6 +144,14 @@ def my_assert(_condition, _errortype, _message):
     '''
     if _condition is False:
         raise _errortype(_message)
+
+
+class WarningTypes():
+    '''
+    A class of self defined warning types
+    '''
+    class FileHasNoContentWarning(Warning):
+        pass
 
 
 class UNITCONVERT():
@@ -395,3 +404,21 @@ def touch(path):
     """
     with open(path, 'a'):
         os.utime(path, None)
+
+
+def func_name():
+    """
+    return the name of the calling function
+    """
+    return inspect.currentframe().f_back.f_code.co_name
+
+
+def dump_message(fout, message):
+    """
+    dump_message to a log file
+    notes: I haven't used this since I am not sure whether it's good to open up a log file at the beginning of a script.
+    Inputs:
+        fout: an object that denines an output stream (e.g. sys.stderr)
+    """
+    outputs = "%s: %s" % (inspect.currentframe().f_back.f_code.co_name, message)
+    fout.write(outputs)

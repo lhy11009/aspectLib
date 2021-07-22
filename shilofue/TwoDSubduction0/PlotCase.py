@@ -26,6 +26,7 @@ import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 from shilofue.ParsePrm import ReadPrmFile
+import shilofue.Utilities as Utilities
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
 
@@ -34,6 +35,18 @@ ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+
+def Usage():
+    print("\
+This scripts generate plots for a single case in TwoDSubduction project\n\
+\n\
+Examples of usage: \n\
+\n\
+  - default usage: plot case running results\n\
+\n\
+        python -m shilofue.TwoDSubduction0.PlotCase plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20\
+        ")
+
 
 def PlotCaseRun(case_path):
     '''
@@ -104,6 +117,9 @@ def main():
     if _commend == 'plot_case':
         # example:
         PlotCaseRun(arg.inputs)
+    elif (_commend in ['-h', '--help']):
+        # example:
+        Usage()
 
 # run script
 if __name__ == '__main__':

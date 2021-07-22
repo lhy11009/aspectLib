@@ -32,6 +32,17 @@ RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
+def Usage():
+    print("\
+(One liner description\n\
+\n\
+Examples of usage: \n\
+\n\
+  - default usage: \n\
+\n\
+        python -m \
+        ")
+
 def SomeFunction(foo):
     '''
     descriptions
@@ -66,9 +77,15 @@ def main():
     arg = parser.parse_args(_options)
 
     # commands
-    if _commend == 'foo':
+    if (_commend in ['-h', '--help']):
+        # example:
+        Usage()
+    elif _commend == 'foo':
         # example:
         SomeFunction('foo')
+    else:
+        # no such option, give an error message
+        raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 
 # run script
 if __name__ == '__main__':
