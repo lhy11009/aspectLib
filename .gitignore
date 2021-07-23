@@ -157,3 +157,6 @@ large_data_files/
 /output
 /.*
 $GIT_DIR/output/
+
+# excecutables
+/bin
