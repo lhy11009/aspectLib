@@ -4,7 +4,7 @@
 # Generate runtime information(time and wall clock) from a ASPECT log file
 # 
 # Example Usage:
-#   eval "awk -f ${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output ${log_file} > ${ofile}"
+#   eval "awk -f ${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output${log_file} > ${ofile}"
 ################################################################################
 
 BEGIN {

@@ -89,7 +89,7 @@ parse_block_output_to_file(){
     key=${!i}
     while [[ -n ${key} ]]; do
         header="${header}# ${key}\n"
-        parse_block_output "${log_file}" "${key}"
+        parse_case "${log_file}" "${key}"
         output=$(echo ${return_values[@]} | sed -E "s/[^0-9.e+]/ /g")  # could be wrong when it is scientific expression
         [[ -n ${contents} ]] && contents="${contents}\n${output}" || contents=${output}
         ((i++))
@@ -108,7 +108,7 @@ main(){
         # this doesn't work for $3 with whitespace in it.
 	    [[ -n "$2" ]] || { cecho "${BAD}" "no log file given (\$2)"; exit 1; }
 	    [[ -n "$3" ]] || { cecho "${BAD}" "no key given (\$3)"; exit 1; }
-        parse_block_output "$2" "$3"
+        parse_case "$2" "$3"
         printf "${return_values}"
     
     elif [[ "$1" = "analyze_affinity_test_results" ]]; then

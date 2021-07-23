@@ -54,8 +54,8 @@ def PlotFigure(log_path, fig_path, **kwargs):
     hr = 3600.0  # hr to s
     # read log file
     temp_path = os.path.join(RESULT_DIR, 'run_time_output')
-    print("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
-    os.system("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
+    print("awk -f %s/bash_scripts/awk_states/parse_block_output%s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
+    os.system("awk -f %s/bash_scripts/awk_states/parse_block_output%s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
 
     Plotter = Plot.LINEARPLOT('RunTime', {})
     Plotter.ReadHeader(temp_path)

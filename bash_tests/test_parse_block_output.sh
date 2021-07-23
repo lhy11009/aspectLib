@@ -27,11 +27,11 @@ test_parse_block_output()
     local log_file="${test_dir}/log.txt"
     parse_block_output_wallclock "${log_file}"
     compare_outputs "${FUNCNAME[0]}" "497s 950s 950s" "${return_values[*]}"
-    parse_block_output "${log_file}" "Assemble Stokes system" 
+    parse_case "${log_file}" "Assemble Stokes system" 
     compare_outputs "${FUNCNAME[0]}" "155s 314s 314s" "${return_values[*]}"
-    parse_block_output "${log_file}" "Initialization" 
+    parse_case "${log_file}" "Initialization" 
     compare_outputs "${FUNCNAME[0]}" "0.892s 0.892s 0.892s" "${return_values[*]}"
-    parse_block_output "${log_file}" "Setup matrices" 
+    parse_case "${log_file}" "Setup matrices" 
     compare_outputs "${FUNCNAME[0]}" "18.2s 18.2s 18.2s" "${return_values[*]}"
     if [[ $? = 0 ]]; then
         ((local_passed_tests++))
@@ -95,7 +95,7 @@ test_parse_block_output_to_file()
     # test 3, parse a file, looking for steps and times
     local log_file="${test_dir}/log2.txt"
     local ofile="${test_output_dir}/block_output2.txt"
-    eval "awk -f ${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output ${log_file} > ${ofile}"
+    eval "awk -f ${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output${log_file} > ${ofile}"
     # compare
     std_ofile="${test_dir}/block_output_std2.txt"
     [[ -e ${std_ofile} ]] || cecho ${BAD} "${FUNC_NAME[0]}: std_ofile doesn't exists"
