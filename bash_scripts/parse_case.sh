@@ -101,6 +101,7 @@ parse_block_output_to_file(){
     printf "${contents}" >> "${ofile}"
 }
 
+# future remove unneeded functions and add one to parse case info(i.e. id job given, case name, wall clock, core*hrs, step
 
 main(){
     if [[ "$1" = "parse_block_results" ]]; then
