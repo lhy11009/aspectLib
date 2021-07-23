@@ -88,11 +88,11 @@ Commands:
     install     Install on local and server
         example usage:
             aspect_lib.sh TwoDSubduction install lochy@peloton.cse.ucdavis.edu
-    
+
     create      create a case under project
         example usage:
             aspect_lib.sh TwoDSubduction create
-        
+
     create_group    create a group of cases under project
         example usage:
             aspect_lib.sh TwoDSubduction create_group
@@ -100,23 +100,23 @@ Commands:
     submit      submit a case under project to server
         example usage:
             aspect_lib.sh TwoDSubduction submit ./foo lochy@peloton.cse.ucdavis.edu
-        
+
     submit_group submit cases within a group under project to server
         example usage:
             aspect_lib.sh TwoDSubduction submit_group ./foo_group lochy@peloton.cse.ucdavis.edu
-    
+
     create_submit   create and then submit a case under project to server
         if a \$4 is given as log file, this will append slurm information to this log file on server side
         example usage:
            aspect_lib.sh TwoDSubduction create_submit lochy@peloton.cse.ucdavis.edu .output/job.log
-    
+
     create_submit_group create and then submit a group under project to server
         if a \$4 is given as log file, this will append slurm information to this log file on server side
         example usage:
            aspect_lib.sh TwoDSubduction create_submit_group lochy@peloton.cse.ucdavis.edu .output/job.log
 
     translate_visit     translate visit scripts
-        
+
     plot_visit_case     use visit to plot for a case, with saved scripts
         what this commend does is that it first take the saved scripts under 'visit_scrits',
         then it translate those scripts with parameters defined in visit_keys_values, and keep the result in 'visit_scripts_temp'
@@ -125,7 +125,7 @@ Commands:
             ./aspect_lib.sh TwoDSubduction plot_visit_case \$TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12
         with plot(i.e. translate only) so that we could run in gui later:
             ./aspect_lib.sh TwoDSubduction plot_visit_case \$TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12 -b false
-        
+
     parse_solver_output     parse solver information from stdout file
         This commends extract newton solver output from a stdout output from aspect(e.g. 'task.stdout') and save results in 'solver_output' file
         This file could then be used to plot.
@@ -133,7 +133,7 @@ Commands:
             ./aspect_lib.sh TwoDSubduction parse_solver_output \$TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12/task.stdout ./solver_output
         only output first 20 steps:
             ./aspect_lib.sh TwoDSubduction parse_solver_output \$TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12/task.stdout ./solver_output -l 0 1 20
-        
+
     parse_case_solver_output    parse solver information from stdout file by giving a case directory
         Like the previous one. Only this one looks up file for you in a case
         the .stdout file must be placed under case directory,
@@ -142,13 +142,13 @@ Commands:
             ./aspect_lib.sh TwoDSubduction parse_case_solver_output \$TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12
         only output first 20 steps:
             ./aspect_lib.sh TwoDSubduction parse_case_solver_output \$TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12 -l 0 1 20
-        
+
     write_time_log      write time and machine time output to a file
         Note that for this command, \$1 (i.e. name of project) is not needed
         example command line:
             ./aspect_lib.sh foo write_time_log /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13\
  2537585 /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13/output/machine_time
-        
+
     keep_write_time_log     write time and machine time output to a file
         example command line:
             nohup ./aspect_lib.sh foo keep_write_time_log /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13\
@@ -156,15 +156,15 @@ Commands:
 	# next, an example with sleep duration specified to 0.5hr
         # nohup ./aspect_lib.sh foo keep_write_time_log /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13\
         # 2537585 /home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS13/output/machine_time -f 0.5 &
-        
+
     bash_post_process   do post process project-wise, handling only the bash part
         example command line:
             ./aspect_lib.sh TwoDSubduction bash_post_process
-        
+
     post_process    do post process project-wise, handling both the bash and the python part
         example command line:
             ./aspect_lib.sh TwoDSubduction post_process
-    
+
     build       build a project in aspect
         usage of this is to bind up source code and plugins
         example command line:
@@ -177,7 +177,7 @@ Commands:
                ./aspect_lib.sh TwoDSubduction build lochy@peloton.cse.ucdavis.edu
                ./aspect_lib.sh TwoDSubduction build lochy@peloton.cse.ucdavis.edu debug
                ./aspect_lib.sh TwoDSubduction build lochy@peloton.cse.ucdavis.edu release
-        
+
     test    run tests
             example command line:
                 local test:
@@ -188,7 +188,7 @@ Commands:
 Options:
     -h --help       Help message
     --bool -b       A bool value that is either 'true' or 'false'
-    
+
     -l              a lisl of value
                     for example:
                         -l 1.0 2.0 3.0
@@ -342,7 +342,7 @@ copy_visit_color_table(){
     for _dir in "$1"/*; do
         if [[ -d ${_dir} ]]; then
             for _file in "${_dir}"/*; do
-                if [[ ${_file} =~ ".ct" ]]; then 
+                if [[ ${_file} =~ ".ct" ]]; then
                     echo "copy file: ${_file}"
                     # get base name of file
                     _base=$(basename "${_file}")
@@ -369,7 +369,7 @@ tranlate_visit_script(){
 
     # read file
     contents=$(cat ${filein})
-    
+
     # do substutions
     local i=0
     for key in ${keys[@]}; do
@@ -392,7 +392,7 @@ plot_visit_scripts(){
     # future
     echo '0'
 }
-        
+
 
 ################################################################################
 # Run tests
@@ -435,15 +435,15 @@ plot_visit_case(){
     # get a list of scripts to plot
     visit_script_bases=("slab.py")
     visit_script_dir="${dir}/visit_scripts/${project}"
-        
+
     # call python module to generate visit_keys_values file
     eval "python -m shilofue.${project} visit_options -i ${case_dir} -j post_process.json"
-    
+
     # get keys and values
     keys_values_file="${dir}/visit_keys_values"
     [ -r "${keys_values_file}" ] || { cecho ${BAD} "plot_visit_case: Files containing keys and values - ${keys_values_file} cannot be read"; exit 1; }
     read_keys_values "visit_keys_values"
-    
+
     # do substitution and run
     for visit_script_base in ${visit_script_bases[@]}; do
         filein="${visit_script_dir}/${visit_script_base}"
@@ -464,7 +464,7 @@ plot_visit_case(){
 #   filein: file to read from
 #   fileout: file to output to
 #   vlist: [start step, interval, end step].
-#       If this is none, take all steps   
+#       If this is none, take all steps
 parse_solver_output(){
     # parse in options
     # assert the list of value
@@ -488,7 +488,7 @@ parse_solver_output(){
     timestep=${start}
     while ((timestep<end)); do
         parse_solver_output_timestep
-        
+
         # check if this is successful
         # we take for granted that any non-zero state
         # indicates that we reach the EOF
@@ -507,7 +507,7 @@ parse_solver_output(){
 # Inputs:
 #   case_dir: directory to parse from
 #   vlist: [start step, interval, end step].
-#       If this is none, take all steps   
+#       If this is none, take all steps
 #   update: if we update a pre-existing file
 #   $1: output file name, default is 'solver_output'
 # Returns:
@@ -517,7 +517,7 @@ parse_case_solver_output()
 {
     # unset
     unset filein
-    
+
     # find newest .stdout file
     local temp; local id; local filename
     local idin=0
@@ -532,7 +532,7 @@ parse_case_solver_output()
     done
     [[ -z "${filein}" ]] && { cecho ${WARN} "${FUNCNAME[0]}: fail to get file in dir ${case_dir}"; return 1; }
 
-    # check output dir 
+    # check output dir
     local output_dir="${case_dir}/output"
     [[ -d ${output_dir} ]] || mkdir "${output_dir}"
 
@@ -561,12 +561,12 @@ parse_case_solver_output()
 #   1: reach end of the file
 #   2: no such outputs presented
 parse_solver_output_timestep(){
-    # read input 
+    # read input
     [[ -z ${filein} ]] && { cecho ${BAD} "${FUNCNAME[0]}: filein must be given"; exit 1; }
     [[ -z ${fileout} ]] && { cecho ${BAD} "${FUNCNAME[0]}: fileout must be given"; exit 1; }
     [[ -z ${timestep} ]] && { cecho ${BAD} "${FUNCNAME[0]}: timestep must be given"; exit 1; }
-    
-    # parse content from stdout file 
+
+    # parse content from stdout file
     parse_stdout1 "${filein}" "${timestep}"
     [[ $? -eq 0 ]] || { echo "${FUNCNAME[0]}: timestep ${timestep} seems to hit end of the file ${filein}"; return 1; }
 
@@ -592,7 +592,7 @@ parse_solver_output_timestep(){
         local line_="${value}"
 
         parse_output_value "${line_}" "nonlinear iteration" ":" ","
-        [[ -z ${value} ]] && { cecho ${WARN} "${FUNCNAME[0]}: ${filein} doens't have solver outputs"; return 2; } 
+        [[ -z ${value} ]] && { cecho ${WARN} "${FUNCNAME[0]}: ${filein} doens't have solver outputs"; return 2; }
         rnrs+=("${value}")
         # get nors
         parse_output_value "${line_}" "norm of the rhs" ":" ","
@@ -604,7 +604,7 @@ parse_solver_output_timestep(){
     done
 
     # output header if file doesn't exist
-    if ! [[ -e ${fileout} ]]; then 
+    if ! [[ -e ${fileout} ]]; then
         printf "# 1: Time step number\n" >> "${fileout}"
         printf "# 2: Index of nonlinear iteration\n" >> "${fileout}"
         printf "# 3: Relative nonlinear residual\n" >> "${fileout}"
@@ -614,15 +614,15 @@ parse_solver_output_timestep(){
 
     # get length of array
     local length=${#rnrs[@]}
- 
+
     # output
     local i=0
     while ((i<length)); do
-        # output to file 
+        # output to file
         printf "%-15s %-15s %-15s %-15s %s\n" "${timestep}" "${i}" "${rnrs[$i]}" "${nors[$i]}" "${ndsfs[$i]}" >> "${fileout}"
         ((i++))
     done
-    
+
     return 0
 }
 
@@ -654,7 +654,7 @@ build_aspect_project(){
 
     # build
     local current_dir=$(pwd)
-    # Here we pick nproc - 1, this make sure that we don't use up all resources. 
+    # Here we pick nproc - 1, this make sure that we don't use up all resources.
     # But this will cause problem when nproc = 1
     local nproc=$(($(nproc)-1))
     cd ${build_dir}
@@ -683,7 +683,7 @@ build_aspect_plugin(){
     local plugin="$1"
     build_dir="${ASPECT_SOURCE_DIR}/build_${project}"
     [[ -d ${build_dir} ]] || mkdir ${build_dir}
-    
+
     # copy plugins
     plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
     # check plugin existence
@@ -696,7 +696,7 @@ build_aspect_plugin(){
     eval "cp -r ${plugin_dir} ${build_dir}/"
     cecho ${GOOD} "${FUNCNAME[0]}: copyied plugin(i.e. ${plugin})"
 
-    # build 
+    # build
     cd ${plugin_to_dir}
     # remove cache before compling
     [[ -e "${plugin_to_dir}/CMakeCache.txt" ]] && eval "rm ${plugin_to_dir}/CMakeCache.txt"
@@ -749,7 +749,7 @@ bash_post_process_project(){
         keys=("dirs")
         local is_array='true'
         read_json_file
-    
+
         # get the dir to plot visit
         local visit_dirs=()
         if [[ $value =~ "active" ]]; then
@@ -770,7 +770,7 @@ bash_post_process_project(){
             plot_visit_case
         done
     fi
-    
+
     return 0
 }
 
@@ -820,13 +820,13 @@ do_affinity_test(){
     local remote_root=${return_value}
     get_remote_environment "${server_info}" "ASPECT_LAB_DIR"
     local remote_lib_dir=${return_value}
-    
+
     if [[ "${server_info}" =~ "peloton" ]]; then
         target_dir="${project_dir}/peloton_affinity_test"
     else
         target_dir="${project_dir}/affinity_test"
     fi
-    
+
     [[ -d ${target_dir} ]] && rm -r "${target_dir}"
     mkdir "${target_dir}"
     remote_target_dir=${target_dir/"${local_root}"/"${remote_root}"} # substitution
@@ -834,7 +834,7 @@ do_affinity_test(){
         eval "[[ -d ${remote_target_dir} ]] && rm -r ${remote_target_dir}"
         eval "mkdir ${remote_target_dir}"
 EOF
-    
+
     # make case P16
     local remote_case_dir
     local case_dir
@@ -850,7 +850,7 @@ EOF
         _bc=${bind_to_cores[_i]}
         _bt=${bind_to_threads[_i]}
 
-        # deal with local files 
+        # deal with local files
         case_dir="${target_dir}/N${_N}n${_n}"
         ((${_bc}==1)) && case_dir="${case_dir}bc"
         ((${_bt}==1)) && case_dir="${case_dir}bt"
@@ -864,7 +864,7 @@ EOF
         remote_out_dir="${remote_case_dir}/output"
         local remote_target=$(dirname "${remote_case_dir}")
         eval "${RSYNC} -r ${case_dir} ${server_info}:${remote_target}/"
-    
+
         local status_
         while [[ true ]]; do
             ssh ${server_info} << EOF > '.temp'
@@ -873,7 +873,7 @@ EOF
             status_=$(cat '.temp'| sed -n '$'p)
             ((status_==0)) && break || { cecho ${WARN} "Files haven't arrived yet, sleep for 2s"; sleep 2s; }
         done
-    
+
         # generate job.sh file
         local addition=""
         local flag="--hold"
@@ -1025,7 +1025,7 @@ main(){
         get_remote_environment "${server_info}" "${project}_DIR"
         local remote_root=${return_value}
         local remote_case_dir
-        # fix log_file 
+        # fix log_file
         if [[ "${log_file}" != '' ]]; then
             # if there is no $4 given, log file is ''
             log_file=$(fix_route "${log_file}")
@@ -1055,9 +1055,9 @@ main(){
         read_keys_values "${ASPECT_LAB_DIR}/visit_keys_values"
 
         # call function
-        keys = ${keys[@]} 
+        keys = ${keys[@]}
         tranlate_visit_script
-    
+
     elif [[ ${_command} = 'plot_visit_case' ]]; then
         # plot visit for a case
         # example command line:
@@ -1080,10 +1080,10 @@ main(){
         # ./aspect_lib.sh TwoDSubduction parse_solver_output $TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12/task.stdout ./solver_output -l 0 1 20
         filein="$3"
         fileout="$4"
-        
+
         # call function
         parse_solver_output
-    
+
     elif [[ ${_command} = 'parse_case_solver_output' ]]; then
         # parse solver information from stdout file by giving a case directory
         # the .stdout file must be placed under this directory
@@ -1093,11 +1093,11 @@ main(){
         # only output first 20 steps:
         # ./aspect_lib.sh TwoDSubduction parse_case_solver_output $TwoDSubduction_DIR/isosurf_global2/isosurfULV3.000e+01testS12 -l 0 1 20
         case_dir="$3"
-        
+
         # call function
         # future: make this quieter
         parse_case_solver_output
-    
+
     elif [[ ${_command} = 'plot_solver_step' ]]; then
         # plot solver output for specific step
         # example usage:
@@ -1105,14 +1105,14 @@ main(){
         # --extension=pdf
         case_dir="$3"
 
-        # construct vlist based on step 
+        # construct vlist based on step
         vlist=("${float}" 1 "$((${float}+1))")
         echo "${vlist[@]}"  # debug
 
         # remove previous data file
         local odatafile="${case_dir}/output/solver_output_step"
         [[ -e ${odatafile} ]] && rm ${odatafile}
-        
+
         # call function to parse output
         local update="False"
         parse_case_solver_output "solver_output_step"
@@ -1134,8 +1134,8 @@ main(){
         [[ -n $4 && $4=~^[0-9]+$ ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$4 must be a valid job id"; exit 1; }
         [[ -n $5 ]] || { cecho ${BAD} "${FUNCNAME[0]}: write_time_log, \$5 must be a valid path of a file"; exit 1; }
         write_time_log $3 $4 $5
-    
-    
+
+
     elif [[ ${_command} = 'keep_write_time_log' ]]; then
         # write time and machine time output to a file
         # example command line:
@@ -1177,7 +1177,7 @@ main(){
         # ./aspect_lib.sh TwoDSubduction post_process
         post_process_project
 
-    
+
     elif [[ ${_command} = 'build' ]]; then
         # build a project in aspect
         # usage of this is to bind up source code and plugins
@@ -1188,7 +1188,7 @@ main(){
         #       ./aspect_lib.sh TwoDSubduction build release
         build_aspect_project $3
 
-    
+
     elif [[ ${_command} = 'build_plugin' ]]; then
         # build a the plugin with the main source in aspect
         # usage of this is to bind up source code and plugins
@@ -1196,7 +1196,7 @@ main(){
         #   ./aspect_lib.sh TwoDSubduction build_plugin subduction_temperature2d
         build_aspect_plugin "$3"
 
-    
+
     elif [[ ${_command} = 'build_remote' ]]; then
         #   server build(add a server_info):
         #   example command lines:
@@ -1210,7 +1210,7 @@ EOF
 
     elif [[ ${_command} = "affinity_test" ]]; then
         #  affinity test on server
-        #  example command line 
+        #  example command line
         #       ./aspect_lib.sh TwoDSubduction affinity_test lochy@peloton.cse.ucdavis.edu
         # todo
         set_server_info "$3"
@@ -1229,7 +1229,7 @@ EOF
 
         # call scripts in bash_tests folder
         run_tests
-    
+
     else
         cecho ${BAD} "Bad commend: ${_command}"
     fi

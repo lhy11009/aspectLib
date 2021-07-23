@@ -7,17 +7,16 @@
 ################################################################################
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
-source "${ASPECT_LAB_DIR}/bash_scripts/utilities.sh"
 # subdirs
-unset dir
-dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
 bash_subdir="${dir}/bash_scripts"
 [[ -d "${bash_subdir}" ]] || { cecho "${BAD}" "install.sh: no directory (${bash_subdir})"; exit 1; }
 bin_subdir="${dir}/bin"
 [[ -d "${bin_subdir}" ]] || { echo "create ${bin_subdir}"; mkdir "${bin_subdir}"; }
+# source utilities
+source "${bash_subdir}/utilities.sh"
+unset dir
 # global variables
 prefix="Lib"  # prefix to installed scripts
-bashrc_outputs="" # tests to include in the .bashrc file
 
 usage(){
   # usage of this script
@@ -69,6 +68,7 @@ install(){
     ###
     local dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
     options
+    local bashrc_outputs="# Environmental variables\nexport ASPECT_LAB_DIR=${dir}"  # set an environmental variable to this dir
     install_sh
     printf "${bashrc_outputs}" >> "${dir}/enable.sh" # output for bashrc
     # screen output
@@ -82,6 +82,7 @@ clean(){
     # clean previous installation
     ###
     # remove install executables
+    local dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
     printf "remove install executables\n"
     eval "[[ -d ${bin_subdir} ]] && rm ${bin_subdir}/*"
     printf "remove previous enable.sh\n"
@@ -106,7 +107,7 @@ install_sh(){
         _name="${prefix}_${_name}"
         _path_to="${bin_subdir}/${_name}"
         # copy
-        cp "${_path}" "${_path_to}"
+        eval "ln -s ${_path} ${_path_to}"
         # change mode
         eval "chmod +x ${_path_to}"
         cecho ${GOOD} "${FUNCNAME[0]} ${_path_to} installed"  # screen outputs
