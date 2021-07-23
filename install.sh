@@ -3,6 +3,7 @@
 
 ################################################################################
 # Install aspectLib
+# future: fix enable_local.sh
 ################################################################################
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
@@ -42,7 +43,7 @@ options(){
     ###
     # options when installing files
     ###
-    list_of_bash_scripts_to_install=("rsync_case.sh" "run_aspect.sh")
+    list_of_bash_scripts_to_install=("rsync_case.sh" "run_aspect.sh" "build_aspect.sh")
 }
 
 
@@ -66,7 +67,6 @@ install(){
     ###
     # install apsectLib
     ###
-    # todo
     local dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
     options
     install_sh
@@ -81,7 +81,6 @@ clean(){
     ###
     # clean previous installation
     ###
-    # todo
     # remove install executables
     printf "remove install executables\n"
     eval "[[ -d ${bin_subdir} ]] && rm ${bin_subdir}/*"
@@ -98,11 +97,12 @@ install_sh(){
     # Global variables as output(changed):
     #   bashrc_outputs: tests to include in the .bashrc file
     ###
+    local dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
     local bash_subdir="${dir}/bash_scripts"
     for bash_script_to_install in ${list_of_bash_scripts_to_install[@]}; do
         _path="${bash_subdir}/${bash_script_to_install}"
         [[ -e "${_path}" ]] || { cecho "${BAD}" "${FUNCNAME[0]} no bash scripts (${_path}), check the source files and the file list given"; exit 1; }
-        _name=`echo "${bash_script_to_install}" | cut -d'.' -f1`  # todo
+        _name=`echo "${bash_script_to_install}" | cut -d'.' -f1`
         _name="${prefix}_${_name}"
         _path_to="${bin_subdir}/${_name}"
         # copy
@@ -113,6 +113,40 @@ install_sh(){
     done
     bashrc_outputs="${bashrc_outputs}\n# aspectLib executables\nexport PATH=\${PATH}:${bin_subdir}"
     return 0
+}
+
+
+document(){
+    ###
+    # documentation
+    # future: fix .sh options in .sh files
+    ###
+    local dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
+    local document_path="${dir}/document.md"
+    local document_outputs="Documentation for aspectLib"
+    [[ -e "${document_path}" ]] && eval "rm ${document_path}"  # remove previous ones
+    document_sh  # bash
+    printf "${document_outputs}" >> "${document_path}" # generate documentation
+    printf "install.sh: documentation is completed\n"  # screen output
+}
+
+
+document_sh(){
+    ###
+    # document sh scripts
+    # Global variables as input:
+    #     bash_subdir: directory for bash scripts
+    # Global variables as output:
+    #    document_outputs: outputs of documentation
+    ###
+    [[ -d "${bash_subdir}" ]] || { cecho "${FUNCNAME[0]}: no such directory ${bash_subdir}"; exit 1; }
+    for _file in "${bash_subdir}"/*.sh; do
+        local file_name=$(basename "${_file}")  # filename
+        local help_message=`bash ${_file} -h`  # help message
+        document_outputs="${document_outputs}\n\
+### ${file_name}:\n\
+${help_message}\n"
+    done
 }
 
 
@@ -128,11 +162,14 @@ main(){
         # Innputs:
         # Terninal Outputs
         ##
-        # todo, create alias
+        # create alias
         install
     elif [[ "$1" = "clean" ]]; then
         # clean previous installation
         clean
+    elif [[ "$1" = "document" ]]; then
+        # generate documentation
+        document
     else
 	cecho "${BAD}" "option ${1} is not valid\n"
     fi
