@@ -43,6 +43,7 @@ options(){
     # options when installing files
     ###
     list_of_bash_scripts_to_install=("rsync_case.sh" "run_aspect.sh" "build_aspect.sh")
+    list_of_py_scripts_to_install=("TwoDSubduction0/PlotCase.py" "ParsePrm.py")
 }
 
 
@@ -69,7 +70,10 @@ install(){
     local dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
     options
     local bashrc_outputs="# Environmental variables\nexport ASPECT_LAB_DIR=${dir}"  # set an environmental variable to this dir
+    printf "install.sh: install bash scripts\n"
     install_sh
+    printf "install.sh: install py scripts\n"
+    install_py
     printf "${bashrc_outputs}" >> "${dir}/enable.sh" # output for bashrc
     # screen output
     printf "install.sh: installation is completed\n\
@@ -88,6 +92,7 @@ clean(){
     printf "remove previous enable.sh\n"
     eval "[[ -e \"${dir}/enable.sh\" ]] && rm ${dir}/enable.sh"
 }
+
 
 install_sh(){
     ###
@@ -115,6 +120,45 @@ install_sh(){
     bashrc_outputs="${bashrc_outputs}\n# aspectLib executables\nexport PATH=\${PATH}:${bin_subdir}"
     return 0
 }
+
+
+install_py(){
+    ###
+    # install python scripts
+    # Inputs:
+    # Global variables as input:
+    # Return:
+    # Global variables as output(changed):
+    #   bashrc_outputs: tests to include in the .bashrc file
+    # todo
+    ###
+    local dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
+    local py_subdir="${dir}/shilofue"
+    for py_script_to_install in ${list_of_py_scripts_to_install[@]}; do
+        _path="${py_subdir}/${py_script_to_install}"
+        [[ -e "${_path}" ]] || { cecho "${BAD}" "${FUNCNAME[0]} no bash scripts (${_path}), check the source files and the file list given"; exit 1; }
+        # figure out command line
+        py_one_liner=`echo "shilofue/${py_script_to_install}" | cut -d'.' -f1 | sed "s/\//./g"`
+        # figure out name
+        _name=`echo "${py_script_to_install}" | sed "s/\//_/g" | cut -d'.' -f1`
+        _name="${prefix}_${_name}"
+        _path_to="${bin_subdir}/${_name}"
+        # figure out cotents
+        # todo
+        local contents="#!/bin/bash"
+        contents="${contents}\n_dir=\`pwd\`"
+        contents="${contents}\ncd \"\${ASPECT_LAB_DIR}\""
+        contents="${contents}\npython -m ${py_one_liner} \$@"
+        contents="${contents}\ncd \"\${_dir}\""
+        # export python scripts
+        printf "${contents}" > "${_path_to}"
+        # change mode
+        eval "chmod +x ${_path_to}"
+        cecho ${GOOD} "${FUNCNAME[0]} ${_path_to} installed"  # screen outputs
+    done
+    return 0
+}
+
 
 
 document(){
