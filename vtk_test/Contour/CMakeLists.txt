@@ -7,6 +7,7 @@ find_package(VTK COMPONENTS
   vtkCommonColor
   vtkCommonCore
   vtkIOXML
+  vtkIOLegacy
   vtkInteractionStyle
   vtkRenderingContextOpenGL2
   vtkRenderingCore
@@ -16,6 +17,7 @@ find_package(VTK COMPONENTS
   vtkCommonDataModel
   vtkFiltersCore
   vtkFiltersGeneral
+  vtkFiltersModeling
   QUIET
 )
 
