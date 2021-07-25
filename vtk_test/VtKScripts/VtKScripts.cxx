@@ -26,6 +26,139 @@
 #include <vtkSimplePointsWriter.h>
 
 
+class AspectVtk
+{
+    public:
+        void readfile(std::string filename);
+        // get poly data from reader
+        void input_poly_data();
+        // Triangulate the grid points
+        void triangulate_grid();
+        // Extract contour
+        void extract_contour(std::string filename);
+        // interpolate to uniform grid
+        void interpolate_uniform_grid(std::string filename);
+
+    private:
+        vtkSmartPointer<vtkXMLPUnstructuredGridReader> reader;
+        // polydata read in from file
+        vtkSmartPointer<vtkPolyData> iPolyData; 
+        // triangulated data
+        vtkSmartPointer<vtkDelaunay2D> iDelaunay2D;
+};
+
+
+void AspectVtk::readfile(std::string filename)
+{
+    std::cout << "Read file: " << filename << std::endl;
+    reader = vtkSmartPointer<vtkXMLPUnstructuredGridReader>::New();
+    reader->SetFileName(filename.c_str());
+    reader->Update();
+}
+
+
+void AspectVtk::input_poly_data()
+{
+    std::cout << "Input poly data: " << std::endl;
+    // point data
+    vtkSmartPointer<vtkPoints> vtk_points = reader->GetOutput()->GetPoints(); // coordinates
+    // field data
+    vtkSmartPointer<vtkPointData> vtk_point_data = reader->GetOutputAsDataSet()->GetPointData();
+    vtkSmartPointer<vtkDataArray> temperatures = vtk_point_data->GetArray("T"); // read temperature
+    // set value of the private member
+    iPolyData = vtkSmartPointer<vtkPolyData>::New();
+    iPolyData->SetPoints(vtk_points);  //set as original vector
+    iPolyData->GetPointData()->SetScalars(temperatures);
+    // print information
+    auto nl = iPolyData->GetNumberOfLines();
+    auto np = iPolyData->GetNumberOfPoints();  
+    auto npi = iPolyData->GetNumberOfPieces(); 
+    auto nv = iPolyData->GetNumberOfVerts();  //debug
+    std::cout << "PolyData info:" << std::endl
+        << "number of lines: " << nl << ", "
+        << "number of points: " << np << ", "
+        << "number of pieces: " << npi << ", "
+        << "number of verts: " << nv << std::endl;
+}
+  
+
+void AspectVtk::triangulate_grid()
+{
+    std::cout << "Triangulate the grid points" << std::endl;
+    iDelaunay2D = vtkSmartPointer<vtkDelaunay2D>::New();
+    iDelaunay2D->SetInputData(iPolyData);
+    iDelaunay2D->Update();
+}
+        
+
+void AspectVtk::extract_contour(std::string filename)
+{
+    std::cout << "Filter contour" << std::endl;
+    vtkNew<vtkContourFilter> contour_filter;  // simple
+    contour_filter->SetInputData(iDelaunay2D->GetOutput());  // set to the trangulated dataset
+    contour_filter->Update();
+    contour_filter->GenerateValues(1, 1173.0, 1173.0);
+    contour_filter->Update();
+    // write output 
+    vtkNew<vtkSimplePointsWriter> writer;
+    writer->SetInputData(contour_filter->GetOutput());
+    writer->SetFileName(filename.c_str());
+    writer->Update();
+    writer->Write();
+}
+        
+
+void AspectVtk::interpolate_uniform_grid(std::string filename)
+{
+    // Create a grid of points to interpolate over
+    std::cout << "interpolate uniform grid" << std::endl;
+    std::cout << "\tGenerate new grid" << std::endl;
+    const int rSize = 1000;
+    const int phiSize = 2000;
+    const double rMax = 6370e3;
+    const double rMin = 2980e3;
+    const double rIntr = (rMax - rMin) / double(rSize);
+    const double phiMax = 1.064;
+    const double phiMin = 0.0;
+    const double phiIntr = (phiMax - phiMin) / double(phiSize);
+    vtkNew<vtkPoints> gridPoints;
+    for (unsigned int i = 0; i < rSize; i++)
+    {
+      for (unsigned int j = 0; j < phiSize; j++)
+      {
+        double val_r = rMin + i*rIntr;
+        double val_phi = phiMin + j*phiIntr;
+        double val_x = val_r * cos(val_phi);
+        double val_y = val_r * sin(val_phi);
+  
+        gridPoints->InsertNextPoint(val_x, val_y, 0);
+      }
+    }
+    // Create a dataset from the grid points
+    vtkNew<vtkPolyData> gridPolyData;
+    gridPolyData->SetPoints(gridPoints);
+
+    // Perform the interpolation
+    std::cout << "\t Perform interpolation onto the new grid" << std::endl;
+    vtkNew<vtkProbeFilter> probeFilter;
+    probeFilter->SetSourceConnection(iDelaunay2D->GetOutputPort());
+    probeFilter->SetInputData(gridPolyData); // Interpolate 'Source' at these points
+    probeFilter->Update();
+    
+    // Map the output zvalues to the z-coordinates of the data so that
+    // we get a surface, rather than a flat grid with interpolated
+    // scalars.
+    vtkNew<vtkWarpScalar> gridWarpScalar;
+    gridWarpScalar->SetInputConnection(probeFilter->GetOutputPort());
+    gridWarpScalar->Update();
+    
+    //output
+    vtkNew<vtkXMLPolyDataWriter> writer;
+    writer->SetFileName(filename.c_str());
+    writer->SetInputConnection(gridWarpScalar->GetOutputPort());
+    writer->Write();
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -36,99 +169,13 @@ int main(int argc, char* argv[])
               << std::endl;
     return EXIT_FAILURE;
   }
-
+  // read file
   std::string filename = argv[1];
-
-  // read data from a vtu file
-  std::cout << "Read data: " << filename << std::endl;
-  // vtkNew<vtkXMLUnstructuredGridReader> reader;  // for vtu file
-  vtkNew<vtkXMLPUnstructuredGridReader> reader; // for pvtu file
-  reader->SetFileName(filename.c_str());
-  reader->Update();
-  //Read data points, GetOutput(): vtkUnstructuredGrid
-  vtkSmartPointer<vtkPoints> vtk_points = reader->GetOutput()->GetPoints(); // coordinates
-  int n_points = vtk_points->GetNumberOfPoints();  // use size of the vtk_points object
-  std::cout << "n_points: " << n_points << std::endl;
-  //read data sets
-  vtkSmartPointer<vtkPointData> vtk_point_data = reader->GetOutputAsDataSet()->GetPointData();
-  vtkSmartPointer<vtkDataArray> temperatures = vtk_point_data->GetArray("T"); // read temperature
-  std::cout << "T[0] = " << temperatures->GetTuple(0) << std::endl;
-
-  // read x and y from file
-  // a polydata 
-  vtkNew<vtkPolyData> randomPolyData;
-  randomPolyData->SetPoints(vtk_points);  //set as original vector
-  randomPolyData->GetPointData()->SetScalars(temperatures);
-
-  
-  // Triangulate the grid points. If you do not have a mesh (points
-  // only), the output will not be interpolated!
-  std::cout << "Triangulate the grid points" << std::endl;
-  vtkNew<vtkDelaunay2D> randomDelaunay;
-  randomDelaunay->SetInputData(randomPolyData);
-  randomDelaunay->Update();
-  
-  //contour filter
-  std::cout << "Filter contour" << std::endl;
-  //vtkNew<vtkBandedPolyDataContourFilter> bf;  //Banded
-  vtkNew<vtkContourFilter> bf;  // simple
-  bf->SetInputData(randomDelaunay->GetOutput());  // set to the trangulated dataset
-  //bf->SetInputData(randomPolyData);  // set to the original dataset
-  bf->Update();
-  bf->GenerateValues(1, 1173.0, 1173.0);
-  bf->Update();
-
-  std::cout << "Debug contour" << std::endl;
-  vtkSmartPointer<vtkPolyData> contour = bf->GetOutput();
-  auto nl = contour->GetNumberOfLines();
-  auto np = contour->GetNumberOfPoints();  
-  auto npi = contour->GetNumberOfPieces(); 
-  auto nv = contour->GetNumberOfVerts();  //debug
- 
-  /*
-  std::cout << "nl: " << nl << ", np: " << np << ", npi:" << npi << ", nv:" << nv << std::endl;
-  vtkSmartPointer<vtkPolyData> contour_edges = bf->GetContourEdgesOutput();
-  nl = contour_edges->GetNumberOfLines();
-  np = contour_edges->GetNumberOfPoints();  
-  npi = contour_edges->GetNumberOfPieces(); 
-  nv = contour_edges->GetNumberOfVerts();  //debug
-  std::cout << "nl: " << nl << ", np: " << np << ", npi:" << npi << ", nv:" << nv << std::endl;
-  */
-
- 
-  // construct a new output with points
-  vtkSmartPointer<vtkPoints> vtk_bf_points = bf->GetOutput()->GetPoints(); // coordinates
-  vtkNew<vtkPolyData> bfPolyData;
-  bfPolyData->SetPoints(vtk_bf_points);  //set as original vector
-  
-  //test output
-  vtkNew<vtkXMLPolyDataWriter> randomWriter;
-  randomWriter->SetFileName("Contour.vtp");
-  randomWriter->SetInputData(bf->GetOutput());  // export band
-  //randomWriter->SetInputData(bf->GetContourEdgesOutput());  // export edge, work for banded filter
-  randomWriter->Write();
-
-  vtkNew<vtkSimplePointsWriter> writer;
-  writer->SetFileName("contour.xyz");
-  //writer->SetInputData(bf->GetOutput());
-  writer->SetInputData(bfPolyData);
-  writer->Update();
-  //writer->SetInputConnection(bf->GetOutputPort());
-  writer->Write();
- 
-  /*
-  //////// Setup outputs ////////
-  // Output random points
-  // Map the output zvalues to the z-coordinates of the data
-  std::cout << "Output data" << std::endl;
-  vtkNew<vtkWarpScalar> randomWarpScalar;
-  randomWarpScalar->SetInputConnection(randomDelaunay->GetOutputPort());
-  randomWarpScalar->Update();
-  vtkNew<vtkXMLPolyDataWriter> randomWriter;
-  randomWriter->SetFileName("Subduction2D.vtp");
-  randomWriter->SetInputConnection(randomWarpScalar->GetOutputPort());
-  randomWriter->Write();
-*/
-
+  AspectVtk aspect_vtk;
+  aspect_vtk.readfile(filename);
+  aspect_vtk.input_poly_data();
+  aspect_vtk.triangulate_grid();
+  aspect_vtk.extract_contour("contour.txt");
+  aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");
   return EXIT_SUCCESS;
 }
