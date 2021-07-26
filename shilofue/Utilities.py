@@ -10,14 +10,14 @@ from pathlib import Path
 
 def JsonOptions(prefix, _dir=None):
     '''
-    JsonOptions(prefix) 
+    JsonOptions(prefix)
     Read format options for plotting from json files
     Args:
         prefix(string):
             a prefix for options, all json files with this prefix will be imported
     Returns:
         options(dict):
-            a dictionary for options. Every match with the prefix will generate a 
+            a dictionary for options. Every match with the prefix will generate a
             key in this dictionary, while the value is read from a json file.
             For example, if the prefix is 'Statistics' and one json file is
             'Statistics_Number_of_Cells.json', then there will be a key called
@@ -43,14 +43,14 @@ def JsonOptions(prefix, _dir=None):
         for path in pathlist:
             _filename = str(path)
             _base_name = os.path.basename(_filename)
-            _name = _base_name.split('_', maxsplit=1)[1] 
+            _name = _base_name.split('_', maxsplit=1)[1]
             _name = _name.rsplit(".", maxsplit=1)[0]
             with open(_filename, 'r') as fin:
                 _options[_name] = json.load(fin)  # values are entries in this file
     assert(_options is not {})  # assert not vacant
     return _options
 
-    
+
 def ReadHeader(_texts):
     '''
     Read header information from file.
@@ -75,7 +75,7 @@ def ReadHeader(_texts):
             break
         _line = re.sub("^# ", '', _line)  # eliminate '#' in front
         # match the first number, which is the columne in file
-        _match_obj = re.match("[0-9]*", _line)  
+        _match_obj = re.match("[0-9]*", _line)
         _col = int(_match_obj[0]) - 1
         _line = re.sub("^.*?: ", '', _line) # eliminate words before ':'
         # match string as '(foo)', thus get the unit
@@ -158,7 +158,7 @@ class UNITCONVERT():
     '''
     UNITCONVERT():
     class for unit convert
-    
+
     Attributes:
         units(dict): magnitudes of units, values are [int, str].
             These are magnitude of this unit and the base unit for
@@ -191,14 +191,14 @@ class UNITCONVERT():
         # a dictionary, this is the magnitudes of units, every value is an list
         # of an int and a string
         self.units = _data['units']
-        # a dictionary, this is the alias of units, every value is a string 
+        # a dictionary, this is the alias of units, every value is a string
         self.alias = _data['alias']
 
     def __call__(self, _unit_from, _unit_to):
         '''
         Call function, return the convertion from _unit_from to _unit_to so that
         Args:
-            _unit_from(str): 
+            _unit_from(str):
                 unit to convert from
             _unit_to(str):
                 unit to convert to
@@ -206,7 +206,7 @@ class UNITCONVERT():
             KeyError:
                 when unit is neither a recorded unit or an alias for a unit
         Assertions:
-            assert that the base of these two are the same 
+            assert that the base of these two are the same
         returns:
             _convert_ratio(float):
                 a ratio of magnitude of two units
@@ -225,7 +225,7 @@ class UNITCONVERT():
             except KeyError:
                 raise KeyError('The alias %s is not registered' % _unit_from_alias)
             _unit_from_base = self.units[_unit_from_alias][1]
-       # same thing for unit_to 
+       # same thing for unit_to
         try:
             _unit_to_magnitude = self.units[_unit_to][0]
             _unit_to_base = self.units[_unit_to][1]
@@ -282,33 +282,33 @@ def re_count_indent(_pattern):
 
 
 def ggr2cart(lat,lon,r):
-    # transform spherical lat,lon,r geographical coordinates 
+    # transform spherical lat,lon,r geographical coordinates
     # to global cartesian xyz coordinates
-    # 
+    #
     # input:  lat,lon,r in radians, meters
     # output: x,y,z in meters 3 x M
-    sla = np.sin(lat)  
-    cla = np.cos(lat) 
+    sla = np.sin(lat)
+    cla = np.cos(lat)
     slo = np.sin(lon)
     clo = np.cos(lon)
 
     x = r * cla * clo
-    y = r * cla * slo 
+    y = r * cla * slo
     z = r * sla
 
     return x,y,z
 
 def ggr2cart2(lon, r):
-    # transform spherical lon, r geographical coordinates 
+    # transform spherical lon, r geographical coordinates
     # to global cartesian xy coordinates
-    # 
+    #
     # input:  phi, r in radians, meters
     # output: x,y in meters 2 x M
     slo = np.sin(lon)
     clo = np.cos(lon)
 
     x = r * clo
-    y = r * slo 
+    y = r * slo
 
     return x, y
 
@@ -340,13 +340,13 @@ def Make2dArray(x):
         array_ = Make2dArray([x])
     elif type(x) is list:
         array_ = np.array(x)
-        array_ = array_.reshape((1, -1)) 
+        array_ = array_.reshape((1, -1))
     elif type(x) is np.array and x.ndix == 1:
         array_ = x.reshape((1, -1))
     else:
         raise TypeError("Make2dArray, x must be int, float, list or 1d ndarray")
     return array_
-            
+
 
 def WriteFileHeader(ofile, header):
     """
@@ -363,7 +363,7 @@ def WriteFileHeader(ofile, header):
             unit = value.get('unit', None)
             output += '# %d: %s' % (col+1, key)
             if unit is not None:
-                output += ' (%s)' % unit 
+                output += ' (%s)' % unit
             output += '\n'
         fout.write(output)
 
@@ -382,7 +382,7 @@ def AveragePhaseFunctionInputs(x1, x2):
     """
     my_assert(x1.shape == x2.shape, ValueError, "Inputs(x1 and x2) need to be arrays of the same shape")
     average = np.zeros(x1.shape)
-    
+
     # logical expressions for regions
     pin_point = 2.0
     limit_point = -2.0
@@ -422,3 +422,12 @@ def dump_message(fout, message):
     """
     outputs = "%s: %s" % (inspect.currentframe().f_back.f_code.co_name, message)
     fout.write(outputs)
+
+
+def get_name_and_extention(_path):
+    """
+    return name and extention
+    """
+    _name = _path.rsplit(".", maxsplit=1)[0]
+    _extension = _path.rsplit(".", maxsplit=1)[1]
+    return _name, _extension

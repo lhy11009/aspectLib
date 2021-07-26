@@ -83,9 +83,9 @@ def PlotCaseRun(case_path, **kwargs):
     # time range
     try:
         time_range = kwargs['time_range']
-        PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True, time_range=time_range)
+        fig_output_path, step_range = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True, time_range=time_range)
     except KeyError:
-        PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True)
+        fig_output_path, step_range = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True)
 
     # Newton history
     # determine whether newton is used
@@ -96,7 +96,7 @@ def PlotCaseRun(case_path, **kwargs):
     match_obj1 = re.search('iterated defect correction Stokes', solver_scheme)
     if match_obj or match_obj1:
         print("Plotting newton solver history")
-        PlotRunTime.PlotNewtonSolverHistory(log_file, fig_path)
+        PlotRunTime.PlotNewtonSolverHistory(log_file, fig_path, step_range=step_range)
     else:
         print("Skipping newton solver history")
 

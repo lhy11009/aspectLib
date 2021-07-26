@@ -105,6 +105,9 @@ def PlotFigure(log_path, fig_path, **kwargs):
             wallclocks_fixed = wallclocks[re_inds]
 
     # mask for time
+    print("steps: ", steps)
+    print("steps_fixed: ", steps_fixed)
+    print("times_fixed: ", times_fixed)
     t_mask = (times_fixed >= 0.0)  # should always be true
     try:
         time_range = kwargs['time_range']
@@ -114,6 +117,7 @@ def PlotFigure(log_path, fig_path, **kwargs):
         Utilities.my_assert(((type(time_range) == list) and (len(time_range) == 2)), TypeError,\
                   "PlotFigure: time_range should be a list of 2")
         t_mask = ((times_fixed >= time_range[0]) & (times_fixed <= time_range[1]))
+        print("t_mask, ", t_mask)  # debug
         trailer = "%.2e_%.2e" % (time_range[0], time_range[1])
 
     # line 1: time
@@ -133,10 +137,18 @@ def PlotFigure(log_path, fig_path, **kwargs):
     ax2.set_xlabel('Step')
     ax2.tick_params(axis='y', labelcolor=color)
     # save figure
-    # todo append trailer
+    _name, _extension = Utilities.get_name_and_extention(fig_path)
+    if trailer != None:
+        fig_path = "%s_%s.%s" % (_name, trailer, _extension)
+    else:
+        fig_path = fig_path
     fig.tight_layout()
+
     plt.savefig(fig_path)
     print("New figure: %s" % fig_path)
+    # return range of steps
+    steps_plotted = steps_fixed[t_mask]
+    return fig_path, [steps_plotted[0], steps_plotted[-1]]
 
 
 def PlotNewtonSolver(log_path, fig_path_base, **kwargs):
@@ -201,6 +213,7 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     '''
     # read log file
     temp_path = os.path.join(RESULT_DIR, 'run_time_output_newton')
+    trailer = None
     print("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
     os.system("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
     Plotter = Plot.LINEARPLOT('SolverHistory', {})
@@ -213,7 +226,7 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     col_number_of_iteration = Plotter.header['Index_of_nonlinear_iteration']['col']
     col_residual = Plotter.header['Relative_nonlinear_residual']['col']
     end_step = int(Plotter.data[-1, col_step])
-    steps = [i for i in range(end_step)]
+    steps = np.array([i for i in range(end_step)])
     number_of_iterations = np.zeros(end_step)
     residuals = np.zeros(end_step)
     residuals_at_iteration0 = np.zeros(end_step)
@@ -221,7 +234,8 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     query_iteration0 = kwargs.get('query', 10)  # number of iteration to query
     query_iteration1 = kwargs.get('query', 20)  # number of iteration to query
 
-    for step in steps:
+    for i in range(steps.size):
+        step = steps[i]
         mask_step = (Plotter.data[:, col_step] == step)
         data = Plotter.data[mask_step, :]
         number_of_iterations[step] = data[-1, col_number_of_iteration]
@@ -236,14 +250,23 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
         except IndexError:
             residuals_at_iteration1[step] = data[-1, col_residual]
 
+    # plot mask
+    step_range = kwargs.get('step_range', None)
+    if step_range == None:
+        s_mask = (steps >= 0)
+    else:
+        Utilities.my_assert(type(step_range) == list and len(step_range) == 2, TypeError, "%s: step_range must be a list of 2." % Utilities.func_name())
+        s_mask = ((steps >= 0) & (steps <= step_range[1]))  # this is hard coded to be 0 for now
+        trailer = "%d_%d" % (0, step_range[1])
+
     # line1: residual
     fig, ax = plt.subplots(figsize=(5, 5))
     color = 'tab:blue'
-    # residual of iteration
-    ax.semilogy(steps, residuals, '-', linewidth=1.5, color=color, label='Residuals')
+    # residual of iteration, plot mask
+    ax.semilogy(steps[s_mask], residuals[s_mask], '-', linewidth=1.5, color=color, label='Residuals')
     # query residual of iteration 'query_iteration'
-    ax.semilogy(steps, residuals_at_iteration0, '--', linewidth=0.5, color='tab:orange', label='Residuals at iteration %d' % query_iteration0)
-    ax.semilogy(steps, residuals_at_iteration1, '--', linewidth=0.5, color='tab:green', label='Residuals at iteration %d' % query_iteration1)
+    ax.semilogy(steps[s_mask], residuals_at_iteration0[s_mask], '--', linewidth=0.5, color='tab:orange', label='Residuals at iteration %d' % query_iteration0)
+    ax.semilogy(steps[s_mask], residuals_at_iteration1[s_mask], '--', linewidth=0.5, color='tab:green', label='Residuals at iteration %d' % query_iteration1)
     ax.set_ylabel('Relative non-linear residual', color=color)
     ax.set_xlabel('Steps')
     ax.set_title('Solver History')
@@ -252,7 +275,7 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     # line 2: scaling factor
     ax2 = ax.twinx()
     color = 'tab:red'
-    ax2.plot(steps, number_of_iterations, '.', color=color, label='Numbers of Iterations')
+    ax2.plot(steps[s_mask], number_of_iterations[s_mask], '.', color=color, label='Numbers of Iterations')
     ax2.set_ylabel('Numbers of Iterations', color=color)
     ax2.tick_params(axis='y', labelcolor=color)
 
@@ -260,7 +283,10 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     fig.tight_layout()
     fig_path_base0 = fig_path_base.rpartition('.')[0]
     fig_path_type = fig_path_base.rpartition('.')[2]
-    fig_path = "%s.%s" % (fig_path_base0, fig_path_type)
+    if trailer == None:
+        fig_path = "%s.%s" % (fig_path_base0, fig_path_type)
+    else:
+        fig_path = "%s_%s.%s" % (fig_path_base0, trailer, fig_path_type)
     plt.savefig(fig_path)
     print("New figure: %s" % fig_path)
     return fig_path
