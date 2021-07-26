@@ -1,22 +1,22 @@
 # -*- coding: utf-8 -*-
 r"""(one line description)
 
-This exports: 
+This exports:
 
   -
 
 This depends on:
 
-  -  
+  -
 
 Examples of usage:
 
   - default usage: plot case running results
 
-        python -m shilofue.TwoDSubduction0.PlotCase plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20
+        Lib_TwoDSubduction0_PlotCase plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20
 
 descriptions
-""" 
+"""
 import numpy as np
 import sys, os, argparse, re
 # import json, re
@@ -56,17 +56,17 @@ def PlotCaseRun(case_path):
     Returns:
         -
     '''
-    # todo: get case parameters
+    # get case parameters
     prm_path = os.path.join(case_path, 'case.prm')
     inputs = ReadPrmFile(prm_path)
-    # todo: get solver scheme
+    # get solver scheme
     solver_scheme = inputs.get('Nonlinear solver scheme', 'single Advection, single Stokes')
 
     log_file = os.path.join(case_path, 'output', 'log.txt')
     assert(os.access(log_file, os.R_OK))
     statistic_file = os.path.join(case_path, 'output', 'statistics')
     assert(os.access(statistic_file, os.R_OK))
-    
+
     # statistic
     print('Ploting statistic results')
     fig_path = os.path.join(case_path, 'img', 'Statistic.png')
@@ -80,13 +80,15 @@ def PlotCaseRun(case_path):
     PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True)
 
     # Newton history
-    # todo: determine whether newton is used
+    # determine whether newton is used
     print('solver_scheme, ', solver_scheme) # debug
     fig_path = os.path.join(case_path, 'img', 'newton_solver_history.png')
+    # match object in solver scheme, so we only plot for these options
     match_obj = re.search('Newton', solver_scheme)
-    if match_obj:
+    match_obj1 = re.search('iterated defect correction Stokes', solver_scheme)
+    if match_obj or match_obj1:
         print("Plotting newton solver history")
-        PlotRunTime.PlotNewtonSolverHistory(log_file, fig_path) 
+        PlotRunTime.PlotNewtonSolverHistory(log_file, fig_path)
     else:
         print("Skipping newton solver history")
 
