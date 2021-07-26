@@ -105,9 +105,6 @@ def PlotFigure(log_path, fig_path, **kwargs):
             wallclocks_fixed = wallclocks[re_inds]
 
     # mask for time
-    print("steps: ", steps)
-    print("steps_fixed: ", steps_fixed)
-    print("times_fixed: ", times_fixed)
     t_mask = (times_fixed >= 0.0)  # should always be true
     try:
         time_range = kwargs['time_range']
@@ -117,7 +114,6 @@ def PlotFigure(log_path, fig_path, **kwargs):
         Utilities.my_assert(((type(time_range) == list) and (len(time_range) == 2)), TypeError,\
                   "PlotFigure: time_range should be a list of 2")
         t_mask = ((times_fixed >= time_range[0]) & (times_fixed <= time_range[1]))
-        print("t_mask, ", t_mask)  # debug
         trailer = "%.2e_%.2e" % (time_range[0], time_range[1])
 
     # line 1: time
