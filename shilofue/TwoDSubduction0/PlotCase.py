@@ -42,17 +42,20 @@ This scripts generate plots for a single case in TwoDSubduction project\n\
 \n\
 Examples of usage: \n\
 \n\
-  - default usage: plot case running results\n\
+  - default usage: plot case running results, -t option deals with a time range, default is a whole range\n\
 \n\
-        python -m shilofue.TwoDSubduction0.PlotCase plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20\
+        Lib_TwoDSubduction0_PlotCase plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20\
+          -t 0.0 -t1 0.5e6\
         ")
 
 
-def PlotCaseRun(case_path):
+def PlotCaseRun(case_path, **kwargs):
     '''
     Plot case run result
     Inputs:
         case_path(str): path to the case
+        kwargs:
+            time_range
     Returns:
         -
     '''
@@ -77,7 +80,12 @@ def PlotCaseRun(case_path):
     fig_path = os.path.join(case_path, 'img', 'run_time.png')
     if not os.path.isdir(os.path.dirname(fig_path)):
         os.mkdir(os.path.dirname(fig_path))
-    PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True)
+    # time range
+    try:
+        time_range = kwargs['time_range']
+        PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True, time_range=time_range)
+    except KeyError:
+        PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True)
 
     # Newton history
     # determine whether newton is used
@@ -108,6 +116,12 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='Some inputs')
+    parser.add_argument('-t', '--time', type=float,
+                        default=None,
+                        help='Time')
+    parser.add_argument('-t1', '--time1', type=float,
+                        default=None,
+                        help='Time1')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -118,7 +132,10 @@ def main():
     # commands
     if _commend == 'plot_case':
         # example:
-        PlotCaseRun(arg.inputs)
+        if arg.time != None and arg.time1 != None:
+            PlotCaseRun(arg.inputs, time_range=[arg.time, arg.time1])
+        else:
+            PlotCaseRun(arg.inputs)
     elif (_commend in ['-h', '--help']):
         # example:
         Usage()
