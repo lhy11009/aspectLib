@@ -24,6 +24,7 @@
 #include <vtkBandedPolyDataContourFilter.h>
 #include <vtkContourFilter.h>
 #include <vtkSimplePointsWriter.h>
+#include <vtkTriangle.h>
 
 
 class AspectVtk
@@ -38,6 +39,8 @@ class AspectVtk
         void extract_contour(std::string filename);
         // interpolate to uniform grid
         void interpolate_uniform_grid(std::string filename);
+        // integrate on cells
+        void integrate_cells();
 
     private:
         vtkSmartPointer<vtkXMLPUnstructuredGridReader> reader;
@@ -88,6 +91,31 @@ void AspectVtk::triangulate_grid()
     iDelaunay2D = vtkSmartPointer<vtkDelaunay2D>::New();
     iDelaunay2D->SetInputData(iPolyData);
     iDelaunay2D->Update();
+}
+
+
+void AspectVtk::integrate_cells()
+{
+    std::cout << "Integrate on cells" << std::endl;
+    vtkSmartPointer <vtkPolyData> tpolydata = iDelaunay2D->GetOutput();// polydata after trangulation
+    std::cout << "\t cell type: " << tpolydata->GetCell(0)->GetCellType()
+        << ", number of cells: " << tpolydata->GetNumberOfCells() << std::endl;  // check cell type
+    // const double rin = 2890e3;  // rin
+    double total_area = 0.0;
+    for (vtkIdType i = 0; i < tpolydata->GetNumberOfCells(); i++)
+    {
+        vtkCell* cell = tpolydata->GetCell(i);  // cell in this polydata
+        double p0[3], p1[3], p2[3], r0, r1, r2;
+        cell->GetPoints()->GetPoint(0, p0);
+        cell->GetPoints()->GetPoint(1, p1);
+        cell->GetPoints()->GetPoint(2, p2);
+        // r0 = sqrt(p0[0] * p0[0] + p0[1] * p0[1]);
+        // r1 = sqrt(p1[0] * p1[0] + p1[1] * p1[1]);
+        // r2 = sqrt(p2[0] * p2[0] + p2[1] * p2[1]);
+        double area = vtkTriangle::TriangleArea(p0, p1, p2);
+        total_area += area;
+    }
+    std::cout << "\t total area: " << total_area << std::endl;
 }
         
 
@@ -175,7 +203,8 @@ int main(int argc, char* argv[])
   aspect_vtk.readfile(filename);
   aspect_vtk.input_poly_data();
   aspect_vtk.triangulate_grid();
-  aspect_vtk.extract_contour("contour.txt");
-  aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");
+  aspect_vtk.integrate_cells();
+  // aspect_vtk.extract_contour("contour.txt");
+  // aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
 }
