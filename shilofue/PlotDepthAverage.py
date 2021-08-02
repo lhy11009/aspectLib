@@ -41,6 +41,27 @@ ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
 
+def Usage():
+    print("\
+Plot and process depth_average output from aspect\n\
+\n\
+Examples of usage: \n\
+  - plot by giving a time: \n\
+        python -m shilofue.PlotDepthAverage plot_by_time\n\
+        -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_intial_T/output/depth_average.txt\n\
+\n\
+  - plot figure: \n\
+\n\
+        python -m shilofue.PlotDepthAverage plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re_mesh \
+\n\
+  - export data: \n\
+\n\
+        python -m shilofue.PlotDepthAverage export_case \n\
+        -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20_DET660 \n\
+        -o .test/depth_average_export\
+        ")
+
+
 class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
     '''
     Class for plotting depth average file.
@@ -106,7 +127,7 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
         Read data of a time step, currently only read the first time step.
         Attributes:
             _filename(string):
-                filename for data file
+                filename for data file~/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20_DET660/output$
         Returns:
             _datalist:
                 a list of data for
@@ -329,9 +350,9 @@ def PlotDaFigure(depth_average_path, fig_path_base, kwargs):
     print("New figure: %s" % fig_path)
 
 
-def ExportData(depth_average_path, fig_path_base, kwargs):
+def ExportData(depth_average_path, output_dir, **kwargs):
     '''
-    plot figure
+    Export data of a step to separate file
     Inputs:
         kwargs:
             time_step - time_step to plot the figure, default is 0
@@ -354,7 +375,9 @@ def ExportData(depth_average_path, fig_path_base, kwargs):
     except IndexError:
         print("PlotDaFigure: File may not contain any depth average output, abort")
         return
-    data = DepthAverage.data[i0:i1, :]
+    names = kwargs.get('names', ['depth', 'temperature', 'adiabatic_density'])
+    output_path = os.path.join(output_dir, 'depth_average_output_s%d' % time_step)
+    DepthAverage.export(output_path, names, rows=[i for i in range(i0, i1)])
 
 
 def main():
@@ -378,6 +401,9 @@ def main():
     parser.add_argument('-t', '--time', type=str,
                         default=0.0,
                         help='model time(s or yr)')
+    parser.add_argument('-s', '--step', type=int,
+                        default=0,
+                        help='step')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -386,7 +412,10 @@ def main():
     arg = parser.parse_args(_options)
 
     # commands
-    if _commend == 'plot_by_time':
+    if (_commend in ['-h', '--help']):
+        # example:
+        Usage()
+    elif _commend == 'plot_by_time':
         # example:
         # use a json file
         json_file = os.path.join(shilofue_DIR, 'json_files', 'post_process.json')
@@ -412,6 +441,10 @@ def main():
         depth_average_path = os.path.join(arg.inputs, 'output', 'depth_average.txt')
         fig_path_base = os.path.join(arg.inputs, 'img', 'DepthAverage.png')
         PlotDaFigure(depth_average_path, fig_path_base)
+    
+    if _commend == 'export_case':
+        depth_average_path = os.path.join(arg.inputs, 'output', 'depth_average.txt')
+        ExportData(depth_average_path, arg.outputs, time_step=arg.step)
 
 # run script
 if __name__ == '__main__':
