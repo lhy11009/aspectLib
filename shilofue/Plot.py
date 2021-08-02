@@ -10,6 +10,7 @@ import pathlib
 import numpy as np
 from importlib import resources
 from shilofue.Utilities import JsonOptions, ReadHeader, ReadHeader2, UNITCONVERT, my_assert
+import shilofue.Utilities as Utilities
 from matplotlib import pyplot as plt
 
 
@@ -93,6 +94,28 @@ class LINEARPLOT():
         with open(_filename, 'r') as fin:
             _texts = fin.readlines()  # read the text of the file header
         self.header = ReadHeader(_texts)
+
+    def SortHeader(self):
+        '''
+        sort header
+        '''
+        names = []
+        cols = []
+        units = []
+        for key, value in self.header.items():
+            if key == 'total_col':
+                continue
+            names.append(key)
+            cols.append(int(value['col']))
+            units.append(value['unit'])
+        names = np.array(names)
+        cols = np.array(cols)
+        units = np.array(units)
+        sort_indexes = np.argsort(cols)
+        names = names[sort_indexes]
+        cols = cols[sort_indexes]
+        units = units[sort_indexes]
+        return cols, names, units  ## debug
 
     def ReadData(self, _filename):
         '''
@@ -211,10 +234,7 @@ class LINEARPLOT():
                 the same as input
         '''
         # Options for plot
-        # xname and yname are labels for x and y axis,
-        # color is the color for ploting
-        # label is the label for legend
-        # line is the type of line for plotting
+        # xname and yname are labels for x and y ax
         _xname = _opt.get('xname', 'Time')
         _yname = _opt.get('yname', 'Number_of_mesh_cells')
         _color = _opt.get('color', 'r')
@@ -279,6 +299,34 @@ but you will get a blank one for this field name' % _yname,
         # legend
         if _label is not None:
             _ax.legend()
+
+
+    def export(self, output_path, names, **kwargs):
+        '''
+        export data to file
+        kwargs:
+            rows: assign rows to output, default is None
+        '''
+        print('Export data to %s' % output_path)
+        my_assert(type(names) == list, TypeError, "%s: names must be a list" % Utilities.func_name())
+        cols = []
+        for _name in names:
+            cols.append(int(self.header[_name]['col']))
+        rows = kwargs.get("rows", None)
+        if rows != None:
+            my_assert((type(rows) == list), TypeError, "%s: rows must be a list" % Utilities.func_name())
+            odata = self.data[np.ix_(rows, cols)] 
+        else:
+            odata = self.data[:, cols]
+        print('\tData layout: ', odata.shape)
+        with open(output_path, 'w') as fout:
+            i = 1
+            # header
+            for _name in names:
+                fout.write("# %d: %s\n" % (i, _name))
+                i += 1
+            # data
+            np.savetxt(fout, odata, fmt='%-20.8e')
 
 
 class STATISTICS_PLOT_OLD(LINEARPLOT):

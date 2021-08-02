@@ -79,6 +79,7 @@ void AspectVtk::input_poly_data()
     array_names.push_back("T");
     array_names.push_back("spcrust");
     array_names.push_back("spharz");
+    array_names.push_back("density");
     for (auto p = array_names.begin(); p < array_names.end(); p++)
     {
         vtkSmartPointer<vtkDataArray> vtk_data_array = vtk_point_data->GetArray(p->c_str());
@@ -113,15 +114,18 @@ void AspectVtk::triangulate_grid()
 void AspectVtk::integrate_cells()
 {
     std::cout << "Integrate on cells" << std::endl;
+    const double grav_acc = 10.0;  // value for gravity acceleration
     vtkSmartPointer <vtkPolyData> tpolydata = iDelaunay2D->GetOutput();// polydata after trangulation
     std::cout << "\t cell type: " << tpolydata->GetCell(0)->GetCellType()
         << ", number of cells: " << tpolydata->GetNumberOfCells() << std::endl;  // check cell type
     // const double rin = 2890e3;  // rin
     auto sp_crust_data = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("spcrust")); // array for spcrust
     auto sp_harz_data = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("spharz")); // array for spcrust
+    auto density_data = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("density")); // array for density
     double total_area = 0.0;
     double total_spcrust_area = 0.0;
     double total_spharz_area = 0.0;
+    double total_gravity = 0.0;
     for (vtkIdType i = 0; i < tpolydata->GetNumberOfCells(); i++)
     {
         vtkCell* cell = tpolydata->GetCell(i);  // cell in this polydata
@@ -143,19 +147,26 @@ void AspectVtk::integrate_cells()
         double sp_harz0 = sp_harz_data->GetTuple1(idList->GetId(0));
         double sp_harz1 = sp_harz_data->GetTuple1(idList->GetId(1));
         double sp_harz2 = sp_harz_data->GetTuple1(idList->GetId(2));
+        // density
+        double density0 = density_data->GetTuple1(idList->GetId(0));
+        double density1 = density_data->GetTuple1(idList->GetId(1));
+        double density2 = density_data->GetTuple1(idList->GetId(2));
         // average value, future: volume from trangulation
         double sp_crust_avg = (sp_crust0 + sp_crust1 + sp_crust2) / 3.0;
         double sp_harz_avg = (sp_harz0 + sp_harz1 + sp_harz2) / 3.0;
+        double density_avg = (density0 + density1 + density2) / 3.0;
         // areas on composition
         double sp_crust_area = area * sp_crust_avg;
         double sp_harz_area = area * sp_harz_avg;
+        double gravity = density_avg * grav_acc * (sp_crust_area + sp_harz_area);
         // add up
         total_area += area;
         total_spcrust_area += sp_crust_area;
         total_spharz_area += sp_harz_area;
+        total_gravity += gravity;
     }
-    std::cout << "\t total area: " << total_area << ", total spcrust area: " << total_spcrust_area
-        << ", total spharz area: " << total_spharz_area << std::endl;
+    std::cout << "\t total area (m^2): " << total_area << ", total spcrust area (m^2): " << total_spcrust_area
+        << ", total spharz area (m^2): " << total_spharz_area << ", total gravity (N/m): " << total_gravity << std::endl;
 }
         
 

@@ -1,6 +1,7 @@
 import os
 import pytest
 import json
+import filecmp
 import numpy as np
 import shilofue.Plot as Plot
 from shilofue.Utilities import UNITCONVERT
@@ -12,8 +13,6 @@ if not os.path.isdir(_test_dir):
     os.mkdir(_test_dir)
 _test_source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test-plot')
 assert(os.path.isdir(_test_source_dir))
-
-
 
 
 def test_plot_newton_solver():
@@ -100,3 +99,35 @@ def test_plot_machine_time():
     MachineTime(test_file, fileout=_ofile)
     # assert that the file is generated successfull
     assert(os.path.isfile(_ofile))
+
+
+def test_export_file():
+    # export
+    '''
+    A test on ploting newton solver results
+    '''
+    test_file = os.path.join(_test_source_dir, 'statistics')
+    assert(os.access(test_file, os.R_OK))
+    _ofile = os.path.join(_test_dir, 'statistics_export')
+    _ofile1 = os.path.join(_test_dir, 'statistics_export1')  # partially output rows
+    std_file = os.path.join(_test_source_dir, 'statistics_export')
+    std_file1 = os.path.join(_test_source_dir, 'statistics_export1')
+    if(os.path.isfile(_ofile)):
+        # remove previous files
+        os.remove(_ofile)
+    if(os.path.isfile(_ofile1)):
+        # remove previous files
+        os.remove(_ofile1)
+    # sort header
+    Statistics = Plot.MACHINE_TIME_PLOT('Statistics')
+    Statistics.ReadHeader(test_file)
+    Statistics.ReadData(test_file)
+    cols, names, units = Statistics.SortHeader()
+    assert(names[0] == "Time_step_number")
+    assert(names[1] == "Time")
+    # export
+    Statistics.export(_ofile, ["Iterations_for_temperature_solver", "Iterations_for_composition_solver_1"])
+    assert(filecmp.cmp(_ofile, std_file))
+    # export1
+    Statistics.export(_ofile1, ["Iterations_for_temperature_solver", "Iterations_for_composition_solver_1"], rows=[i for i in range(10)])
+    assert(filecmp.cmp(_ofile1, std_file1))
