@@ -377,7 +377,7 @@ def ExportData(depth_average_path, output_dir, **kwargs):
         return
     names = kwargs.get('names', ['depth', 'temperature', 'adiabatic_density'])
     output_path = os.path.join(output_dir, 'depth_average_output_s%d' % time_step)
-    DepthAverage.export(output_path, names, rows=[i for i in range(i0, i1)])
+    DepthAverage.export(output_path, names, rows=[i for i in range(i0, i1)], include_size=True)
 
 
 def main():
