@@ -2,6 +2,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <fstream>
+#include <sstream>
 #include <vtkDataSet.h>
 #include <vtkDataSetMapper.h>
 #include <vtkNamedColors.h>
@@ -31,10 +33,23 @@
 #include <vtkCellData.h>
 
 
+class FileReader
+{
+    public:
+        // todo
+        void read_horiz_avg(const std::string &filename, std::vector<double> & radius, std::vector<double> &Ts);
+
+    private:
+
+};
+
+
 class AspectVtk
 {
     public:
         void readfile(std::string filename);
+        // read horizontal average file
+        void read_horiz_avg(const std::string filename);
         // get poly data from reader
         void input_poly_data();
         // Triangulate the grid points
@@ -52,7 +67,13 @@ class AspectVtk
         vtkSmartPointer<vtkPolyData> iPolyData; 
         // triangulated data
         vtkSmartPointer<vtkDelaunay2D> iDelaunay2D;
+        // reader
+        FileReader file_reader;
+        // horizontal average
+        std::vector<double> horiz_radius;
+        std::vector<double> horiz_Ts;
 };
+
 
 
 void AspectVtk::readfile(std::string filename)
@@ -238,6 +259,32 @@ void AspectVtk::interpolate_uniform_grid(std::string filename)
     writer->Write();
 }
 
+//todo
+void AspectVtk::read_horiz_avg(const std::string filename)
+{
+    std::cout << "Read horiz_avg file: " << filename << std::endl;
+    file_reader.read_horiz_avg(filename, horiz_radius, horiz_Ts);
+    for (auto &p: horiz_radius){
+        std::cout << p << std::endl;
+    }
+}
+
+void FileReader::read_horiz_avg(const std::string &filename, std::vector<double> & radius, std::vector<double> &Ts)
+{
+    std::ifstream file(filename);
+
+    if (file)
+    {
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        file.close();
+    }
+    else
+    {
+        std::cerr << "File: " << filename << " cannot be opened" << std::endl;
+    }
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -250,12 +297,18 @@ int main(int argc, char* argv[])
   }
   // read file
   std::string filename = argv[1];
+  // todo
+  std::string avg_filename = argv[1];
   AspectVtk aspect_vtk;
   aspect_vtk.readfile(filename);
+  // todo
+  aspect_vtk.read_horiz_avg(avg_filename);
+  /*
   aspect_vtk.input_poly_data();
   aspect_vtk.triangulate_grid();
   aspect_vtk.integrate_cells();
   aspect_vtk.extract_contour("contour.txt");
   aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
+  */
   return EXIT_SUCCESS;
 }
