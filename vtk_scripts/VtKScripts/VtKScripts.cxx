@@ -62,6 +62,8 @@ class AspectVtk
         void interpolate_uniform_grid(std::string filename);
         // integrate on cells
         void integrate_cells();
+        // derive density difference
+        void density_diff();
         // get data from horiz
         double get_from_horiz(double depth, const std::string &field, const bool fix_out_of_bound=false);
 
@@ -348,6 +350,12 @@ double AspectVtk::get_from_horiz(double depth, const std::string &field, const b
     }
     return value;
 }
+        
+void AspectVtk::density_diff()
+{
+    //todo
+    return;
+}
 
 void FileReader::read_horiz_avg(const std::string &filename,
         std::vector<double> & depths,
@@ -434,6 +442,7 @@ int main(int argc, char* argv[])
   aspect_vtk.read_horiz_avg(avg_filename);
   aspect_vtk.input_poly_data();
   aspect_vtk.triangulate_grid();
+  aspect_vtk.density_diff();
   aspect_vtk.integrate_cells();
   //aspect_vtk.extract_contour("contour.txt");
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
