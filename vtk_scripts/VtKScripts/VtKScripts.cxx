@@ -45,10 +45,25 @@ class FileReader
 
 };
 
+struct Prm
+{
+    //todo, parameters
+    double grav_acc;  // value for gravity acceleration
+    double Ro;
+    double slab_depth;
+
+};
 
 class AspectVtk
 {
     public:
+        // initialize, todo
+        AspectVtk(){
+            prm.grav_acc = 10.0;  // value for gravity acceleration
+            prm.Ro = 6371e3;
+            prm.slab_depth = 50e3;
+        };
+        // readfile
         void readfile(std::string filename);
         // read horizontal average file
         void read_horiz_avg(const std::string &filename);
@@ -67,10 +82,11 @@ class AspectVtk
         // derive density difference
         void density_diff();
         // derive mow from blocking temperature; 
-        // todo
         void mow_from_blocking(const double blocking_T, const double blocking_P);
         // get data from horiz
         double get_from_horiz(double depth, const std::string &field, const bool fix_out_of_bound=false);
+        // prepare slab composition
+        void prepare_slab(const std::vector<std::string> names);
 
     private:
         vtkSmartPointer<vtkXMLPUnstructuredGridReader> reader;
@@ -84,8 +100,9 @@ class AspectVtk
         std::vector<double> horiz_depths;
         std::vector<double> horiz_Ts;
         std::vector<double> horiz_densities;
+        // todo parameter
+        Prm prm;
 };
-
 
 
 void AspectVtk::readfile(std::string filename)
@@ -113,7 +130,6 @@ void AspectVtk::input_poly_data()
     array_names.push_back("spcrust");
     array_names.push_back("spharz");
     array_names.push_back("density");
-    // todo
     array_names.push_back("p");
     for (auto p = array_names.begin(); p < array_names.end(); p++)
     {
@@ -146,22 +162,43 @@ void AspectVtk::triangulate_grid()
 }
 
 
+void AspectVtk::prepare_slab(const std::vector<std::string> names)
+{
+    vtkSmartPointer <vtkPolyData> tpolydata = iDelaunay2D->GetOutput();// polydata after trangulation
+    std::vector<vtkFloatArray*> compositions;
+    for (auto &p: names)
+        compositions.push_back(dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray(p.c_str())));
+    vtkNew<vtkFloatArray> slab_fields;
+    slab_fields->DeepCopy(*(compositions.begin()));
+    slab_fields->SetName("slab");
+    for (vtkIdType i = 0; i < tpolydata->GetNumberOfPoints(); i++)
+    {
+        for (auto iter=compositions.begin()+1; iter<compositions.end(); iter++)
+        {
+            const double new_comp = (*iter)->GetTuple1(i);
+            slab_fields->SetTuple1(i, slab_fields->GetTuple1(i) + new_comp);
+        }
+    }
+    tpolydata->GetPointData()->AddArray(slab_fields);
+    iDelaunay2D->Update();
+}
+
+
 void AspectVtk::integrate_cells()
 {
     std::cout << "Integrate on cells" << std::endl;
-    const double grav_acc = 10.0;  // value for gravity acceleration
-    const double Ro = 6371e3;
-    const double slab_depth = 50e3;
+    // todo
+    const double grav_acc = prm.grav_acc;  // value for gravity acceleration
+    const double Ro = prm.Ro;
+    const double slab_depth = prm.slab_depth;
     vtkSmartPointer <vtkPolyData> tpolydata = iDelaunay2D->GetOutput();// polydata after trangulation
     std::cout << "\tcell type: " << tpolydata->GetCell(0)->GetCellType()
         << ", number of cells: " << tpolydata->GetNumberOfCells() << std::endl;  // check cell type
     // const double rin = 2890e3;  // rin
-    auto sp_crust_data = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("spcrust")); // array for spcrust
-    auto sp_harz_data = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("spharz")); // array for spcrust
+    auto slab = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("slab")); // array for spcrust
     auto density_data = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("density")); // array for density
     double total_area = 0.0;
-    double total_spcrust_area = 0.0;
-    double total_spharz_area = 0.0;
+    double total_slab_area = 0.0;
     double total_gravity = 0.0;
     double total_buoyancy = 0.0;
     for (vtkIdType i = 0; i < tpolydata->GetNumberOfCells(); i++)
@@ -179,42 +216,34 @@ void AspectVtk::integrate_cells()
         double area = vtkTriangle::TriangleArea(p0, p1, p2);
         // read from horiz_avg
         const double horiz_density0 = get_from_horiz(Ro - r0, "density", true);
-        cout << "\t" << Ro - r0 << ", density: " << horiz_density0 << std::endl; // debug
         const double horiz_density1 = get_from_horiz(Ro - r1, "density", true);
         const double horiz_density2 = get_from_horiz(Ro - r2, "density", true);
-        // subducting slab: crust
-        double sp_crust0 = sp_crust_data->GetTuple1(idList->GetId(0));
-        double sp_crust1 = sp_crust_data->GetTuple1(idList->GetId(1));
-        double sp_crust2 = sp_crust_data->GetTuple1(idList->GetId(2));
-        // subducting slab: harz
-        double sp_harz0 = sp_harz_data->GetTuple1(idList->GetId(0));
-        double sp_harz1 = sp_harz_data->GetTuple1(idList->GetId(1));
-        double sp_harz2 = sp_harz_data->GetTuple1(idList->GetId(2));
+        // subducting slab
+        double slab0 = slab->GetTuple1(idList->GetId(0));
+        double slab1 = slab->GetTuple1(idList->GetId(1));
+        double slab2 = slab->GetTuple1(idList->GetId(2));
         // density
         double density0 = density_data->GetTuple1(idList->GetId(0));
         double density1 = density_data->GetTuple1(idList->GetId(1));
         double density2 = density_data->GetTuple1(idList->GetId(2));
         // average value, future: volume from trangulation
-        double sp_crust_avg = (sp_crust0 + sp_crust1 + sp_crust2) / 3.0;
-        double sp_harz_avg = (sp_harz0 + sp_harz1 + sp_harz2) / 3.0;
+        double slab_avg = (slab0 + slab1 + slab2) / 3.0;
         double density_avg = (density0 + density1 + density2) / 3.0;
         double horiz_density_avg = (horiz_density0 + horiz_density1 + horiz_density2) / 3.0;
         // areas on composition
-        double sp_crust_area = area * sp_crust_avg;
-        double sp_harz_area = area * sp_harz_avg;
-        double gravity = density_avg * grav_acc * (sp_crust_area + sp_harz_area);
-        double buoyancy = -(density_avg - horiz_density_avg) * grav_acc * (sp_crust_area + sp_harz_area);
+        double slab_area = area * slab_avg;
+        double gravity = density_avg * grav_acc * slab_area;
+        double buoyancy = -(density_avg - horiz_density_avg) * grav_acc * slab_area;
         // add up
         total_area += area;
-        total_spcrust_area += sp_crust_area;
-        total_spharz_area += sp_harz_area;
+        total_slab_area += slab_area;
         if (Ro - r0 > slab_depth)
             total_gravity += gravity;
         if (Ro - r0 > slab_depth)
             total_buoyancy += buoyancy;
     }
-    std::cout << "\t total area (m^2): " << total_area << ", total spcrust area (m^2): " << total_spcrust_area
-        << ", total spharz area (m^2): " << total_spharz_area << ", total gravity (N/m): " << total_gravity
+    std::cout << "\t total area (m^2): " << total_area << ", total slab area (m^2): " << total_slab_area
+        << ", total gravity (N/m): " << total_gravity
         << ", total buoyancy (N/m):" << total_buoyancy <<std::endl;
 }
         
@@ -385,7 +414,6 @@ void AspectVtk::density_diff()
 
 void AspectVtk::mow_from_blocking(const double blocking_T, const double blocking_P)
 {
-    //todo
     std::cout << "Pull out mow field" << std::endl;
     const double Ro = 6371e3;
     vtkSmartPointer <vtkPolyData> tpolydata = iDelaunay2D->GetOutput();// polydata after trangulation
@@ -410,7 +438,6 @@ void AspectVtk::mow_from_blocking(const double blocking_T, const double blocking
 }
     
 void AspectVtk::output(const std::string filename){
-    // todo
     std::cout << "Output data" << std::endl;
     // write output 
     vtkNew<vtkXMLPolyDataWriter> writer;
@@ -500,16 +527,17 @@ int main(int argc, char* argv[])
   // read file
   std::string filename = argv[1];
   std::string avg_filename = argv[2];
+  // todo
   AspectVtk aspect_vtk;
   aspect_vtk.readfile(filename);
   aspect_vtk.read_horiz_avg(avg_filename);
   aspect_vtk.input_poly_data();
   aspect_vtk.triangulate_grid();
-  aspect_vtk.density_diff();
-  // todo
-  aspect_vtk.mow_from_blocking(973.0, 12.5e9);  // 725 + 273 from Quinteros
+  //aspect_vtk.density_diff();
+  //aspect_vtk.mow_from_blocking(973.0, 12.5e9);  // 725 + 273 from Quinteros
+  aspect_vtk.prepare_slab({"spcrust", "spharz"});
   aspect_vtk.output("output.vtp");
-  //aspect_vtk.integrate_cells();
+  aspect_vtk.integrate_cells();
   //aspect_vtk.extract_contour("contour.txt");
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
