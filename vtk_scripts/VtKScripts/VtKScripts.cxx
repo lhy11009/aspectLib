@@ -66,6 +66,9 @@ class AspectVtk
         void integrate_cells();
         // derive density difference
         void density_diff();
+        // derive mow from blocking temperature; 
+        // todo
+        void mow_from_blocking(const double blocking_T, const double blocking_P);
         // get data from horiz
         double get_from_horiz(double depth, const std::string &field, const bool fix_out_of_bound=false);
 
@@ -110,6 +113,8 @@ void AspectVtk::input_poly_data()
     array_names.push_back("spcrust");
     array_names.push_back("spharz");
     array_names.push_back("density");
+    // todo
+    array_names.push_back("p");
     for (auto p = array_names.begin(); p < array_names.end(); p++)
     {
         vtkSmartPointer<vtkDataArray> vtk_data_array = vtk_point_data->GetArray(p->c_str());
@@ -355,11 +360,9 @@ double AspectVtk::get_from_horiz(double depth, const std::string &field, const b
         
 void AspectVtk::density_diff()
 {
-    //todo
+    std::cout << "Pull out differential density" << std::endl;
     const double Ro = 6371e3;
     vtkSmartPointer <vtkPolyData> tpolydata = iDelaunay2D->GetOutput();// polydata after trangulation
-    std::cout << "\tcell type: " << tpolydata->GetCell(0)->GetCellType()
-        << ", number of cells: " << tpolydata->GetNumberOfCells() << std::endl;  // check cell type
     vtkSmartPointer<vtkPoints> vtk_points = reader->GetOutput()->GetPoints(); // coordinates
     auto densities = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("density")); // array for density
     vtkNew<vtkFloatArray> densities_diff;
@@ -375,6 +378,33 @@ void AspectVtk::density_diff()
         densities_diff->SetTuple1(i, density - horiz_density0);
     }
     tpolydata->GetPointData()->AddArray(densities_diff);
+    iDelaunay2D->Update();
+    return;
+}
+
+
+void AspectVtk::mow_from_blocking(const double blocking_T, const double blocking_P)
+{
+    //todo
+    std::cout << "Pull out mow field" << std::endl;
+    const double Ro = 6371e3;
+    vtkSmartPointer <vtkPolyData> tpolydata = iDelaunay2D->GetOutput();// polydata after trangulation
+    vtkSmartPointer<vtkPoints> vtk_points = reader->GetOutput()->GetPoints(); // coordinates
+    auto densities = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("density")); // array for density
+    auto Ps = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("p")); // array for density
+    auto Ts = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("T")); // array for density
+    vtkNew<vtkFloatArray> mow_phases;
+    mow_phases->SetName("meta_stable_olivine");
+    for (vtkIdType i = 0; i < tpolydata->GetNumberOfPoints(); i++)
+    {
+        const double Pi = Ps->GetTuple1(i);
+        const double Ti = Ts->GetTuple1(i);
+        if (Pi > blocking_P && Ti < blocking_T)
+            mow_phases->InsertNextValue(1.0);
+        else
+            mow_phases->InsertNextValue(0.0);
+    }
+    tpolydata->GetPointData()->AddArray(mow_phases);
     iDelaunay2D->Update();
     return;
 }
@@ -476,6 +506,8 @@ int main(int argc, char* argv[])
   aspect_vtk.input_poly_data();
   aspect_vtk.triangulate_grid();
   aspect_vtk.density_diff();
+  // todo
+  aspect_vtk.mow_from_blocking(998.0, 12.5e9);  // 725 + 273 from Quinteros
   aspect_vtk.output("output.vtp");
   //aspect_vtk.integrate_cells();
   //aspect_vtk.extract_contour("contour.txt");
