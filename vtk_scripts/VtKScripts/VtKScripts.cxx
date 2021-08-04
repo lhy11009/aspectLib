@@ -57,7 +57,9 @@ class AspectVtk
         // Triangulate the grid points
         void triangulate_grid();
         // Extract contour
-        void extract_contour(std::string filename);
+        void extract_contour(const std::string filename);
+        // Output
+        void output(const std::string filename);
         // interpolate to uniform grid
         void interpolate_uniform_grid(std::string filename);
         // integrate on cells
@@ -212,7 +214,7 @@ void AspectVtk::integrate_cells()
 }
         
 
-void AspectVtk::extract_contour(std::string filename)
+void AspectVtk::extract_contour(const std::string filename)
 {
     std::cout << "Filter contour" << std::endl;
     vtkNew<vtkContourFilter> contour_filter;  // simple
@@ -354,7 +356,38 @@ double AspectVtk::get_from_horiz(double depth, const std::string &field, const b
 void AspectVtk::density_diff()
 {
     //todo
+    const double Ro = 6371e3;
+    vtkSmartPointer <vtkPolyData> tpolydata = iDelaunay2D->GetOutput();// polydata after trangulation
+    std::cout << "\tcell type: " << tpolydata->GetCell(0)->GetCellType()
+        << ", number of cells: " << tpolydata->GetNumberOfCells() << std::endl;  // check cell type
+    vtkSmartPointer<vtkPoints> vtk_points = reader->GetOutput()->GetPoints(); // coordinates
+    auto densities = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("density")); // array for density
+    vtkNew<vtkFloatArray> densities_diff;
+    densities_diff->DeepCopy(densities);
+    densities_diff->SetName("density_diff");
+    for (vtkIdType i = 0; i < tpolydata->GetNumberOfPoints(); i++)
+    {
+        double p0[3];
+        vtk_points->GetPoint(i, p0);
+        double r0 = sqrt(p0[0] * p0[0] + p0[1] * p0[1]);
+        const double density = densities->GetTuple1(i);
+        const double horiz_density0 = get_from_horiz(Ro - r0, "density", true);
+        densities_diff->SetTuple1(i, density - horiz_density0);
+    }
+    tpolydata->GetPointData()->AddArray(densities_diff);
+    iDelaunay2D->Update();
     return;
+}
+    
+void AspectVtk::output(const std::string filename){
+    // todo
+    std::cout << "Output data" << std::endl;
+    // write output 
+    vtkNew<vtkXMLPolyDataWriter> writer;
+    writer->SetInputData(iDelaunay2D->GetOutput());
+    writer->SetFileName(filename.c_str());
+    writer->Update();
+    writer->Write();
 }
 
 void FileReader::read_horiz_avg(const std::string &filename,
@@ -443,7 +476,8 @@ int main(int argc, char* argv[])
   aspect_vtk.input_poly_data();
   aspect_vtk.triangulate_grid();
   aspect_vtk.density_diff();
-  aspect_vtk.integrate_cells();
+  aspect_vtk.output("output.vtp");
+  //aspect_vtk.integrate_cells();
   //aspect_vtk.extract_contour("contour.txt");
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
