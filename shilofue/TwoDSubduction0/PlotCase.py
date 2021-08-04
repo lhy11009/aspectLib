@@ -85,7 +85,8 @@ def PlotCaseRun(case_path, **kwargs):
         time_range = kwargs['time_range']
         fig_output_path, step_range = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True, time_range=time_range)
     except KeyError:
-        fig_output_path, step_range = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True)
+        fig_output_path = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True)
+        step_range = None
 
     # Newton history
     # determine whether newton is used

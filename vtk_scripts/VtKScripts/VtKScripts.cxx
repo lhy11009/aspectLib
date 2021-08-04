@@ -507,7 +507,7 @@ int main(int argc, char* argv[])
   aspect_vtk.triangulate_grid();
   aspect_vtk.density_diff();
   // todo
-  aspect_vtk.mow_from_blocking(998.0, 12.5e9);  // 725 + 273 from Quinteros
+  aspect_vtk.mow_from_blocking(973.0, 12.5e9);  // 725 + 273 from Quinteros
   aspect_vtk.output("output.vtp");
   //aspect_vtk.integrate_cells();
   //aspect_vtk.extract_contour("contour.txt");

@@ -82,8 +82,9 @@ def PlotFigure(log_path, fig_path, **kwargs):
     # fix restart
     re_inds = []
     fix_restart = kwargs.get('fix_restart', False)
-    steps_fixed = steps  # initialize these 3 as the original ones, so we'll see no changes if there is no restart
-    times_fixed = times
+    # todo
+    steps_fixed = []  # initialize these 3 as the original ones, so we'll see no changes if there is no restart
+    times_fixed = []
     wallclocks_fixed = wallclocks
     if fix_restart:
         last_step = -1
@@ -105,7 +106,9 @@ def PlotFigure(log_path, fig_path, **kwargs):
             wallclocks_fixed = wallclocks[re_inds]
 
     # mask for time
-    t_mask = (times_fixed >= 0.0)  # should always be true
+    # todo
+    t_mask = (times >= 0.0)  # should always be true
+    t_mask_fixed = (times_fixed >= 0.0)
     try:
         time_range = kwargs['time_range']
     except KeyError:
@@ -113,14 +116,17 @@ def PlotFigure(log_path, fig_path, **kwargs):
     else:
         Utilities.my_assert(((type(time_range) == list) and (len(time_range) == 2)), TypeError,\
                   "PlotFigure: time_range should be a list of 2")
-        t_mask = ((times_fixed >= time_range[0]) & (times_fixed <= time_range[1]))
+        t_mask = ((times >= time_range[0]) & (times <= time_range[1]))
+        t_mask_fixed = ((times_fixed >= time_range[0]) & (times_fixed <= time_range[1]))
         trailer = "%.2e_%.2e" % (time_range[0], time_range[1])
 
     # line 1: time
     # use mask
     fig, ax1 = plt.subplots(figsize=(5, 5))
     color = 'tab:blue'
-    ax1.plot(steps_fixed[t_mask], times_fixed[t_mask] / 1e6, '-', color=color, label='Time')
+    # todo
+    ax1.plot(steps[t_mask], times[t_mask] / 1e6, '-', color=color, label='Time')
+    ax1.plot(steps_fixed[t_mask_fixed], times_fixed[t_mask_fixed] / 1e6, '.', color=color, label='Time')
     ax1.set_ylabel('Time [myr]', color=color)
     ax1.set_xlabel('Step')
     ax1.tick_params(axis='y', labelcolor=color)
@@ -128,7 +134,8 @@ def PlotFigure(log_path, fig_path, **kwargs):
     # line 2: wall clock
     ax2 = ax1.twinx()
     color = 'tab:red'
-    ax2.plot(steps_fixed[t_mask], wallclocks_fixed[t_mask] / hr, '-', color=color, label='Wall Clock [s]')
+    ax2.plot(steps[t_mask], wallclocks[t_mask] / hr, '-', color=color, label='Wall Clock [s]')
+    ax2.plot(steps_fixed[t_mask_fixed], wallclocks_fixed[t_mask_fixed] / hr, '.', color=color, label='Wall Clock [s]')
     ax2.set_ylabel('Wall Clock [hr]', color=color)
     ax2.set_xlabel('Step')
     ax2.tick_params(axis='y', labelcolor=color)
@@ -143,7 +150,7 @@ def PlotFigure(log_path, fig_path, **kwargs):
     plt.savefig(fig_path)
     print("New figure: %s" % fig_path)
     # return range of steps
-    steps_plotted = steps_fixed[t_mask]
+    steps_plotted = steps[t_mask]
     return fig_path, [steps_plotted[0], steps_plotted[-1]]
 
 
