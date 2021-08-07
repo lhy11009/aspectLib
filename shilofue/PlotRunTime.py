@@ -83,9 +83,9 @@ def PlotFigure(log_path, fig_path, **kwargs):
     re_inds = []
     fix_restart = kwargs.get('fix_restart', False)
     # todo
-    steps_fixed = []  # initialize these 3 as the original ones, so we'll see no changes if there is no restart
-    times_fixed = []
-    wallclocks_fixed = wallclocks
+    steps_fixed = np.array([])  # initialize these 3 as the original ones, so we'll see no changes if there is no restart
+    times_fixed = np.array([])
+    wallclocks_fixed = np.array([])
     if fix_restart:
         last_step = -1
         i = 0
@@ -229,6 +229,7 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     col_number_of_iteration = Plotter.header['Index_of_nonlinear_iteration']['col']
     col_residual = Plotter.header['Relative_nonlinear_residual']['col']
     end_step = int(Plotter.data[-1, col_step])
+    # steps to plot, todo get from default or read in
     steps = np.array([i for i in range(end_step)])
     number_of_iterations = np.zeros(end_step)
     residuals = np.zeros(end_step)
@@ -259,8 +260,8 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
         s_mask = (steps >= 0)
     else:
         Utilities.my_assert(type(step_range) == list and len(step_range) == 2, TypeError, "%s: step_range must be a list of 2." % Utilities.func_name())
-        s_mask = ((steps >= 0) & (steps <= step_range[1]))  # this is hard coded to be 0 for now
-        trailer = "%d_%d" % (0, step_range[1])
+        s_mask = ((steps >= step_range[0]) & (steps <= step_range[1]))  # this is hard coded to be 0 for now
+        trailer = "%d_%d" % (step_range[0], step_range[1])
 
     # line1: residual
     fig, ax = plt.subplots(figsize=(5, 5))
@@ -316,6 +317,9 @@ def main():
     parser.add_argument('-s', '--step', type=int,
                         default=0,
                         help='time step')
+    parser.add_argument('-s1', '--step1', type=int,
+                        default=-1,
+                        help='time step')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -343,7 +347,16 @@ def main():
 
     elif _commend == "plot_newton_solver_history":
         # plot newton solver output
-        o_path = PlotNewtonSolverHistory(arg.inputs, arg.outputs, endstep=arg.step)
+        # todo
+        log_file = os.path.join(arg.inputs, 'output', 'log.txt')
+        assert(log_file)
+        fig_path = os.path.join(arg.inputs, 'img', 'newton_solver_history.png')
+        if not os.path.isdir(os.path.dirname(fig_path)):
+            os.mkdir(os.path.dirname(fig_path))
+        if arg.step1 >= 0:
+            o_path = PlotNewtonSolverHistory(log_file, fig_path, step_range=[arg.step, arg.step1])
+        else:
+            o_path = PlotNewtonSolverHistory(log_file, fig_path)
 
     else:
         # commend not right
