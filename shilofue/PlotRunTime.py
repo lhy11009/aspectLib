@@ -42,6 +42,21 @@ RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
+def Usage():
+    print("\
+This scripts generate plots\n\
+\n\
+Examples of usage: \n\
+\n\
+  - plot newton solver results\n\
+\n\
+        Lib_PlotRunTime plot_newton_solver_history ~/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 -s 350 -s1 450\n\
+\n\
+  - plot newton solver step\n\
+\n\
+        Lib_PlotRunTime plot_newton_solver_step -i ~/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 -s 390\n\
+        ")
+
 
 def PlotFigure(log_path, fig_path, **kwargs):
     '''
@@ -343,11 +358,15 @@ def main():
 
     elif _commend == "plot_newton_solver_step":
         # plot newton solver output
-        o_path = PlotNewtonSolver(arg.inputs, arg.outputs, step=arg.step)
+        log_file = os.path.join(arg.inputs, 'output', 'log.txt')
+        assert(log_file)
+        fig_path = os.path.join(arg.inputs, 'img', 'newton_solver.png')
+        if not os.path.isdir(os.path.dirname(fig_path)):
+            os.mkdir(os.path.dirname(fig_path))
+        o_path = PlotNewtonSolver(log_file, fig_path, step=arg.step)
 
     elif _commend == "plot_newton_solver_history":
         # plot newton solver output
-        # todo
         log_file = os.path.join(arg.inputs, 'output', 'log.txt')
         assert(log_file)
         fig_path = os.path.join(arg.inputs, 'img', 'newton_solver_history.png')
