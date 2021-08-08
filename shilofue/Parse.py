@@ -8,7 +8,7 @@ import numpy as np
 import shilofue.Plot as Plot
 import shilofue.ParsePrm as ParsePrm
 from shilofue.Utilities import my_assert, re_neat_word, WriteFileHeader
-from pathlib import Path 
+from pathlib import Path
 
 '''
 For now, my strategy is first defining a method to parse inputs for every key word,
@@ -109,7 +109,7 @@ class CASE():
         my_assert(type(self.test)==dict, TypeError, 'Test must be a dictionary')
         # list of particle coordinates
         self.particle_data = None
-        
+
     def UpdatePrmDict(self, _names, _values):
         '''
         Update the dictionary of prm file,
@@ -132,7 +132,7 @@ class CASE():
         for operation in parse_operations.ALL_OPERATIONS:
             getattr(parse_operations, operation)(self.idict, _config)
         pass
-    
+
     def process_particle_data(self):
         '''
         process the coordinates of particle, doing nothing here.
@@ -162,7 +162,7 @@ class CASE():
                 _pattern_value = PatternFromValue(value)
                 _case_name += (_pattern + _pattern_value)
         return _case_name
-    
+
     def output_particle_ascii(self, fout):
         '''
         Output to a ascii file that contains Particle coordinates, containing the coordinates of each particle
@@ -205,10 +205,10 @@ class CASE():
             my_assert(self.config != None, ValueError,
                       'With the \'auto\' method, the config must exist')
             self.Intepret(parse_operations, extra=_extra)
-            
+
             # Next generate a case name
             self.case_name = _basename + self.CaseName()
-            
+
             # After that, make a directory with case name
             _case_dir = os.path.join(_dirname, self.case_name)
             # By default, we don't update
@@ -216,7 +216,7 @@ class CASE():
             if not update_:
                 my_assert(os.path.isdir(_case_dir) is False, ValueError, 'Going to update a pr-exiting case, but update is not included in the option')
             if not os.path.isdir(_case_dir):
-                os.mkdir(_case_dir)            
+                os.mkdir(_case_dir)
 
             # write configs to _json
             _json_outputs = {'basename': _basename, 'config': self.config, 'test': self.test, 'extra': _extra, 'extra_file': _extra_files}
@@ -321,7 +321,7 @@ class GROUP_CASE():
             _case_names(list)
         '''
         pass
-    
+
     def __call__(self, parse_operations, _odir, **kwargs):
         '''
         Inputs:
@@ -337,7 +337,7 @@ class GROUP_CASE():
         _base_name = kwargs.get('basename', '')
         # write configs to _json
         _json_outputs = self.configs
-        _json_outputs['extra'] = _extra 
+        _json_outputs['extra'] = _extra
         _json_ofile = os.path.join(_odir, 'config.json')
         with open(_json_ofile, 'w') as fout:
             json.dump(_json_outputs, fout)
@@ -375,7 +375,7 @@ class PARSE_OPERATIONS():
             pass
         else:
             Inputs['Mesh refinement']['Initial global refinement'] = str(_initial_global_refinement)
-    
+
         try:
             # initial_adaptive_refinement
             _initial_adaptive_refinement = int(_config['initial_adaptive_refinement'])
@@ -383,7 +383,7 @@ class PARSE_OPERATIONS():
             pass
         else:
             Inputs['Mesh refinement']['Initial adaptive refinement'] = str(_initial_adaptive_refinement)
-        
+
         try:
             # refinement_fraction
             _refinement_fraction = float(_config['refinement_fraction'])
@@ -407,7 +407,7 @@ class PARSE_OPERATIONS():
                 pass
             else:
                 Inputs['Mesh refinement']['Coarsening fraction'] = str(_coarsening_fraction)
-        
+
         try:
             # Time steps between mesh refinement
             _steps_between_refinement = int(_config['steps_between_refinement'])
@@ -415,7 +415,7 @@ class PARSE_OPERATIONS():
             pass
         else:
             Inputs['Mesh refinement']['Time steps between mesh refinement'] = str(_steps_between_refinement)
-    
+
         try:
             # only use minimum_refinement_function
             _only_refinement_function = int(_config['only_refinement_function'])
@@ -455,7 +455,7 @@ class PARSE_OPERATIONS():
             if _only_one_step == 1:
                 Inputs['Termination criteria']['Termination criteria'] = 'end step'
                 Inputs['Termination criteria']['End step'] = '1'
-    
+
     def Solver(self, Inputs, _config):
         """
         solver parameters
@@ -467,7 +467,7 @@ class PARSE_OPERATIONS():
             pass
         else:
             Inputs['CFL number'] = str(CFL_number)
-        
+
         # change the Max nonlinear iterations number
         try:
             max_nonlinear_iterations = _config['max_nonlinear_iterations']
@@ -475,7 +475,7 @@ class PARSE_OPERATIONS():
             pass
         else:
             Inputs['Max nonlinear iterations'] = str(max_nonlinear_iterations)
-        
+
         # change the nonlinear solver tolerance
         try:
             nonlinear_solver_tolerance = _config['nonlinear_solver_tolerance']
@@ -483,7 +483,7 @@ class PARSE_OPERATIONS():
             pass
         else:
             Inputs['Nonlinear solver tolerance'] = str(nonlinear_solver_tolerance)
-        
+
         # change Stokes solver configuration
         try:
             stokes_solver = Inputs['Solver parameters']['Stokes solver parameters']
@@ -539,7 +539,7 @@ class PARSE_OPERATIONS():
                 pass
             else:
                 newton_solver['Max Newton line search iterations'] = str(max_line_search)
-    
+
     def MaterialModel(self, Inputs, _config):
         """
         properties in the material model
@@ -547,12 +547,12 @@ class PARSE_OPERATIONS():
         """
 
         # Get model configurations from a prm file
-        try: 
+        try:
             model_name = Inputs['Material model']['Model name']
         except KeyError:
             return
 
-        if model_name == 'visco plastic': 
+        if model_name == 'visco plastic':
             model = Inputs['Material model']['Visco Plastic']
             # change lower limit
             try:
@@ -572,115 +572,8 @@ class PARSE_OPERATIONS():
             Inputs['Material model']['Visco Plastic'] = model
 
 
-class BASH_OPTIONS():
-    """
-    parse .prm file to a option file that bash can easily read
-    Attributes:
-        _case_dir(str): path of this case
-        _output_dir(str): path of the output
-        _visit_file(str): path of the visit file
-        odict(dict): dictionary of key and value to output
-    """
-    def __init__(self, case_dir):
-        """
-        Initiation
-        Args:
-            case_dir(str): directory of case
-        """
-        # check directory
-        self._case_dir = case_dir
-        my_assert(os.path.isdir(self._case_dir), FileNotFoundError,
-                  'BASH_OPTIONS.__init__: case directory - %s doesn\'t exist' % self._case_dir)
-        self._output_dir = os.path.join(case_dir, 'output')
-        my_assert(os.path.isdir(self._output_dir), FileNotFoundError,
-                  'BASH_OPTIONS.__init__: case output directory - %s doesn\'t exist' % self._output_dir)
-        self._visit_file = os.path.join(self._output_dir, 'solution.visit')
-        my_assert(os.access(self._visit_file, os.R_OK), FileNotFoundError,
-                  'BASH_OPTIONS.__init__: case visit file - %s cannot be read' % self._visit_file)
-        # output dir
-        self._output_dir = os.path.join(case_dir, 'output')
-        if not os.path.isdir(self._output_dir):
-            os.mkdir(self._output_dir)
-        # img dir
-        self._img_dir = os.path.join(case_dir, 'img')
-        if not os.path.isdir(self._img_dir):
-            os.mkdir(self._img_dir)
-        
-        # get inputs from .prm file
-        prm_file = os.path.join(self._case_dir, 'case.prm')
-        my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,
-                  'BASH_OPTIONS.__init__: case prm file - %s cannot be read' % prm_file)
-        with open(prm_file, 'r') as fin:
-            self.idict = ParsePrm.ParseFromDealiiInput(fin)
-
-        # initiate a dictionary
-        self.odict = {}
-
-        # initiate a statistic data
-        self.Statistics = Plot.STATISTICS_PLOT_OLD('Statistics')
-        statistic_file = os.path.join(self._output_dir, 'statistics')
-        self.Statistics.ReadHeader(statistic_file)
-        self.Statistics.ReadData(statistic_file)
-    
-    def Interpret(self, kwargs):
-        """
-        Interpret the inputs, to be reloaded in children
-        """
-        pass
-
-    def __call__(self, ofile, kwargs):
-        """
-        Call function
-        Args:
-            ofile(str): path of output
-        """
-        # interpret
-        self.Interpret(kwargs)
-
-        # open ofile for output
-        # write outputs by keys and values
-        with open(ofile, 'w') as fout:
-            for key, value in self.odict.items():
-                fout.write("%s       %s\n" % (key, value))
-        pass
 
 
-class VISIT_OPTIONS(BASH_OPTIONS):
-    """
-    parse .prm file to a option file that bash can easily read
-    """
-    def Interpret(self, kwargs={}):
-        """
-        Interpret the inputs, to be reloaded in children
-        """
-        # call function from parent
-        BASH_OPTIONS.Interpret(self, kwargs)
-        
-        # visit file
-        self.odict["VISIT_FILE"] = self._visit_file
-
-        # particle file
-        particle_file = os.path.join(self._output_dir, 'particles.visit')
-        if os.access(particle_file, os.R_OK):
-            self.odict["VISIT_PARTICLE_FILE"] = particle_file
-
-        # directory to output data 
-        self.odict["DATA_OUTPUT_DIR"] = self._output_dir
-
-        # directory to output images
-        if not os.path.isdir(self._img_dir):
-            os.mkdir(self._img_dir)
-        self.odict["IMG_OUTPUT_DIR"] = self._img_dir
-
-        # own implementations
-        # initial adaptive refinement
-        self.odict['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
-        
-        # get snaps for plots
-        graphical_snaps, _, _ = GetSnapsSteps(self._case_dir, 'graphical')
-        self.odict['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'] = str(graphical_snaps)
-        particle_snaps, _, _ = GetSnapsSteps(self._case_dir, 'particle')
-        self.odict['ALL_AVAILABLE_PARTICLE_SNAPSHOTS'] = str(particle_snaps)
 
 
 class VISIT_XYZ():
@@ -762,13 +655,13 @@ class VISIT_XYZ():
         }
         self.header = kwargs.get("header", default_header)
 
-        # read data 
+        # read data
         self.ReadData(filein)
 
         # analyze
         self.Analyze(kwargs)
 
-        # output if file given 
+        # output if file given
         ofile = kwargs.get('ofile', None)
         if ofile is not None:
             self.Output(ofile)
@@ -925,8 +818,8 @@ def ChangeDiscValues(_idict, _names, _values):
         for _key in _name[0: len(_name)-1]:
             _sub_dict = _sub_dict[_key]
         _sub_dict[_name[-1]] = _values[i]
-    
-    
+
+
 def AutoMarkdownCase(_case_name, _idict, **kwargs):
     '''
     generate a automatic markdown file for a case
@@ -978,7 +871,7 @@ def AutoMarkdownGroup(_group_name, _idict, **kwargs):
         _contents = '# Group %s\n\n' % _group_name  # an string to hold content of file
         _contents += '## Overview\n\n'
 
-    # configures of group    
+    # configures of group
     _config = _idict.get('config', {})  # append configuration part
     _contents += '### The group is configured with:\n\n'
     for key, value in sorted(_config.items(), key=lambda item: item[0]):
@@ -995,8 +888,8 @@ def AutoMarkdownGroup(_group_name, _idict, **kwargs):
         # output file
         fout.write(_contents)
     pass
-        
-        
+
+
 def UpdateProjectMd(_project_dict, _project_dir):
     '''
     Update auto mkd file for all cases in this project
@@ -1027,7 +920,7 @@ def UpdateProjectMd(_project_dict, _project_dir):
             except Exception:
                 _case_config_dict = {"config": {}, "extra":{}, "test":{}}
             AutoMarkdownCase(_case, _case_config_dict, dirname=_case_dir)
-    
+
 
 def UpdateProjectJson(_dir, **kwargs):
     '''
@@ -1071,69 +964,7 @@ def UpdateProjectJson(_dir, **kwargs):
     with open(_json_file, 'w') as fout:
         json.dump(_odict, fout)
     return _odict
-    
-def GetSnapsSteps(case_dir, type_='graphical'):
-    case_output_dir = os.path.join(case_dir, 'output')
-    
-    # import parameters 
-    prm_file = os.path.join(case_dir, 'case.prm')
-    my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,
-              'case prm file - %s cannot be read' % prm_file)
-    with open(prm_file, 'r') as fin:
-        idict = ParsePrm.ParseFromDealiiInput(fin)
 
-    # import statistics file
-    Statistics = Plot.STATISTICS_PLOT_OLD('Statistics')
-    statistic_file = os.path.join(case_output_dir, 'statistics')
-    my_assert(os.access(statistic_file, os.R_OK), FileNotFoundError,
-              'case statistic file - %s cannot be read' % prm_file)
-    Statistics.ReadHeader(statistic_file)
-    Statistics.ReadData(statistic_file)
-    col_time = Statistics.header['Time']['col']
-    
-    # final time
-    final_time = Statistics.data[-1, col_time]
-    
-    # time interval
-    # graphical
-    try:
-        time_between_graphical_output = float(idict['Postprocess']['Visualization']['Time between graphical output'])
-    except KeyError:
-        time_between_graphical_output = 1e8
-    total_graphical_outputs = int(final_time / time_between_graphical_output) + 1
-    graphical_times = [i*time_between_graphical_output for i in range(total_graphical_outputs)]
-    graphical_steps = [Statistics.GetStep(time) for time in graphical_times]
-    # particle
-    try:
-        time_between_particles_output = float(idict['Postprocess']['Particles']['Time between data output'])
-    except KeyError:
-        time_between_particles_output = 1e8
-    total_particles_outputs = int(final_time / time_between_particles_output) + 1
-    particle_times = [i*time_between_particles_output for i in range(total_particles_outputs)]
-    particle_steps = [Statistics.GetStep(time) for time in particle_times]
-    
-    # initial_snap
-    try:
-        initial_snap = int(idict['Mesh refinement']['Initial adaptive refinement'])
-    except KeyError:
-        initial_snap = 6
-
-    # end snap
-    snaps = [0]
-    if type_ == 'graphical':
-        start_ = initial_snap
-        end_ = total_graphical_outputs + initial_snap
-        snaps = list(range(start_, end_))
-        times = graphical_times
-        steps = graphical_steps
-    elif type_ == 'particle':
-        start_ = 0
-        end_ = total_particles_outputs
-        snaps = list(range(start_, end_))
-        times = particle_times
-        steps = particle_steps
-    
-    return snaps, times, steps
 
 
 def GetSubCases(_dir):
@@ -1155,17 +986,17 @@ def GetSubCases(_dir):
         _fullsubname = os.path.join(dir_abs, _subname)
         if os.path.isdir(_fullsubname):
             case_dirs += GetSubCases(_fullsubname)
-    
+
     return case_dirs
 
-    
+
 def ParsePhaseInput(inputs):
     '''
     parse input of phases to a aspect input form
     todo
     '''
     output = ""
-   
+
     # read in density of the base phase
     rho_base = inputs.get("rho_base", 3300.0)
     my_assert(type(rho_base) == float, TypeError, "base value for density must be a float")
@@ -1178,17 +1009,17 @@ def ParsePhaseInput(inputs):
     # number of transition
     total = len(drho)
     my_assert(len(xc) == total, ValueError, "length of xc and drho must be the same")
-    
+
     # compute density
     rho = rho_base * np.ones(total + 1)
     for i in range(total):
         rho[i+1:] += drho[i] * xc[i]
-    
+
     # generate output
     output += "%.1f" % rho[0]
     for i in range(1, total+1):
         output += "|%.1f" % rho[i]
-    
+
     return output
 
 
@@ -1205,12 +1036,12 @@ def SaveLastSnapShot(case_dir):
 
     pathlist=[]
     # snapshot files
-    pathlist0 = Path(output_dir).rglob('restart*') 
+    pathlist0 = Path(output_dir).rglob('restart*')
     pathlist += pathlist0
     # outputs
-    pathlist1 = Path(output_dir).rglob('*.txt') 
+    pathlist1 = Path(output_dir).rglob('*.txt')
     pathlist += pathlist1
-    pathlist2 = Path(output_dir).rglob('statistics') 
+    pathlist2 = Path(output_dir).rglob('statistics')
     pathlist += pathlist2
 
     # get time & step for the last snapshot
@@ -1279,9 +1110,9 @@ def main():
                 output = ParsePhaseInput(value)
                 outputs += "%s: %s, " % (key, output)
 
-        # print the output 
+        # print the output
         print(outputs)
-    
+
     if _commend == 'save_case_last_snapshot':
         SaveLastSnapShot(arg.inputs)
 

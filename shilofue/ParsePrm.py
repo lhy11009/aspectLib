@@ -9,24 +9,25 @@ This exports:
 
 This depends on:
 
-  -  
+  -
 
 Examples of usage:
 
   - default usage:
-    
+
     generate .prm file with fast zero step:
         python -m shilofue.ParsePrm fast_zero_step -i case.prm -o case_test.prm
 
 descriptions:
     copy and pasted all the function in the origin PARSE_OPERATION class
-""" 
+"""
 import numpy as np
 import sys, os, argparse
 import re
 # import pathlib
 # import subprocess
 import numpy as np
+import shilofue.Plot as Plot
 # from matplotlib import cm
 # from matplotlib import pyplot as plt
 from shilofue.Utilities import my_assert, re_neat_word
@@ -83,6 +84,80 @@ class COMPOSITION():
             line += part_of_line
             j += 1
         return line
+
+
+class CASE_OPTIONS():
+    """
+    parse .prm file to a option file that bash can easily read
+    Attributes:
+        _case_dir(str): path of this case
+        _output_dir(str): path of the output
+        _visit_file(str): path of the visit file
+        odict(dict): dictionary of key and value to output
+    """
+    def __init__(self, case_dir):
+        """
+        Initiation
+        Args:
+            case_dir(str): directory of case
+        """
+        # check directory
+        self._case_dir = case_dir
+        my_assert(os.path.isdir(self._case_dir), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case directory - %s doesn\'t exist' % self._case_dir)
+        self._output_dir = os.path.join(case_dir, 'output')
+        my_assert(os.path.isdir(self._output_dir), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case output directory - %s doesn\'t exist' % self._output_dir)
+        self._visit_file = os.path.join(self._output_dir, 'solution.visit')
+        my_assert(os.access(self._visit_file, os.R_OK), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case visit file - %s cannot be read' % self._visit_file)
+        # output dir
+        self._output_dir = os.path.join(case_dir, 'output')
+        if not os.path.isdir(self._output_dir):
+            os.mkdir(self._output_dir)
+        # img dir
+        self._img_dir = os.path.join(case_dir, 'img')
+        if not os.path.isdir(self._img_dir):
+            os.mkdir(self._img_dir)
+
+        # get inputs from .prm file
+        prm_file = os.path.join(self._case_dir, 'case.prm')
+        my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case prm file - %s cannot be read' % prm_file)
+        with open(prm_file, 'r') as fin:
+            self.idict = ParseFromDealiiInput(fin)
+
+        # initiate a dictionary
+        self.odict = {}
+
+        # initiate a statistic data
+        self.Statistics = Plot.LINEARPLOT('Statistics')
+        statistic_file = os.path.join(self._output_dir, 'statistics')
+        self.Statistics.ReadHeader(statistic_file)
+        self.Statistics.ReadData(statistic_file)
+
+
+    def Interpret(self, kwargs):
+        """
+        Interpret the inputs, to be reloaded in children
+        """
+        pass
+
+    def __call__(self, ofile, kwargs):
+        """
+        Call function
+        Args:
+            ofile(str): path of output
+        """
+        # interpret
+        self.Interpret(kwargs)
+
+        # open ofile for output
+        # write outputs by keys and values
+        with open(ofile, 'w') as fout:
+            for key, value in self.odict.items():
+                fout.write("%s       %s\n" % (key, value))
+        pass
 
 
 def ParseFromDealiiInput(fin):
@@ -180,7 +255,7 @@ def ReadPrmFile(_path):
     with open(_path, 'r') as fin:
         inputs = ParseFromDealiiInput(fin)
     return inputs
-        
+
 
 def WritePrmFile(_path, outputs):
     """
@@ -212,7 +287,7 @@ def MeshRefinement(Inputs, _config):
         pass
     else:
         Inputs['Mesh refinement']['Initial adaptive refinement'] = str(_initial_adaptive_refinement)
-    
+
     try:
         # refinement_fraction
         _refinement_fraction = float(_config['refinement_fraction'])
@@ -236,7 +311,7 @@ def MeshRefinement(Inputs, _config):
             pass
         else:
             Inputs['Mesh refinement']['Coarsening fraction'] = str(_coarsening_fraction)
-    
+
     try:
         # Time steps between mesh refinement
         _steps_between_refinement = int(_config['steps_between_refinement'])
@@ -298,7 +373,7 @@ def Solver(Inputs, _config):
         pass
     else:
         Inputs['CFL number'] = str(CFL_number)
-    
+
     # change the Max nonlinear iterations number
     try:
         max_nonlinear_iterations = _config['max_nonlinear_iterations']
@@ -306,7 +381,7 @@ def Solver(Inputs, _config):
         pass
     else:
         Inputs['Max nonlinear iterations'] = str(max_nonlinear_iterations)
-    
+
     # change the nonlinear solver tolerance
     try:
         nonlinear_solver_tolerance = _config['nonlinear_solver_tolerance']
@@ -314,7 +389,7 @@ def Solver(Inputs, _config):
         pass
     else:
         Inputs['Nonlinear solver tolerance'] = str(nonlinear_solver_tolerance)
-    
+
     # change Stokes solver configuration
     try:
         stokes_solver = Inputs['Solver parameters']['Stokes solver parameters']
@@ -379,12 +454,12 @@ def MaterialModel(Inputs, _config):
     """
 
     # Get model configurations from a prm file
-    try: 
+    try:
         model_name = Inputs['Material model']['Model name']
     except KeyError:
         return
 
-    if model_name == 'visco plastic': 
+    if model_name == 'visco plastic':
         model = Inputs['Material model']['Visco Plastic']
         # change lower limit
         try:
@@ -418,20 +493,20 @@ def UpperMantleRheologyViscoPlastic(Inputs):
     activation_energies_for_dislocation_creep = COMPOSITION(visco_plastic["Activation energies for dislocation creep"])
     activation_volumes_for_dislocation_creep  = COMPOSITION(visco_plastic["Activation volumes for dislocation creep"])
     stress_exponents_for_dislocation_creep = COMPOSITION(visco_plastic["Stress exponents for dislocation creep"])
-    # call GetLowerMantleRheology to derive parameters for lower mantle flow law 
+    # call GetLowerMantleRheology to derive parameters for lower mantle flow law
     backgroud_upper_mantle_diffusion = {}
-    backgroud_upper_mantle_diffusion['A'] = prefactors_for_diffusion_creep.data['background'][0] 
+    backgroud_upper_mantle_diffusion['A'] = prefactors_for_diffusion_creep.data['background'][0]
     backgroud_upper_mantle_diffusion['d'] = grain_size
-    backgroud_upper_mantle_diffusion['n'] = 1.0 
-    backgroud_upper_mantle_diffusion['m'] = grain_size_exponents_for_diffusion_creep.data['background'][0] 
-    backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0] 
+    backgroud_upper_mantle_diffusion['n'] = 1.0
+    backgroud_upper_mantle_diffusion['m'] = grain_size_exponents_for_diffusion_creep.data['background'][0]
+    backgroud_upper_mantle_diffusion['E'] = activation_energies_for_diffusion_creep.data['background'][0]
     backgroud_upper_mantle_diffusion['V'] = activation_volumes_for_diffusion_creep.data['background'][0]
     backgroud_upper_mantle_dislocation = {}
-    backgroud_upper_mantle_dislocation['A'] = prefactors_for_dislocation_creep.data['background'][0] 
+    backgroud_upper_mantle_dislocation['A'] = prefactors_for_dislocation_creep.data['background'][0]
     backgroud_upper_mantle_dislocation['d'] = grain_size
     backgroud_upper_mantle_dislocation['n'] = stress_exponents_for_dislocation_creep.data['background'][0]
     backgroud_upper_mantle_dislocation['m'] = 0.0
-    backgroud_upper_mantle_dislocation['E'] = activation_energies_for_dislocation_creep.data['background'][0] 
+    backgroud_upper_mantle_dislocation['E'] = activation_energies_for_dislocation_creep.data['background'][0]
     backgroud_upper_mantle_dislocation['V'] = activation_volumes_for_dislocation_creep.data['background'][0]
     return backgroud_upper_mantle_diffusion, backgroud_upper_mantle_dislocation
 

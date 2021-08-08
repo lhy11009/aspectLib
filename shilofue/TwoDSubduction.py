@@ -353,40 +353,6 @@ class MYCASE(Parse.CASE):
             self.particle_data[i, 1] = y
 
 
-class VISIT_OPTIONS(Parse.VISIT_OPTIONS):
-    """
-    inherite the VISIT_OPTIONS clase from Parse.py
-    in order to add in additional settings
-    """
-    def Interpret(self, kwargs={}):
-        """
-        Interpret the inputs, to be reloaded in children
-        """
-        # call function from parent
-        Parse.VISIT_OPTIONS.Interpret(self, kwargs)
-
-        # default settings
-        self.odict['IF_PLOT_SLAB'] = 'False'
-        self.odict['IF_EXPORT_SLAB_MORPH'] = 'False'
-        particle_output_dir = os.path.join(self._output_dir, "slab_morphs")
-        self.odict["PARTICLE_OUTPUT_DIR"] = particle_output_dir
-
-        # optional settings
-        for key, value in kwargs.items():
-            # slab
-            if key == 'slab':
-                self.odict['IF_PLOT_SLAB'] = 'True'
-                self.odict['PLOT_SLAB_STEPS'] = value.get('steps', [0])
-                self.odict['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
-            # export particles for slab morph
-            elif key == 'slab_morph':
-                self.odict['IF_EXPORT_SLAB_MORPH'] = 'True'
-                # check directory
-                if not os.path.isdir(particle_output_dir):
-                    os.mkdir(particle_output_dir)
-        
-
-
 class VISIT_XYZ(Parse.VISIT_XYZ):
     """
     Read .xyz file exported from visit and do analysis

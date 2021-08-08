@@ -437,7 +437,7 @@ plot_visit_case(){
     visit_script_dir="${dir}/visit_scripts/${project}"
 
     # call python module to generate visit_keys_values file
-    eval "python -m shilofue.${project} visit_options -i ${case_dir} -j post_process.json"
+    eval "python -m shilofue.PlotVisit visit_options -i ${case_dir} -j post_process.json"
 
     # get keys and values
     keys_values_file="${dir}/visit_keys_values"

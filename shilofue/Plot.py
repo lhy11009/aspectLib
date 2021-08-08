@@ -24,32 +24,32 @@ class LINEARPLOT():
     class for LINEARPLOT
 
     '''
-    def __init__(self, _name, kwargs):
+    def __init__(self, _name, options={}):
         '''
         _name(str):
             name of the plotting
-        kwargs:
+        options:
             unit_convert(fun):
                 a unit_convert function, default is None
         '''
         self.name = _name
-        _json_dir = kwargs.get('json_dir', None)
+        _json_dir = options.get('json_dir', None)
         self.options = JsonOptions(_name, _json_dir)
-        self.UnitConvert = kwargs.get('unit_convert', None)
-        self.dim = kwargs.get('dim', 2)  # dimension
+        self.UnitConvert = options.get('unit_convert', None)
+        self.dim = options.get('dim', 2)  # dimension
         assert(self.dim in [1, 2, 3])  # dimension must be 1, 2, 3
 
-        # reset the options with a option in the kwargs
+        # reset the options with a option in the options
         with resources.open_text(shilofue.json_files, 'post_process.json') as fin:
             all_options = json.load(fin)
         self.options = all_options.get(self.name, {})
         try:
-            options = kwargs['options']
+            options = options['options']
         except KeyError:
             pass
         else:
             self.options.update(options)
-    
+
     def __call__(self, _filename, **kwargs):
         '''
         Read and plot
@@ -61,7 +61,7 @@ class LINEARPLOT():
                 filename for output figure
         '''
         _fileout = kwargs.get('fileout', _filename + '.pdf')
-        
+
         # inteprate header information
         self.ReadHeader(_filename)
 
@@ -126,7 +126,7 @@ class LINEARPLOT():
         '''
         assert(os.access(_filename, os.R_OK))  # read in data
         # self.data = np.genfromtxt(_filename, comments='#')
-        
+
         # import data via numpy buid in method
         # catch warning of empty file and return 1
         with warnings.catch_warnings(record=True) as w:
@@ -136,12 +136,12 @@ class LINEARPLOT():
                 assert('Empty input file' in str(w[-1].message))
                 warnings.warn('ReadData: %s, abort' % str(w[-1].message))
                 return 1
-        
+
         if len(self.data.shape) == 1:
             # only one row, expand it too 2-d array
             self.data = np.array([self.data])
         return 0
-        
+
 
     def ManageData(self):
         '''
@@ -156,7 +156,7 @@ class LINEARPLOT():
         for i in range(self.data.shape[1]):
             _data_list.append(self.data[:, i])
         return _data_list
-    
+
     def PlotCombine(self, _data_list, _fileout, **kwargs):
         '''
         Combine all plottings
@@ -295,7 +295,7 @@ but you will get a blank one for this field name' % _yname,
             _ax.invert_xaxis()
         if _invert_y and ~_ax.yaxis_inverted():
             _ax.invert_yaxis()
-        
+
         # legend
         if _label is not None:
             _ax.legend()
@@ -315,7 +315,7 @@ but you will get a blank one for this field name' % _yname,
         rows = kwargs.get("rows", None)
         if rows != None:
             my_assert((type(rows) == list), TypeError, "%s: rows must be a list" % Utilities.func_name())
-            odata = self.data[np.ix_(rows, cols)] 
+            odata = self.data[np.ix_(rows, cols)]
         else:
             odata = self.data[:, cols]
         print('\tData layout: ', odata.shape)
@@ -342,7 +342,7 @@ class STATISTICS_PLOT_OLD(LINEARPLOT):
     '''
     def __init__(self, _name, **kwargs):
         LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
-    
+
     def GetStep(self, time):
         '''
         Inputs:
@@ -359,7 +359,7 @@ class STATISTICS_PLOT_OLD(LINEARPLOT):
         idx = np.argmin(abs(times - time))
         step = int(steps[idx])
         return step
-    
+
     def GetTime(self, step):
         '''
         future
@@ -369,7 +369,7 @@ class STATISTICS_PLOT_OLD(LINEARPLOT):
         '''
         time = 0.0
         return time
-    
+
 
 
 class NEWTON_SOLVER_PLOT(LINEARPLOT):
@@ -386,7 +386,7 @@ class NEWTON_SOLVER_PLOT(LINEARPLOT):
         # initiate
         # if step is None, then plot for all steps, otherwise plot for a step
         self.step = None
-    
+
     def __call__(self, _filename, **kwargs):
         '''
         Read and plot
@@ -408,7 +408,7 @@ class NEWTON_SOLVER_PLOT(LINEARPLOT):
         # manage output data
         _data_list = self.ManageData()
 
-        # figure out name of file 
+        # figure out name of file
         if self.step is None:
             # plot for all
             _fname = _fileout
@@ -420,7 +420,7 @@ class NEWTON_SOLVER_PLOT(LINEARPLOT):
         # plot
         _fileout = self.PlotCombine(_data_list, _fname)
         return _fileout
-    
+
     def GetStep(self, step):
         '''
         Get time step
@@ -428,7 +428,7 @@ class NEWTON_SOLVER_PLOT(LINEARPLOT):
             step(int): index of time step
         '''
         self.step = step
-    
+
     def ManageData(self):
         '''
         manage data, get new data for this class
@@ -448,27 +448,27 @@ class NEWTON_SOLVER_PLOT(LINEARPLOT):
         Returns:
             _data_list(list):
                 list of data for ploting
-        ''' 
+        '''
         _data_list = []
 
-        # get list of step        
+        # get list of step
         col_step = self.header['Time_step_number']['col']
         mask_step = (self.data[:, col_step] == self.step)
         for i in range(self.data.shape[1]):
             _data_list.append(self.data[mask_step, i])
         return _data_list
-    
+
     def ManageDataAll(self):
         '''
         manage data for a single step
         Returns:
             _data_list(list):
                 list of data for ploting
-        ''' 
+        '''
         _data_list = []
         for i in range(self.data.shape[1]):
             _data_list.append(self.data[:, i])
-        
+
         # get number of nonlinear iteration
         nni = np.array([i for i in range(self.data.shape[0])])
         _data_list.append(nni)
@@ -490,7 +490,7 @@ class MACHINE_TIME_PLOT(LINEARPLOT):
     '''
     def __init__(self, _name, **kwargs):
         LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
-    
+
     def ManageData(self):
         '''
         manage data, get new data for this class
@@ -508,14 +508,14 @@ class MACHINE_TIME_PLOT(LINEARPLOT):
         col_mt = self.header['Machine_time']['col']
         col_cpu = self.header['CPU_number']['col']
         core_time = self.data[:, col_mt] * self.data[:, col_cpu]
-        
+
         # append core time
         _data_list.append(core_time)
         self.header['Core_time'] = {'col': self.header['total_col'], 'unit': None}
         self.header['total_col'] += 1
-        
+
         return _data_list
-    
+
     def GetStepMT(self, filename, step):
         '''
         get the total core hours spent before reaching a specific step
@@ -539,11 +539,11 @@ class MACHINE_TIME_PLOT(LINEARPLOT):
 
         # check step is in range
         my_assert(type(step) == int, TypeError, "GetStepMT: step mush be an int value")
-        my_assert(step <= np.max(steps), ValueError, "GetStepMT: step given is bigger than maximum step") 
-        
+        my_assert(step <= np.max(steps), ValueError, "GetStepMT: step given is bigger than maximum step")
+
         # interp for step
         machine_time_at_step = np.interp(step, steps, machine_times)
-        
+
         # compute total time
         col_cpu = self.header['CPU_number']['col']
         number_of_cpu = self.data[0, col_cpu]
@@ -558,7 +558,7 @@ def ProjectPlot(case_dirs, _file_type, **kwargs):
             update(True or False): if True, update existing figures
     '''
     from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
-    
+
     update = kwargs.get('update', False)
     pdict = kwargs.get('pdict', {})
     # Init the UnitConvert class
@@ -625,7 +625,7 @@ One option is to delete incorrect file before running again" % _depth_average_fi
                 if _ofile_exact is not None:
                     # output when there is file generated
                     print('Plot has been generated: ', _ofile_exact)  # screen output
-        
+
         # add solver output
         # plot newton solver output
         _solver_file = os.path.join(_case_output_dir, 'solver_output')
@@ -673,7 +673,7 @@ One option is to delete incorrect file before running again" % _solver_file) fro
                 if _ofile_exact is not None:
                     # output when there is file generated
                     print('Plot has been generated: ', _ofile_exact)  # screen output
-        
+
         # plot machine_time
         _machine_time_file = os.path.join(_case_output_dir, 'machine_time')
         _time = 0.0
@@ -696,7 +696,7 @@ One option is to delete incorrect file before running again" % _machine_time_fil
                 if _ofile_exact is not None:
                     # output when there is file generated
                     print('Plot has been generated: ', _ofile_exact)  # screen output
-    
+
     pass
 
 

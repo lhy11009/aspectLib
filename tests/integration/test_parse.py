@@ -66,39 +66,6 @@ def test_parse_to_new_case():
     Case(parse_operations, dirname='.test', basename='test_case_by_auto')
     assert(os.path.isfile(_ofile))
 
-def test_visit_options():
-    case_dir = os.path.join(test_source_dir, 'foo')
-
-    # initiate 
-    Visit_Options = Parse.VISIT_OPTIONS(case_dir)
-
-    # call the Interpret function
-    Visit_Options.Interpret()
-
-    # compare to standard
-    json_file = os.path.join(case_dir, 'odict_std.json')
-    with open(json_file, 'r') as fin:
-        odict_std = json.load(fin)
-
-    assert(Visit_Options.odict == odict_std)
-    pass
-
-def test_get_snaps_steps():
-    case_dir = os.path.join(test_source_dir, 'foo')
-    
-    # call function for graphical outputs
-    snaps, times, steps = Parse.GetSnapsSteps(case_dir)
-    # assertions
-    assert(snaps == [6, 7, 8, 9])
-    assert(times == [0.0, 100000.0, 200000.0, 300000.0])
-    assert(steps == [0, 104, 231, 373])
-    
-    # call function for particle outputs
-    snaps, times, steps = Parse.GetSnapsSteps(case_dir, 'particle')
-    # assertions
-    assert(snaps == [0, 1])
-    assert(times == [0.0, 2e5])
-    assert(steps == [0, 231])
 
 def test_get_sub_cases():
     case_dirs = Parse.GetSubCases(test_source_dir)
