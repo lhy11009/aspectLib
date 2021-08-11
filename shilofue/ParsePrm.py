@@ -87,14 +87,15 @@ class COMPOSITION():
         return line
 
 
-class CASE_OPTIONS():
+class CASE_OPTIONS(Utilities.CODESUB):
     """
     parse .prm file to a option file that bash can easily read
+    This inherit from Utilities.CODESUB
     Attributes:
         _case_dir(str): path of this case
         _output_dir(str): path of the output
         _visit_file(str): path of the visit file
-        odict(dict): dictionary of key and value to output
+        options(dict): dictionary of key and value to output
     """
     def __init__(self, case_dir):
         """
@@ -102,6 +103,7 @@ class CASE_OPTIONS():
         Args:
             case_dir(str): directory of case
         """
+        Utilities.CODESUB.__init__(self)
         # check directory
         self._case_dir = case_dir
         my_assert(os.path.isdir(self._case_dir), FileNotFoundError,
@@ -129,7 +131,7 @@ class CASE_OPTIONS():
             self.idict = ParseFromDealiiInput(fin)
 
         # initiate a dictionary
-        self.odict = {}
+        self.options = {}
 
         # initiate a statistic data
         self.Statistics = Plot.LINEARPLOT('Statistics')
@@ -138,11 +140,24 @@ class CASE_OPTIONS():
         self.Statistics.ReadData(statistic_file)
 
 
-    def Interpret(self, kwargs):
+    def Interpret(self):
         """
         Interpret the inputs, to be reloaded in children
         """
         pass
+    
+    def save(self, _path, **kwargs):
+        '''
+        save contents to a new file
+        Args:
+            kwargs(dict):
+                relative: use relative path
+        '''
+        use_relative_path = kwargs.get('relative', False)
+        if use_relative_path:
+            _path = os.path.join(self._case_dir, _path)
+        o_path = Utilities.CODESUB.save(self, _path)
+        return o_path
 
     def __call__(self, ofile, kwargs):
         """
@@ -156,7 +171,7 @@ class CASE_OPTIONS():
         # open ofile for output
         # write outputs by keys and values
         with open(ofile, 'w') as fout:
-            for key, value in self.odict.items():
+            for key, value in self.options.items():
                 fout.write("%s       %s\n" % (key, value))
         pass
 

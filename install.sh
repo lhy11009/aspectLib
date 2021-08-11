@@ -43,7 +43,7 @@ options(){
     # options when installing files
     ###
     list_of_bash_scripts_to_install=("rsync_case.sh" "run_aspect.sh" "build_aspect.sh")
-    list_of_py_scripts_to_install=("TwoDSubduction0/PlotCase.py" "ParsePrm.py" "PlotRunTime.py")
+    list_of_py_scripts_to_install=("TwoDSubduction0/PlotCase.py" "ParsePrm.py" "PlotRunTime.py" "PlotVisit.py")
 }
 
 

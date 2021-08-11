@@ -37,13 +37,13 @@ shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
 def Usage():
     print("\
-(One liner description\n\
+Visualization with visit\n\
 \n\
 Examples of usage: \n\
 \n\
-  - default usage: \n\
+  - translate script: \n\
 \n\
-        python -m \
+        Lib_PlotVisit visit_options -i $TwoDSubduction_DIR/non_linear34/eba_low_tol_newton_shift_CFL0.8\
         ")
 
 
@@ -51,69 +51,65 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
     """
     parse .prm file to a option file that bash can easily read
     """
-    def Interpret(self, kwargs={}):
+    def Interpret(self):
         """
         Interpret the inputs, to be reloaded in children
         """
         # call function from parent
-        ParsePrm.CASE_OPTIONS.Interpret(self, kwargs)
+        ParsePrm.CASE_OPTIONS.Interpret(self)
 
         # visit file
-        self.odict["VISIT_FILE"] = self._visit_file
+        self.options["VISIT_FILE"] = self._visit_file
 
         # particle file
         particle_file = os.path.join(self._output_dir, 'particles.visit')
         if os.access(particle_file, os.R_OK):
-            self.odict["VISIT_PARTICLE_FILE"] = particle_file
+            self.options["VISIT_PARTICLE_FILE"] = particle_file
 
         # directory to output data
-        self.odict["DATA_OUTPUT_DIR"] = self._output_dir
+        self.options["DATA_OUTPUT_DIR"] = self._output_dir
 
         # directory to output images
         if not os.path.isdir(self._img_dir):
             os.mkdir(self._img_dir)
-        self.odict["IMG_OUTPUT_DIR"] = self._img_dir
+        self.options["IMG_OUTPUT_DIR"] = self._img_dir
 
         # own implementations
         # initial adaptive refinement
-        self.odict['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
+        self.options['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
 
         # get snaps for plots
         graphical_snaps, _, _ = GetSnapsSteps(self._case_dir, 'graphical')
-        self.odict['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'] = str(graphical_snaps)
+        self.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'] = str(graphical_snaps)
         particle_snaps, _, _ = GetSnapsSteps(self._case_dir, 'particle')
-        self.odict['ALL_AVAILABLE_PARTICLE_SNAPSHOTS'] = str(particle_snaps)
-
-
-class PLOT_VISIT(VISIT_OPTIONS):
-    """
-    inherite the VISIT_OPTIONS clase from Parse.py
-    in order to add in additional settings
-    """
-    # todo
-    def Interpret(self, kwargs={}):
-        """
-        Interpret the inputs, to be reloaded in children
-        """
-        # call function from parent
-        VISIT_OPTIONS.Interpret(self, kwargs)
-
+        self.options['ALL_AVAILABLE_PARTICLE_SNAPSHOTS'] = str(particle_snaps)
+        
         # default settings
-        self.odict['IF_PLOT_SLAB'] = 'False'
-        self.odict['IF_EXPORT_SLAB_MORPH'] = 'False'
+        self.options['IF_PLOT_SLAB'] = 'False'
+        self.options['IF_EXPORT_SLAB_MORPH'] = 'False'
         particle_output_dir = os.path.join(self._output_dir, "slab_morphs")
-        self.odict["PARTICLE_OUTPUT_DIR"] = particle_output_dir
+        self.options["PARTICLE_OUTPUT_DIR"] = particle_output_dir
 
+        # plot slab 
+        self.options['IF_PLOT_SLAB'] = 'True'
+        self.options['PLOT_SLAB_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
+        # self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
+        self.options['IF_DEFORM_MECHANISM'] = 1
+
+    def visit_options(self, extra_options):
+        '''
+        deprecated
+        '''
         # optional settings
-        for key, value in kwargs.items():
+        for key, value in extra_options.items():
             # slab
             if key == 'slab':
-                self.odict['IF_PLOT_SLAB'] = 'True'
-                self.odict['PLOT_SLAB_STEPS'] = value.get('steps', [0])
-                self.odict['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
+                self.options['IF_PLOT_SLAB'] = 'True'
+                self.options['PLOT_SLAB_STEPS'] = value.get('steps', [0])
+                self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
             # export particles for slab morph
             elif key == 'slab_morph':
-                self.odict['IF_EXPORT_SLAB_MORPH'] = 'True'
+                self.options['IF_EXPORT_SLAB_MORPH'] = 'True'
                 # check directory
                 if not os.path.isdir(particle_output_dir):
                     os.mkdir(particle_output_dir)
@@ -231,20 +227,15 @@ def main():
         # todo
         case_dir = arg.inputs
 
-        Visit_Options = PLOT_VISIT(case_dir)
-
-        # load extra options
-        if arg.json_file == './config_case.json':
-            # no json file is giving
-            extra_options = {}
-        else:
-            with open(arg.json_file, 'r') as fin:
-                dict_in = json.load(fin)
-                extra_options = dict_in.get('visit', {})
+        Visit_Options = VISIT_OPTIONS(case_dir)
 
         # call function
-        ofile = os.path.join(ASPECT_LAB_DIR, 'visit_keys_values')
-        Visit_Options(ofile, extra_options)
+        Visit_Options.Interpret()
+        ofile = os.path.join('visit_scripts', 'slab.py')
+        visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', 'slab.py')
+        Visit_Options.read_contents(visit_script)
+        Visit_Options.substitute()
+        ofile_path = Visit_Options.save(ofile, relative=True)
         pass
 
     else:

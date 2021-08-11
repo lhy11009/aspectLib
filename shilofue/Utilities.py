@@ -39,14 +39,20 @@ class CODESUB():
         substitute keys with values
         '''
         for key, value in self.options.items():
-            self.contents = re.sub(key, value, self.contents)
+            self.contents = re.sub(key, str(value), self.contents)
 
     def save(self, _path):
         '''
         save contents to a new file
         '''
+        # look for directory
+        dir_path = os.path.dirname(_path)
+        if ~os.path.isdir(dir_path):
+            os.mkdir(dir_path)
+        # save file
         with open(_path, 'w') as fout:
             fout.write(self.contents)
+        return _path
 
 def JsonOptions(prefix, _dir=None):
     '''
