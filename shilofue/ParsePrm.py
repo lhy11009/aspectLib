@@ -28,6 +28,7 @@ import re
 # import subprocess
 import numpy as np
 import shilofue.Plot as Plot
+import shilofue.Utilities as Utilities
 # from matplotlib import cm
 # from matplotlib import pyplot as plt
 from shilofue.Utilities import my_assert, re_neat_word
@@ -251,7 +252,7 @@ def ReadPrmFile(_path):
     Inputs:
         _path: path for a prm file
     """
-    assert(os.access(_path, os.R_OK))
+    my_assert(os.access(_path, os.R_OK), FileNotFoundError, "%s: prm file %s doesn't exist" % (Utilities.func_name(), _path))
     with open(_path, 'r') as fin:
         inputs = ParseFromDealiiInput(fin)
     return inputs

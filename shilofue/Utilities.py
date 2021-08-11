@@ -7,6 +7,46 @@ import numpy as np
 from importlib import resources
 from pathlib import Path
 
+class CODESUB():
+    '''
+    This is a class to substitute existing code with values & parameters
+    Attributes:
+        contents (str)
+        options(disc)
+    '''
+    def __init__(self):
+        contents=''
+        options={}
+
+    def read_contents(self, _path):
+        '''
+        read contents from a file
+        '''
+        my_assert(os.access(_path, os.R_OK), FileNotFoundError, "%s: %s cannot be opened" % (func_name(), _path))
+        with open(_path, 'r') as fin:
+            self.contents = fin.read()
+
+    def read_options(self, _path):
+        '''
+        read options from a json file
+        '''
+        my_assert(os.access(_path, os.R_OK), FileNotFoundError, "%s: %s cannot be opened" % (func_name(), _path))
+        with open(_path, 'r') as fin:
+            self.options = json.load(fin)
+
+    def substitute(self):
+        '''
+        substitute keys with values
+        '''
+        for key, value in self.options.items():
+            self.contents = re.sub(key, value, self.contents)
+
+    def save(self, _path):
+        '''
+        save contents to a new file
+        '''
+        with open(_path, 'w') as fout:
+            fout.write(self.contents)
 
 def JsonOptions(prefix, _dir=None):
     '''

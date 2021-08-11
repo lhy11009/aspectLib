@@ -1,0 +1,13 @@
+{
+"VISIT_FILE": "/home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8_lh/output/solution.visit",
+"DATA_OUTPUT_DIR": "/home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8_lh/output",
+"IMG_OUTPUT_DIR": "/home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8_lh/img",
+"INITIAL_ADAPTIVE_REFINEMENT": "5",
+"ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS": "[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]",
+"ALL_AVAILABLE_PARTICLE_SNAPSHOTS": "[0]",
+"IF_PLOT_SLAB": "True",
+"IF_EXPORT_SLAB_MORPH": "False",
+"PARTICLE_OUTPUT_DIR": "/home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8_lh/output/slab_morphs",
+"PLOT_SLAB_STEPS": "[0, 1, 2, 3, 4, 5, 6, 7]",
+"IF_DEFORM_MECHANISM": "1"
+}

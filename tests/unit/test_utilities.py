@@ -176,3 +176,10 @@ def test_make_2d_array():
         x = {'foo': 0.0}
         y = Utilities.Make2dArray(x)
     assert ('Make2dArray, x must be int, float, list or 1d ndarray' in str(excinfo.value))
+
+
+def test_code_sub():
+    '''
+    Test the class CODESUB
+    '''
+    pass

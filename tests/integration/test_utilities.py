@@ -1,5 +1,6 @@
 import pytest
 import os
+import filecmp  # for compare file contents
 import numpy as np
 from shilofue.Utilities import UNITCONVERT
 from importlib import resources
@@ -8,6 +9,7 @@ from matplotlib import ticker, cm
 import shilofue.Utilities as Utilities
 
 _test_dir = '.test'
+source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_utilities')
 
 def test_unit_convert_json():
     '''
@@ -67,3 +69,21 @@ def test_average_phase_function_inputs():
 
     assert(os.path.isfile(filename))
     pass
+
+
+def test_code_sub():
+    '''
+    test the class CODESUB
+    '''
+    CodeSub = Utilities.CODESUB()
+    test_file = os.path.join(source_dir, 'slab.py')
+    CodeSub.read_contents(test_file)  # read contents
+    option_file = os.path.join(source_dir, 'visit_keys_values.json')
+    CodeSub.read_options(option_file)  # read options
+    CodeSub.substitute()  # substitute file
+    o_path = os.path.join(_test_dir, 'slab.py')
+    std_path = os.path.join(source_dir, 'slab_std.py')  # compare to this file
+    CodeSub.save(o_path)
+    assert(filecmp.cmp(o_path, std_path))
+
+    

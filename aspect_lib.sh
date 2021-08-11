@@ -426,8 +426,8 @@ plot_visit_case(){
     data_sub_dir="${case_dir}/output"
     [ -d "${data_sub_dir}" ] || { cecho ${BAD} "plot_visit_case: Data folder - ${data_sub_dir} doesn't exist"; exit 1; }
     # dir for transfered visit scripts
-    local visit_temp_dir="${dir}/visit_scripts_temp"
-    [ -d "${visit_temp_dir}" ] || mkdir "${visit_temp_dir}" ]
+    local visit_temp_dir="${case_dir}/visit_scripts_temp"
+    [ -d "${visit_temp_dir}" ] || mkdir "${visit_temp_dir}"
     # dir for image output
     local img_dir="${case_dir}/img"
     [ -d "${img_dir}" ] || mkdir "${img_dir}"
