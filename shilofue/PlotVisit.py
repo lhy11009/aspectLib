@@ -43,7 +43,10 @@ Examples of usage: \n\
 \n\
   - translate script: \n\
 \n\
-        Lib_PlotVisit visit_options -i $TwoDSubduction_DIR/non_linear34/eba_low_tol_newton_shift_CFL0.8\
+        Lib_PlotVisit visit_options -i $TwoDSubduction_DIR/non_linear34/eba_low_tol_newton_shift_CFL0.8\n\
+\n\
+  - run script: \n\
+        Lib_PlotVisit run -i $TwoDSubduction_DIR/non_linear34/eba_low_tol_newton_shift_CFL0.8/visit_scripts/slab.py\n\
         ")
 
 
@@ -179,15 +182,12 @@ def GetSnapsSteps(case_dir, type_='graphical'):
     return snaps, times, steps
 
 
-def SomeFunction(foo):
+def RunScripts(visit_script):
     '''
-    descriptions
+    run script in visit
     Inputs:
-        -
-    Returns:
-        -
     '''
-    pass
+    os.system("echo \"exit()\" | eval \"visit -nowin -cli -s %s\"" % visit_script)
 
 
 def main():
@@ -237,6 +237,9 @@ def main():
         Visit_Options.substitute()
         ofile_path = Visit_Options.save(ofile, relative=True)
         pass
+    
+    elif _commend == 'run':
+        RunScripts(arg.inputs)
 
     else:
         # no such option, give an error message
