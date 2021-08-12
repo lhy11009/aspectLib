@@ -23,7 +23,7 @@
 ################################################################################
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
-source "${dir}/utilities.sh"
+source "${ASPECT_LAB_DIR}/bash_scripts/utilities.sh"
 
 build_aspect_project(){
     ###
@@ -50,14 +50,14 @@ build_aspect_project(){
     for folder in ${plugins_dir}/*; do
         if [[ -d ${folder} ]]; then
             plugin=$(basename "$folder")
-            plugins+=("${plugin}") 
+            plugins+=("${plugin}")
         fi
     done
     echo "plugins: ${plugins[@]}"  # debug
 
     # build
     local current_dir=$(pwd)
-    # Here we pick nproc - 1, this make sure that we don't use up all resources. 
+    # Here we pick nproc - 1, this make sure that we don't use up all resources.
     # But this will cause problem when nproc = 1
     # local nproc=$(($(nproc)-1))
     local nproc=8
@@ -93,7 +93,7 @@ build_all_plugins_separately(){
     for folder in ${plugins_dir}/*; do
         if [[ -d ${folder} ]]; then
             plugin=$(basename "$folder")
-            plugins+=("${plugin}") 
+            plugins+=("${plugin}")
         fi
     done
     echo "plugins: ${plugins[@]}"  # debug
@@ -116,13 +116,13 @@ build_aspect_plugin(){
     local plugin="$2"
     local target_dir
     [[ -z $3 ]] && target_dir="${build_dir}" || target_dir="$3"
-    
+
     # copy plugins
     plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
     # check plugin existence
     plugin_dir="${plugins_dir}/${plugin}"
     [[ -d ${plugin_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: plugin(i.e. ${plugin_dir}) doesn't exist"; exit 1; }
-    
+
     # remove old ones
     plugin_to_dir="${target_dir}/${plugin}"
     echo "plugin_to_dir: ${plugin_to_dir}"  # debug
@@ -131,7 +131,7 @@ build_aspect_plugin(){
     eval "cp -r ${plugin_dir} ${target_dir}/"
     cecho ${GOOD} "${FUNCNAME[0]}: copyied plugin(i.e. ${plugin})"
 
-    # build 
+    # build
     cd ${plugin_to_dir}
     # remove cache before compling
     [[ -e "${plugin_to_dir}/CMakeCache.txt" ]] && eval "rm ${plugin_to_dir}/CMakeCache.txt"
