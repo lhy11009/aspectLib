@@ -47,7 +47,7 @@ class CODESUB():
         '''
         # look for directory
         dir_path = os.path.dirname(_path)
-        if ~os.path.isdir(dir_path):
+        if not os.path.isdir(dir_path):
             os.mkdir(dir_path)
         # save file
         with open(_path, 'w') as fout:

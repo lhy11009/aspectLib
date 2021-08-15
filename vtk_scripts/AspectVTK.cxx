@@ -414,7 +414,7 @@ void FileReader::read_horiz_avg(const std::string &filename,
         }
         for (auto &p: indices) // check for header indices
             if(p < 0){
-                std::cerr << "missing some fields" << std::endl;
+                std::cerr << "\tread_horiz_avg: missing some fields" << std::endl;
                 exit (1);
             }
         std::istringstream iss(temp);  // read shape of data

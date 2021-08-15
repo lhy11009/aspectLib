@@ -42,4 +42,12 @@ else ()
     TARGETS TwoDSubduction_SlabAnalysis
     MODULES ${VTK_LIBRARIES}
     )
+  # build MOW
+  add_executable(TwoDSubduction_MOW MACOSX_BUNDLE TwoDSubduction_MOW.cxx AspectVTK.cxx )
+  target_link_libraries(TwoDSubduction_MOW PRIVATE ${VTK_LIBRARIES})
+  # vtk_module_autoinit is needed
+  vtk_module_autoinit(
+    TARGETS TwoDSubduction_MOW
+    MODULES ${VTK_LIBRARIES}
+    )
 endif ()

@@ -116,8 +116,18 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
                 # check directory
                 if not os.path.isdir(particle_output_dir):
                     os.mkdir(particle_output_dir)
+    
+    def vtk_options(self, **kwargs):
+        '''
+        options of vtk scripts
+        '''
+        operation = kwargs.get('operation', 'slab')
+        step = kwargs.get('step', 0)
+        self.options['PVTU_FILE'] = os.path.join(self._output_dir, "solution", "solution-%05d.pvtu" % (step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])))
+        self.options['VTK_HORIZ_FILE'] = os.path.join(ASPECT_LAB_DIR, 'output', 'depth_average_output')
+        pass
 
-
+ 
 def GetSnapsSteps(case_dir, type_='graphical'):
     case_output_dir = os.path.join(case_dir, 'output')
 
@@ -190,6 +200,32 @@ def RunScripts(visit_script):
     os.system("echo \"exit()\" | eval \"visit -nowin -cli -s %s\"" % visit_script)
 
 
+def PrepareVTKOptions(case_dir, operation, **kwargs):
+    '''
+    prepare vtk options for vtk scripts
+    '''
+    vtk_config_file = os.path.join(ASPECT_LAB_DIR, 'vtk_scripts', "%s.input" % operation)
+    ofile = os.path.join(ASPECT_LAB_DIR, 'output', os.path.basename(vtk_config_file))
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    step = kwargs.get('step')
+    Visit_Options.vtk_options(step=step)
+    Visit_Options.read_contents(vtk_config_file)
+    Visit_Options.substitute()
+    ofile_path = Visit_Options.save(ofile)
+    print('%s; %s generated' % (Utilities.func_name(), ofile_path))
+
+
+def RunVTKScripts(operation):
+    '''
+    run script of vtk
+    Inputs:
+    '''
+    vtk_executable = os.path.join(ASPECT_LAB_DIR, 'vtk_scripts', 'build', operation)
+    vtk_input = os.path.join(ASPECT_LAB_DIR, 'output', '%s.input' % operation)
+    os.system("%s %s" % (vtk_executable, vtk_input))
+
+
 def main():
     '''
     main function of this module
@@ -208,6 +244,12 @@ def main():
     parser.add_argument('-j', '--json_file', type=str,
                         default='./config_case.json',
                         help='Filename for json file')
+    parser.add_argument('-p', '--operation', type=str,
+                        default='',
+                        help='operation to take')
+    parser.add_argument('-s', '--step', type=int,
+                        default='',
+                        help='step')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -237,6 +279,11 @@ def main():
         Visit_Options.substitute()
         ofile_path = Visit_Options.save(ofile, relative=True)
         pass
+    
+    elif _commend == 'vtk_options':
+        PrepareVTKOptions(arg.inputs, arg.operation, step=arg.step)
+        RunVTKScripts(arg.operation)
+
     
     elif _commend == 'run':
         RunScripts(arg.inputs)

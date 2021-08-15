@@ -135,9 +135,12 @@ class CASE_OPTIONS(Utilities.CODESUB):
 
         # initiate a statistic data
         self.Statistics = Plot.LINEARPLOT('Statistics')
-        statistic_file = os.path.join(self._output_dir, 'statistics')
-        self.Statistics.ReadHeader(statistic_file)
-        self.Statistics.ReadData(statistic_file)
+        self.statistic_file = os.path.join(self._output_dir, 'statistics')
+        self.Statistics.ReadHeader(self.statistic_file)
+        self.Statistics.ReadData(self.statistic_file)
+
+        # horiz_avg
+        self.horiz_avg_file = os.path.join(self._output_dir, "depth_average.txt")
 
 
     def Interpret(self):
