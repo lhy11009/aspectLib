@@ -1,4 +1,5 @@
 export ASPECT_PROJECT_DIR="$HOME/ASPECT_PROJECT"
 export ASPECT_LAB_DIR="$HOME/ASPECT_PROJECT/aspectLib"
 export TwoDSubduction_DIR="$HOME/ASPECT_PROJECT/TwoDSubduction"
+export LunarModel_DIR="$HOME/ASPECT_PROJECT/LunarModel"
 export TwoDSubduction_ucd_DIR="/home/lochy/ASPECT_PROJECT/TwoDSubduction"

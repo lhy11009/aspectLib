@@ -23,6 +23,9 @@ lower_mantle -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba/case1
 -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/case.prm
 -j /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/rheology.json 
 -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/case_o.prm
+    
+    in case the lower mantle rheology is read in from json file as well:
+        -b 1
 
   - init new case:
         python -m shilofue.TwoDSubduction0.CreateCases create -j ~/ASPECT_PROJECT/TwoDSubduction/non_linear32/init.json
@@ -206,7 +209,7 @@ def LowerMantle0(Inputs, _config):
     return Inputs, backgroud_lower_mantle_diffusion
 
 
-def RheologyCDPT(Inputs, _config):
+def RheologyCDPT(Inputs, _config, **kwargs):
     """
     calculate flow law parameters, when phase transition only happens on mantle composition
     """
@@ -219,19 +222,23 @@ def RheologyCDPT(Inputs, _config):
     spcrust_diff = shear_zone['viscosity']
     spcrust_disl = 1e31
     # lower mantle
-    lower_mantle = _config['lower_mantle']
-    strategy = lower_mantle.get('strategy', 'composite')  # see comments in json file
-    jump = lower_mantle['upper_lower_viscosity']
-    T = lower_mantle['T660']
-    P = lower_mantle['P660']
-    V1 = lower_mantle['LowerV']
-    eta_diff_660 = CreepRheologyInAspectViscoPlastic(diff, strain_rate, P, T)
-    eta_disl_660 = CreepRheologyInAspectViscoPlastic(disl, strain_rate, P, T)
-    eta_660 = ComputeComposite(eta_diff_660, eta_disl_660)
-    diff_lm = GetLowerMantleRheology(diff, jump, T, P, V1=V1, strategy=strategy, eta=eta_660)
+    read_lower_mantle_full = kwargs.get('lower_mantle_full', 0)
+    if read_lower_mantle_full == 1:
+        diff_lm = _config['diffusion_lm']
+    else:
+        lower_mantle = _config['lower_mantle']
+        strategy = lower_mantle.get('strategy', 'composite')  # see comments in json file
+        jump = lower_mantle['upper_lower_viscosity']
+        T = lower_mantle['T660']
+        P = lower_mantle['P660']
+        V1 = lower_mantle['LowerV']
+        eta_diff_660 = CreepRheologyInAspectViscoPlastic(diff, strain_rate, P, T)
+        eta_disl_660 = CreepRheologyInAspectViscoPlastic(disl, strain_rate, P, T)
+        eta_660 = ComputeComposite(eta_diff_660, eta_disl_660)
+        diff_lm = GetLowerMantleRheology(diff, jump, T, P, V1=V1, strategy=strategy, eta=eta_660)
     disl_lm = {'A': 5e-32, 'E': 0.0, 'V': 0.0, 'n': 1.0, 'm':0.0}
     # fix input file
-    visco_plastic = Inputs["Material model"]['Visco Plastic']
+    visco_plastic = Inputs["Material model"]['Visco Plastic TwoD']
     prefactors_for_diffusion_creep = Parse.COMPOSITION()
     grain_size_exponents_for_diffusion_creep = Parse.COMPOSITION()
     activation_energies_for_diffusion_creep = Parse.COMPOSITION()
@@ -657,6 +664,9 @@ def main():
     parser.add_argument('-o', '--outputs', type=str,
                         default='case_o.prm',
                         help='Some outputs(prm file)')
+    parser.add_argument('-b', '--bool', type=int,
+                        default=0,
+                        help='a bool option')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -694,7 +704,7 @@ def main():
             _inputs = ParsePrm.ParseFromDealiiInput(fin)
         with open(arg.json, 'r') as fin:
             _config = json.load(fin)
-        outputs = RheologyCDPT(_inputs, _config)
+        outputs = RheologyCDPT(_inputs, _config, lower_mantle_full=arg.bool)
         # screen output
         # file output
         with open(arg.outputs, 'w') as fout:

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-r"""(one line description)
+r"""Plot visit output
 
 This exports:
 
@@ -8,7 +8,6 @@ This exports:
 This depends on:
 
   -
-
 Examples of usage:
 
   - default usage:
@@ -248,7 +247,7 @@ def main():
                         default='',
                         help='operation to take')
     parser.add_argument('-s', '--step', type=int,
-                        default='',
+                        default='0',
                         help='step')
     _options = []
     try:
@@ -258,7 +257,7 @@ def main():
     arg = parser.parse_args(_options)
 
     # commands
-    if (_commend in ['-h', '--help']):
+    if _commend in ['-h', '--help']:
         # example:
         Usage()
 

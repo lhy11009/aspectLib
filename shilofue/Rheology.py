@@ -276,10 +276,10 @@ class RHEOLOGY_OPR():
         eta_disl = np.ones(self.depths.size)
         eta = np.ones(self.depths.size)
         # get rheology
-        dEdiff = -25e3  # -50 - 50e3
-        dEdisl = 40.0e3  # -40 - 40e3
+        dEdiff = -40e3  # -50 - 50e3
+        dEdisl = 20e3  # -40 - 40e3
         dVdiff = -5.5e-6  # -5.5 - 5.5e-6
-        dVdisl = 4.0e-6  # -4.0 - 4.0e-6
+        dVdisl = 0.0e-6  # -4.0 - 4.0e-6
         rheology = kwargs.get('rheology', 'HK03_wet_mod')
         diffusion_creep, dislocation_creep = GetRheology(rheology)
         diffusion_creep['E'] += dEdiff
@@ -326,7 +326,8 @@ class RHEOLOGY_OPR():
         eta_disl660 = CreepRheology(dislocation_creep, strain_rate, P660, T660, use_effective_strain_rate=True)
         eta660 = ComputeComposite(eta_diff660, eta_disl660)
         diff_lm = diffusion_creep.copy()
-        diff_lm['V'] = LowerMantleV(diffusion_creep['E'], T_lm_mean, P_lm_mean, lm_grad_T, lm_grad_P)
+        # diff_lm['V'] = LowerMantleV(diffusion_creep['E'], T_lm_mean, P_lm_mean, lm_grad_T, lm_grad_P) # compute from less variation criteria
+        diff_lm['V'] = 3e-6  # assign a value
         diff_lm['A'] = CreepComputeA(diff_lm, strain_rate, P660, T660, eta660*jump_lower_mantle)
         eta_diff[mask_low] = CreepRheology(diff_lm, strain_rate, self.pressures[mask_low], self.temperatures[mask_low])
         eta_disl[mask_low] = None  # this is just for visualization
@@ -344,9 +345,24 @@ class RHEOLOGY_OPR():
         integral = np.trapz(integral_cores[mask_integral] * np.log10(eta[mask_integral]), self.depths[mask_integral])
         volume = np.trapz(integral_cores[mask_integral], self.depths[mask_integral])
         average_log_eta = integral / volume
-        
-        # plot
+
+        # dump json file 
         save_profile = kwargs.get('save_profile', 0)
+        json_path = os.path.join(RESULT_DIR, "mantle_profile_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
+        constrained_rheology = {'diffusion_creep': diffusion_creep, 'dislocation_creep': dislocation_creep, 'diffusion_lm': diff_lm}
+        json_path_aspect = os.path.join(RESULT_DIR, "mantle_profile_aspect_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
+        # convert aspect rheology
+        diffusion_creep_aspect = Convert2AspectInput(diffusion_creep)
+        diffusion_lm_aspect = Convert2AspectInput(diff_lm)
+        dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=True)
+        constrained_rheology_aspect = {'diffusion_creep': diffusion_creep_aspect, 'dislocation_creep': dislocation_creep_aspect, 'diffusion_lm': diffusion_lm_aspect}
+        with open(json_path, 'w') as fout:
+            json.dump(constrained_rheology, fout)
+        with open(json_path_aspect, 'w') as fout:
+            json.dump(constrained_rheology_aspect, fout)
+        print("New json: %s" % json_path)
+        print("New json: %s" % json_path_aspect)
+        # plot
         if save_profile == 1:
             # plots
             fig, axs = plt.subplots(1, 2, figsize=(10, 5))
@@ -781,14 +797,9 @@ class RHEOLOGY_OPR():
                 constrained_ds.append(d)
                 constrained_Vdisls.append(Vdisl)
                 constrained_Vdiffs.append(Vdiff)
-                constrained_Edisls.append(Edisl)
-                constrained_Ediffs.append(Ediff)
-                if include_lower_mantle is not None:
-                    constrained_rheologies.append({'diff': diffusion_creep.copy(), 'disl': dislocation_creep.copy(), 'diff_lm': diff_lm.copy(),\
-                    'average_upper_region': average_eta})
-                else:
-                    constrained_rheologies.append({'diff': diffusion_creep.copy(), 'disl': dislocation_creep.copy(),\
-                    'average_upper_region': average_eta})
+            else:
+                constrained_rheologies.append({'diff': diffusion_creep.copy(), 'disl': dislocation_creep.copy(),\
+                'average_upper_region': average_eta})
 
 
         fig = plt.figure()
@@ -817,7 +828,7 @@ class RHEOLOGY_OPR():
             with open(json_path, 'w') as fout:
                 json.dump(constrained_rheology, fout)
                 print("[%d / %d], New json: %s" % (i, len(constrained_rheologies), json_path))
-            # save profile
+            #  save profile
             if save_profile == 1:
                 eta_diff = CreepRheology(constrained_rheology['diff'], strain_rate, self.pressures, self.temperatures)
                 eta_disl = CreepRheology(constrained_rheology['disl'], strain_rate, self.pressures, self.temperatures, use_effective_strain_rate=True)
@@ -891,10 +902,8 @@ def GetRheology(rheology):
 
 
 def Config(_kwargs, _name, _default):
-    """
-    def Config(_kwargs, _name, _default)
-
-    Read variable value and assign default if not found
+    """    def ReadProfile(self, file_path):
+        self.depths, self.pressures, self.temperatures = ReadAspectProfile(file_path)ble value and assign default if not found
     """
     try:
         value = _kwargs[_name]

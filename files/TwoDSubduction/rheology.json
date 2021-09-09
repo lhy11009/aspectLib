@@ -1,0 +1,33 @@
+{
+    "strain_rate": 1e-15,
+    "diffusion_creep": {
+        "A": 8.17868945868946e-17,
+        "d": 0.01,
+        "n": 1.0,
+        "m": 3.0,
+        "E": 300000.0,
+        "V": 6.899999999999998e-06}, 
+    "dislocation_creep": {
+        "A": 5.907603165099757e-16,
+        "d": 0.01,
+        "n": 3.5,
+        "m": 0.0,
+        "E": 510000.0,
+        "V": 1.74e-05
+        },
+    "shear_zone": {
+        "viscosity": 1e20
+    },
+    "lower_mantle":{
+        "_comment": ["configuration for lower mantle rheology with eba models",
+                     "strategies:",
+                     "composite: prescribe a P and a V here, as well as pressure and temperature at 660 km depth. The composite viscosity of upper mantle is used as the base, and a upper_lower_viscosity factor will be multiplied on that.",
+                     "c12: use P and V value from cizcova et al 2012, compute A using value of pressure and temperature at 660 km depth",
+                     "c12_const: only use the value of constrainted, 3-4e22"],
+        "strategy": "c12_const",
+        "T660": 1968.9, 
+        "P660": 20.332e9, 
+        "LowerV": 3.7316e-6,
+        "upper_lower_viscosity": 30.0
+    }
+}
