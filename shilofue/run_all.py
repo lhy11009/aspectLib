@@ -18,19 +18,26 @@ Examples of usage:
   - default usage:
 
         python shilofue/run_all.py peloton-rome /home/lochy/ASPECT_PROJECT/TwoDSubduction/rene_affinity_test/
+        -d master_TwoD
+
+        -d: branch to test
   
   - hard in the code:
 
         bind-to options, in respective "generate_input_file*" functions
         
+        core_counts, the number of cores you want to test
+        
         module options, in respective "generate_input_file*" functions
+    
+        environment_setup_commands, set up mpi commands to use
 
         tasks_per_node option, in the 'main' function, governing the number of tasks per node
 
 """ 
 
 import numpy as np
-import sys
+import sys, argparse
 
 # from subprocess import run
 import os
@@ -38,6 +45,7 @@ import shutil
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+ASPECT_SOURCE_DIR = os.environ['ASPECT_SOURCE_DIR']
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
@@ -97,7 +105,7 @@ def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prm
     fh.close()
 
 
-def generate_slurm_file_peloton_rome(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile):
+def generate_slurm_file_peloton_rome(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile, **kwargs):
     """Write the slurm file for peloton roma
     
        Rome is the new partition for Magali's group 
@@ -105,7 +113,9 @@ def generate_slurm_file_peloton_rome(slurm_file_name,ncpu,tasks_per_node,job_nam
     # modify this to contain the commands necessary to setup MPI environment
     #environment_setup_commands = "module load openmpi/3.1.3 intel-mkl"
     # haoyuan: I think we need to load 4.0.5 here
-    environment_setup_commands=""
+    # haoyuan: unload previous openmpi and reload a new one
+    environment_setup_commands="module unload openmpi/4.0.1\n\
+            module load openmpi/4.1.0-mpi-io"
     # haoyuan:
     # This function set up the slurm file for one job
     fh = open(slurm_file_name,'w')
@@ -125,10 +135,12 @@ def generate_slurm_file_peloton_rome(slurm_file_name,ncpu,tasks_per_node,job_nam
     # haoyuan: --bind-to core is always choosen as the default
     # one need to change the path to aspect to make this function
     # moreover, there could be a load library issure for openib
-    # haoyuan: unload previous openmpi and reload a new one
-    fh.write("module unload openmpi\nexport PATH=/home/rudolph/sw/openmpi-4.0.5/bin:$PATH\n")
-    # command to run 
-    fh.write("mpirun -n {:d} --bind-to socket --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
+    # command to run
+    branch=kwargs.get('branch', None)
+    if branch==None:
+        fh.write("mpirun -n {:d} --bind-to socket --report-bindings {:s}/build/aspect {:s}\n".format(ASPECT_SOURCE_DIR,ncpu,prmfile))
+    else:
+        fh.write("mpirun -n {:d} --bind-to socket --report-bindings {:s}/build_{:s}/aspect {:s}\n".format(ncpu, ASPECT_SOURCE_DIR,branch,prmfile))
     # fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
     fh.close()
 
@@ -177,6 +189,18 @@ def main():
     '''
     server = sys.argv[1] # server name
     _path = sys.argv[2] # path to the files
+    # parse parameters
+    parser = argparse.ArgumentParser(description='Parse parameters')
+    parser.add_argument('-i', '--inputs', type=str, default='', help='Some inputs')
+    parser.add_argument('-o', '--outputs', type=str, default='.', help='Some outputs')
+    parser.add_argument('-b', '--branch', type=str, default=None, help='The branch of code to test')
+    _options = [] 
+    try:
+        _options = sys.argv[3: ]
+    except IndexError:
+        pass
+    arg = parser.parse_args(_options)
+    arg = parser.parse_args(_options)
 
     
     # Haoyuan: in this file, the field to change are marked with capital letters.
@@ -194,7 +218,7 @@ def main():
     # core_counts = [1,2,4,8,16,32,64,128,256,512,768,1024]#,200,300,400]#,500,800,1000,1500]
     # for rome-256-512
     # 64 tasks per node
-    core_counts = [1,2,4,8,16,32,64,128,256,512] # 768,1024]#,200,300,400]#,500,800,1000,1500]
+    core_counts = [1,2,4,8,16,32,64,128,256] #512] # 768,1024]#,200,300,400]#,500,800,1000,1500]
     refinement_levels = [2,3,4,5]#,6]
     #                                          0   1   2   3       4     5    6
     minimum_core_count_for_refinement_level = [0,  0,   1,   1,   10, 100, 500]# for refinement levels 0-6
@@ -244,7 +268,7 @@ def main():
                     elif server == "stampede2":
                         generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,input_file)
                     if server == "peloton-rome":
-                        generate_slurm_file_peloton_rome(slurm_file,core_count,tasks_per_node,jobname,input_file)
+                        generate_slurm_file_peloton_rome(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=arg.branch)
                         print("sbatch -A billen " + slurm_file)
                         os.system("sbatch -A billen " + slurm_file)
                     # haoyuan: submit the job
