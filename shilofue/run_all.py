@@ -27,12 +27,17 @@ Examples of usage:
         bind-to options, in respective "generate_input_file*" functions
         
         core_counts, the number of cores you want to test
+            
+        openmpi, version of openmpi used
         
         module options, in respective "generate_input_file*" functions
     
         environment_setup_commands, set up mpi commands to use
 
         tasks_per_node option, in the 'main' function, governing the number of tasks per node
+            
+            for high2, use 64;
+            for roma, use 128;
 
 """ 
 
@@ -67,12 +72,13 @@ def generate_input_file(base_file_name,output_file_name,dictionary):
     ofh.close()
 
 
-def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile):
+def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile,**kwargs):
     """Write the slurm file for peloton"""
     # modify this to contain the commands necessary to setup MPI environment
     #environment_setup_commands = "module load openmpi/3.1.3 intel-mkl"
     # haoyuan: I think we need to load 4.0.5 here
-    environment_setup_commands=""
+    environment_setup_commands="module unload openmpi/4.0.1\n\
+            module load openmpi/4.1.0-mpi-io"
     # haoyuan:
     # This function set up the slurm file for one job
     fh = open(slurm_file_name,'w')
@@ -90,6 +96,12 @@ def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prm
     fh.write(environment_setup_commands + "\n")
     fh.write("module list\n")
     fh.write("ulimit -l unlimited\n")
+    # command to run
+    branch=kwargs.get('branch', None)
+    if branch==None:
+        fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings {:s}/build/aspect {:s}\n".format(ASPECT_SOURCE_DIR,ncpu,prmfile))
+    else:
+        fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings {:s}/build_{:s}/aspect {:s}\n".format(ncpu, ASPECT_SOURCE_DIR,branch,prmfile))
     #fh.write("srun ./aspect {:s}\n".format(prmfile))
     #fh.write("mpirun -n {:d} --mca btl_openib_use_eager_rdma 1 --mca mpi_leave_pinned 1 --bind-to-core --report-bindings --mca btl_openib_allow_ib 1 ./aspect {:s}\n".format(ncpu,prmfile))
     #fh.write("mpirun -n {:d} --mca btl ^tcp --report-bindings ./aspect {:s}\n".format(ncpu,prmfile))
@@ -99,8 +111,7 @@ def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prm
     # moreover, there could be a load library issure for openib
     # fh.write("mpirun -n {:d} --bind-to core --mca btl_openib_allow_ib 1 --mca btl openib,self,vader --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
     # haoyuan: unload previous openmpi and reload a new one
-    fh.write("module unload openmpi\nexport PATH=/home/rudolph/sw/openmpi-4.0.5/bin:$PATH\n")
-    fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
+    # fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
     #fh.write("mpirun -n {:d} ./aspect-impi {:s}\n".format(ncpu,prmfile))
     fh.close()
 
@@ -218,7 +229,7 @@ def main():
     # core_counts = [1,2,4,8,16,32,64,128,256,512,768,1024]#,200,300,400]#,500,800,1000,1500]
     # for rome-256-512
     # 64 tasks per node
-    core_counts = [1,2,4,8,16,32,64,128,256] #512] # 768,1024]#,200,300,400]#,500,800,1000,1500]
+    core_counts = [1,2,4,8,16,32,64] # 128,256] #512] # 768,1024]#,200,300,400]#,500,800,1000,1500]
     refinement_levels = [2,3,4,5]#,6]
     #                                          0   1   2   3       4     5    6
     minimum_core_count_for_refinement_level = [0,  0,   1,   1,   10, 100, 500]# for refinement levels 0-6
@@ -229,7 +240,7 @@ def main():
     # tasks_per_node = 32
     # for rome-256-512
     tasks_per_node = 64
-    openmpi = "4.0.5"
+    openmpi = "4.1.0"
     
     cluster_label = "%s-%stasks-socket-openmpi-%s" % (server, tasks_per_node, openmpi) # ?
 
@@ -264,9 +275,13 @@ def main():
                     slurm_file = input_file + ".slurm"
                     # haoyuan: calls function to generate slurm file for one job
                     if server == "peloton-ii":
-                        generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,input_file)
+                        generate_slurm_file_peloton(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=arg.branch)
+                        print("sbatch" + slurm_file)
+                        os.system("sbatch " + slurm_file)
                     elif server == "stampede2":
-                        generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,input_file)
+                        generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=arg.branch)
+                        print("sbatch" + slurm_file)
+                        os.system("sbatch " + slurm_file)
                     if server == "peloton-rome":
                         generate_slurm_file_peloton_rome(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=arg.branch)
                         print("sbatch -A billen " + slurm_file)
