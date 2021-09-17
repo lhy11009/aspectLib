@@ -46,6 +46,12 @@ Examples of usage: \n\
 \n\
   - run script: \n\
         Lib_PlotVisit run -i $TwoDSubduction_DIR/non_linear34/eba_low_tol_newton_shift_CFL0.8/visit_scripts/slab.py\n\
+\n\
+  - run vtk scripts: \n\
+        Lib_PlotVisit vtk_options -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8_lh -p TwoDSubduction_MOW -s 25\n\
+            -p operations, available operations are: \n\
+                TwoDSubduction_MOW: pull out tentative MOW from temperature: \n\
+                TwoDSubduction_SlabAnalysis: analyze slab morphology: \n\
         ")
 
 
@@ -282,7 +288,6 @@ def main():
     elif _commend == 'vtk_options':
         PrepareVTKOptions(arg.inputs, arg.operation, step=arg.step)
         RunVTKScripts(arg.operation)
-
     
     elif _commend == 'run':
         RunScripts(arg.inputs)
