@@ -26,14 +26,10 @@ descriptions
 """
 import numpy as np
 import sys, os, argparse
-# import json, re
-# import pathlib
 import subprocess
 import numpy as np
 import shilofue.Plot as Plot
 import warnings
-import shilofue.Utilities as Utilities
-# from matplotlib import cm
 from matplotlib import pyplot as plt
 
 # directory to the aspect Lab
@@ -41,6 +37,13 @@ ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+
+# import Utilities from utilities package
+import importlib.util
+UTILITIES_DIR = os.environ['UTILITIES_DIR']
+spec = importlib.util.spec_from_file_location("module.name", os.path.join(UTILITIES_DIR, "python_scripts", "Utilities.py")) 
+Utilities = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(Utilities)
 
 def Usage():
     print("\
