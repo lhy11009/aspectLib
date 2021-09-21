@@ -11,6 +11,8 @@
 #   ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS
 # all available snapshots for particle output
 #   ALL_AVAILABLE_PARTICLE_SNAPSHOTS
+# also ploat the shallower parts below the crust
+#   IF_PLOT_SHALLOW
 
 
 class VISIT_PLOT():
@@ -290,20 +292,18 @@ class SLAB(VISIT_PLOT):
         """
         plot a single time step
         """
-        # spcrust
-        self.plot_crust()
-        
-        # plot slab viscosity
-        self.plot_viscosity_slab()
-
-        # plot deform_mechanism 
-        if IF_DEFORM_MECHANISM:
-            self.plot_deform_mechanism_slab()
-
+        if IF_PLOT_SHALLOW:
+            # spcrust
+            self.plot_crust()
+            # plot slab viscosity
+            self.plot_viscosity_slab()
+            # plot deform_mechanism 
+            if IF_DEFORM_MECHANISM:
+                self.plot_deform_mechanism_slab()
         # plot upper mantle
         # viscosity
         self.plot_viscosity_upper_mantle()
-
+        self.plot_temperature_upper_mantle()  # temperature
         # deform mechanism 
         if IF_DEFORM_MECHANISM:
             self.plot_deform_mechanism_upper_mantle()
@@ -428,6 +428,23 @@ class SLAB(VISIT_PLOT):
         # save plot 
         self.save_window('um_deform_mechanism_snap')
         HideActivePlots()
+    
+    def plot_temperature_upper_mantle(self):
+        '''
+        plot deform mechanism in upper mantle
+        '''
+        # set camera
+        self.set_view_attrs((-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06))
+        
+        # set up temperature
+        self.set_pseudo_color('T', color_table='magma', limits=[273.0, 2173.0])
+       
+        SetActivePlots((self.idxs['T']))
+        HideActivePlots()
+
+        # save plot 
+        self.save_window('um_temperature')
+        HideActivePlots()
         
 
 class EXPORT_PARTICLE(VISIT_PLOT):
@@ -509,13 +526,14 @@ def main():
                     print "step %s is not valid. There is no output" % step
         else:
             Slab(INITIAL_ADAPTIVE_REFINEMENT+SINGLE_SNAPSHOT)
-        Slab.abort()
+        # Slab.abort()
 
+    # deprecated: as this part(particle) is not included in the prm file anymore
     # Output particles for slab morphology
-    if IF_EXPORT_SLAB_MORPH:
-        Export_Particle = EXPORT_PARTICLE("VISIT_PARTICLE_FILE", output_dir="DATA_OUTPUT_DIR")
+    # if IF_EXPORT_SLAB_MORPH:
+    #    Export_Particle = EXPORT_PARTICLE("VISIT_PARTICLE_FILE", output_dir="DATA_OUTPUT_DIR")
         # Be default, it outputs all steps. So we only needs to go to a single snapshot
-        Export_Particle(0)
-        Export_Particle.abort()
+    #    Export_Particle(0)
+    #    Export_Particle.abort()
 
 main()

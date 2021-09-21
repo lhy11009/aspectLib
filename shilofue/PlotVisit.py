@@ -96,6 +96,7 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
         
         # default settings
         self.options['IF_PLOT_SLAB'] = 'False'
+        self.options['IF_PLOT_SHALLOW'] = kwargs.get('if_plot_shallow', "False") # plot the shallow part of the slab.
         self.options['IF_EXPORT_SLAB_MORPH'] = 'False'
         particle_output_dir = os.path.join(self._output_dir, "slab_morphs")
         self.options["PARTICLE_OUTPUT_DIR"] = particle_output_dir
