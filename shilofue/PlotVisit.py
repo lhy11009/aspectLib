@@ -59,9 +59,11 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
     """
     parse .prm file to a option file that bash can easily read
     """
-    def Interpret(self):
+    def Interpret(self, **kwargs):
         """
         Interpret the inputs, to be reloaded in children
+        kwargs: options
+            last_steps(list): plot the last few steps
         """
         # call function from parent
         ParsePrm.CASE_OPTIONS.Interpret(self)
@@ -100,7 +102,12 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
 
         # plot slab 
         self.options['IF_PLOT_SLAB'] = 'True'
-        self.options['PLOT_SLAB_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
+        last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])
+        last_steps = kwargs.get('last_steps', None)
+        if type(last_steps) == int:
+            self.options['PLOT_SLAB_STEPS'] = [i for i in range(last_step - last_steps + 1, last_step + 1)]
+        else:
+            self.options['PLOT_SLAB_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
         # self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
         self.options['IF_DEFORM_MECHANISM'] = 1
 
@@ -255,6 +262,9 @@ def main():
     parser.add_argument('-s', '--step', type=int,
                         default='0',
                         help='step')
+    parser.add_argument('-ls', '--last_step', type=bool,
+                        default=False,
+                        help='Only plot last step (bool value)')
     _options = []
     try:
         _options = sys.argv[2: ]

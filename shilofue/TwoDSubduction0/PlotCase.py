@@ -26,6 +26,7 @@ import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 from shilofue.ParsePrm import ReadPrmFile
+import shilofue.PlotVisit as PlotVisit
 import shilofue.Utilities as Utilities
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
@@ -100,6 +101,20 @@ def PlotCaseRun(case_path, **kwargs):
         PlotRunTime.PlotNewtonSolverHistory(log_file, fig_path, step_range=step_range)
     else:
         print("Skipping newton solver history")
+
+    # plot visit
+    Visit_Options = PlotVisit.VISIT_OPTIONS(case_path)
+    Visit_Options.Interpret(last_steps=3)  # interpret scripts, plot the last 3 steps
+    odir = os.path.join(case_path, 'visit_scripts')
+    if not os.path.isdir(odir):
+        os.mkdir(odir)
+    ofile = os.path.join(odir, 'slab.py')
+    visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', 'slab.py')
+    Visit_Options.read_contents(visit_script)
+    Visit_Options.substitute()
+    ofile_path = Visit_Options.save(ofile, relative=True)
+    print("Visualizing using visit")
+    PlotVisit.RunScripts(ofile_path)  # run scripts
 
 
 def main():
