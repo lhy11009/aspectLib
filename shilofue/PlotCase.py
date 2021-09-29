@@ -13,7 +13,7 @@ Examples of usage:
 
   - default usage: plot case running results
 
-        Lib_TwoDSubduction0_PlotCase plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20
+         plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20
 
 descriptions
 """
@@ -27,7 +27,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from shilofue.ParsePrm import ReadPrmFile
 import shilofue.PlotVisit as PlotVisit
-import shilofue.PlotCase as PlotCase
 import shilofue.Utilities as Utilities
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
@@ -46,12 +45,12 @@ Examples of usage: \n\
 \n\
   - default usage: plot case running results, -t option deals with a time range, default is a whole range\n\
 \n\
-        Lib_TwoDSubduction0_PlotCase plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20\
+        Lib_plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20\
           -t 0.0 -t1 0.5e6\
         ")
 
 
-def TwoDSubduction_PlotCaseRun(case_path, **kwargs):
+def PlotCaseRun(case_path, **kwargs):
     '''
     Plot case run result
     Inputs:
@@ -63,20 +62,45 @@ def TwoDSubduction_PlotCaseRun(case_path, **kwargs):
     '''
     # get case parameters
     prm_path = os.path.join(case_path, 'case.prm')
+    inputs = ReadPrmFile(prm_path)
+    # get solver scheme
+    solver_scheme = inputs.get('Nonlinear solver scheme', 'single Advection, single Stokes')
 
-    # plot visit
-    Visit_Options = PlotVisit.VISIT_OPTIONS(case_path)
-    Visit_Options.Interpret(last_steps=3)  # interpret scripts, plot the last 3 steps
-    odir = os.path.join(case_path, 'visit_scripts')
-    if not os.path.isdir(odir):
-        os.mkdir(odir)
-    ofile = os.path.join(odir, 'slab.py')
-    visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', 'slab.py')
-    Visit_Options.read_contents(visit_script)
-    Visit_Options.substitute()
-    ofile_path = Visit_Options.save(ofile, relative=True)
-    print("Visualizing using visit")
-    PlotVisit.RunScripts(ofile_path)  # run scripts
+    log_file = os.path.join(case_path, 'output', 'log.txt')
+    assert(os.access(log_file, os.R_OK))
+    statistic_file = os.path.join(case_path, 'output', 'statistics')
+    assert(os.access(statistic_file, os.R_OK))
+
+    # statistic
+    print('Ploting statistic results')
+    fig_path = os.path.join(case_path, 'img', 'Statistic.png')
+    PlotStatistics.PlotFigure(statistic_file, fig_path)
+
+    # run time
+    print('Ploting run time')
+    fig_path = os.path.join(case_path, 'img', 'run_time.png')
+    if not os.path.isdir(os.path.dirname(fig_path)):
+        os.mkdir(os.path.dirname(fig_path))
+    # time range
+    try:
+        time_range = kwargs['time_range']
+        fig_output_path, step_range = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True, time_range=time_range)
+    except KeyError:
+        fig_output_path = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True)
+        step_range = None
+
+    # Newton history
+    # determine whether newton is used
+    print('solver_scheme, ', solver_scheme) # debug
+    fig_path = os.path.join(case_path, 'img', 'newton_solver_history.png')
+    # match object in solver scheme, so we only plot for these options
+    match_obj = re.search('Newton', solver_scheme)
+    match_obj1 = re.search('iterated defect correction Stokes', solver_scheme)
+    if match_obj or match_obj1:
+        print("Plotting newton solver history")
+        PlotRunTime.PlotNewtonSolverHistory(log_file, fig_path, step_range=step_range)
+    else:
+        print("Skipping newton solver history")
 
 
 def main():
@@ -111,11 +135,9 @@ def main():
     if _commend == 'plot_case':
         # example:
         if arg.time != None and arg.time1 != None:
-            PlotCase.PlotCaseRun(arg.inputs, time_range=[arg.time, arg.time1])
-            TwoDSubduction_PlotCaseRun(arg.inputs, time_range=[arg.time, arg.time1])
+            PlotCaseRun(arg.inputs, time_range=[arg.time, arg.time1])
         else:
-            PlotCase.PlotCaseRun(arg.inputs)
-            TwoDSubduction_PlotCaseRun(arg.inputs)
+            PlotCaseRun(arg.inputs)
     elif (_commend in ['-h', '--help']):
         # example:
         Usage()

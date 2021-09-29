@@ -1114,6 +1114,7 @@ def main():
         print(outputs)
 
     if _commend == 'save_case_last_snapshot':
+        # python -m shilofue.Parse save_case_last_snapshot -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/eba1/initial_condition1_re
         SaveLastSnapShot(arg.inputs)
 
 # run script
