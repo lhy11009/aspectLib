@@ -42,7 +42,8 @@ Examples of usage: \n\
 \n\
   - translate script: \n\
 \n\
-        Lib_PlotVisit visit_options -i $TwoDSubduction_DIR/non_linear34/eba_low_tol_newton_shift_CFL0.8\n\
+        Lib_PlotVisit visit_options -i $TwoDSubduction_DIR/latent_heat_issue/cookbook_latent-heat -sr temperature.py\n\
+            -sr: the relative path under the visit_script folder\n\
 \n\
   - run script: \n\
         Lib_PlotVisit run -i $TwoDSubduction_DIR/non_linear34/eba_low_tol_newton_shift_CFL0.8/visit_scripts/slab.py\n\
@@ -106,9 +107,9 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
         last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])
         last_steps = kwargs.get('last_steps', None)
         if type(last_steps) == int:
-            self.options['PLOT_SLAB_STEPS'] = [i for i in range(last_step - last_steps + 1, last_step + 1)]
+            self.options['STEPS'] = [i for i in range(last_step - last_steps + 1, last_step + 1)]
         else:
-            self.options['PLOT_SLAB_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
+            self.options['STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
         # self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
         self.options['IF_DEFORM_MECHANISM'] = 1
 
@@ -121,7 +122,7 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
             # slab
             if key == 'slab':
                 self.options['IF_PLOT_SLAB'] = 'True'
-                self.options['PLOT_SLAB_STEPS'] = value.get('steps', [0])
+                self.options['STEPS'] = value.get('steps', [0])
                 self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
             # export particles for slab morph
             elif key == 'slab_morph':
@@ -175,9 +176,10 @@ def GetSnapsSteps(case_dir, type_='graphical'):
     # particle
     try:
         time_between_particles_output = float(idict['Postprocess']['Particles']['Time between data output'])
+        total_particles_outputs = int(final_time / time_between_particles_output) + 1
     except KeyError:
         time_between_particles_output = 1e8
-    total_particles_outputs = int(final_time / time_between_particles_output) + 1
+        total_particles_outputs = 0
     particle_times = [i*time_between_particles_output for i in range(total_particles_outputs)]
     particle_steps = [Statistics.GetStep(time) for time in particle_times]
 
@@ -254,6 +256,9 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='Some inputs')
+    parser.add_argument('-sr', '--script', type=str,
+                        default='temperature.py',
+                        help='script')
     parser.add_argument('-j', '--json_file', type=str,
                         default='./config_case.json',
                         help='Filename for json file')
@@ -289,9 +294,12 @@ def main():
 
         # call function
         Visit_Options.Interpret()
-        ofile = os.path.join('visit_scripts', 'slab.py')
-        visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', 'slab.py')
-        Visit_Options.read_contents(visit_script)
+        # ofile = os.path.join('visit_scripts', 'slab.py')
+        ofile = os.path.join('visit_scripts', os.path.basename(arg.script))
+        # visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', 'slab.py')
+        visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', arg.script)
+        visit_base_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'base.py')
+        Visit_Options.read_contents(visit_base_script, visit_script)
         Visit_Options.substitute()
         ofile_path = Visit_Options.save(ofile, relative=True)
         pass

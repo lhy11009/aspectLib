@@ -2,6 +2,13 @@
 #   VISIT_FILE
 # directory for images:
 #   IMG_OUTPUT_DIR
+# initial adaptive refinement level:
+#   INITIAL_ADAPTIVE_REFINEMENT
+# all available snapshots for graphical output
+#   ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS
+# steps to plot
+#   STEPS
+
 class TEMPERATURE_PLOT(VISIT_PLOT):
     # a class for plotting temperature
     def __init__(self, filein, **kwargs):
@@ -31,6 +38,17 @@ class TEMPERATURE_PLOT(VISIT_PLOT):
 
 def main():
     Temperature_Plot = TEMPERATURE_PLOT("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
-    Temperature_Plot(0)
+    steps = STEPS
+    if type(steps) == list:
+        for step in steps:
+            # check that snapshot is valid
+            snapshots = INITIAL_ADAPTIVE_REFINEMENT+step
+            if snapshots in ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS:
+                Temperature_Plot(INITIAL_ADAPTIVE_REFINEMENT+step)
+            else:
+                print "step %s is not valid. There is no output" % step
+    else:
+        print "step: " + str(steps) + " is not a list. There is no output"
+    # Temperature_Plot(0)
 
 main()
