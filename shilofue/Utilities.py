@@ -18,13 +18,16 @@ class CODESUB():
         contents=''
         options={}
 
-    def read_contents(self, _path):
+    def read_contents(self, *paths):
         '''
         read contents from a file
         '''
-        my_assert(os.access(_path, os.R_OK), FileNotFoundError, "%s: %s cannot be opened" % (func_name(), _path))
-        with open(_path, 'r') as fin:
-            self.contents = fin.read()
+        self.contents=''
+        for _path in paths:
+            my_assert(os.access(_path, os.R_OK), FileNotFoundError, "%s: %s cannot be opened" % (func_name(), _path))
+            with open(_path, 'r') as fin:
+                self.contents += '\n\n'
+                self.contents += fin.read()
 
     def read_options(self, _path):
         '''

@@ -22,17 +22,17 @@ descriptions:
 
 # import os
 # import pytest
-# import filecmp  # for compare file contents
+import filecmp  # for compare file contents
 # import numpy as np
 # import shilofue.Foo as Foo  # import test module
 # from shilofue.Utilities import 
 from shilofue.PlotVisit import *
 # from matplotlib import pyplot as plt
-# from shutil import rmtree  # for remove directories
+from shutil import rmtree  # for remove directories
 
 test_dir = ".test"
-source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'plot_visit')
-test_source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'plot_visit')
+source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_visit')
+test_source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_visit')
 test_cases_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'cases')
 
 if not os.path.isdir(test_dir):
@@ -56,6 +56,32 @@ def test_get_snaps_steps():
     assert(snaps == [0, 1])
     assert(times == [0.0, 2e5])
     assert(steps == [0, 231])
+
+
+def test_visit_options(): 
+    # check visit_options (interpret script from standard ones)
+    case_dir = os.path.join(test_cases_dir, 'test_visit')
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    # call function
+    Visit_Options.Interpret()
+    ofile = os.path.join(test_dir, 'temperature.py')
+    visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'temperature.py')
+    visit_script_base = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'base.py')
+    Visit_Options.read_contents(visit_script_base, visit_script)
+    # make a new directory
+    img_dir = os.path.join(test_dir, 'img')
+    if os.path.isdir(img_dir):
+        rmtree(img_dir)
+    os.mkdir(img_dir)
+    Visit_Options.options["IMG_OUTPUT_DIR"] = img_dir
+    Visit_Options.substitute()
+    ofile_path = Visit_Options.save(ofile)
+    # assert file generated
+    assert(os.path.isfile(ofile_path))
+    # assert file is identical with standard
+    ofile_std = os.path.join(source_dir, 'temperature_std.py')
+    assert(os.path.isfile(ofile_std))
+    assert(filecmp.cmp(ofile_path, ofile_std))
 
 
 #def test_visit_options():
