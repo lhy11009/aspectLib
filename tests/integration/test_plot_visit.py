@@ -65,8 +65,8 @@ def test_visit_options():
     # call function
     Visit_Options.Interpret()
     ofile = os.path.join(test_dir, 'temperature.py')
-    visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'temperature.py')
-    visit_script_base = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'base.py')
+    visit_script = os.path.join(source_dir, 'temperature.py')
+    visit_script_base = os.path.join(source_dir, 'base.py')
     Visit_Options.read_contents(visit_script_base, visit_script)
     # make a new directory
     img_dir = os.path.join(test_dir, 'img')
