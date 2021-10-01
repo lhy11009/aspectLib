@@ -13,8 +13,8 @@
 #   ALL_AVAILABLE_PARTICLE_SNAPSHOTS
 # also ploat the shallower parts below the crust
 #   IF_PLOT_SHALLOW
-# steps to plot
-#   STEPS
+# steps to visualize fields
+#   GRAPHICAL_STEPS
 
 
 class VISIT_PLOT():
@@ -517,7 +517,7 @@ def main():
         # Second one is the snapshot to plot
         # here we prefer to use a series of snapshots.
         # If this doesn't work, we will use a single snapshot
-        steps = STEPS
+        steps = GRAPHICAL_STEPS
         if not steps == []:
             for step in steps:
                 # check that snapshot is valid

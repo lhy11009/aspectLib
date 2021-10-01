@@ -23,11 +23,14 @@ class CODESUB():
         read contents from a file
         '''
         self.contents=''
+        i = 0 # conunt
         for _path in paths:
             my_assert(os.access(_path, os.R_OK), FileNotFoundError, "%s: %s cannot be opened" % (func_name(), _path))
             with open(_path, 'r') as fin:
-                self.contents += '\n\n'
+                if i > 0:
+                    self.contents += '\n\n'
                 self.contents += fin.read()
+            i += 1
 
     def read_options(self, _path):
         '''

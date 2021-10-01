@@ -9,7 +9,7 @@
 # steps to plot
 #   GRAPHICAL_STEPS
 
-class TEMPERATURE_PLOT(VISIT_PLOT):
+class FOO_PLOT(VISIT_PLOT):
     # a class for plotting temperature
     def __init__(self, filein, **kwargs):
         plot_types, vars_ = self.get_plots()
@@ -30,25 +30,25 @@ class TEMPERATURE_PLOT(VISIT_PLOT):
         """
         plot_types = ["Pseudocolor"]
         vars_ = ["T"]
-	return plot_types, vars_
+        return plot_types, vars_
 
     def plot_time_snap(self):
         # plot option for this class
         self.plot_temperature_base()
 
 def main():
-    Temperature_Plot = TEMPERATURE_PLOT("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
+    Foo_Plot = FOO_PLOT("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
     steps = GRAPHICAL_STEPS
     if type(steps) == list:
         for step in steps:
             # check that snapshot is valid
             snapshots = INITIAL_ADAPTIVE_REFINEMENT+step
             if snapshots in ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS:
-                Temperature_Plot(INITIAL_ADAPTIVE_REFINEMENT+step)
+                Foo_Plot(INITIAL_ADAPTIVE_REFINEMENT+step)
             else:
                 print "step %s is not valid. There is no output" % step
     else:
         print "step: " + str(steps) + " is not a list. There is no output"
-    # Temperature_Plot(0)
+    # Foo_Plot(0)
 
 main()

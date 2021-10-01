@@ -66,25 +66,28 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
         kwargs: options
             last_steps(list): plot the last few steps
         """
+        is_vtk = kwargs.get('vtk', False)  # if this is used for vtk options as well
         # call function from parent
         ParsePrm.CASE_OPTIONS.Interpret(self)
-
-        # visit file
-        self.options["VISIT_FILE"] = self._visit_file
-
         # particle file
         particle_file = os.path.join(self._output_dir, 'particles.visit')
         if os.access(particle_file, os.R_OK):
             self.options["VISIT_PARTICLE_FILE"] = particle_file
-
         # directory to output data
         self.options["DATA_OUTPUT_DIR"] = self._output_dir
-
+        # directory to output from vtk script
+        self.options['VTK_OUTPUT_DIR'] = os.path.join(self._case_dir, "vtk_outputs")
+        if is_vtk:
+            if not os.path.isdir(self.options['VTK_OUTPUT_DIR']):
+                os.mkdir(self.options['VTK_OUTPUT_DIR'])
         # directory to output images
         if not os.path.isdir(self._img_dir):
             os.mkdir(self._img_dir)
         self.options["IMG_OUTPUT_DIR"] = self._img_dir
-
+        # visit file
+        self.options["VISIT_FILE"] = self._visit_file
+        # houriz_avg file
+        self.options['VTK_HORIZ_FILE'] = os.path.join(ASPECT_LAB_DIR, 'output', 'depth_average_output')
         # own implementations
         # initial adaptive refinement
         self.options['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
@@ -107,9 +110,9 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
         last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])
         last_steps = kwargs.get('last_steps', None)
         if type(last_steps) == int:
-            self.options['STEPS'] = [i for i in range(last_step - last_steps + 1, last_step + 1)]
+            self.options['GRAPHICAL_STEPS'] = [i for i in range(last_step - last_steps + 1, last_step + 1)]
         else:
-            self.options['STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
+            self.options['GRAPHICAL_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
         # self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
         self.options['IF_DEFORM_MECHANISM'] = 1
 
@@ -122,7 +125,7 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
             # slab
             if key == 'slab':
                 self.options['IF_PLOT_SLAB'] = 'True'
-                self.options['STEPS'] = value.get('steps', [0])
+                self.options['GRAPHICAL_STEPS'] = value.get('steps', [0])
                 self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
             # export particles for slab morph
             elif key == 'slab_morph':
@@ -138,9 +141,6 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
         operation = kwargs.get('operation', 'slab')
         step = kwargs.get('step', 0)
         self.options['PVTU_FILE'] = os.path.join(self._output_dir, "solution", "solution-%05d.pvtu" % (step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])))
-        self.options['VTK_HORIZ_FILE'] = os.path.join(ASPECT_LAB_DIR, 'output', 'depth_average_output')
-        pass
-
  
 def GetSnapsSteps(case_dir, type_='graphical'):
     case_output_dir = os.path.join(case_dir, 'output')
@@ -219,26 +219,28 @@ def PrepareVTKOptions(case_dir, operation, **kwargs):
     '''
     prepare vtk options for vtk scripts
     '''
-    vtk_config_file = os.path.join(ASPECT_LAB_DIR, 'vtk_scripts', "%s.input" % operation)
-    ofile = os.path.join(ASPECT_LAB_DIR, 'output', os.path.basename(vtk_config_file))
+    vtk_config_dir = os.path.join(ASPECT_LAB_DIR, 'vtk_scripts', "inputs")
+    assert(os.path.isdir(vtk_config_dir))
+    vtk_config_file = os.path.join(vtk_config_dir, "%s.input" % operation)
     Visit_Options = VISIT_OPTIONS(case_dir)
-    Visit_Options.Interpret()
+    Visit_Options.Interpret(vtk=True)
     step = kwargs.get('step')
     Visit_Options.vtk_options(step=step)
     Visit_Options.read_contents(vtk_config_file)
     Visit_Options.substitute()
+    ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], os.path.basename(vtk_config_file))
     ofile_path = Visit_Options.save(ofile)
-    print('%s; %s generated' % (Utilities.func_name(), ofile_path))
+    print('%s: %s generated' % (Utilities.func_name(), ofile_path))
+    return ofile_path
 
 
-def RunVTKScripts(operation):
+def RunVTKScripts(operation, vtk_option_path):
     '''
     run script of vtk
     Inputs:
     '''
     vtk_executable = os.path.join(ASPECT_LAB_DIR, 'vtk_scripts', 'build', operation)
-    vtk_input = os.path.join(ASPECT_LAB_DIR, 'output', '%s.input' % operation)
-    os.system("%s %s" % (vtk_executable, vtk_input))
+    os.system("%s %s" % (vtk_executable, vtk_option_path))
 
 
 def main():
@@ -305,8 +307,8 @@ def main():
         pass
     
     elif _commend == 'vtk_options':
-        PrepareVTKOptions(arg.inputs, arg.operation, step=arg.step)
-        RunVTKScripts(arg.operation)
+        vtk_option_path = PrepareVTKOptions(arg.inputs, arg.operation, step=arg.step)
+        RunVTKScripts(arg.operation, vtk_option_path)
     
     elif _commend == 'run':
         RunScripts(arg.inputs)

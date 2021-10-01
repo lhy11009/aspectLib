@@ -26,20 +26,17 @@ int main(int argc, char* argv[])
   }
   // 1. PVTU_FILE_PATH
   std::string filename = options[0];
-  // 2. AVG_FILE_PATH
-  std::string avg_filename = options[1];
+  // 2. VTK_OUTPUT_DIR
+  std::string output_dir = options[1];
   // todo
   AspectVtk aspect_vtk;
   aspect_vtk.readfile(filename);
-  aspect_vtk.read_horiz_avg(avg_filename);
   aspect_vtk.input_poly_data();
   aspect_vtk.triangulate_grid();
   //aspect_vtk.density_diff();
-  //aspect_vtk.mow_from_blocking(973.0, 12.5e9);  // 725 + 273 from Quinteros
-  aspect_vtk.prepare_slab({"spcrust", "spharz"});
-  aspect_vtk.output("output.vtp");
-  aspect_vtk.integrate_cells();
-  //aspect_vtk.extract_contour("contour.txt");
+  // aspect_vtk.output(output_dir + '/' + "output.vtp"); // output managed data
+  //aspect_vtk.integrate_cells();  // do integration
+  //aspect_vtk.extract_contour("contour.txt"); //
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
 }
