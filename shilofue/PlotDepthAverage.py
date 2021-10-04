@@ -154,6 +154,21 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
                 col = self.header[_type]['col']
                 _data_list_o.append(_data_list[col])
             return _data_list_o
+    
+    def ExportDataByTime(self, time, names):
+        '''
+        Export data as ndarray by time and names
+        '''
+        assert(type(names)==list)
+        time_step = np.argmin(abs(self.time_step_times - time))  # time_step
+        i0 = self.time_step_indexes[time_step][-1] * self.time_step_length
+        if time_step == len(self.time_step_times) - 1:
+            # this is the last step
+            i1 = self.data.shape[0]
+        else:
+            i1 = self.time_step_indexes[time_step + 1][0] * self.time_step_length
+        odata = self.export("", names, rows=[i for i in range(i0, i1)], include_size=True, data_only=True)
+        return odata
 
 
     def ReadHeader(self, _filename):
@@ -174,8 +189,8 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
         '''
         split time steps, since the data is a big chunck
         '''
-        _time_step_times = []  # initialize
-        _time_step_indexes = []
+        time_step_times = []  # initialize
+        time_step_indexes = []
         _col_time = self.header['time']['col']
         _col_depth = self.header['depth']['col']
         _times = self.data[:, _col_time]
@@ -191,21 +206,21 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
         # make a ndarray of different value of time
         _step_times = [_times[_idx] for _idx in range(0, _times.size, self.time_step_length)]
         i = 0  # first sub list for first step
-        _time_step_times.append(_step_times[0])
-        _time_step_indexes.append([0])
+        time_step_times.append(_step_times[0])
+        time_step_indexes.append([0])
         # loop to group data at the same step
         for j in range(1, len(_step_times)):
             _time = _step_times[j]
             if abs(_time - _step_times[j-1]) > 1e-16:
-                _time_step_indexes.append([])
-                _time_step_times.append(_time)
+                time_step_indexes.append([])
+                time_step_times.append(_time)
                 i += 1
-            _time_step_indexes[i].append(j)
+            time_step_indexes[i].append(j)
         # both these two arrays have the length of total time steps
         # the first records the time for each time step
         # the second points to the actual step within data
-        self.time_step_times = np.array(_time_step_times)
-        self.time_step_indexes = _time_step_indexes
+        self.time_step_times = np.array(time_step_times)
+        self.time_step_indexes = time_step_indexes
     
     def ManageData(self, _time):
         '''
@@ -254,7 +269,7 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
             self.header['vertical_heat_flux']['unit'] = 'mw/m^2'
 
 
-def PlotDaFigure(depth_average_path, fig_path_base, kwargs):
+def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
     '''
     plot figure
     Inputs:
@@ -377,7 +392,9 @@ def ExportData(depth_average_path, output_dir, **kwargs):
         return
     names = kwargs.get('names', ['depth', 'temperature', 'adiabatic_density'])
     output_path = os.path.join(output_dir, 'depth_average_output_s%d' % time_step)
-    DepthAverage.export(output_path, names, rows=[i for i in range(i0, i1)], include_size=True)
+    odata = DepthAverage.export(output_path, names, rows=[i for i in range(i0, i1)], include_size=True)
+    return odata
+
 
 
 def main():

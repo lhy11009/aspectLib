@@ -320,16 +320,19 @@ but you will get a blank one for this field name' % _yname,
             odata = self.data[:, cols]
         print('\tData layout: ', odata.shape)
         include_size=kwargs.get('include_size', False)
-        with open(output_path, 'w') as fout:
-            i = 1
-            # header
-            for _name in names:
-                fout.write("# %d: %s\n" % (i, _name))
-                i += 1
-            if include_size:
-                fout.write("%d %d\n" % (odata.shape[0], odata.shape[1]))
-            # data
-            np.savetxt(fout, odata, fmt='%-20.8e')
+        data_only = kwargs.get('data_only', False)  # only return data, but not file
+        if not data_only:
+            with open(output_path, 'w') as fout:
+                i = 1
+                # header
+                for _name in names:
+                    fout.write("# %d: %s\n" % (i, _name))
+                    i += 1
+                if include_size:
+                    fout.write("%d %d\n" % (odata.shape[0], odata.shape[1]))
+                # data
+                np.savetxt(fout, odata, fmt='%-20.8e')
+        return odata
 
 
 class STATISTICS_PLOT_OLD(LINEARPLOT):
