@@ -307,7 +307,6 @@ but you will get a blank one for this field name' % _yname,
         kwargs:
             rows: assign rows to output, default is None
         '''
-        print('Export data to %s' % output_path)
         my_assert(type(names) == list, TypeError, "%s: names must be a list" % Utilities.func_name())
         cols = []
         for _name in names:
@@ -318,7 +317,6 @@ but you will get a blank one for this field name' % _yname,
             odata = self.data[np.ix_(rows, cols)]
         else:
             odata = self.data[:, cols]
-        print('\tData layout: ', odata.shape)
         include_size=kwargs.get('include_size', False)
         data_only = kwargs.get('data_only', False)  # only return data, but not file
         if not data_only:
@@ -332,6 +330,8 @@ but you will get a blank one for this field name' % _yname,
                     fout.write("%d %d\n" % (odata.shape[0], odata.shape[1]))
                 # data
                 np.savetxt(fout, odata, fmt='%-20.8e')
+            print('Export data to %s' % output_path)
+            print('\tData layout: ', odata.shape)
         return odata
 
 

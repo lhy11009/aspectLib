@@ -44,10 +44,10 @@ Examples of usage: \n\
   - default usage: \n\
 \n\
     analyze result: \n\
-        python -m shilofue.Others.latent_heat_benchmark plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/latent_heat_issue/latent-heat_pseudo_1d \n
+        python -m shilofue.Others.latent_heat_benchmark plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/latent_heat_issue/latent-heat_pseudo_1d\n\
         ")
 
-def AnalyzeResult(case_dir):
+def AnalyzeResult(case_dir, **kwargs):
     '''
     Analyze case result
     Inputs:
@@ -63,6 +63,7 @@ def AnalyzeResult(case_dir):
         DepthAverage.ReadHeader(depth_average_path)
         DepthAverage.ReadData(depth_average_path)
         DepthAverage.SplitTimeStep()
+        data_length = len(DepthAverage.time_step_times)
         # plot the initial time step
         fig_path_base = os.path.join(case_dir, 'img', 'DepthAverage.png')
         PlotDepthAverage.PlotDaFigure(depth_average_path, fig_path_base)
@@ -70,13 +71,19 @@ def AnalyzeResult(case_dir):
         query_depth = 5e5
         # query_temperatures = []
         band_widths = []
+        max_Ts = []
         limit_Ts = []
-        for time in DepthAverage.time_step_times:
-            print("time: ", time) # debug
+        times = []
+        max_time = kwargs.get('max_time', None)
+        for i in range(data_length):
+            time = DepthAverage.time_step_times[i]
+            if time > max_time:
+                break
+            times.append(time)
             temperatures = DepthAverage.ExportDataByTime(time, ['depth', 'temperature'])
             max_T = np.max(temperatures[:, 1])  # max temperature
+            max_Ts.append(max_T)
             min_T = np.min(temperatures[:, 1])  # max temperature
-            print("max temperature: ", max_T) # debug
             limit_T = max_T - (max_T - min_T) / np.e
             limit_Ts.append(limit_T)
             mask_band = (temperatures[:, 1] > limit_T) # bandwidth of the "hot band"
@@ -85,17 +92,21 @@ def AnalyzeResult(case_dir):
                 if (temperatures[i, 1] > limit_T):
                     band_width += temperatures[i, 0] - temperatures[i-1, 0]
             band_widths.append(band_width)
-            print("band width: ", band_width)
             # query_temperature = np.interp(query_depth, temperatures[:, 0], temperatures[:, 1])  # look for temperature in the middle
             # query_temperatures.append(query_temperature)
         fig, ax = plt.subplots()
-        ax.plot(DepthAverage.time_step_times, band_widths, label='bandwidth (m)')  # plot bandwidth
+        ax.plot(times, band_widths, label='bandwidth (m)')  # plot bandwidth
         ax.set_ylabel('Band Width (m)', color='tab:blue')
         ax.set_xlabel('Time (yr)')
         ax1 = ax.twinx()
-        ax1.plot(DepthAverage.time_step_times, limit_Ts, 'r', label='limit on T (K)')
-        ax1.set_ylabel('limit on T (K)', color='tab:red')
-        fig_path = os.path.join(case_dir, 'img', 'HotBandWidth.png')
+        ax1.plot(times, max_Ts, 'r--', label='max T (K)')
+        ax1.set_ylabel('max T (K)', color='tab:red')
+        if max_time is None:
+            fig_basename = 'HotBandWidth.png'
+        else:
+            # append max time information
+            fig_basename = 'HotBandWidth_t%.4e.png' % max_time
+        fig_path = os.path.join(case_dir, 'img', fig_basename)
         fig.savefig(fig_path)
         print('saved figure: ', fig_path)
 
@@ -130,7 +141,7 @@ def main():
         Usage()
     elif _commend == 'plot_case':
         # example:
-        AnalyzeResult(arg.inputs)
+        AnalyzeResult(arg.inputs, max_time=2e9)
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
