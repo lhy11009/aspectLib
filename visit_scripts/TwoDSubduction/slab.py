@@ -439,7 +439,7 @@ class SLAB(VISIT_PLOT):
         self.set_view_attrs((-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06))
         
         # set up temperature
-        self.set_pseudo_color('T', color_table='magma', limits=[273.0, 2173.0])
+        self.set_pseudo_color('T', color_table='SCM_vik', limits=[273.0, 2173.0])
        
         SetActivePlots((self.idxs['T']))
         HideActivePlots()

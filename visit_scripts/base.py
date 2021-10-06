@@ -193,7 +193,7 @@ class VISIT_PLOT():
         '''
         limits = kwargs.get('limit', None)
         # set up temperature
-        self.set_pseudo_color('T', color_table='viridis', limits=limits)
+        self.set_pseudo_color('T', color_table='SCM_vik', limits=limits)
         SetActivePlots((self.idxs['T']))
         HideActivePlots()
         # save plot 
