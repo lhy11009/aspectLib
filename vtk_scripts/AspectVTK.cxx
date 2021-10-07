@@ -88,28 +88,35 @@ void AspectVtk::triangulate_grid()
     iDelaunay2D = vtkSmartPointer<vtkDelaunay2D>::New();
     iDelaunay2D->SetInputData(iPolyData);
     iDelaunay2D->Update();
+    std::cout << "Done" << std::endl; // debug
 }
 
 
 void AspectVtk::prepare_slab(const std::vector<std::string> names)
 {
+    std::cout << "Praparing the slab (new composition)" << std::endl;
     vtkSmartPointer <vtkPolyData> tpolydata = iDelaunay2D->GetOutput();// polydata after trangulation
     std::vector<vtkFloatArray*> compositions;
     for (auto &p: names)
         compositions.push_back(dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray(p.c_str())));
+    std::cout << "0" << std::endl; // debug
     vtkNew<vtkFloatArray> slab_fields;
-    slab_fields->DeepCopy(*(compositions.begin()));
+    slab_fields->DeepCopy(*(compositions.begin())); // the first field is copied into the new vector
+    std::cout << "1" << std::endl; // debug
     slab_fields->SetName("slab");
     for (vtkIdType i = 0; i < tpolydata->GetNumberOfPoints(); i++)
     {
         for (auto iter=compositions.begin()+1; iter<compositions.end(); iter++)
         {
+            // second to later fields are added
             const double new_comp = (*iter)->GetTuple1(i);
             slab_fields->SetTuple1(i, slab_fields->GetTuple1(i) + new_comp);
         }
     }
+    std::cout << "2" << std::endl; // debug
     tpolydata->GetPointData()->AddArray(slab_fields);
     iDelaunay2D->Update();
+    std::cout << "Done" << std::endl; // debug
 }
 
 
