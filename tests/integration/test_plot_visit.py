@@ -83,6 +83,13 @@ def test_visit_options():
     assert(os.path.isfile(ofile_std))
     assert(filecmp.cmp(ofile_path, ofile_std))
 
+def test_vtk_TwoDSubduction_SlabAnalysis_options():
+    # check options for vtk
+    case_dir = os.path.join(test_cases_dir, 'test_vtk')
+    option_path = os.path.join(test_dir, 'TwoDSubduction_SlabAnalysis.input')
+    vtk_option_path = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', step=0, output=option_path)
+    RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
+
 
 #def test_visit_options():
 #    case_dir = os.path.join(test_source_dir, 'foo')

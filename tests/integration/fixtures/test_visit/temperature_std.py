@@ -1,5 +1,3 @@
-
-
 # class for working with visit
 class VISIT_PLOT():
     """

@@ -66,7 +66,6 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
         kwargs: options
             last_steps(list): plot the last few steps
         """
-        is_vtk = kwargs.get('vtk', False)  # if this is used for vtk options as well
         # call function from parent
         ParsePrm.CASE_OPTIONS.Interpret(self)
         # particle file
@@ -75,11 +74,6 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
             self.options["VISIT_PARTICLE_FILE"] = particle_file
         # directory to output data
         self.options["DATA_OUTPUT_DIR"] = self._output_dir
-        # directory to output from vtk script
-        self.options['VTK_OUTPUT_DIR'] = os.path.join(self._case_dir, "vtk_outputs")
-        if is_vtk:
-            if not os.path.isdir(self.options['VTK_OUTPUT_DIR']):
-                os.mkdir(self.options['VTK_OUTPUT_DIR'])
         # directory to output images
         if not os.path.isdir(self._img_dir):
             os.mkdir(self._img_dir)
@@ -107,10 +101,11 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
 
         # plot slab 
         self.options['IF_PLOT_SLAB'] = 'True'
-        last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])
+        self.last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])  # it is the last step we have outputs
         last_steps = kwargs.get('last_steps', None)
         if type(last_steps) == int:
-            self.options['GRAPHICAL_STEPS'] = [i for i in range(last_step - last_steps + 1, last_step + 1)]
+            # by this option, plot the last few steps
+            self.options['GRAPHICAL_STEPS'] = [i for i in range(self.last_step - last_steps + 1, self.last_step + 1)]
         else:
             self.options['GRAPHICAL_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
         # self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
@@ -139,10 +134,22 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
         options of vtk scripts
         '''
         operation = kwargs.get('operation', 'slab')
-        step = kwargs.get('step', 0)
-        self.options['PVTU_FILE'] = os.path.join(self._output_dir, "solution", "solution-%05d.pvtu" % (step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])))
+        step = int(kwargs.get('step', 0))
+        # directory to output from vtk script
+        self.options['VTK_OUTPUT_DIR'] = os.path.join(self._case_dir, "vtk_outputs")
+        if not os.path.isdir(self.options['VTK_OUTPUT_DIR']):
+            os.mkdir(self.options['VTK_OUTPUT_DIR'])
+        # file to read in vtk
+        print(step, self.last_step)
+        Utilities.my_assert((step >= 0 and step < self.last_step), ValueError, "step needs to be within the range of [%d, %d]" % (0, self.last_step))  # check the range of steps
+        self.options['PVTU_FILE'] = os.path.join(self._output_dir, "solution", "solution-%05d.pvtu" % (step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT']) + 1))
  
 def GetSnapsSteps(case_dir, type_='graphical'):
+    '''
+    Get snaps for visualization from the record of statistic file.
+    This function requires a consistent statistic file with respect to the vtu files.
+    Checking the statistic file is more on the safe side from checking the vtu file, since a newer run might overight the older result.
+    '''
     case_output_dir = os.path.join(case_dir, 'output')
 
     # import parameters
@@ -223,12 +230,15 @@ def PrepareVTKOptions(case_dir, operation, **kwargs):
     assert(os.path.isdir(vtk_config_dir))
     vtk_config_file = os.path.join(vtk_config_dir, "%s.input" % operation)
     Visit_Options = VISIT_OPTIONS(case_dir)
-    Visit_Options.Interpret(vtk=True)
+    Visit_Options.Interpret()
     step = kwargs.get('step')
     Visit_Options.vtk_options(step=step)
     Visit_Options.read_contents(vtk_config_file)
     Visit_Options.substitute()
-    ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], os.path.basename(vtk_config_file))
+    try:
+        ofile = kwargs.get('output')
+    except KeyError:
+        ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], os.path.basename(vtk_config_file))
     ofile_path = Visit_Options.save(ofile)
     print('%s: %s generated' % (Utilities.func_name(), ofile_path))
     return ofile_path
