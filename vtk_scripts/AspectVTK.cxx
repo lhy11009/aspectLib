@@ -92,33 +92,6 @@ void AspectVtk::triangulate_grid()
 }
 
 
-void AspectVtk::prepare_slab(const std::vector<std::string> names)
-{
-    std::cout << "Praparing the slab (new composition)" << std::endl;
-    vtkSmartPointer <vtkPolyData> tpolydata = iDelaunay2D->GetOutput();// polydata after trangulation
-    std::vector<vtkFloatArray*> compositions;
-    for (auto &p: names)
-    {
-        compositions.push_back(dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray(p.c_str())));
-        std::cout << p.c_str() << ": " << tpolydata->GetPointData()->GetArray(p.c_str())->GetSize();
-    }
-    vtkNew<vtkFloatArray> slab_fields;
-    slab_fields->DeepCopy(*(compositions.begin())); // the first field is copied into the new vector
-    slab_fields->SetName("slab");
-    for (vtkIdType i = 0; i < tpolydata->GetNumberOfPoints(); i++)
-    {
-        for (auto iter=compositions.begin()+1; iter<compositions.end(); iter++)
-        {
-            // second to later fields are added
-            const double new_comp = (*iter)->GetTuple1(i);
-            slab_fields->SetTuple1(i, slab_fields->GetTuple1(i) + new_comp);
-        }
-    }
-    tpolydata->GetPointData()->AddArray(slab_fields);
-    iDelaunay2D->Update();
-}
-
-
 void AspectVtk::integrate_cells()
 {
     std::cout << "Integrate on cells" << std::endl;
@@ -197,6 +170,7 @@ void AspectVtk::extract_contour(const std::string filename)
     writer->SetFileName(filename.c_str());
     writer->Update();
     writer->Write();
+    std::cout << "Generate output (contour): " << filename.c_str() << std::endl;
 }
         
 
@@ -378,6 +352,7 @@ void AspectVtk::output(const std::string filename){
     writer->SetFileName(filename.c_str());
     writer->Update();
     writer->Write();
+    std::cout << "output file: " << filename << std::endl;
 }
 
 void FileReader::read_horiz_avg(const std::string &filename,

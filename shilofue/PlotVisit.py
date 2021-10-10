@@ -236,7 +236,7 @@ def PrepareVTKOptions(case_dir, operation, **kwargs):
     Visit_Options.read_contents(vtk_config_file)
     Visit_Options.substitute()
     try:
-        ofile = kwargs.get('output')
+        ofile = kwargs['output']
     except KeyError:
         ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], os.path.basename(vtk_config_file))
     ofile_path = Visit_Options.save(ofile)

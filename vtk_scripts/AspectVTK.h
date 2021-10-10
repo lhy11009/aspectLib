@@ -84,10 +84,7 @@ class AspectVtk
         void mow_from_blocking(const double blocking_T, const double blocking_P);
         // get data from horiz
         double get_from_horiz(double depth, const std::string &field, const bool fix_out_of_bound=false);
-        // prepare slab composition
-        void prepare_slab(const std::vector<std::string> names);
 
-    private:
         vtkSmartPointer<vtkXMLPUnstructuredGridReader> reader;
         // polydata read in from file
         vtkSmartPointer<vtkPolyData> iPolyData; 
