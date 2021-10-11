@@ -72,9 +72,10 @@ int main(int argc, char* argv[])
   //slab_analysis.density_diff();
   //slab_analysis.mow_from_blocking(973.0, 12.5e9);  // 725 + 273 from Quinteros
   slab_analysis.prepare_slab({"spcrust", "spharz"});
-  slab_analysis.output(target_dir + "output.vtp");
+  slab_analysis.output(slab_analysis.iDelaunay2D->GetOutput(), target_dir + "/" + "output.vtp");
   slab_analysis.integrate_cells();
-  slab_analysis.extract_contour(target_dir + "contour.txt");
+  slab_analysis.extract_contour("T", 1173.0, target_dir + "/" + "contour.txt");
+  slab_analysis.extract_contour("slab", 0.99, target_dir + "/" + "contour_slab.txt");
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
 }

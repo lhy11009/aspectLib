@@ -62,7 +62,6 @@ void AspectVtk::input_poly_data()
     array_names.push_back("p");
     for (auto p = array_names.begin(); p < array_names.end(); p++)
     {
-        vtkSmartPointer<vtkDataArray> vtk_data_array = vtk_point_data->GetArray(p->c_str());
         if (p == array_names.begin())
             iPolyData->GetPointData()->SetScalars(vtk_point_data->GetArray(p->c_str()));
         else
@@ -156,13 +155,20 @@ void AspectVtk::integrate_cells()
 }
         
 
-void AspectVtk::extract_contour(const std::string filename)
+void AspectVtk::extract_contour(const std::string field_name, const double contour_value, const std::string filename)
 {
     std::cout << "Filter contour" << std::endl;
     vtkNew<vtkContourFilter> contour_filter;  // simple
-    contour_filter->SetInputData(iDelaunay2D->GetOutput());  // set to the trangulated dataset
+    // prepare poly data for contour
+    vtkNew<vtkPolyData> cPolyData; 
+    cPolyData->DeepCopy(iDelaunay2D->GetOutput());
+    vtkSmartPointer<vtkPointData> c_vtk_point_data = iDelaunay2D->GetOutput()->GetPointData();
+    cPolyData->GetPointData()->SetScalars(c_vtk_point_data->GetArray(field_name.c_str()));
+    cPolyData->GetPointData()->Update();
+    // draw contour 
+    contour_filter->SetInputData(cPolyData);  // set to the trangulated dataset
     contour_filter->Update();
-    contour_filter->GenerateValues(1, 1173.0, 1173.0);
+    contour_filter->GenerateValues(1, contour_value, contour_value);
     contour_filter->Update();
     // write output 
     vtkNew<vtkSimplePointsWriter> writer;
@@ -344,11 +350,11 @@ void AspectVtk::mow_from_blocking(const double blocking_T, const double blocking
     return;
 }
     
-void AspectVtk::output(const std::string filename){
+void AspectVtk::output(const vtkSmartPointer<vtkPolyData> opolydata, const std::string filename){
     std::cout << "Output data" << std::endl;
     // write output 
     vtkNew<vtkXMLPolyDataWriter> writer;
-    writer->SetInputData(iDelaunay2D->GetOutput());
+    writer->SetInputData(opolydata);
     writer->SetFileName(filename.c_str());
     writer->Update();
     writer->Write();
