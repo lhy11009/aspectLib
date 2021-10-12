@@ -154,6 +154,14 @@ def slab_morph(file_path):
     outputs['morp'] = {'radius': morp_rs, 'theta': morp_thetas}  # append to output
     return outputs
 
+
+def vtk_and_slab_morph():
+    '''
+    run vtk and read in slab morph
+    '''
+
+
+
 def main():
     '''
     main function of this module
@@ -181,7 +189,12 @@ def main():
         # example:
         Usage()
     elif _commend == 'morph':
+        # slab_morphology, inputs is the vtk output file:
+        slab_morph(arg.inputs)
+    elif _commend == 'morph_case':
+        # slab_morphology, input is the case name
         # example:
+        file_path = os.path.join(arg.inputs, 'vtk_outputs', 'contour_slab%d.txt' % arg.snapshot)
         slab_morph(arg.inputs)
     else:
         # no such option, give an error message

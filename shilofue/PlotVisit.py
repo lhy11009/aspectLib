@@ -20,7 +20,7 @@ import numpy as np
 import sys, os, argparse
 import json, re
 # import pathlib
-# import subprocess
+import subprocess
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
@@ -248,9 +248,17 @@ def RunVTKScripts(operation, vtk_option_path):
     '''
     run script of vtk
     Inputs:
+    Return:
+        filename (str): file generated from a vtk script
     '''
     vtk_executable = os.path.join(ASPECT_LAB_DIR, 'vtk_scripts', 'build', operation)
-    os.system("%s %s" % (vtk_executable, vtk_option_path))
+    print("run vtk script: \n%s %s" % (vtk_executable, vtk_option_path))
+    completed_process = subprocess.run([vtk_executable, vtk_option_path], capture_output=True, text=True)
+    print("Output from vtk script:\n %s" % completed_process.stdout)
+    _stdout = Utilities.re_neat_word(completed_process.stdout)
+    filename = Utilities.re_neat_word(_stdout.split(':')[-1])
+    assert(os.path.isfile(filename))
+    return filename
 
 
 def main():
