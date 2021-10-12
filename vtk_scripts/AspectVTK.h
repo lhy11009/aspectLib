@@ -71,7 +71,7 @@ class AspectVtk
         // Triangulate the grid points
         void triangulate_grid();
         // Extract contour
-        void extract_contour(const std::string field_name, const double contour_value, const std::string filename);
+        vtkSmartPointer<vtkPolyData> extract_contour(const std::string field_name, const double contour_value, const std::string filename);
         // Output
         void output(const vtkSmartPointer<vtkPolyData> opolydata, const std::string filename);
         // interpolate to uniform grid

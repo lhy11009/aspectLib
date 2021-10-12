@@ -155,7 +155,7 @@ void AspectVtk::integrate_cells()
 }
         
 
-void AspectVtk::extract_contour(const std::string field_name, const double contour_value, const std::string filename)
+vtkSmartPointer<vtkPolyData> AspectVtk::extract_contour(const std::string field_name, const double contour_value, const std::string filename)
 {
     std::cout << "Filter contour" << std::endl;
     vtkNew<vtkContourFilter> contour_filter;  // simple
@@ -177,6 +177,8 @@ void AspectVtk::extract_contour(const std::string field_name, const double conto
     writer->Update();
     writer->Write();
     std::cout << "Generate output (contour): " << filename.c_str() << std::endl;
+    // return value
+    return contour_filter->GetOutput();
 }
         
 

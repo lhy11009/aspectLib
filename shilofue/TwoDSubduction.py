@@ -464,6 +464,7 @@ class SLAB_MORPH_PLOT(Plot.LINEARPLOT):
     '''
     Class for plotting depth average file.
     This is an inheritage of the LINEARPLOT class
+    Deprecated
 
     Attributes:
     Args:

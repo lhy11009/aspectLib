@@ -57,10 +57,13 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
   // 1. PVTU_FILE_PATH
-  std::string filename = options[0];
+  std::string filename = options[0]; // get dir
   size_t found=option_file.find_last_of("/\\");
   std::string target_dir = option_file.substr(0,found);
-  std::cout << "target_dir: " << target_dir << std::endl;
+  found=filename.find_last_of("."); // get step
+  size_t found1 = filename.find_last_of("-");
+  std::string step = filename.substr(found1+1, found - found1-1);
+  std::cout << "step: " << step << std::endl;
   // 2. AVG_FILE_PATH
   std::string avg_filename = options[1];
   // todo
@@ -74,8 +77,8 @@ int main(int argc, char* argv[])
   slab_analysis.prepare_slab({"spcrust", "spharz"});
   slab_analysis.output(slab_analysis.iDelaunay2D->GetOutput(), target_dir + "/" + "output.vtp");
   slab_analysis.integrate_cells();
-  slab_analysis.extract_contour("T", 1173.0, target_dir + "/" + "contour.txt");
-  slab_analysis.extract_contour("slab", 0.99, target_dir + "/" + "contour_slab.txt");
+  // slab_analysis.extract_contour("T", 1173.0, target_dir + "/" + "contour.txt");
+  slab_analysis.extract_contour("slab", 0.99, target_dir + "/" + "contour_slab_" + step + ".txt");
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
 }
