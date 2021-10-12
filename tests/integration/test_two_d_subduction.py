@@ -183,25 +183,3 @@ def test_visit_xyz():
     # compare output
     standard_output = os.path.join(test_source_dir, 'TwoDSubduction', 'visit_xyz', 'standard_output1')
     assert(filecmp.cmp(ofile, standard_output))
-
-
-def test_slab_morph():
-    """
-    test SLAB_MORPH_PLOT class
-    """
-    # todo
-    test_file = os.path.join(test_source_dir, 'TwoDSubduction', 'slab_morph_plot', 'slab_morph')
-    # test 1
-    # Init the UnitConvert class
-    UnitConvert = Utilities.UNITCONVERT()
-    with open(project_pp_json, 'r') as fin:
-        pdict = json.load(fin)
-    plot_options = pdict.get('slab_morph', {})
-    Slab_morph_plot = TwoDSubduction.SLAB_MORPH_PLOT('slab_morph', unit_convert=UnitConvert, options=plot_options)
-    # plot
-    ofile = os.path.join(test_dir, 'slab_morph.png')
-    if os.path.isfile(ofile):
-        os.remove(ofile)
-    Slab_morph_plot(test_file, fileout=ofile)
-    assert(os.path.isfile(ofile))  # assert that the file is generated successfully
-    pass

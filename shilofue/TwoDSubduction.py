@@ -460,97 +460,12 @@ class VISIT_XYZ(Parse.VISIT_XYZ):
         self.output_data = Make2dArray(output_data_temp)
 
 
-class SLAB_MORPH_PLOT(Plot.LINEARPLOT):
-    '''
-    Class for plotting depth average file.
-    This is an inheritage of the LINEARPLOT class
-    Deprecated
-
-    Attributes:
-    Args:
-    '''
-    def __init__(self, _name, **kwargs):
-        Plot.LINEARPLOT.__init__(self, _name, kwargs)  # call init from base function
-    
-    def ManageData(self):
-        '''
-        manage data, get new data for this class
-        for the base class, this method simply takes the combination
-        of self.data
-        Returns:
-            _data_list(list):
-                list of data for ploting
-        '''
-        _data_list = Plot.LINEARPLOT.ManageData(self)
-        # add subduction rate
-        _col_depth = self.header['Maximum_depth']['col']
-        _unit_depth = self.header['Maximum_depth']['unit']
-        _col_time = self.header['Time']['col']
-        _unit_time = self.header['Time']['unit']
-        _depths = self.data[:, _col_depth]
-        _times = self.data[:, _col_time]
-        # get derivative
-        _size = _depths.size
-        _depths_i = np.zeros(_size + 1)
-        _depths_i[0: _size] = _depths
-        _depths_i[1: _size+1] += _depths 
-        _times_i = np.zeros(_size + 1)
-        _times_i[0: _size] = _times
-        _times_i[1: _size+1] += _times 
-        _rate = np.diff(_depths_i) / np.diff(_times_i)
-        _data_list.append(_rate)
-        self.header['Subduction_rate'] = {}
-        self.header['Subduction_rate']['col'] = self.header['total_col']
-        self.header['Subduction_rate']['unit'] = '%s/%s' % (_unit_depth, _unit_time)
-        self.header['total_col'] += 1
-        return _data_list
-
-
 def SlabDip(r0, ph0, r1, ph1):
     """
     compute the dip angle between 2 adjacent point
     """
     alpha = np.arctan2((r0 - r1), (r1 * (ph1 - ph0)))
     return alpha
-
-
-def SlabMorph(case_dir, kwargs={}):
-    """
-    Slab morphology
-    Inputs:
-        case_dir(str): directory of case
-        kwargs(dict): options
-    """
-    case_output_dir = os.path.join(case_dir, 'output')
-    case_morph_dir = os.path.join(case_output_dir, 'slab_morphs')
-
-    # Initiation
-    Visit_Xyz = VISIT_XYZ()
-    
-    # a header for interpreting file format
-    # note that 'col' starts form 0
-    header = {
-        'x': {'col': 1, 'unit': 'm'},
-        'y': {'col': 2, 'unit': 'm' },
-        'id': {'col': 4}
-    }
-
-    # depth range
-    # this is for computing dip angles with different ranges
-    depth_ranges = kwargs.get('depth_ranges', [[0, 100e3], [100e3, 400e3], [400e3, 6371e3]])
-    my_assert(type(depth_ranges) == list, TypeError, "depth_ranges mush be a list")
-
-    # remove older results 
-    ofile = os.path.join(case_output_dir, 'slab_morph') 
-    if os.path.isfile(ofile):
-        os.remove(ofile)
-    
-    #   loop for every snap and call function
-    snaps, times, _= Parse.GetSnapsSteps(case_dir, 'particle')
-
-    for i in snaps:
-        visit_xyz_file = os.path.join(case_morph_dir, 'visit_particles_%06d.xyz' % i)
-        Visit_Xyz(visit_xyz_file, header=header, ofile=ofile, depth_ranges=depth_ranges, time=times[i])
 
 
 def ProjectPlot(case_dirs, _file_type, **kwargs):
@@ -589,19 +504,6 @@ def ProjectPlot(case_dirs, _file_type, **kwargs):
             if not os.path.isfile(ofile) or \
                os.stat(particle_file)[8] > os.stat(ofile)[8]:
                 is_plot = True
-        if is_plot:
-            # process slab morph with extra options
-            extra_options = {}
-            try:
-                SlabMorph(case_dir, extra_options)
-            except FileNotFoundError:
-                warnings.warn('process_slab_morph: file existence requirements are not met')
-            # then plot the slab morph figure
-            filein = os.path.join(case_dir, 'output', 'slab_morph')
-            # Get options
-            # plot
-            if os.path.isfile(filein):
-                Slab_morph_plot(filein, fileout=ofile)
 
 
 def PlotTestResults(source_dir, **kwargs):
@@ -909,71 +811,13 @@ def main():
         # plot step0
         MachineTime(filein, fileout=ofile)
         pass
-    
-    elif _commend == 'plot_slab_morph':
-        # plot the slab morph output
-        # use -i option as input and -o option as output dir
-        # example usages:
-        #   python -m shilofue.TwoDSubduction plot_slab_morph 
-        #       -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear26/cr80w5ULV3.000e+01/output/slab_morph 
-        #       -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear26/cr80w5ULV3.000e+01/img
-        filein = arg.input_dir
-        output_dir = arg.output_dir
-        ofile = os.path.join(output_dir, 'slab_morph.png')
-        # Init the UnitConvert class
-        UnitConvert = UNITCONVERT()
-        # Get options
-        project_pp_json = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'post_process.json')
-        with open(project_pp_json, 'r') as fin:
-            pdict = json.load(fin)
-        plot_options = pdict.get('slab_morph', {})
-        Slab_morph_plot = SLAB_MORPH_PLOT('slab_morph', unit_convert=UnitConvert, options=plot_options)
-        # plot
-        Slab_morph_plot(filein, fileout=ofile)
 
-    elif _commend == 'process_slab_morph':
-        # process slab morphology from visit particle output
-        # generate a file that can be used for plot
-        # example usages:
-        # python -m shilofue.TwoDSubduction process_slab_morph -i 
-        #   /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear26/cr80w5ULV3.000e+01 -j post_process.json
-        case_dir = arg.input_dir
-        # process slab morph with extra options
-        with open(arg.json_file, 'r') as fin:
-            dict_in = json.load(fin)
-            extra_options = dict_in.get('slab_morph', {})
-        try:
-            SlabMorph(case_dir, extra_options)
-        except FileNotFoundError:
-            warnings.warn('process_slab_morph: file existence requirements are not met')
-    
-            
-    elif _commend == 'plot_slab_morph_case':
+
+    elif _commend == 'plot_slab_morph':
         # plot the slab morph output for a case
         # first generate slab_morph output
         case_dir = arg.input_dir
-        # process slab morph with extra options
-        with open(arg.json_file, 'r') as fin:
-            dict_in = json.load(fin)
-            extra_options = dict_in.get('slab_morph', {})
-        try:
-            SlabMorph(case_dir, extra_options)
-        except FileNotFoundError:
-            warnings.warn('process_slab_morph: file existence requirements are not met')
-        # then plot the slab morph figure
-        filein = os.path.join(case_dir, 'output', 'slab_morph')
-        output_dir = os.path.join(case_dir, 'img')
-        ofile = os.path.join(output_dir, 'slab_morph.png')
-        # Init the UnitConvert class
-        UnitConvert = UNITCONVERT()
-        # Get options
-        project_pp_json = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'post_process.json')
-        with open(project_pp_json, 'r') as fin:
-            pdict = json.load(fin)
-        plot_options = pdict.get('slab_morph', {})
-        Slab_morph_plot = SLAB_MORPH_PLOT('slab_morph', unit_convert=UnitConvert, options=plot_options)
-        # plot
-        Slab_morph_plot(filein, fileout=ofile)
+        # todo
 
 
     elif _commend == 'plot':
