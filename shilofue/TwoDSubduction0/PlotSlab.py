@@ -128,6 +128,7 @@ def slab_morph(file_path):
         file_path(str):
             slab surface from vtk output
     '''
+    outputs = {}
     SlabPlot = SLABPLOT()
     SlabPlot.ReadData(file_path)
     SlabPlot.PlotSlabSurface(os.path.join(ASPECT_LAB_DIR, 'output', 'slab.png'))
@@ -137,7 +138,7 @@ def slab_morph(file_path):
     if found == False:
         raise ValueError("slab_morph: trench hinge cannot be found")
     trench_theta = np.mean(thetas)
-    print("Trench theta: ", trench_theta) 
+    outputs['trench'] = {'theta': trench_theta}  # append to output
     morp_rs = []  # initiate
     morp_thetas = []
     num = 100
@@ -145,14 +146,13 @@ def slab_morph(file_path):
         rf = ro - 1.0 * i / (num-1) * (ro - ri)
         # morphology
         thetas, found = SlabPlot.FindPoints(rf, 0.1e3, [4, 10])
-        print("rf: ", rf)
-        print("thetas: ", thetas)
         if found == False:
             slab_depth = ro - rf
             break
         morp_rs.append(rf)
         morp_thetas.append(thetas)
-    print("slab depth: ", slab_depth)
+    outputs['morp'] = {'radius': morp_rs, 'theta': morp_thetas}  # append to output
+    return outputs
 
 def main():
     '''
