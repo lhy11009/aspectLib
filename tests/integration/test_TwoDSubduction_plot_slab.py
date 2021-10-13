@@ -43,7 +43,7 @@ def test_vtk_TwoDSubduction_SlabAnalysis():
     test the TwoDSubduction_SlabAnalysis module of vtk
     '''
     option_path = os.path.join(test_dir, 'TwoDSubduction_SlabAnalysis.input')
-    vtk_option_path = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', step=0, output=option_path)
+    vtk_option_path = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', vtk_step=0, output=option_path)
     output_file = os.path.join(test_dir, 'contour_slab00002.txt')
     output_std_file = os.path.join(case_dir, 'vtk_outputs', 'contour_slab_std.txt')
     assert(os.access(output_std_file, os.R_OK))

@@ -28,6 +28,7 @@ import re
 # import subprocess
 import numpy as np
 import shilofue.Plot as Plot
+import shilofue.PlotStatistics as PlotStatistics
 import shilofue.Utilities as Utilities
 # from matplotlib import cm
 # from matplotlib import pyplot as plt
@@ -134,7 +135,7 @@ class CASE_OPTIONS(Utilities.CODESUB):
         self.options = {}
 
         # initiate a statistic data
-        self.Statistics = Plot.LINEARPLOT('Statistics')
+        self.Statistics = PlotStatistics.STATISTICS_PLOT('Statistics')
         self.statistic_file = os.path.join(self._output_dir, 'statistics')
         self.Statistics.ReadHeader(self.statistic_file)
         self.Statistics.ReadData(self.statistic_file)

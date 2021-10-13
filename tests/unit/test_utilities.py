@@ -183,3 +183,8 @@ def test_code_sub():
     Test the class CODESUB
     '''
     pass
+
+def test_string2list():
+    input = '[5, 6, 7, 8, 9, 10, 11, 12, 13]'
+    output = Utilities.string2list(input)
+    assert(output==[5, 6, 7, 8, 9, 10, 11, 12, 13])

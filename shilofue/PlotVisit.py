@@ -134,15 +134,27 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
         options of vtk scripts
         '''
         operation = kwargs.get('operation', 'slab')
-        step = int(kwargs.get('step', 0))
+        vtk_step = int(kwargs.get('vtk_step', 0))
         # directory to output from vtk script
         self.options['VTK_OUTPUT_DIR'] = os.path.join(self._case_dir, "vtk_outputs")
         if not os.path.isdir(self.options['VTK_OUTPUT_DIR']):
             os.mkdir(self.options['VTK_OUTPUT_DIR'])
         # file to read in vtk
-        print(step, self.last_step)
-        Utilities.my_assert((step >= 0 and step < self.last_step), ValueError, "step needs to be within the range of [%d, %d]" % (0, self.last_step))  # check the range of steps
-        self.options['PVTU_FILE'] = os.path.join(self._output_dir, "solution", "solution-%05d.pvtu" % (step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT']) + 1))
+        Utilities.my_assert((vtk_step >= 0 and vtk_step < self.last_step), ValueError, "vtk_step needs to be within the range of [%d, %d]" % (0, self.last_step))  # check the range of steps
+        self.options['PVTU_FILE'] = os.path.join(self._output_dir, "solution", "solution-%05d.pvtu" % (vtk_step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT']) + 1))
+
+    def get_time_and_step(self, vtk_step):
+        '''
+        Convert vtk_step to step and time in model
+        ''' 
+        try:
+            time_between_graphical_output = float(self.idict['Postprocess']['Visualization']['Time between graphical output'])
+        except KeyError:
+            time_between_graphical_output = 1e8
+        _time = vtk_step * time_between_graphical_output
+        step = self.Statistics.GetStep(_time)
+        return _time, step
+
  
 def GetSnapsSteps(case_dir, type_='graphical'):
     '''
@@ -231,8 +243,8 @@ def PrepareVTKOptions(case_dir, operation, **kwargs):
     vtk_config_file = os.path.join(vtk_config_dir, "%s.input" % operation)
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
-    step = kwargs.get('step')
-    Visit_Options.vtk_options(step=step)
+    vtk_step = kwargs.get('vtk_step')
+    Visit_Options.vtk_options(vtk_step=vtk_step)
     Visit_Options.read_contents(vtk_config_file)
     Visit_Options.substitute()
     try:
@@ -241,7 +253,9 @@ def PrepareVTKOptions(case_dir, operation, **kwargs):
         ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], os.path.basename(vtk_config_file))
     ofile_path = Visit_Options.save(ofile)
     print('%s: %s generated' % (Utilities.func_name(), ofile_path))
-    return ofile_path
+    # get time and step
+    _time, step = Visit_Options.get_time_and_step(vtk_step)
+    return ofile_path, _time, step
 
 
 def RunVTKScripts(operation, vtk_option_path):
@@ -325,7 +339,7 @@ def main():
         pass
     
     elif _commend == 'vtk_options':
-        vtk_option_path = PrepareVTKOptions(arg.inputs, arg.operation, step=arg.step)
+        vtk_option_path, _, _ = PrepareVTKOptions(arg.inputs, arg.operation, step=arg.step)
         RunVTKScripts(arg.operation, vtk_option_path)
     
     elif _commend == 'run':

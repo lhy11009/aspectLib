@@ -25,7 +25,8 @@ import sys, os, argparse
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
-from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts
+from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, VISIT_OPTIONS
+import shilofue.Utilities as Utilities
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -156,21 +157,25 @@ def slab_morph(file_path):
     return outputs
 
 
-def vtk_and_slab_morph(case_dir, step, **kwargs):
+def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
     '''
     run vtk and read in slab morph
     Inputs:
         case_dir (str): case directory
+        pvtu_step (int): time step
+        kwargs:
+            new: remove old output file
     '''
+    print("pvtu_step: %s\n" % str(pvtu_step))
     output_dir = os.path.join(case_dir, 'vtk_outputs')
     output_file = os.path.join(output_dir, 'slab_morph.txt')
-    vtk_option_path = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', step=step)
+    vtk_option_path, _time, step = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', vtk_step=pvtu_step)
     contour_file = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
     slab_morph_outputs = slab_morph(contour_file)
-    print(slab_morph_outputs['trench']['theta'])
+    print("Trench: %s" % slab_morph_outputs['trench']['theta'])
     # header
-    file_header = "# %s\n# %s\n" % ("step", "trench (rad)")
-    outputs = "%-12s%-14.4e\n" % (step, slab_morph_outputs['trench']['theta'])
+    file_header = "# %s\n# %s\n# %s\n# %s\n" % ("pvtu_step", "time (yr)", "step", "trench (rad)")
+    outputs = "%-12s%-14.4e%-12d%-14.4e\n" % (pvtu_step, _time, step, slab_morph_outputs['trench']['theta'])
     # remove old file
     is_new = kwargs.get('new', False)
     if is_new and os.path.isfile(output_file):
@@ -185,6 +190,25 @@ def vtk_and_slab_morph(case_dir, step, **kwargs):
         with open(output_file, 'a') as fout:
             fout.write(outputs)
         print('Update output: %s' % output_file)
+
+
+def vtk_and_slab_morph_case(case_dir):
+    '''
+    run vtk and get outputs for every snapshots
+    '''
+    # get all available snapshots
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    available_pvtu_snapshots = Utilities.string2list(Visit_Options.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'])
+    available_pvtu_steps = [i - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) for i in available_pvtu_snapshots]
+    # get slab morphology
+    for pvtu_step in available_pvtu_steps:
+        if pvtu_step == 0:
+            # start new file with the 0th step
+            vtk_and_slab_morph(case_dir, pvtu_step, new=True)
+        else:
+            vtk_and_slab_morph(case_dir, pvtu_step)
+    pass
     
 
 def main():
@@ -219,10 +243,14 @@ def main():
     elif _commend == 'morph':
         # slab_morphology, inputs is the vtk output file:
         slab_morph(arg.inputs)
-    elif _commend == 'morph_case':
+    elif _commend == 'morph_step':
         # slab_morphology, input is the case name
         # example:
         vtk_and_slab_morph(arg.inputs, arg.step)
+    elif _commend == 'morph_case':
+        # slab_morphology, input is the case name
+        # example:
+        vtk_and_slab_morph_case(arg.inputs)
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)

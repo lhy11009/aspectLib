@@ -483,3 +483,15 @@ def get_name_and_extention(_path):
     _name = _path.rsplit(".", maxsplit=1)[0]
     _extension = _path.rsplit(".", maxsplit=1)[1]
     return _name, _extension
+
+
+def string2list(inputs):
+    """
+    convert list input to string outputs
+    """
+    inputs = inputs.strip(']')
+    inputs = inputs.strip('[')
+    inputs = inputs.strip(' ')
+    outputs_str = inputs.split(',')
+    outputs = [int(i) for i in outputs_str]
+    return outputs
