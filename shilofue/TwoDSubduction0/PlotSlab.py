@@ -25,6 +25,7 @@ import sys, os, argparse
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -155,12 +156,36 @@ def slab_morph(file_path):
     return outputs
 
 
-def vtk_and_slab_morph():
+def vtk_and_slab_morph(case_dir, step, **kwargs):
     '''
     run vtk and read in slab morph
+    Inputs:
+        case_dir (str): case directory
     '''
-
-
+    output_dir = os.path.join(case_dir, 'vtk_outputs')
+    output_file = os.path.join(output_dir, 'slab_morph.txt')
+    vtk_option_path = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', step=step)
+    contour_file = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
+    slab_morph_outputs = slab_morph(contour_file)
+    print(slab_morph_outputs['trench']['theta'])
+    # header
+    file_header = "# %s\n# %s\n" % ("step", "trench (rad)")
+    outputs = "%-12s%-14.4e\n" % (step, slab_morph_outputs['trench']['theta'])
+    # remove old file
+    is_new = kwargs.get('new', False)
+    if is_new and os.path.isfile(output_file):
+        os.remove(output_file)
+    # output data
+    if not os.path.isfile(output_file):
+        with open(output_file, 'w') as fout:
+            fout.write(file_header)
+            fout.write(outputs)
+        print('Create output: %s' % output_file)
+    else:
+        with open(output_file, 'a') as fout:
+            fout.write(outputs)
+        print('Update output: %s' % output_file)
+    
 
 def main():
     '''
@@ -177,6 +202,9 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='Some inputs')
+    parser.add_argument('-s', '--step', type=str,
+                        default='0',
+                        help='Timestep')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -194,8 +222,7 @@ def main():
     elif _commend == 'morph_case':
         # slab_morphology, input is the case name
         # example:
-        file_path = os.path.join(arg.inputs, 'vtk_outputs', 'contour_slab%d.txt' % arg.snapshot)
-        slab_morph(arg.inputs)
+        vtk_and_slab_morph(arg.inputs, arg.step)
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
