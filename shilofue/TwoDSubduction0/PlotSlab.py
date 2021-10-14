@@ -125,6 +125,7 @@ class SLABPLOT():
 
 def slab_morph(file_path):
     '''
+    plan to be deprecated an move into cpp
     Plot slab morphology
     Inputs:
         file_path(str):
@@ -174,8 +175,11 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
     slab_morph_outputs = slab_morph(contour_file)
     print("Trench: %s" % slab_morph_outputs['trench']['theta'])
     # header
-    file_header = "# %s\n# %s\n# %s\n# %s\n" % ("pvtu_step", "time (yr)", "step", "trench (rad)")
-    outputs = "%-12s%-14.4e%-12d%-14.4e\n" % (pvtu_step, _time, step, slab_morph_outputs['trench']['theta'])
+    file_header = "# %s\n# %s\n# %s\n# %s\n# %s\n" % \
+    ("pvtu_step", "step", "time (yr)", "trench (rad)", "minimum_radius (km)")
+    trench_theta = slab_morph_outputs['trench']['theta']
+    minimum_radius = slab_morph_outputs['morp']['radius'][-1]
+    outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e\n" % (pvtu_step, step, _time, trench_theta, minimum_radius)
     # remove old file
     is_new = kwargs.get('new', False)
     if is_new and os.path.isfile(output_file):

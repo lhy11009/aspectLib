@@ -6,6 +6,8 @@
 #include <sstream>
 #include "AspectVTK.h"
 
+void QuickSort(const std::vector<double> & A, std::vector<size_t> & I, size_t lo, size_t hi);
+
 class SlabAnalysis : public AspectVtk
 {
     public:
@@ -37,6 +39,57 @@ void SlabAnalysis::prepare_slab(const std::vector<std::string> names)
     iDelaunay2D->Update();
 }
 
+void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data)
+{
+  // take a contour output and analyze the slab morphology
+  vtkSmartPointer<vtkPoints> c_points = c_poly_data->GetPoints();
+  // intiate pointers
+  auto rs = std::make_shared<std::vector<double>>();
+  auto thetas = std::make_shared<std::vector<double>>();
+  auto I = std::make_shared<std::vector<size_t>>();
+  for (vtkIdType id = 0; id < c_points->GetNumberOfPoints(); id++)
+  {
+    double *p = c_points -> GetPoint(id);
+    double x = p[0];
+    double y = p[1];
+    double r = sqrt(x*x + y*y);
+    double theta = acos(x/r);
+    rs->push_back(r);
+    thetas->push_back(theta);
+    I->push_back(id);
+    // std::cout<< "id: " << id << ",r: " << r << ", theta: " << theta << std::endl;  // debug
+  }
+  QuickSort(*rs, *I, 0, c_points->GetNumberOfPoints());  // reorder by r, index saved in I
+  // todo: found trench point
+  for (auto &p:*I)
+    std::cout << p << ", " << (*rs)[p] << std::endl;  // debug
+}
+
+//todo: found trench point
+
+void QuickSort(const std::vector<double> & A, std::vector<size_t> & I, size_t lo, size_t hi)
+{
+    if (lo < hi)
+    {
+        double pivot = A[I[lo + (hi - lo) / 2]];
+        size_t t;
+        size_t i = lo - 1;
+        size_t j = hi + 1;
+        while (1)
+        {
+            while (A[I[++i]] < pivot);
+            while (A[I[--j]] > pivot);
+            if (i >= j)
+                break;
+            t = I[i];
+            I[i] = I[j];
+            I[j] = t;
+        }
+        QuickSort(A, I, lo, j);
+        QuickSort(A, I, j + 1, hi);
+    }
+}
+
 int main(int argc, char* argv[])
 {
   // parse command line arguments
@@ -66,7 +119,6 @@ int main(int argc, char* argv[])
   std::cout << "step: " << step << std::endl;
   // 2. AVG_FILE_PATH
   std::string avg_filename = options[1];
-  // todo
   SlabAnalysis slab_analysis;
   slab_analysis.readfile(filename);
   slab_analysis.read_horiz_avg(avg_filename);
@@ -78,7 +130,8 @@ int main(int argc, char* argv[])
   slab_analysis.output(slab_analysis.iDelaunay2D->GetOutput(), target_dir + "/" + "output.vtp");
   slab_analysis.integrate_cells();
   // slab_analysis.extract_contour("T", 1173.0, target_dir + "/" + "contour.txt");
-  slab_analysis.extract_contour("slab", 0.99, target_dir + "/" + "contour_slab_" + step + ".txt");
+  vtkSmartPointer<vtkPolyData> c_poly_data = slab_analysis.extract_contour("slab", 0.99, target_dir + "/" + "contour_slab_" + step + ".txt"); //apply contour
+  analyze_slab(c_poly_data); // analyze slab morphology
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
 }

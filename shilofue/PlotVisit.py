@@ -243,7 +243,7 @@ def PrepareVTKOptions(case_dir, operation, **kwargs):
     vtk_config_file = os.path.join(vtk_config_dir, "%s.input" % operation)
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
-    vtk_step = kwargs.get('vtk_step')
+    vtk_step = kwargs.get('vtk_step', 0)
     Visit_Options.vtk_options(vtk_step=vtk_step)
     Visit_Options.read_contents(vtk_config_file)
     Visit_Options.substitute()
