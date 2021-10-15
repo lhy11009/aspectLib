@@ -25,6 +25,7 @@ import sys, os, argparse
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from shilofue.Plot import LINEARPLOT
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, VISIT_OPTIONS
 import shilofue.Utilities as Utilities
 
@@ -45,7 +46,7 @@ Examples of usage: \n\
         python -m \
         ")
 
-class SLABPLOT():
+class SLABPLOT(LINEARPLOT):
     '''
     Plot slab morphology
     Inputs:
@@ -53,19 +54,6 @@ class SLABPLOT():
     Returns:
         -
     '''
-    def __init__(self):
-        pass
-
-    def ReadData(self, filename):
-        data = np.loadtxt(filename)
-        xs = data[:, 0]
-        ys = data[:, 1]
-        rs = (xs**2.0 + ys**2.0)**0.5
-        thetas = np.arccos(xs/rs)
-        indexes = np.argsort(thetas)
-        self.rs = rs[indexes]
-        self.thetas = thetas[indexes]
-    
     def PlotSlabSurface(self, fileout):
         fig, ax = plt.subplots()
         ax.plot(self.rs * np.cos(self.thetas), self.rs * np.sin(self.thetas), label='slab surface')
@@ -73,54 +61,6 @@ class SLABPLOT():
         ax.set_ylabel('Y (m)')
         plt.savefig(fileout)
         print("plot slab surface: ", fileout)
-    
-    def FindPoints(self, rf , depth, n_points, i_find=None, found=False):
-        '''
-        get the points at depth
-        I use a iteration with a criteria of finding the right amount of points
-        Inputs:
-            ro: outer radis
-            depth: depth of trench
-            n_points: right amount of points, n_point[0] < number of found points < n_point[1]
-        '''
-        max_depth = 15e3  # max depth deviation from surface
-        assert(type(n_points) == list and len(n_points) == 2)
-        if found == True:
-            # found before, only search previous results
-            i_find_old = i_find.copy()  # initiate
-            search_range = i_find_old
-        else:
-            # not found, search all indexes
-            i_find_old = None
-            search_range = range(self.rs.size)
-        i_find = []
-        # searching
-        for i in search_range:
-            r = self.rs[i]
-            if np.abs(r-rf) < depth:
-                i_find.append(i)
-        i_find = np.array(i_find)
-        if i_find.size > n_points[1]:
-            # range too big
-            theta, _ = self.FindPoints(rf, depth/2.0, n_points, i_find, True)
-            return theta, True
-        elif i_find.size < n_points[0]:
-            # range too small
-            if found == True:
-                # already found in previous loop
-                return self.thetas[i_find_old], True
-            elif found == False and depth < max_depth:
-                # not found, max limit is not reached
-                theta, _found = self.FindPoints(rf, depth*2.0, n_points, None, False)
-                return theta, _found
-            else:
-                # not found, max limit is reached
-                return None, False
-            pass
-        else:
-            # find and right range
-            # print(self.thetas[i_find]) # Debug
-            return self.thetas[i_find], True
 
 
 def slab_morph(inputs):
@@ -152,7 +92,7 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
     slab_outputs = slab_morph(_stdout)
     # header
     file_header = "# %s\n# %s\n# %s\n# %s\n# %s\n" % \
-    ("pvtu_step", "step", "time (yr)", "trench (rad)", "slab depth (m)")
+    ("1: pvtu_step", "2: step", "3: time (yr)", "4: trench (rad)", "5: slab depth (m)")
     # output string
     outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e\n" % (pvtu_step, step, _time, slab_outputs['trench_theta'], slab_outputs['slab_depth'])
     # remove old file
@@ -180,8 +120,18 @@ def vtk_and_slab_morph_case(case_dir):
     Visit_Options.Interpret()
     available_pvtu_snapshots = Utilities.string2list(Visit_Options.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'])
     available_pvtu_steps = [i - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) for i in available_pvtu_snapshots]
+    # todo get where previous session ends
+    SlabPlot = SLABPLOT('slab')
+    slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+    SlabPlot.ReadHeader(slab_morph_file)
+    SlabPlot.ReadData(slab_morph_file)
+    col_pvtu_step = SlabPlot.header['pvtu_step']['col']
+    last_pvtu_step = int(SlabPlot.data[-1, col_pvtu_step])
     # get slab morphology
     for pvtu_step in available_pvtu_steps:
+        if pvtu_step <= last_pvtu_step:
+            # skip existing steps
+            continue
         if pvtu_step == 0:
             # start new file with the 0th step
             vtk_and_slab_morph(case_dir, pvtu_step, new=True)
