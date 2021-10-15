@@ -41,32 +41,16 @@ if not os.path.isdir(test_dir):
 def test_vtk_TwoDSubduction_SlabAnalysis():
     '''
     test the TwoDSubduction_SlabAnalysis module of vtk
+    assert that we get the right value for trench position and slab depth
     '''
     option_path = os.path.join(test_dir, 'TwoDSubduction_SlabAnalysis.input')
-    vtk_option_path = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', vtk_step=0, output=option_path)
-    output_file = os.path.join(test_dir, 'contour_slab00002.txt')
-    output_std_file = os.path.join(case_dir, 'vtk_outputs', 'contour_slab_std.txt')
-    assert(os.access(output_std_file, os.R_OK))
-    if os.path.isfile(output_file):
-        os.remove(output_file)
-    RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
-    assert(os.path.isfile(output_file)) # assert file exists
-    assert(filecmp.cmp(output_file, output_std_file))  # assert file contents
-
-
-def test_slab_morph():
-    '''
-    test the SlabMorph function
-    Asserts:
-    '''
-    tolerance = 1e-6
-    vtk_file_path = os.path.join(case_dir, 'vtk_outputs', 'contour_slab_std.txt')
-    assert(os.access(vtk_file_path, os.R_OK))  # assert file exists
-    slab_morph_outputs = slab_morph(vtk_file_path)
-    std_value = 0.6280194126721352
-    assert(abs(slab_morph_outputs['trench']['theta']-std_value)/std_value < tolerance)  # assert trench position
-    # assert something 
-    assert(True)
+    vtk_option_path, _, _ = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', vtk_step=0, output=option_path)
+    _stdout = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
+    outputs = slab_morph(_stdout)
+    trench_theta_std = 0.628019
+    slab_depth_std = 180851
+    assert(abs(outputs['trench_theta']-trench_theta_std)/trench_theta_std < 1e-6)
+    assert(abs(outputs['slab_depth']-slab_depth_std)/slab_depth_std < 1e-6)
 
     
 # notes

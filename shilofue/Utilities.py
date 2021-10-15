@@ -333,6 +333,24 @@ def re_count_indent(_pattern):
     return _indent
 
 
+def re_read_variable_from_string(inputs, pattern, splitter):
+    '''
+    read variable from a input string, typically some output from another executable
+    Inputs:
+        inputs(str)
+    '''
+    found = False
+    input_array = inputs.split('\n')
+    for line in input_array:
+        if re.match(pattern, line):
+            output = line.split(splitter)[1]
+            output = re_neat_word(output)
+            found = True
+    if not found:
+        raise ValueError("%s: pattern(%s) not found" % (func_name(), pattern))
+    return output
+
+
 def ggr2cart(lat,lon,r):
     # transform spherical lat,lon,r geographical coordinates
     # to global cartesian xyz coordinates
@@ -429,7 +447,6 @@ def PhaseFunction(x):
 
 def AveragePhaseFunctionInputs(x1, x2):
     """
-    todo
     Average phase function value
     """
     my_assert(x1.shape == x2.shape, ValueError, "Inputs(x1 and x2) need to be arrays of the same shape")

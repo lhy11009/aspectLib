@@ -87,7 +87,13 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
         self.options['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
 
         # get snaps for plots
-        graphical_snaps, _, _ = GetSnapsSteps(self._case_dir, 'graphical')
+        graphical_snaps_guess, _, _ = GetSnapsSteps(self._case_dir, 'graphical')
+        # todo
+        graphical_snaps = []
+        for graphical_snap in graphical_snaps_guess:
+            pvtu_file_path = os.path.join(self.options["DATA_OUTPUT_DIR"], "solution", "solution-%05d.pvtu" % graphical_snap)
+            if os.path.isfile(pvtu_file_path):
+                graphical_snaps.append(graphical_snap)
         self.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'] = str(graphical_snaps)
         particle_snaps, _, _ = GetSnapsSteps(self._case_dir, 'particle')
         self.options['ALL_AVAILABLE_PARTICLE_SNAPSHOTS'] = str(particle_snaps)
@@ -101,7 +107,11 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
 
         # plot slab 
         self.options['IF_PLOT_SLAB'] = 'True'
-        self.last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])  # it is the last step we have outputs
+        try:
+            self.last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])  # it is the last step we have outputs
+        except IndexError:
+            # no snaps, stay on the safe side
+            self.last_step = -1
         last_steps = kwargs.get('last_steps', None)
         if type(last_steps) == int:
             # by this option, plot the last few steps
@@ -268,11 +278,9 @@ def RunVTKScripts(operation, vtk_option_path):
     vtk_executable = os.path.join(ASPECT_LAB_DIR, 'vtk_scripts', 'build', operation)
     print("run vtk script: \n%s %s" % (vtk_executable, vtk_option_path))
     completed_process = subprocess.run([vtk_executable, vtk_option_path], capture_output=True, text=True)
-    print("Output from vtk script:\n %s" % completed_process.stdout)
-    _stdout = Utilities.re_neat_word(completed_process.stdout)
-    filename = Utilities.re_neat_word(_stdout.split(':')[-1])
-    assert(os.path.isfile(filename))
-    return filename
+    print("\nOutput from vtk script:\n %s" % completed_process.stdout)
+    # todo: return outputs
+    return completed_process.stdout
 
 
 def main():

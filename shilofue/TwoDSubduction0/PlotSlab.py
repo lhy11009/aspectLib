@@ -123,38 +123,15 @@ class SLABPLOT():
             return self.thetas[i_find], True
 
 
-def slab_morph(file_path):
+def slab_morph(inputs):
     '''
-    plan to be deprecated an move into cpp
     Plot slab morphology
     Inputs:
-        file_path(str):
-            slab surface from vtk output
+        inputs (str): the outputs from another executable (slab analysis)
     '''
     outputs = {}
-    SlabPlot = SLABPLOT()
-    SlabPlot.ReadData(file_path)
-    SlabPlot.PlotSlabSurface(os.path.join(ASPECT_LAB_DIR, 'output', 'slab.png'))
-    ro = np.max(SlabPlot.rs)
-    ri = 2890e3 # todo: modify with prm
-    thetas, found = SlabPlot.FindPoints(ro, 0.1e3, [0, 5])
-    if found == False:
-        raise ValueError("slab_morph: trench hinge cannot be found")
-    trench_theta = np.mean(thetas)
-    outputs['trench'] = {'theta': trench_theta}  # append to output
-    morp_rs = []  # initiate
-    morp_thetas = []
-    num = 100
-    for i in range(num):
-        rf = ro - 1.0 * i / (num-1) * (ro - ri)
-        # morphology
-        thetas, found = SlabPlot.FindPoints(rf, 0.1e3, [4, 10])
-        if found == False:
-            slab_depth = ro - rf
-            break
-        morp_rs.append(rf)
-        morp_thetas.append(thetas)
-    outputs['morp'] = {'radius': morp_rs, 'theta': morp_thetas}  # append to output
+    outputs['trench_theta'] = float(Utilities.re_read_variable_from_string(inputs, 'Trench theta', ':'))
+    outputs['slab_depth'] = float(Utilities.re_read_variable_from_string(inputs, 'Slab depth', ':'))
     return outputs
 
 
@@ -171,15 +148,13 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
     output_dir = os.path.join(case_dir, 'vtk_outputs')
     output_file = os.path.join(output_dir, 'slab_morph.txt')
     vtk_option_path, _time, step = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', vtk_step=pvtu_step)
-    contour_file = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
-    slab_morph_outputs = slab_morph(contour_file)
-    print("Trench: %s" % slab_morph_outputs['trench']['theta'])
+    _stdout = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
+    slab_outputs = slab_morph(_stdout)
     # header
     file_header = "# %s\n# %s\n# %s\n# %s\n# %s\n" % \
-    ("pvtu_step", "step", "time (yr)", "trench (rad)", "minimum_radius (km)")
-    trench_theta = slab_morph_outputs['trench']['theta']
-    minimum_radius = slab_morph_outputs['morp']['radius'][-1]
-    outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e\n" % (pvtu_step, step, _time, trench_theta, minimum_radius)
+    ("pvtu_step", "step", "time (yr)", "trench (rad)", "slab depth (m)")
+    # output string
+    outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e\n" % (pvtu_step, step, _time, slab_outputs['trench_theta'], slab_outputs['slab_depth'])
     # remove old file
     is_new = kwargs.get('new', False)
     if is_new and os.path.isfile(output_file):
@@ -244,13 +219,10 @@ def main():
     if (_commend in ['-h', '--help']):
         # example:
         Usage()
-    elif _commend == 'morph':
-        # slab_morphology, inputs is the vtk output file:
-        slab_morph(arg.inputs)
     elif _commend == 'morph_step':
         # slab_morphology, input is the case name
         # example:
-        vtk_and_slab_morph(arg.inputs, arg.step)
+        vtk_and_slab_morph(arg.inputs, int(arg.step))
     elif _commend == 'morph_case':
         # slab_morphology, input is the case name
         # example:

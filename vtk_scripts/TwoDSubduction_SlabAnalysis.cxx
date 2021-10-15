@@ -59,13 +59,33 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data)
     I->push_back(id);
     // std::cout<< "id: " << id << ",r: " << r << ", theta: " << theta << std::endl;  // debug
   }
-  QuickSort(*rs, *I, 0, c_points->GetNumberOfPoints());  // reorder by r, index saved in I
-  // todo: found trench point
-  for (auto &p:*I)
-    std::cout << p << ", " << (*rs)[p] << std::endl;  // debug
+  QuickSort(*rs, *I, 0, c_points->GetNumberOfPoints()-1);  // reorder by r, index saved in I
+  // found trench point
+  double ro = 6371e3;
+  double find_depth = 5e3;
+  double n_aver = 3;
+  auto r_deviation = std::make_shared<std::vector<double>>();
+  auto I_deviation = std::make_shared<std::vector<size_t>>();
+  for (vtkIdType id = 0; id < c_points->GetNumberOfPoints(); id++)
+  {
+    r_deviation->push_back(abs((*rs)[id] - ro + find_depth));
+    I_deviation->push_back(id);
+  }
+  QuickSort(*r_deviation, *I_deviation, 0, c_points->GetNumberOfPoints()-1);
+  std::cout << c_points->GetNumberOfPoints() << ", " << (*I_deviation)[0] << std::endl;
+  std::cout << (*thetas)[(*I_deviation)[0]] << ", " << (*thetas)[(*I_deviation)[1]] << ", " << (*thetas)[(*I_deviation)[2]] << std::endl;
+  double sum = 0.0;
+  for (int i=0; i < n_aver; i++)
+  {
+    sum += (*thetas)[(*I_deviation)[0]];
+  }
+  double trench_theta = sum / n_aver;
+  std::cout << "Trench theta: " << trench_theta << std::endl;
+  // find slab depth
+  double slab_depth = ro - (*rs)[(*I)[0]];
+  std::cout << "Slab depth: " << slab_depth << std::endl;
 }
 
-//todo: found trench point
 
 void QuickSort(const std::vector<double> & A, std::vector<size_t> & I, size_t lo, size_t hi)
 {
