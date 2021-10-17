@@ -11,6 +11,7 @@ import numpy as np
 from importlib import resources
 from shilofue.Utilities import JsonOptions, ReadHeader, ReadHeader2, UNITCONVERT, my_assert
 import shilofue.Utilities as Utilities
+from shilofue.ParsePrm import ParseFromDealiiInput
 from matplotlib import pyplot as plt
 
 
@@ -141,6 +142,15 @@ class LINEARPLOT():
             # only one row, expand it too 2-d array
             self.data = np.array([self.data])
         return 0
+    
+    def ReadPrm(self, prm_file):
+        '''
+        Read prm file
+        '''
+        # read prm file
+        assert(os.path.isfile(prm_file))
+        with open(prm_file, 'r') as fin:
+            self.prm = ParseFromDealiiInput(fin)
 
 
     def ManageData(self):
@@ -553,6 +563,98 @@ class MACHINE_TIME_PLOT(LINEARPLOT):
         return machine_time_at_step * number_of_cpu, number_of_cpu
 
 
+class CASE_OPTIONS(Utilities.CODESUB):
+    """
+    parse .prm file to a option file that bash can easily read
+    This inherit from Utilities.CODESUB
+    Attributes:
+        _case_dir(str): path of this case
+        _output_dir(str): path of the output
+        _visit_file(str): path of the visit file
+        options(dict): dictionary of key and value to output
+    """
+    def __init__(self, case_dir):
+        """
+        Initiation
+        Args:
+            case_dir(str): directory of case
+        """
+        Utilities.CODESUB.__init__(self)
+        # check directory
+        self._case_dir = case_dir
+        my_assert(os.path.isdir(self._case_dir), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case directory - %s doesn\'t exist' % self._case_dir)
+        self._output_dir = os.path.join(case_dir, 'output')
+        my_assert(os.path.isdir(self._output_dir), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case output directory - %s doesn\'t exist' % self._output_dir)
+        self._visit_file = os.path.join(self._output_dir, 'solution.visit')
+        my_assert(os.access(self._visit_file, os.R_OK), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case visit file - %s cannot be read' % self._visit_file)
+        # output dir
+        self._output_dir = os.path.join(case_dir, 'output')
+        if not os.path.isdir(self._output_dir):
+            os.mkdir(self._output_dir)
+        # img dir
+        self._img_dir = os.path.join(case_dir, 'img')
+        if not os.path.isdir(self._img_dir):
+            os.mkdir(self._img_dir)
+
+        # get inputs from .prm file
+        prm_file = os.path.join(self._case_dir, 'case.prm')
+        my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case prm file - %s cannot be read' % prm_file)
+        with open(prm_file, 'r') as fin:
+            self.idict = ParseFromDealiiInput(fin)
+
+        # initiate a dictionary
+        self.options = {}
+
+        # initiate a statistic data
+        self.Statistics = PlotStatistics.STATISTICS_PLOT('Statistics')
+        self.statistic_file = os.path.join(self._output_dir, 'statistics')
+        self.Statistics.ReadHeader(self.statistic_file)
+        self.Statistics.ReadData(self.statistic_file)
+
+        # horiz_avg
+        self.horiz_avg_file = os.path.join(self._output_dir, "depth_average.txt")
+
+
+    def Interpret(self):
+        """
+        Interpret the inputs, to be reloaded in children
+        """
+        pass
+    
+    def save(self, _path, **kwargs):
+        '''
+        save contents to a new file
+        Args:
+            kwargs(dict):
+                relative: use relative path
+        '''
+        use_relative_path = kwargs.get('relative', False)
+        if use_relative_path:
+            _path = os.path.join(self._case_dir, _path)
+        o_path = Utilities.CODESUB.save(self, _path)
+        return o_path
+
+    def __call__(self, ofile, kwargs):
+        """
+        Call function
+        Args:
+            ofile(str): path of output
+        """
+        # interpret
+        self.Interpret(kwargs)
+
+        # open ofile for output
+        # write outputs by keys and values
+        with open(ofile, 'w') as fout:
+            for key, value in self.options.items():
+                fout.write("%s       %s\n" % (key, value))
+        pass
+
+
 def ProjectPlot(case_dirs, _file_type, **kwargs):
     '''
     Plot figures for all cases in this project
@@ -704,7 +806,6 @@ One option is to delete incorrect file before running again" % _machine_time_fil
 
 
 # a main function
-# todo
 def main():
     '''
     main function of this module

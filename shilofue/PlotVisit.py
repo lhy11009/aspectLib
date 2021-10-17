@@ -25,7 +25,6 @@ import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 import shilofue.Utilities as Utilities
-import shilofue.ParsePrm as ParsePrm
 import shilofue.Plot as Plot
 
 # directory to the aspect Lab
@@ -56,7 +55,7 @@ Examples of usage: \n\
         ")
 
 
-class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
+class VISIT_OPTIONS(Plot.CASE_OPTIONS):
     """
     parse .prm file to a option file that bash can easily read
     """
@@ -67,7 +66,7 @@ class VISIT_OPTIONS(ParsePrm.CASE_OPTIONS):
             last_steps(list): plot the last few steps
         """
         # call function from parent
-        ParsePrm.CASE_OPTIONS.Interpret(self)
+        Plot.CASE_OPTIONS.Interpret(self)
         # particle file
         particle_file = os.path.join(self._output_dir, 'particles.visit')
         if os.access(particle_file, os.R_OK):

@@ -61,6 +61,46 @@ class SLABPLOT(LINEARPLOT):
         ax.set_ylabel('Y (m)')
         plt.savefig(fileout)
         print("plot slab surface: ", fileout)
+    
+    def PlotMorph(self, case_dir):
+        # path
+        img_dir = os.path.join(case_dir, 'img')
+        if not os.path.isdir(img_dir):
+            os.mkdir(img_dir)
+        morph_dir = os.path.join(img_dir, 'morphology')
+        if not os.path.isdir(morph_dir):
+            os.mkdir(morph_dir)
+        # todo, read parameters
+        Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        # read data
+        slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+        assert(os.path.isfile(slab_morph_file))
+        self.ReadHeader(slab_morph_file)
+        self.ReadData(slab_morph_file)
+        col_pvtu_step = self.header['pvtu_step']['col']
+        col_pvtu_time = self.header['time']['col']
+        col_pvtu_trench = self.header['trench']['col']
+        col_pvtu_slab_depth = self.header['slab_depth']['col']
+        pvtu_steps = self.data[:, col_pvtu_step]
+        times = self.data[:, col_pvtu_time]
+        trenches = self.data[:, col_pvtu_trench]
+        trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
+        slab_depthes = self.data[:, col_pvtu_slab_depth]
+        fig, ax = plt.subplots()
+        ax_tx = ax.twinx()
+        lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, 'b-', label='trench position (km)')
+        ax.set_xlabel('Times (Myr)')
+        ax.set_ylabel('Trench Position (km)', color='tab:blue')
+        ax.tick_params(axis='y', labelcolor='tab:blue')
+        lns1 = ax_tx.plot(times/1e6, slab_depthes/1e3, 'k-', label='slab depth (km)')
+        ax_tx.set_ylabel('Slab Depth (km)')
+        lns = lns0 + lns1
+        labs = [I.get_label() for I in lns]
+        # ax.legend(lns, labs)
+        o_path = os.path.join(morph_dir, 'trench.png')
+        plt.savefig(o_path)
+        print("%s: figure %s generated" % (Utilities.func_name(), o_path))
+
 
 
 def slab_morph(inputs):
@@ -120,7 +160,7 @@ def vtk_and_slab_morph_case(case_dir):
     Visit_Options.Interpret()
     available_pvtu_snapshots = Utilities.string2list(Visit_Options.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'])
     available_pvtu_steps = [i - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) for i in available_pvtu_snapshots]
-    # todo get where previous session ends
+    # get where previous session ends
     SlabPlot = SLABPLOT('slab')
     slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
     SlabPlot.ReadHeader(slab_morph_file)
@@ -177,6 +217,13 @@ def main():
         # slab_morphology, input is the case name
         # example:
         vtk_and_slab_morph_case(arg.inputs)
+    elif _commend == 'plot_morph':
+        # plot slab morphology
+        SlabPlot = SLABPLOT('slab')
+        prm_file = os.path.join(arg.inputs, 'case.prm')
+        SlabPlot.ReadPrm(prm_file)
+        SlabPlot.PlotMorph(arg.inputs)
+
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
