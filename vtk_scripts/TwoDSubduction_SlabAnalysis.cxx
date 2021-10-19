@@ -104,25 +104,24 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_o
 }
 
 
-void analyze_temperature(SlabAnalysis & slab_analysis, SlabOutputs & slab_outputs)
+void analyze_temperature(SlabAnalysis & slab_analysis, SlabOutputs & slab_outputs, const std::string filename)
 {
   //todo
-  std::string filename = "test_temperature.vtp";
   vtkNew<vtkPoints> gridPoints;
   double Ro = 6371e3;
-  double depth = 100e3;
+  double depth = 1000e3;  //debug
   unsigned num = 100;
   for (unsigned i = 0; i < num; i++){
     // a vertical line
     double val_theta = slab_outputs.trench_theta;
-    double val_r = Ro - i / num * (depth);
+    double val_r = Ro - i * 1.0 / num * (depth);
     double val_x = val_r * cos(val_theta);
     double val_y = val_r * sin(val_theta);
     gridPoints->InsertNextPoint(val_x, val_y, 0);
   }
-  vtkSmartPointer<vtkPolyData> iPolyData = slab_analysis.interpolate_grid(gridPoints, filename);
-  std::vector<std::string> fields{"T"};
-  // slab_analysis.write_ascii(iPolyData, fields, filename);
+  vtkSmartPointer<vtkPolyData> iPolyData = slab_analysis.interpolate_grid(gridPoints);
+  std::vector<std::string> fields{"T", "spcrust"};
+  slab_analysis.write_ascii(iPolyData, fields, filename);
 }
 
 
@@ -174,8 +173,8 @@ int main(int argc, char* argv[])
   std::string target_dir = option_file.substr(0,found);
   found=filename.find_last_of("."); // get step
   size_t found1 = filename.find_last_of("-");
-  std::string step = filename.substr(found1+1, found - found1-1);
-  std::cout << "step: " << step << std::endl;
+  std::string pvtu_step = filename.substr(found1+1, found - found1-1);
+  std::cout << "pvtu_step: " << pvtu_step << std::endl;
   // 2. AVG_FILE_PATH
   std::string avg_filename = options[1];
   SlabAnalysis slab_analysis;
@@ -186,14 +185,13 @@ int main(int argc, char* argv[])
   //slab_analysis.density_diff();
   //slab_analysis.mow_from_blocking(973.0, 12.5e9);  // 725 + 273 from Quinteros
   slab_analysis.prepare_slab({"spcrust", "spharz"});
-  slab_analysis.output(slab_analysis.iDelaunay2D->GetOutput(), target_dir + "/" + "output.vtp");
   slab_analysis.integrate_cells();
   // slab_analysis.extract_contour("T", 1173.0, target_dir + "/" + "contour.txt");
-  vtkSmartPointer<vtkPolyData> c_poly_data = slab_analysis.extract_contour("slab", 0.99, target_dir + "/" + "contour_slab_" + step + ".txt"); //apply contour
+  vtkSmartPointer<vtkPolyData> c_poly_data = slab_analysis.extract_contour("slab", 0.99, target_dir + "/" + "contour_slab_" + pvtu_step + ".txt"); //apply contour
   SlabOutputs slab_outputs;
   analyze_slab(c_poly_data, slab_outputs); // analyze slab morphology
   //todo
-  analyze_temperature(slab_analysis, slab_outputs); // output tempertature
+  analyze_temperature(slab_analysis, slab_outputs, target_dir + "/" + "wedge_temperature_" + pvtu_step + ".txt"); // output tempertature
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
 }

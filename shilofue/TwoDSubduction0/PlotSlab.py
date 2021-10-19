@@ -44,7 +44,10 @@ Examples of usage: \n\
 \n\
   - generate slab_morph.txt: \n\
     (what this does is looping throw all visualizing steps, so it takes time)\n\
-    python -m shilofue.TwoDSubduction0.PlotSlab morph_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8\n\
+    python -m shilofue.TwoDSubduction0.PlotSlab morph_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 \n\
+\n\
+    Options: \n\
+        -r: 0(default), 1 - rewrite previous slab_morph.txt\n\
 \n\
   - plot trench movement: \n\
     (note you have to have a slab_morph.txt generated) \n\
@@ -179,9 +182,12 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
         print('Update output: %s' % output_file)
 
 
-def vtk_and_slab_morph_case(case_dir):
+def vtk_and_slab_morph_case(case_dir, **kwargs):
     '''
     run vtk and get outputs for every snapshots
+    Inputs:
+        kwargs:
+            rewrite: if rewrite previous results
     '''
     # get all available snapshots
     Visit_Options = VISIT_OPTIONS(case_dir)
@@ -200,8 +206,9 @@ def vtk_and_slab_morph_case(case_dir):
     else:
         last_pvtu_step = -1
     # get slab morphology
+    if_rewrite = kwargs.get('rewrite', 0)
     for pvtu_step in available_pvtu_steps:
-        if pvtu_step <= last_pvtu_step:
+        if pvtu_step <= last_pvtu_step and if_rewrite == 0:
             # skip existing steps
             continue
         if pvtu_step == 0:
@@ -230,6 +237,9 @@ def main():
     parser.add_argument('-s', '--step', type=str,
                         default='0',
                         help='Timestep')
+    parser.add_argument('-r', '--rewrite', type=int,
+                        default=0,
+                        help='If rewrite previous result')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -248,7 +258,7 @@ def main():
     elif _commend == 'morph_case':
         # slab_morphology, input is the case name
         # example:
-        vtk_and_slab_morph_case(arg.inputs)
+        vtk_and_slab_morph_case(arg.inputs, rewrite=arg.rewrite)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')

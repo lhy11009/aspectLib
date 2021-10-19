@@ -232,7 +232,7 @@ void AspectVtk::interpolate_uniform_grid(std::string filename)
     writer->Write();
 }
 
-vtkSmartPointer<vtkPolyData> AspectVtk::interpolate_grid(vtkSmartPointer<vtkPoints> gridPoints, std::string filename)
+vtkSmartPointer<vtkPolyData> AspectVtk::interpolate_grid(vtkSmartPointer<vtkPoints> gridPoints)
 {
     // todo
     // Create a grid of points to interpolate over
@@ -248,45 +248,41 @@ vtkSmartPointer<vtkPolyData> AspectVtk::interpolate_grid(vtkSmartPointer<vtkPoin
     probeFilter->SetInputData(gridPolyData); // Interpolate 'Source' at these points
     probeFilter->Update();
     
-    // Map the output zvalues to the z-coordinates of the data so that
-    // we get a surface, rather than a flat grid with interpolated
-    // scalars.
-    vtkNew<vtkWarpScalar> gridWarpScalar;
-    gridWarpScalar->SetInputConnection(probeFilter->GetOutputPort());
-    gridWarpScalar->Update();
-    vtkSmartPointer<vtkPolyData> iPolyData = gridWarpScalar->GetPolyDataOutput();
-    for (vtkIdType i = 0; i < iPolyData->GetNumberOfPoints(); i++)
-    {
-        // debug
-        std::string output="";
-        const double val = iPolyData->GetPointData()->GetArray("T")->GetTuple1(i); 
-        std::cout << val << std::endl;
-    }
+    vtkSmartPointer<vtkPolyData> iPolyData = probeFilter->GetPolyDataOutput();
     return iPolyData;
 }
 
-void AspectVtk::write_ascii(vtkSmartPointer<vtkPolyData> polyData, std::vector<std::string>& fields, std::string filename)
+void AspectVtk::write_ascii(vtkSmartPointer<vtkPolyData> polyData, std::vector<std::string>& fields, const std::string filename)
 {
     // todo
     std::cout << "Write ascii data file" << std::endl;
     // output header
-    unsigned i = 1;
+    std::string header = "# 1: x (m)\n# 2: y (m)";
+    unsigned i = 3;
     for (auto &p: fields)
     {
-        std::string header = std::string("# ") + std::to_string(i) + std::string(": ") + p;
-        std::cout << header << std::endl;
+        header += std::string("\n# ") + std::to_string(i) + std::string(": ") + p;
         i++;
     }
     // output data
+    std::string output= "";
     for (vtkIdType i = 0; i < polyData->GetNumberOfPoints(); i++)
     {
-        std::string output="";
+        if (i>0)
+            output += std::string("\n");  // append new line for new point
+        double *xs = polyData->GetPoint(i);
+        output += std::to_string(xs[0]) + std::string("\t") + std::to_string(xs[1]);
         for (auto &p: fields){
             const double val = polyData->GetPointData()->GetArray(p.c_str())->GetTuple1(i); 
-            output = output + std::to_string(val) + std::string(" ");
+            output += std::string("\t") + std::to_string(val);
         }
-        std::cout << output << std::endl;
     }
+    // write file
+    std::ofstream fout(filename, std::ofstream::out);
+    if (fout){
+        fout << header << std::endl << output << std::endl;
+    }
+    std::cout << "Write ascii data file: " << filename << std::endl;
 }
 
 void AspectVtk::read_horiz_avg(const std::string &filename)
