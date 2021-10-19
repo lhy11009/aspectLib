@@ -14,6 +14,21 @@ class SlabAnalysis : public AspectVtk
         void prepare_slab(const std::vector<std::string> names);
 };
 
+//todo
+struct SlabOutputs
+{
+    double trench_theta; // trench position
+    double slab_depth;  // slab depth
+    void set_moprh(double trench_theta, double slab_depth);
+};
+
+//todo
+void SlabOutputs::set_moprh(double trench_theta, double slab_depth){
+    this->trench_theta = trench_theta;
+    this->slab_depth = slab_depth;
+}
+
+
 void SlabAnalysis::prepare_slab(const std::vector<std::string> names)
 {
     std::cout << "Praparing the slab (new composition)" << std::endl;
@@ -39,7 +54,7 @@ void SlabAnalysis::prepare_slab(const std::vector<std::string> names)
     iDelaunay2D->Update();
 }
 
-void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data)
+void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_outputs)
 {
   // take a contour output and analyze the slab morphology
   vtkSmartPointer<vtkPoints> c_points = c_poly_data->GetPoints();
@@ -84,6 +99,30 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data)
   // find slab depth
   double slab_depth = ro - (*rs)[(*I)[0]];
   std::cout << "Slab depth: " << slab_depth << std::endl;
+  // todo return results
+  slab_outputs.set_moprh(trench_theta, slab_depth);
+}
+
+
+void analyze_temperature(SlabAnalysis & slab_analysis, SlabOutputs & slab_outputs)
+{
+  //todo
+  std::string filename = "test_temperature.vtp";
+  vtkNew<vtkPoints> gridPoints;
+  double Ro = 6371e3;
+  double depth = 100e3;
+  unsigned num = 100;
+  for (unsigned i = 0; i < num; i++){
+    // a vertical line
+    double val_theta = slab_outputs.trench_theta;
+    double val_r = Ro - i / num * (depth);
+    double val_x = val_r * cos(val_theta);
+    double val_y = val_r * sin(val_theta);
+    gridPoints->InsertNextPoint(val_x, val_y, 0);
+  }
+  vtkSmartPointer<vtkPolyData> iPolyData = slab_analysis.interpolate_grid(gridPoints, filename);
+  std::vector<std::string> fields{"T"};
+  // slab_analysis.write_ascii(iPolyData, fields, filename);
 }
 
 
@@ -151,7 +190,10 @@ int main(int argc, char* argv[])
   slab_analysis.integrate_cells();
   // slab_analysis.extract_contour("T", 1173.0, target_dir + "/" + "contour.txt");
   vtkSmartPointer<vtkPolyData> c_poly_data = slab_analysis.extract_contour("slab", 0.99, target_dir + "/" + "contour_slab_" + step + ".txt"); //apply contour
-  analyze_slab(c_poly_data); // analyze slab morphology
+  SlabOutputs slab_outputs;
+  analyze_slab(c_poly_data, slab_outputs); // analyze slab morphology
+  //todo
+  analyze_temperature(slab_analysis, slab_outputs); // output tempertature
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
 }

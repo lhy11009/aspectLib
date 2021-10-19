@@ -25,6 +25,7 @@ import sys, os, argparse
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from matplotlib import gridspec
 from shilofue.Plot import LINEARPLOT
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, VISIT_OPTIONS
 import shilofue.Utilities as Utilities
@@ -37,13 +38,18 @@ shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
 def Usage():
     print("\
-(One liner description\n\
+This scripts analyze slab morphology\n\
 \n\
 Examples of usage: \n\
 \n\
-  - default usage: \n\
+  - generate slab_morph.txt: \n\
+    (what this does is looping throw all visualizing steps, so it takes time)\n\
+    python -m shilofue.TwoDSubduction0.PlotSlab morph_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8\n\
 \n\
-        python -m \
+  - plot trench movement: \n\
+    (note you have to have a slab_morph.txt generated) \n\
+    python -m shilofue.TwoDSubduction0.PlotSlab plot_morph -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 \n\
+\n\
         ")
 
 class SLABPLOT(LINEARPLOT):
@@ -70,7 +76,7 @@ class SLABPLOT(LINEARPLOT):
         morph_dir = os.path.join(img_dir, 'morphology')
         if not os.path.isdir(morph_dir):
             os.mkdir(morph_dir)
-        # todo, read parameters
+        # read parameters
         Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
         # read data
         slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
@@ -86,17 +92,39 @@ class SLABPLOT(LINEARPLOT):
         trenches = self.data[:, col_pvtu_trench]
         trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
         slab_depthes = self.data[:, col_pvtu_slab_depth]
-        fig, ax = plt.subplots()
+        # todo
+        trench_velocities = np.gradient(trenches_migration_length, times)
+        sink_velocities = np.gradient(slab_depthes, times)
+        # trench velocity
+        # start figure
+        fig = plt.figure(tight_layout=True) 
+        fig.subplots_adjust(hspace=0)
+        gs = gridspec.GridSpec(2, 2) 
+        # 1: trench & slab movement
+        ax = fig.add_subplot(gs[0, :]) 
         ax_tx = ax.twinx()
-        lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, 'b-', label='trench position (km)')
-        ax.set_xlabel('Times (Myr)')
-        ax.set_ylabel('Trench Position (km)', color='tab:blue')
-        ax.tick_params(axis='y', labelcolor='tab:blue')
+        _color = 'tab:blue'
+        lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, '-', color=_color, label='trench position (km)')
+        ax.set_ylabel('Trench Position (km)', color=_color)
+        ax.tick_params(axis='y', labelcolor=_color)
+        ax.grid()
         lns1 = ax_tx.plot(times/1e6, slab_depthes/1e3, 'k-', label='slab depth (km)')
         ax_tx.set_ylabel('Slab Depth (km)')
         lns = lns0 + lns1
         labs = [I.get_label() for I in lns]
         # ax.legend(lns, labs)
+        # 2:
+        # todo
+        ax = fig.add_subplot(gs[1, :]) 
+        _color = 'tab:blue'
+        ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
+        lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color=_color, label='trench velocity (cm/yr)')
+        ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='trench velocity (cm/yr)')
+        ax.set_ylim((-10, 20))
+        ax.set_xlabel('Times (Myr)')
+        ax.set_ylabel('Velocity (cm/yr)')
+        ax.grid()
+        # save figure
         o_path = os.path.join(morph_dir, 'trench.png')
         plt.savefig(o_path)
         print("%s: figure %s generated" % (Utilities.func_name(), o_path))
@@ -163,10 +191,14 @@ def vtk_and_slab_morph_case(case_dir):
     # get where previous session ends
     SlabPlot = SLABPLOT('slab')
     slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
-    SlabPlot.ReadHeader(slab_morph_file)
-    SlabPlot.ReadData(slab_morph_file)
-    col_pvtu_step = SlabPlot.header['pvtu_step']['col']
-    last_pvtu_step = int(SlabPlot.data[-1, col_pvtu_step])
+    if os.access(slab_morph_file, os.R_OK):
+        # read previous results if they exist
+        SlabPlot.ReadHeader(slab_morph_file)
+        SlabPlot.ReadData(slab_morph_file)
+        col_pvtu_step = SlabPlot.header['pvtu_step']['col']
+        last_pvtu_step = int(SlabPlot.data[-1, col_pvtu_step])
+    else:
+        last_pvtu_step = -1
     # get slab morphology
     for pvtu_step in available_pvtu_steps:
         if pvtu_step <= last_pvtu_step:

@@ -26,6 +26,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 import shilofue.Utilities as Utilities
 import shilofue.Plot as Plot
+import shilofue.ParsePrm as ParsePrm
+from shilofue.CaseOptions import CASE_OPTIONS
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -55,7 +57,7 @@ Examples of usage: \n\
         ")
 
 
-class VISIT_OPTIONS(Plot.CASE_OPTIONS):
+class VISIT_OPTIONS(CASE_OPTIONS):
     """
     parse .prm file to a option file that bash can easily read
     """
@@ -66,7 +68,7 @@ class VISIT_OPTIONS(Plot.CASE_OPTIONS):
             last_steps(list): plot the last few steps
         """
         # call function from parent
-        Plot.CASE_OPTIONS.Interpret(self)
+        CASE_OPTIONS.Interpret(self)
         # particle file
         particle_file = os.path.join(self._output_dir, 'particles.visit')
         if os.access(particle_file, os.R_OK):
@@ -93,6 +95,7 @@ class VISIT_OPTIONS(Plot.CASE_OPTIONS):
             pvtu_file_path = os.path.join(self.options["DATA_OUTPUT_DIR"], "solution", "solution-%05d.pvtu" % graphical_snap)
             if os.path.isfile(pvtu_file_path):
                 graphical_snaps.append(graphical_snap)
+        
         self.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'] = str(graphical_snaps)
         particle_snaps, _, _ = GetSnapsSteps(self._case_dir, 'particle')
         self.options['ALL_AVAILABLE_PARTICLE_SNAPSHOTS'] = str(particle_snaps)
@@ -149,8 +152,8 @@ class VISIT_OPTIONS(Plot.CASE_OPTIONS):
         if not os.path.isdir(self.options['VTK_OUTPUT_DIR']):
             os.mkdir(self.options['VTK_OUTPUT_DIR'])
         # file to read in vtk
-        Utilities.my_assert((vtk_step >= 0 and vtk_step < self.last_step), ValueError, "vtk_step needs to be within the range of [%d, %d]" % (0, self.last_step))  # check the range of steps
-        self.options['PVTU_FILE'] = os.path.join(self._output_dir, "solution", "solution-%05d.pvtu" % (vtk_step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT']) + 1))
+        Utilities.my_assert((vtk_step >= 0 and vtk_step <= self.last_step), ValueError, "vtk_step needs to be within the range of [%d, %d]" % (0, self.last_step))  # check the range of steps
+        self.options['PVTU_FILE'] = os.path.join(self._output_dir, "solution", "solution-%05d.pvtu" % (vtk_step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])))
 
     def get_time_and_step(self, vtk_step):
         '''

@@ -76,6 +76,11 @@ class AspectVtk
         void output(const vtkSmartPointer<vtkPolyData> opolydata, const std::string filename);
         // interpolate to uniform grid
         void interpolate_uniform_grid(std::string filename);
+        // take a grid and perform the interpolation
+        // todo
+        vtkSmartPointer<vtkPolyData> interpolate_grid(vtkSmartPointer<vtkPoints> gridPoints, std::string filename);
+        // write ascii file
+        void write_ascii(vtkSmartPointer<vtkPolyData> polyData, std::vector<std::string> &fields, std::string filename);
         // integrate on cells
         void integrate_cells();
         // derive density difference
