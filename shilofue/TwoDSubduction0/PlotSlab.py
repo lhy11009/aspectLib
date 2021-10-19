@@ -143,6 +143,8 @@ def slab_morph(inputs):
     outputs = {}
     outputs['trench_theta'] = float(Utilities.re_read_variable_from_string(inputs, 'Trench theta', ':'))
     outputs['slab_depth'] = float(Utilities.re_read_variable_from_string(inputs, 'Slab depth', ':'))
+    outputs['theta100'] = float(Utilities.re_read_variable_from_string(inputs, '100km theta', ':'))
+    outputs['dip100'] = float(Utilities.re_read_variable_from_string(inputs, '100km dip', ':'))
     return outputs
 
 
@@ -162,10 +164,10 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
     _stdout = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
     slab_outputs = slab_morph(_stdout)
     # header
-    file_header = "# %s\n# %s\n# %s\n# %s\n# %s\n" % \
-    ("1: pvtu_step", "2: step", "3: time (yr)", "4: trench (rad)", "5: slab depth (m)")
+    file_header = "# 1: pvtu_step\n# 2: step\n# 3: time (yr)\n# 4: trench (rad)\n# 5: slab depth (m)\n# 6: 100km dip (rad)\n"
     # output string
-    outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e\n" % (pvtu_step, step, _time, slab_outputs['trench_theta'], slab_outputs['slab_depth'])
+    outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e%-14.4e\n"\
+    % (pvtu_step, step, _time, slab_outputs['trench_theta'], slab_outputs['slab_depth'], slab_outputs['dip100'])
     # remove old file
     is_new = kwargs.get('new', False)
     if is_new and os.path.isfile(output_file):
@@ -197,7 +199,8 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     # get where previous session ends
     SlabPlot = SLABPLOT('slab')
     slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
-    if os.access(slab_morph_file, os.R_OK):
+    if_rewrite = kwargs.get('rewrite', 0)
+    if os.access(slab_morph_file, os.R_OK) and if_rewrite == 0:
         # read previous results if they exist
         SlabPlot.ReadHeader(slab_morph_file)
         SlabPlot.ReadData(slab_morph_file)
@@ -206,7 +209,6 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     else:
         last_pvtu_step = -1
     # get slab morphology
-    if_rewrite = kwargs.get('rewrite', 0)
     for pvtu_step in available_pvtu_steps:
         if pvtu_step <= last_pvtu_step and if_rewrite == 0:
             # skip existing steps

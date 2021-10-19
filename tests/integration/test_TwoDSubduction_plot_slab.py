@@ -44,13 +44,21 @@ def test_vtk_TwoDSubduction_SlabAnalysis():
     assert that we get the right value for trench position and slab depth
     '''
     option_path = os.path.join(test_dir, 'TwoDSubduction_SlabAnalysis.input')
+    wedge_T_file_out = os.path.join(test_dir, 'wedge_T100_00001.txt')
+    wedge_T_file_out_std = os.path.join(case_dir, 'wedge_T100_00001_std.txt')
+    if os.path.isfile(wedge_T_file_out):
+        os.remove(wedge_T_file_out)  # remove older file
     vtk_option_path, _, _ = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', vtk_step=0, output=option_path)
     _stdout = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
     outputs = slab_morph(_stdout)
-    trench_theta_std = 0.628019
+    # compare trench & slab depth output
+    trench_theta_std = 0.63215
     slab_depth_std = 180851
     assert(abs(outputs['trench_theta']-trench_theta_std)/trench_theta_std < 1e-6)
     assert(abs(outputs['slab_depth']-slab_depth_std)/slab_depth_std < 1e-6)
+    # compare wedge temperature output
+    assert(os.path.isfile(wedge_T_file_out))
+    assert(filecmp.cmp(wedge_T_file_out, wedge_T_file_out_std))
 
     
 # notes
