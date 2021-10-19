@@ -63,8 +63,8 @@ class SLABPLOT(LINEARPLOT):
     Returns:
         -
     '''
-    def __init__(self):
-        LINEARPLOT.__init__(self)
+    def __init__(self, _name):
+        LINEARPLOT.__init__(self, _name)
         self.wedge_T_reader = LINEARPLOT('wedge_T')
 
     def PlotSlabSurface(self, fileout):
@@ -75,22 +75,25 @@ class SLABPLOT(LINEARPLOT):
         plt.savefig(fileout)
         print("plot slab surface: ", fileout)
     
-    def ReadWedgeT(self, case_dir, max_pvtu_step):
-        # todo
+    def ReadWedgeT(self, case_dir, min_pvtu_step, max_pvtu_step):
         i = 0
-        for pvtu_step in range(max_pvtu_step):
-            file_in_path = 
+        initial_adaptive_refinement = int(self.prm['Mesh refinement']['Initial adaptive refinement'])
+        Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        for pvtu_step in range(min_pvtu_step + initial_adaptive_refinement, max_pvtu_step + initial_adaptive_refinement + 1):
+            file_in_path = os.path.join(case_dir, 'vtk_outputs', 'wedge_T100_%05d.txt' % pvtu_step)
+            Utilities.my_assert(os.access(file_in_path, os.R_OK), FileExistsError, "File %s doesn\'t exist" % file_in_path)
             self.wedge_T_reader.ReadHeader(file_in_path)
             self.wedge_T_reader.ReadData(file_in_path)
-            header_wedge_T = 
-            col_pvtu_step = self.header['pvtu_step']['col']
-            pvtu_steps = 
-            xs = 
-            ys =
+            col_x = self.wedge_T_reader.header['x']['col']
+            col_y = self.wedge_T_reader.header['y']['col']
+            col_T = self.wedge_T_reader.header['T']['col']
+            xs = self.wedge_T_reader.data[:, col_x]
+            ys = self.wedge_T_reader.data[:, col_y]
             if i == 0: 
-                depthes =  # compute depth
-                Ts = np.zeros((depthes.size, max_pvtu_step))
-            Ts[:, i] = 
+                rs = (xs**2.0 + ys**2.0)**0.5
+                depthes = Ro - rs # compute depth
+                Ts = np.zeros((depthes.size, max_pvtu_step - min_pvtu_step + 1))
+            Ts[:, i] = self.wedge_T_reader.data[:, col_T]
             i += 1
         return depthes, Ts
         
@@ -125,13 +128,15 @@ class SLABPLOT(LINEARPLOT):
         # start figure
         fig = plt.figure(tight_layout=True) 
         fig.subplots_adjust(hspace=0)
-        gs = gridspec.GridSpec(3, 2) 
+        gs = gridspec.GridSpec(3, 3) 
         # 1: trench & slab movement
-        ax = fig.add_subplot(gs[0, :]) 
+        ax = fig.add_subplot(gs[0, 0:2]) 
         ax_tx = ax.twinx()
         _color = 'tab:blue'
         lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, '-', color=_color, label='trench position (km)')
+        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
         ax.set_ylabel('Trench Position (km)', color=_color)
+        ax.tick_params(axis='x', labelbottom=False) # labels along the bottom edge are off
         ax.tick_params(axis='y', labelcolor=_color)
         ax.grid()
         lns1 = ax_tx.plot(times/1e6, slab_depthes/1e3, 'k-', label='slab depth (km)')
@@ -140,20 +145,29 @@ class SLABPLOT(LINEARPLOT):
         labs = [I.get_label() for I in lns]
         # ax.legend(lns, labs)
         # 2: velocity
-        ax = fig.add_subplot(gs[1, :]) 
+        ax = fig.add_subplot(gs[1, 0:2]) 
         _color = 'tab:blue'
         ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
         lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color=_color, label='trench velocity (cm/yr)')
         ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='trench velocity (cm/yr)')
+        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
         ax.set_ylim((-10, 20))
         ax.set_ylabel('Velocity (cm/yr)')
         ax.grid()
+        ax.tick_params(axis='x', labelbottom=False) # labels along the bottom edge are off
         # 3: wedge temperature
-        # todo
-        depthes, Ts = self.ReadWedgeT()
-        ax = fig.add_subplot(gs[2, :]) 
-        # ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
+        depthes, Ts = self.ReadWedgeT(case_dir, int(pvtu_steps[0]), int(pvtu_steps[-1]))
+        tt, dd = np.meshgrid(times, depthes)
+        ax = fig.add_subplot(gs[2, 0:2]) 
+        h = ax.pcolormesh(tt/1e6,dd/1e3,Ts, shading='gouraud') 
+        ax.invert_yaxis()
+        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
         ax.set_xlabel('Times (Myr)')
+        ax.set_ylabel('Depth (km)')
+        ax = fig.add_subplot(gs[2, 2])
+        ax.axis('off') 
+        fig.colorbar(h, ax=ax, label='T (K)') 
+        fig.tight_layout()
         # save figure
         o_path = os.path.join(morph_dir, 'trench.png')
         plt.savefig(o_path)
@@ -207,7 +221,7 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
         print('Create output: %s' % output_file)
     else:
         with open(output_file, 'a') as fout:
-            )fout.write(outputs)
+            fout.write(outputs)
         print('Update output: %s' % output_file)
 
 
@@ -220,7 +234,7 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     '''
     # get all available snapshots
     Visit_Options = VISIT_OPTIONS(case_dir)
-    Visit_Op)tions.Interpret()
+    Visit_Options.Interpret()
     available_pvtu_snapshots = Utilities.string2list(Visit_Options.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'])
     available_pvtu_steps = [i - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) for i in available_pvtu_snapshots]
     # get where previous session ends
