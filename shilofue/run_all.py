@@ -149,7 +149,7 @@ def generate_slurm_file_peloton_rome(slurm_file_name,ncpu,tasks_per_node,job_nam
     # command to run
     branch=kwargs.get('branch', None)
     if branch==None:
-        fh.write("mpirun -n {:d} --bind-to socket --report-bindings {:s}/build/aspect {:s}\n".format(ASPECT_SOURCE_DIR,ncpu,prmfile))
+        fh.write("mpirun -n {:d} --bind-to socket --report-bindings {:s}/build/aspect {:s}\n".format(ncpu, ASPECT_SOURCE_DIR,prmfile))
     else:
         fh.write("mpirun -n {:d} --bind-to socket --report-bindings {:s}/build_{:s}/aspect {:s}\n".format(ncpu, ASPECT_SOURCE_DIR,branch,prmfile))
     # fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
@@ -229,7 +229,7 @@ def main():
     # core_counts = [1,2,4,8,16,32,64,128,256,512,768,1024]#,200,300,400]#,500,800,1000,1500]
     # for rome-256-512
     # 64 tasks per node
-    core_counts = [1,2,4,8,16,32,64] # 128,256] #512] # 768,1024]#,200,300,400]#,500,800,1000,1500]
+    core_counts = [1,2,4,8,16,32,64, 128,256, 512] # 768,1024]#,200,300,400]#,500,800,1000,1500]
     refinement_levels = [2,3,4,5]#,6]
     #                                          0   1   2   3       4     5    6
     minimum_core_count_for_refinement_level = [0,  0,   1,   1,   10, 100, 500]# for refinement levels 0-6
@@ -239,7 +239,7 @@ def main():
     # for peloton ii
     # tasks_per_node = 32
     # for rome-256-512
-    tasks_per_node = 64
+    tasks_per_node = 128
     openmpi = "4.1.0"
     
     cluster_label = "%s-%stasks-socket-openmpi-%s" % (server, tasks_per_node, openmpi) # ?
