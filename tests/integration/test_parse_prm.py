@@ -82,16 +82,3 @@ def test_UpperMantleRheologyViscoPlastic():
     b = str(dislocation_creep)
     assert(a == "{'A': 8.1787e-17, 'd': 0.01, 'n': 1.0, 'm': 3.0, 'E': 300000.0, 'V': 6.9e-06}")
     assert(b == "{'A': 5.9076e-16, 'd': 0.01, 'n': 3.5, 'm': 0.0, 'E': 510000.0, 'V': 1.74e-05}")
-
-def test_sph_cart_trans():
-    '''
-    test sph_cart_trans
-    '''
-    file_in_sph = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'spherical_example.prm')
-    assert(os.access(file_in_sph, os.R_OK))
-    inputs_sph = ParsePrm.ReadPrmFile(file_in_sph)
-    file_in_cart = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'cartesian_example.prm')
-    assert(os.access(file_in_cart, os.R_OK))
-    inputs_cart = ParsePrm.ReadPrmFile(file_in_cart)
-    outputs_cart = ParsePrm.sph_cart_trans(inputs_sph, inputs_cart)
-    assert(outputs_cart == inputs_cart)  # assert that the transformed dictionary is identical to the cartesian one.
