@@ -59,15 +59,17 @@ build_aspect_project(){
     local current_dir=$(pwd)
     # Here we pick nproc - 1, this make sure that we don't use up all resources.
     # But this will cause problem when nproc = 1
-    # local nproc=$(($(nproc)-1))
-    local nproc=8
+    local nproc=$(nproc)
+    # local nproc=8
     cd ${build_dir}
     # build source code
-    # also add world builder route
-    [[ -n ${WORLD_BUILDER_SOURCE_DIR} ]] && eval "cmake -DWORLD_BUILDER_SOURCE_DIR=${WORLD_BUILDER_SOURCE_DIR} .." || eval "cmake .."
+    local cmake_appendix=""
+    [[ -n $WORLD_BUILDER_SOURCE_DIR ]] && cmake_appendix="${cmake_appendix} -DWORLD_BUILDER_SOURCE_DIR=$WORLD_BUILDER_SOURCE_DIR"
+    eval "cmake .. ${cmake_appendix}"
     quit_if_fail "${FUNCNAME[0]}: cmake inside ${build_dir} failed"
     eval "make ${mode}"
     quit_if_fail "${FUNCNAME[0]}: \"make ${mode}\" inside ${build_dir} failed"
+    echo "make -j ${nproc}"  # screen output
     eval "make -j ${nproc}"
     quit_if_fail "${FUNCNAME[0]}: make inside ${build_dir} failed"
 
