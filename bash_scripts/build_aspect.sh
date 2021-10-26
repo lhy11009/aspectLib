@@ -63,7 +63,8 @@ build_aspect_project(){
     local nproc=8
     cd ${build_dir}
     # build source code
-    eval "cmake .."
+    # also add world builder route
+    [[ -n ${WORLD_BUILDER_SOURCE_DIR} ]] && eval "cmake -DWORLD_BUILDER_SOURCE_DIR=${WORLD_BUILDER_SOURCE_DIR} .." || eval "cmake .."
     quit_if_fail "${FUNCNAME[0]}: cmake inside ${build_dir} failed"
     eval "make ${mode}"
     quit_if_fail "${FUNCNAME[0]}: \"make ${mode}\" inside ${build_dir} failed"

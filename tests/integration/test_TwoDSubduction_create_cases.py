@@ -145,3 +145,28 @@ def test_generate_group():
         _case_dir = os.path.join(_odir, _case_name)  # case name is 'ULV3.000e+01_testIAR8'
         _prm_file = os.path.join(_case_dir, 'case.prm')
         assert(os.path.isfile(_prm_file))
+
+
+def test_sph_cart_trans():
+    '''
+    test sph_cart_trans
+    '''
+    file_in_sph = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'spherical_example.prm')
+    file_in_sph_wb = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'spherical_example.wb')
+    assert(os.access(file_in_sph, os.R_OK))
+    assert(os.access(file_in_sph_wb, os.R_OK))
+    inputs_sph = ParsePrm.ReadPrmFile(file_in_sph)
+    with open(file_in_sph_wb, 'r') as fin:
+        inputs_sph_wb = json.load(fin)
+    file_in_cart = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'cartesian_example.prm')
+    file_in_cart_wb = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'spherical_example.wb')
+    assert(os.access(file_in_cart, os.R_OK))
+    assert(os.access(file_in_cart_wb, os.R_OK))
+    with open(file_in_cart_wb, 'r') as fin:
+        inputs_cart_wb = json.load(fin)
+    inputs_cart = ParsePrm.ReadPrmFile(file_in_cart)
+    outputs_cart, outputs_cart_wb = CreateCases.sph_cart_trans(inputs_sph, inputs_cart, inputs_sph_wb, inputs_cart_wb)
+    assert(outputs_cart == inputs_cart)  # assert that the transformed dictionary is identical to the cartesian one.
+    outputs_sph, outputs_sph_wb = CreateCases.sph_cart_trans(inputs_cart, inputs_sph, inputs_cart_wb, inputs_sph_wb)
+    assert(outputs_sph == inputs_sph)  # assert that the transformed dictionary is identical to the spherical one.
+    # future: check output of the wb file

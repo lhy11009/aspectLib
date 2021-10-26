@@ -629,15 +629,42 @@ class MYCASE(Parse.CASE):
             self.particle_data[i, 1] = y
 
 
-def SomeFunction(foo):
+def sph_cart_trans(Inputs, Inputs_std, Inputs_wb, Inputs_wb_std, trans=0):
     '''
-    descriptions
+    change spherical coordinates to cartesian coordinates
     Inputs:
-        -
-    Returns:
-        -
+        trans (int): 0 - sph to cart; 1 - cart to sph
     '''
-    pass
+    Outputs = Inputs.copy()  # initiate outputs by copying inputs
+    Outputs['Geometry model'] = Inputs_std['Geometry model']  # assign geometry model
+    Outputs['Mesh refinement']['Minimum refinement function'] =\
+     Inputs_std['Mesh refinement']['Minimum refinement function'] # minimum refinement function
+    Outputs['Boundary velocity model'] = Inputs_std['Boundary velocity model']  # boudnary condition
+    Outputs['Boundary composition model'] = Inputs_std['Boundary composition model']
+    Outputs['Boundary temperature model'] = Inputs_std['Boundary temperature model']
+    Outputs['Material model']['Visco Plastic TwoD']['Reset viscosity function'] =\
+     Inputs_std['Material model']['Visco Plastic TwoD']['Reset viscosity function']  # reset morb
+    Outputs['Material model']['Visco Plastic TwoD']['Reaction mor function'] =\
+     Inputs_std['Material model']['Visco Plastic TwoD']['Reaction mor function']
+    Outputs['Prescribed temperatures'] = Inputs_std['Prescribed temperatures']
+    # world builder file
+    Outputs_wb = Inputs_wb.copy()
+    Outputs_wb['coordinate system'] = Inputs_wb_std['coordinate system']
+    Outputs_wb['cross section'] = Inputs_wb_std['cross section']
+    # Overiding plate
+    i0 = ParsePrm.FindWBFeatures(Outputs_wb, 'Overiding plate')
+    i1 = ParsePrm.FindWBFeatures(Inputs_wb_std, 'Overiding plate')
+    Outputs_wb['features'][i0]["coordinates"] = Inputs_wb_std['features'][i1]["coordinates"]
+    # Subducting plate
+    i0 = ParsePrm.FindWBFeatures(Outputs_wb, 'Subducting plate')
+    i1 = ParsePrm.FindWBFeatures(Inputs_wb_std, 'Subducting plate')
+    # slab
+    i0 = ParsePrm.FindWBFeatures(Outputs_wb, 'Slab')
+    i1 = ParsePrm.FindWBFeatures(Inputs_wb_std, 'Slab')
+    Outputs_wb['features'][i0]["dip point"] = Inputs_wb_std['features'][i1]["dip point"]
+
+
+    return Outputs, Outputs_wb
 
 
 def main():

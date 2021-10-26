@@ -27,7 +27,6 @@ import re
 # import pathlib
 # import subprocess
 import numpy as np
-import shilofue.Plot as Plot
 import shilofue.Utilities as Utilities
 # from matplotlib import cm
 # from matplotlib import pyplot as plt
@@ -450,6 +449,21 @@ def FastZeroStep(Inputs):
     # make the linear tolerance really big
     Inputs['Solver parameters']['Stokes solver parameters'] = \
     {'Number of cheap Stokes solver steps': '0', 'Linear solver tolerance': '0.9999'}
+
+
+def FindWBFeatures(Inputs_wb, key):
+    '''
+    find index of feature in a world builder inputs by its key
+    '''
+    Features = Inputs_wb['features']
+    i = 0
+    for feature in Features:
+        if feature['name'] == key:
+            break
+        i += 1
+        if i == len(Features):  # not found
+            raise KeyError("%s: There is no feature named %s" % (Utilities.func_name(), key))
+    return i
 
 
 def main():
