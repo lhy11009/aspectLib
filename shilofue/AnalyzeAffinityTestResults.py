@@ -16,12 +16,14 @@ Examples of usage:
   - default usage:
 
         python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results
-        -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/rene_affinity_test/results/spherical_shell_expensive_solver/peloton-ii-32tasks-core-openmpi-4.0.1
+        -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_20211025 -c peloton-rome-128tasks-socket-openmpi-4.1.0
+        (this includes the directory as well as the name of the cluster)
 
 """ 
 import numpy as np
 import sys, os, argparse
 import pathlib, subprocess
+import shutil
 import numpy as np
 from matplotlib import cm
 from matplotlib import pyplot as plt
@@ -30,8 +32,37 @@ from shilofue.Utilities import my_assert
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 
-# analyze test result
-# todo
+def organize_result(test_root_dir, cluster):
+    '''
+    organize result
+    '''
+    # check directory existance
+    _dir = os.path.join(test_root_dir, 'results')
+    if not os.path.isdir(_dir):
+        os.mkdir(_dir)
+    _dir = os.path.join(test_root_dir, 'results', 'spherical_shell_expensive_solver')
+    if not os.path.isdir(_dir):
+        os.mkdir(_dir)
+    _dir = os.path.join(test_root_dir, 'results', 'spherical_shell_expensive_solver', cluster)
+    if not os.path.isdir(_dir):
+        os.mkdir(_dir)
+    results_dir = _dir
+    results_tmp_dir = os.path.join(test_root_dir, 'tmp', cluster)
+    assert(os.path.isdir(results_tmp_dir))
+    for subdir, dirs, _ in os.walk(results_tmp_dir):
+        for _dir in dirs:
+            if _dir.startswith('output'):
+                case_name = _dir.split('_', 1)[1]
+                log_path = os.path.join(subdir, _dir, 'log.txt')
+                target_path = os.path.join(results_dir, 'output_' + case_name)
+                print("copy %s to %s" % (log_path, target_path))
+                shutil.copy(log_path, target_path)
+            else:
+                continue
+
+    return results_dir
+
+
 def analyze_affinity_test_results(test_results_dir, output_dir):
     '''
     analyze affinity test results
@@ -153,6 +184,9 @@ def main():
     parser.add_argument('-o', '--outputs', type=str,
                         default='.',
                         help='Some outputs')
+    parser.add_argument('-c', '--cluster', type=str,
+                        default='peloton-ii-32tasks-core-openmpi-4.0.1',
+                        help='name of the cluster')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -164,8 +198,10 @@ def main():
     if _commend == 'analyze_affinity_test_results':
         # example:
         # python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results
-        # -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/rene_affinity_test/results/spherical_shell_expensive_solver/peloton-ii-32tasks-core-openmpi-4.0.1
-        analyze_affinity_test_results(arg.inputs, arg.outputs)
+        # -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_20211025 -c peloton-rome-128tasks-socket-openmpi-4.1.0
+        # todo
+        test_results_dir = organize_result(arg.inputs, arg.cluster)
+        analyze_affinity_test_results(test_results_dir, arg.outputs)
 
 # run script
 if __name__ == '__main__':
