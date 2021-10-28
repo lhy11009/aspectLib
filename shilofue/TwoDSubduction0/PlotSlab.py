@@ -28,13 +28,15 @@ from matplotlib import pyplot as plt
 from matplotlib import gridspec
 from shilofue.Plot import LINEARPLOT
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, VISIT_OPTIONS
-import shilofue.Utilities as Utilities
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
 
 def Usage():
     print("\

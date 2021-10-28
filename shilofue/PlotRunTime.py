@@ -38,12 +38,8 @@ RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
-# import Utilities from utilities package
-import importlib.util
-UTILITIES_DIR = os.environ['UTILITIES_DIR']
-spec = importlib.util.spec_from_file_location("module.name", os.path.join(UTILITIES_DIR, "python_scripts", "Utilities.py")) 
-Utilities = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(Utilities)
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
 
 def Usage():
     print("\

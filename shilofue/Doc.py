@@ -1,8 +1,9 @@
 import numpy
 import json
-import os
+import os, sys
 import re
 import filecmp
+from shilofue.CaseOptions import ASPECT_LAB_DIR
 import shilofue.json_files
 import pdb
 import shilofue.Plot as Plot
@@ -11,7 +12,8 @@ from matplotlib import cm
 from importlib import resources
 from shutil import copyfile
 from pathlib import Path
-from shilofue.Utilities import my_assert, re_neat_word, re_count_indent, touch
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+from Utilities import my_assert, re_neat_word, re_count_indent, touch
 
 
 

@@ -2,14 +2,14 @@ import pytest
 import os
 import filecmp  # for compare file contents
 import numpy as np
-from shilofue.Utilities import UNITCONVERT
+import shilofue.Utilities as Utilities
 from importlib import resources
 from matplotlib import pyplot as plt
 from matplotlib import ticker, cm
-import shilofue.Utilities as Utilities
 
 _test_dir = '.test'
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_utilities')
+
 
 def test_unit_convert_json():
     '''

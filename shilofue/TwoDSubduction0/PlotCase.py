@@ -28,7 +28,6 @@ from matplotlib import pyplot as plt
 from shilofue.ParsePrm import ReadPrmFile
 import shilofue.PlotVisit as PlotVisit
 import shilofue.PlotCase as PlotCase
-import shilofue.Utilities as Utilities
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
 
@@ -37,6 +36,9 @@ ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
 
 def Usage():
     print("\

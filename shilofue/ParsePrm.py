@@ -27,16 +27,14 @@ import re
 # import pathlib
 # import subprocess
 import numpy as np
-import shilofue.Utilities as Utilities
-# from matplotlib import cm
-# from matplotlib import pyplot as plt
-from shilofue.Utilities import my_assert, re_neat_word
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
 
 class COMPOSITION():
     """
@@ -53,10 +51,10 @@ class COMPOSITION():
         parts = line.split(',')
         for part in parts:
             key_str = part.split(':')[0]
-            key = re_neat_word(key_str)
+            key = Utilities.re_neat_word(key_str)
             values_str = part.split(':')[1].split('|')
             # convert string to float
-            values = [float(re_neat_word(val)) for val in values_str]
+            values = [float(Utilities.re_neat_word(val)) for val in values_str]
             self.data[key] = values
 
     def parse_back(self):
@@ -177,7 +175,7 @@ def ReadPrmFile(_path):
     Inputs:
         _path: path for a prm file
     """
-    my_assert(os.access(_path, os.R_OK), FileNotFoundError, "%s: prm file %s doesn't exist" % (Utilities.func_name(), _path))
+    Utilities.my_assert(os.access(_path, os.R_OK), FileNotFoundError, "%s: prm file %s doesn't exist" % (Utilities.func_name(), _path))
     with open(_path, 'r') as fin:
         inputs = ParseFromDealiiInput(fin)
     return inputs

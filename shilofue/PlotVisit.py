@@ -24,7 +24,6 @@ import subprocess
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
-import shilofue.Utilities as Utilities
 import shilofue.Plot as Plot
 import shilofue.ParsePrm as ParsePrm
 from shilofue.CaseOptions import CASE_OPTIONS
@@ -34,6 +33,9 @@ ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
 
 def Usage():
     print("\

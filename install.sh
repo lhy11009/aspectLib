@@ -160,6 +160,28 @@ install_py(){
 }
 
 
+install_utilities(){
+    ###
+    # install utilities
+    # todo
+    ###
+    local utilities_dir="${ASPECT_LAB_DIR}/utilities"
+    if [[ -d ${utilities_dir} ]]; then
+        cd "${utilities_dir}"
+        eval "git fetch origin"
+        eval "git pull origin master"
+    else
+        eval "mkdir ${utilities_dir}"
+        cd "${utilities_dir}"
+        eval "git init"
+        eval "git remote add origin https://github.com/lhy11009/Utilities"
+        eval "git pull origin master"
+    fi
+    # add git dir
+    return 0
+}
+
+
 
 document(){
     ###
@@ -209,6 +231,11 @@ main(){
         ##
         # create alias
         install
+    elif [[ "$1" = "install_utilities" ]]; then
+        ##
+        # Install utility
+        ##
+        install_utilities
     elif [[ "$1" = "clean" ]]; then
         # clean previous installation
         clean
