@@ -333,21 +333,17 @@ def main():
         # output bash options to a file that could be
         # read by bash script
         # initiate class object
-        # todo
         case_dir = arg.inputs
-
         Visit_Options = VISIT_OPTIONS(case_dir)
-
         # call function
         Visit_Options.Interpret()
-        # ofile = os.path.join('visit_scripts', 'slab.py')
+        # ofile = os.path.join('visit_scripts', 'slab_sph.py')
         ofile = os.path.join('visit_scripts', os.path.basename(arg.script))
-        # visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', 'slab.py')
         visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', arg.script)
-        visit_base_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'base.py')
-        Visit_Options.read_contents(visit_base_script, visit_script)
-        Visit_Options.substitute()
-        ofile_path = Visit_Options.save(ofile, relative=True)
+        visit_base_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'base.py')  # base.py : base file
+        Visit_Options.read_contents(visit_base_script, visit_script)  # this part combines two scripts
+        Visit_Options.substitute()  # substitute keys in these combined file with values determined by Interpret() function
+        ofile_path = Visit_Options.save(ofile, relative=True)  # save the altered script
         pass
     
     elif _commend == 'vtk_options':

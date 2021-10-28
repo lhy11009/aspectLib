@@ -21,6 +21,8 @@ class CODESUB():
     def read_contents(self, *paths):
         '''
         read contents from a file
+        path (list of str):
+            if multiple files are presented, then there contents will be combined all together.
         '''
         self.contents=''
         i = 0 # conunt

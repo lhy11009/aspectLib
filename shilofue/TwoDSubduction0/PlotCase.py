@@ -72,9 +72,10 @@ def TwoDSubduction_PlotCaseRun(case_path, **kwargs):
     odir = os.path.join(case_path, 'visit_scripts')
     if not os.path.isdir(odir):
         os.mkdir(odir)
-    ofile = os.path.join(odir, 'slab.py')
-    visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', 'slab.py')
-    Visit_Options.read_contents(visit_script)
+    ofile = os.path.join(odir, 'slab_sph.py')
+    visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', 'slab_sph.py')
+    visit_script_base = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'base.py')
+    Visit_Options.read_contents(visit_script_base, visit_script)
     Visit_Options.substitute()
     ofile_path = Visit_Options.save(ofile, relative=True)
     print("Visualizing using visit")

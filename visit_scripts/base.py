@@ -1,4 +1,8 @@
 # class for working with visit
+# This part contains a class (VISIT_PLOT) of basic operations
+# e.g. open file vtk files, add plots, choose color schemes, etc
+# Usage of this class is to be combined with classes defined for
+# individual visualizations
 class VISIT_PLOT():
     """
     BASE CLASS for visit plot()
