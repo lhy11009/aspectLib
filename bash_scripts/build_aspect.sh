@@ -32,7 +32,8 @@ build_aspect_project(){
     # Inputs:
     #   project: name of the project
     ###
-    local build_dir="${ASPECT_SOURCE_DIR}/build_$1"
+    local build_dir
+    [[ $1 == "main" ]] && build_dir="${ASPECT_SOURCE_DIR}/build" || build_dir="${ASPECT_SOURCE_DIR}/build_$1"
     [[ -d ${build_dir} ]] || mkdir ${build_dir}
     local mode
     if [[ -n $2 ]]; then
@@ -44,8 +45,7 @@ build_aspect_project(){
 
     # get the list of plugins
     local plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
-    [[ -d ${plugins_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: ${plugins_dir} doesn't exist"; exit 1; }
-    # plugins=("prescribe_field" "subduction_temperature2d" "slab2d_statistics" "subduction_temperature2d_ellipse" "visco_plastic_TwoD" "isosurfaces")
+    # [[ -d ${plugins_dir} ]] || { cecho ${BAD} "${FUNCNAME[0]}: ${plugins_dir} doesn't exist"; exit 1; }
     plugins=()
     for folder in ${plugins_dir}/*; do
         if [[ -d ${folder} ]]; then
@@ -138,8 +138,10 @@ build_aspect_plugin(){
     cd ${plugin_to_dir}
     # remove cache before compling
     [[ -e "${plugin_to_dir}/CMakeCache.txt" ]] && eval "rm ${plugin_to_dir}/CMakeCache.txt"
+    echo "cmake -DAspect_DIR=${build_dir}"
     eval "cmake -DAspect_DIR=${build_dir}"
     quit_if_fail "${FUNCNAME[0]}: cmake inside ${plugin_to_dir} failed"
+    echo "make"
     eval "make"
     quit_if_fail "${FUNCNAME[0]}: make inside ${plugin_to_dir} failed"
 }

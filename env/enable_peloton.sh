@@ -6,3 +6,5 @@ export SQUEUE="/share/apps/slurm-19.05.3/18.04/bin/squeue"
 export SCANCEL="/share/apps/slurm-19.05.3/18.04/bin/scancel"
 alias submit_case="slurm.sh -l /home/lochy/ASPECT_PROJECT/aspectLib/.output/job.log -lt ./output/machine_time"
 export LearnAspect_DIR="/home/lochy/ASPECT_PROJECT/LearnAspect"
+# world builder
+export WORLD_BUILDER_SOURCE_DIR="/group/billengrp/lochy/softwares/world_builder"
