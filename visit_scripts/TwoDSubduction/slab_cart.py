@@ -17,6 +17,10 @@
 #   GRAPHICAL_STEPS
 
 
+global_trench_view = (3.98859e+06, 4.21503e+06, 2.77067e+06, 2.99403e+06)  # upper 100 km centered on trench
+global_upper_mantle_view = (3.4791e+06, 5.0025e+06, 2.09052e+06, 3.59317e+06)  # upper 800 km
+
+
 class SLAB_CART(VISIT_PLOT):
 
     def __init__(self, filein, **kwargs):
@@ -43,7 +47,7 @@ class SLAB_CART(VISIT_PLOT):
             self.add_plot("Pseudocolor", "deform_mechanism")
         
         # set transformation
-        self.set_rotation_transform(52.0)
+        # self.set_rotation_transform(52.0)
 
         # set thresholds
         threshold_idxs_tuple=tuple([self.idxs['spcrust'], self.idxs['spharz']])
@@ -94,7 +98,7 @@ class SLAB_CART(VISIT_PLOT):
         plot crust properties
         '''
         # set camera
-        self.set_view_attrs((-200000, 200000, 6.1e+06, 6.372e+06))
+        self.set_view_attrs(global_trench_view)
 
         # threshold for spcrust
         self.set_threshold('spcrust', [0.8, 1e+37])
@@ -119,7 +123,7 @@ class SLAB_CART(VISIT_PLOT):
         plot viscosity
         '''
         # set camera
-        self.set_view_attrs((-200000, 200000, 6.1e+06, 6.372e+06))
+        self.set_view_attrs(global_trench_view)
         
         # set up viscosity
         # change to log scale and invert the color table
@@ -149,7 +153,7 @@ class SLAB_CART(VISIT_PLOT):
         plot deform mechanism
         '''
         # set camera
-        self.set_view_attrs((-200000, 200000, 6.1e+06, 6.372e+06))
+        self.set_view_attrs(global_trench_view)
         
         # set up deform_mechanism
         self.set_pseudo_color('deform_mechanism', color_table='viridis')
@@ -167,7 +171,7 @@ class SLAB_CART(VISIT_PLOT):
         '''
 
         # set camera
-        self.set_view_attrs((-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06))
+        self.set_view_attrs(global_upper_mantle_view)
         
         # set up viscosity
         # change to log scale and invert the color table
@@ -197,7 +201,7 @@ class SLAB_CART(VISIT_PLOT):
         plot deform mechanism in upper mantle
         '''
         # set camera
-        self.set_view_attrs((-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06))
+        self.set_view_attrs(global_upper_mantle_view)
         
         # set up deform_mechanism
         self.set_pseudo_color('deform_mechanism', color_table='viridis')
@@ -214,7 +218,7 @@ class SLAB_CART(VISIT_PLOT):
         plot deform mechanism in upper mantle
         '''
         # set camera
-        self.set_view_attrs((-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06))
+        self.set_view_attrs(global_upper_mantle_view)
         
         # set up temperature
         self.set_pseudo_color('T', color_table='SCM_vik', limits=[273.0, 2173.0])

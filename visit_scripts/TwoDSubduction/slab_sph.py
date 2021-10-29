@@ -12,12 +12,16 @@
 # all available snapshots for particle output
 #   ALL_AVAILABLE_PARTICLE_SNAPSHOTS
 # also ploat the shallower parts below the crust
-#   IF_PLOT_SHALLOW
+#   IF_PLOT_SHALLOw
 # steps to visualize fields
 #   GRAPHICAL_STEPS
 
 
-class SLAB(VISIT_PLOT):
+global_trench_view = (-200000, 200000, 6.1e+06, 6.372e+06)
+global_upper_mantle_view = (-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06)
+
+
+class SLAB_CART(VISIT_PLOT):
 
     def __init__(self, filein, **kwargs):
         """
@@ -94,7 +98,7 @@ class SLAB(VISIT_PLOT):
         plot crust properties
         '''
         # set camera
-        self.set_view_attrs((-200000, 200000, 6.1e+06, 6.372e+06))
+        self.set_view_attrs(global_trench_view)
 
         # threshold for spcrust
         self.set_threshold('spcrust', [0.8, 1e+37])
@@ -119,7 +123,7 @@ class SLAB(VISIT_PLOT):
         plot viscosity
         '''
         # set camera
-        self.set_view_attrs((-200000, 200000, 6.1e+06, 6.372e+06))
+        self.set_view_attrs(global_trench_view)
         
         # set up viscosity
         # change to log scale and invert the color table
@@ -149,7 +153,7 @@ class SLAB(VISIT_PLOT):
         plot deform mechanism
         '''
         # set camera
-        self.set_view_attrs((-200000, 200000, 6.1e+06, 6.372e+06))
+        self.set_view_attrs(global_trench_view)
         
         # set up deform_mechanism
         self.set_pseudo_color('deform_mechanism', color_table='viridis')
@@ -167,7 +171,7 @@ class SLAB(VISIT_PLOT):
         '''
 
         # set camera
-        self.set_view_attrs((-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06))
+        self.set_view_attrs(global_upper_mantle_view)
         
         # set up viscosity
         # change to log scale and invert the color table
@@ -197,7 +201,7 @@ class SLAB(VISIT_PLOT):
         plot deform mechanism in upper mantle
         '''
         # set camera
-        self.set_view_attrs((-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06))
+        self.set_view_attrs(global_upper_mantle_view)
         
         # set up deform_mechanism
         self.set_pseudo_color('deform_mechanism', color_table='viridis')
@@ -214,7 +218,7 @@ class SLAB(VISIT_PLOT):
         plot deform mechanism in upper mantle
         '''
         # set camera
-        self.set_view_attrs((-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06))
+        self.set_view_attrs(global_upper_mantle_view)
         
         # set up temperature
         self.set_pseudo_color('T', color_table='SCM_vik', limits=[273.0, 2173.0])
@@ -290,7 +294,7 @@ class EXPORT_PARTICLE(VISIT_PLOT):
 
 def main():
     if IF_PLOT_SLAB:
-        Slab = SLAB("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
+        Slab = SLAB_CART("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
         # First number is the number of initial adaptive refinements
         # Second one is the snapshot to plot
         # here we prefer to use a series of snapshots.
