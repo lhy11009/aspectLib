@@ -56,6 +56,47 @@ Examples of usage: \n\
         Lib_PlotRunTime plot_newton_solver_step -i ~/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 -s 390\n\
         ")
 
+def RunTimeInfo(log_path, **kwargs):
+    '''
+    Read runtime info from log file and then print them
+    Inputs:
+        log_path(str) - path to log file
+    '''
+    trailer = None # add this to filename
+    hr = 3600.0  # hr to s
+    # read log file
+    temp_path = os.path.join(RESULT_DIR, 'run_time_output')
+    print("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
+    os.system("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
+
+    Plotter = Plot.LINEARPLOT('RunTime', {})
+    Plotter.ReadHeader(temp_path)
+    Plotter.ReadData(temp_path)
+
+    # give warning if there is no data
+    # future: reorder error messages
+    if Plotter.data.size == 0:
+        warning_message = "func %s: There is no block data in file %s, Do nothing" % (Utilities.func_name(), log_path)
+        warnings.warn(warning_message, Utilities.WarningTypes.FileHasNoContentWarning)
+        return 0
+
+    # fix indexes
+    col_time = Plotter.header['Time']['col']
+    unit_time = Plotter.header['Time']['unit']
+    col_step = Plotter.header['Time_step_number']['col']
+    col_wallclock = Plotter.header['Wall_Clock']['col']
+    unit_wallclock = Plotter.header['Wall_Clock']['unit']
+    times = Plotter.data[:, col_time]
+    steps = Plotter.data[:, col_step]
+    wallclocks = Plotter.data[:, col_wallclock]
+    
+    # last step info
+    # todo
+    last_step = Plotter.data[-1, col_step]
+    last_time = Plotter.data[-1, col_time]
+    last_wallclock
+    print("")
+    return last_step, last_time, last_wallclock
 
 def PlotFigure(log_path, fig_path, **kwargs):
     '''
@@ -96,7 +137,6 @@ def PlotFigure(log_path, fig_path, **kwargs):
     # fix restart
     re_inds = []
     fix_restart = kwargs.get('fix_restart', False)
-    # todo
     steps_fixed = np.array([])  # initialize these 3 as the original ones, so we'll see no changes if there is no restart
     times_fixed = np.array([])
     wallclocks_fixed = np.array([])
@@ -120,7 +160,6 @@ def PlotFigure(log_path, fig_path, **kwargs):
             wallclocks_fixed = wallclocks[re_inds]
 
     # mask for time
-    # todo
     t_mask = (times >= 0.0)  # should always be true
     t_mask_fixed = (times_fixed >= 0.0)
     try:
@@ -138,7 +177,6 @@ def PlotFigure(log_path, fig_path, **kwargs):
     # use mask
     fig, ax1 = plt.subplots(figsize=(5, 5))
     color = 'tab:blue'
-    # todo
     ax1.plot(steps[t_mask], times[t_mask] / 1e6, '-', color=color, label='Time')
     ax1.plot(steps_fixed[t_mask_fixed], times_fixed[t_mask_fixed] / 1e6, '.', color=color, label='Time')
     ax1.set_ylabel('Time [myr]', color=color)
@@ -354,6 +392,13 @@ def main():
         if not os.path.isdir(os.path.dirname(fig_path)):
             os.mkdir(os.path.dirname(fig_path))
         PlotFigure(log_file, fig_path, fix_restart=True)
+    
+    elif _commend == 'case_run_time_info':
+        # example:
+        log_file = os.path.join(arg.inputs, 'output', 'log.txt')
+        assert(log_file)
+        # todo
+        RunTimeInfo(log_path)
 
     elif _commend == "plot_newton_solver_step":
         # plot newton solver output
