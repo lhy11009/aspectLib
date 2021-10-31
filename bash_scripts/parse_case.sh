@@ -143,13 +143,25 @@ parse_run_time_info_last_step_with_id(){
     # parse run time output with job id
     # $1(str): job id
     # todo
+    printf "job_id: $1\n"
     locate_workdir_with_id "$1"
     [[ $? == 1 ]] && return 1
     [[ -d "${return_value}" ]] ||  { cecho ${BAD} "${FUNCNAME[0]}: work directory(${return_value}) doesn't exist"; exit 1; }
     local log_file="${return_value}/output/log.txt"
     [[ -e "${log_file}" ]] || { cecho "${BAD}" "${FUNCNAME[0]}: log file (${log_file}) doesn't exist"; exit 1; }
     parse_run_time_info_last_step "${log_file}"
+    printf "\n"
     return 0
+}
+
+parse_all_time_info(){
+    # show all jobs info
+    # todo
+    local outputs=$(squeue -u "${USER}" -o %A)
+    IFS=$'\n'; local job_ids=(${outputs})
+    for job_id in ${job_ids[@]}; do
+        [[ ${job_id} =~ ^[0-9]+$ ]] && parse_run_time_info_last_step_with_id ${job_id}
+    done
 }
  
 
@@ -195,6 +207,8 @@ main(){
     elif [[ "$1" = "case_info_with_id" ]]; then
 	[[ -n "$2" ]] || { cecho "${BAD}" "no id number given (\$2)"; exit 1; }
 	parse_run_time_info_last_step_with_id "$2"
+    elif [[ "$1" = "all_case_info" ]]; then
+	parse_all_time_info
     else
     	cecho "${BAD}" "option ${1} is not valid\n"
     fi
