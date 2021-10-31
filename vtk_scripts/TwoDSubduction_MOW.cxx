@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
   //aspect_vtk.density_diff();
   aspect_vtk.mow_from_blocking(998.0, 12.5e9);  // 725 + 273 from Quinteros
   //aspect_vtk.prepare_slab({"spcrust", "spharz"});
-  aspect_vtk.output(output_dir + '/' + "output.vtp");
+  //aspect_vtk.output(aspect_vtk.iDelaunay2D->Get, output_dir + '/' + "output.vtp");
   //aspect_vtk.integrate_cells();
   //aspect_vtk.extract_contour("contour.txt");
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
