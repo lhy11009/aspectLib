@@ -119,7 +119,8 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         last_steps = kwargs.get('last_steps', None)
         if type(last_steps) == int:
             # by this option, plot the last few steps
-            self.options['GRAPHICAL_STEPS'] = [i for i in range(self.last_step - last_steps + 1, self.last_step + 1)]
+            self.options['GRAPHICAL_STEPS'] = [0]  # always plot the 0 th step
+            self.options['GRAPHICAL_STEPS'] += [i for i in range(self.last_step - last_steps + 1, self.last_step + 1)]
         else:
             self.options['GRAPHICAL_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
         # self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
