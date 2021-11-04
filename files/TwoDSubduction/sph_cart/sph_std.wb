@@ -1,0 +1,53 @@
+{
+  "version":"0.5",
+  "coordinate system":{"model":"spherical","depth method":"begin segment"},
+  "cross section":[[0,0],[45,0]],"surface temperature":273, "force surface temperature":true,
+  "features":
+  [
+    { 
+        "model":"oceanic plate", "name":"Overiding plate", "max depth":150e3,"min depth":-100e3,
+        "coordinates":[[36,-5],[36,5],[100,5],[100,-5]],
+        "temperature models":
+        [
+        {"model":"plate model constant age", "min depth":-10e3, "max depth":150e3, "plate age":40e6}
+        ],
+        "composition models":
+        [
+        {"model": "uniform", "min depth": -10e3, "max depth": 7.5e3, "compositions": [2]},
+        {"model": "uniform", "min depth": 7.5e3, "max depth": 35.2e3, "compositions": [3]}
+        ]
+    },
+    { 
+        "model":"oceanic plate", "name":"Subducting plate", "max depth":150e3,"min depth":-100e3,
+        "coordinates":[[0,-5],[0,5],[36,5],[36,-5]],
+        "temperature models":
+        [
+        {"model":"plate model", "min depth":-10e3,"max depth":150e3, "spreading velocity":0.05,"ridge coordinates": [[0,-5],[0,5]]}
+        ],
+        "composition models":
+        [
+        {"model": "uniform", "min depth": -10e3, "max depth": 7.5e3, "compositions": [0]},
+        {"model": "uniform", "min depth": 7.5e3, "max depth": 35.2e3, "compositions": [1]}
+        ]
+    },
+    { 
+        "model":"subducting plate", "name":"Slab",
+        "coordinates":[[36,-5],[36,5]],
+        "dip point":[100,0],
+        "segments":[
+        {"length":314.16e3, "thickness":[300e3], "top truncation":[-100e3], "angle":[0,90]}
+        ],
+        "temperature models":
+        [
+        {"model":"mass conserving", "density":3300, "thermal conductivity":3.3,"adiabatic heating":true, 
+         "plate velocity":0.05,"ridge coordinates":[[0,-5],[0,5]], 
+         "coupling depth":200e3, "shallow dip":60.0, "taper distance":10e3, 
+         "min distance slab top":-15e3, "max distance slab top":150e3}
+        ],  
+	    "composition models":[
+	    {"model":"uniform", "compositions":[0], "max distance slab top":7.5e3},
+	    {"model":"uniform", "compositions":[1], "min distance slab top":7.5e3, "max distance slab top":35.2e3}
+        ]
+    }
+  ]
+}

@@ -13,13 +13,13 @@ Examples of usage:
 
   - print parameterization of lower mantle rheology:
 
-        python -m shilofue.TwoDSubduction0.CreateCases
+        python -m shilofue.TwoDSubduction0.Parse
 lower_mantle -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba/case1.prm 
 -j files/TwoDSubduction/eba_lower_mantle.json
 -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_intial_T/case_o.prm
 
   - setup rheology in prm file
-        python -m shilofue.TwoDSubduction0.CreateCases rheology_cdpt
+        python -m shilofue.TwoDSubduction0.Parse rheology_cdpt
 -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/case.prm
 -j /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/rheology.json 
 -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/case_o.prm
@@ -28,7 +28,7 @@ lower_mantle -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba/case1
         -b 1
 
   - init new case:
-        python -m shilofue.TwoDSubduction0.CreateCases create -j ~/ASPECT_PROJECT/TwoDSubduction/non_linear32/init.json
+        python -m shilofue.TwoDSubduction0.Parse create -j ~/ASPECT_PROJECT/TwoDSubduction/non_linear32/init.json
 
 descriptions
     available configuretions of case generating
@@ -49,10 +49,39 @@ import shilofue.Parse as Parse
 import shilofue.ParsePrm as ParsePrm
 from shilofue.Rheology import GetLowerMantleRheology, CreepRheologyInAspectViscoPlastic, ComputeComposite
 from shilofue.Cases import CASE
-from shilofue.Utilities import my_assert, ggr2cart2, cart2sph2
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+
+# import utilities
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
+
+
+def Usage():
+    print("\
+This scripts parses inputs and outputs for cases in TwoDSubduction project\n\
+\n\
+Examples of usage: \n\\n\
+  - print parameterization of lower mantle rheology:\n\
+\n\
+        python -m shilofue.TwoDSubduction0.Parse\n\
+lower_mantle -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba/case1.prm \n\
+-j files/TwoDSubduction/eba_lower_mantle.json\n\
+-o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_intial_T/case_o.prm\n\
+\n\
+  - setup rheology in prm file\n\
+        python -m shilofue.TwoDSubduction0.Parse rheology_cdpt\n\
+-i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/case.prm\n\
+-j /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/rheology.json \n\
+-o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/case_o.prm\n\
+    \n\
+    in case the lower mantle rheology is read in from json file as well:\n\
+        -b 1\n\
+\n\
+  - init new case:\n\
+        python -m shilofue.TwoDSubduction0.Parse create -j ~/ASPECT_PROJECT/TwoDSubduction/non_linear32/init.json\n\
+        ")
 
 
 class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
@@ -75,7 +104,7 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
         calculate flow law parameters
         """
         _type = _config.get('model_type', 0)
-        my_assert(type(_type) == int, TypeError, "Type of input \'model_type\' must be int")
+        Utilities.my_assert(type(_type) == int, TypeError, "Type of input \'model_type\' must be int")
         if _type == 0:
             # when phase transition only happens on mantle composition
             LowerMantle0(Inputs, _config)
@@ -608,7 +637,7 @@ class MYCASE(Parse.CASE):
         slab_to = _config.get("slab_to", 2.0e5)
         depth_particle_in_slab = _config.get("depth_particle_in_slab", 100.0)
         number_particle_in_slab = _config.get("number_particle_in_slab", 1000)
-        my_assert(type(number_particle_in_slab)==int, TypeError, "number_particle_in_slab must be an int value")
+        Utilities.my_assert(type(number_particle_in_slab)==int, TypeError, "number_particle_in_slab must be an int value")
         # initiate particle_data
         self.particle_data = np.zeros((number_particle_in_slab, 2))
         # get phi value at the tip of initial slab
@@ -623,18 +652,133 @@ class MYCASE(Parse.CASE):
             else:
                 r = R0 + (Rc**2.0 - R0**2.0 * (phi - slab_phi_c)**2.0)**0.5  - Rc - depth_particle_in_slab
             # apply transform to cartisian coordinates
-            x, y = ggr2cart2(phi, r)
+            x, y = Utilities.ggr2cart2(phi, r)
             # assign value in particle_data
             self.particle_data[i, 0] = x
             self.particle_data[i, 1] = y
 
 
-def sph_cart_trans(Inputs, Inputs_std, Inputs_wb, Inputs_wb_std, trans=0):
+def trans_point_in_wb(i_coord, std_coord, trans=0, **kwargs):
     '''
-    change spherical coordinates to cartesian coordinates
+    todo
+    Perform transform of coordinates of a point in world builder file.
+    Inputs:
+        i_coord (list of 2): coordinates of a point
+        std_coord (list of 2): standard coordinates of a point, Part of this is copied into the result.
+        trans (int): 0 - sph to cart; 1 - cart to sph
+        kwargs (dict):
+            Ro (float): outer radius
+    '''
+    Ro = kwargs.get('Ro', 6371e3)
+    o_coord = []  # initiate
+    # convert 1st dimention
+    if trans == 0:
+        o_coord.append(Ro*np.deg2rad(i_coord[0])) # length convertion, not coordinate transformation
+    elif trans == 1:
+        o_coord.append(np.rad2deg(i_coord[0]/Ro))
+    else:
+        raise ValueError("%s: wrong value for trans." % Utilities.func_name())
+    o_coord.append(std_coord[1])  # copy 2nd dimention
+    return o_coord
+
+
+def trans_coord_in_wb(i_coords, std_coords, trans=0, **kwargs):
+    '''
+    todo
+    Perform transform of coordinates in world builder file.
+    This calls the trans_point_in_wb to transform each point
+    This is intended to be called in the 'sph_cart_copy' funciton.
+    The operation being done here is length convertion, not coordinate transformation
+    Inputs:
+        i_coords (list of float): input coordinate
+        std_coords (list of float): 
+            standard coordinate. Part of this is copied into the result.
+            That is basically the 'redundant' demension.
+        trans (int): 0 - sph to cart; 1 - cart to sph
+        kwargs (dict):
+            Ro (float): outer radius
+    '''
+    assert(type(i_coords) == list and type(std_coords) == list\
+    and len(i_coords) == len(std_coords))
+    o_coords = []  # initiate
+    # convert first dimension, note one object contains multiple coordinate pairs
+    Ro = kwargs.get('Ro', 6371e3)
+    for i in range(len(i_coords)):
+        i_coord = i_coords[i]
+        std_coord = std_coords[i]
+        o_coord = trans_point_in_wb(i_coord, std_coord, trans, Ro=Ro)
+        o_coords.append(o_coord.copy())
+    # copy second dimension
+    # return
+    return o_coords
+
+
+def find_trans_coord_in_wb_feature(i_feature, std_feature, trans=0, **kwargs):
+    '''
+    todo
+    Perform transform of coordinates in world builder features.
+    This function would look for coordinates within features and perform the transformation
+    Inputs:
+        i_feature (str): feature from input
+        std_feature (std): a standard output feature
+        trans (int): 0 - sph to cart; 1 - cart to sph
+        kwargs (dict):
+            Ro (float): outer radius
+    '''
+    Ro = kwargs.get('Ro', 6371e3)
+    o_feature = i_feature.copy()
+    coord_keys = ['coordinates', 'ridge coordinates']  # keys for components of coordinates
+    point_keys = ['dip point']
+    for key in coord_keys:
+        if key in i_feature:
+            i_coords = i_feature[key]
+            std_coords = std_feature[key]
+            o_coords = trans_coord_in_wb(i_coords, std_coords, trans, Ro=Ro)
+            o_feature[key] = o_coords
+    for key in point_keys:
+        if key in i_feature:
+            i_coord = i_feature[key]
+            std_coord = std_feature[key]
+            o_coord = trans_point_in_wb(i_coord, std_coord, trans, Ro=Ro)
+            o_feature[key] = o_coord
+    # recursively look for subfeatures
+    for key, value in i_feature.items():
+        if type(value) == dict:
+            # in case of dict, call function recursively
+            o_subfeature = find_trans_coord_in_wb_feature(value, std_feature[key], trans, Ro=Ro)
+            o_feature[key] = o_subfeature
+        # note that I haven't figure out this bug, as in different files, the layout of the list is
+        # different.
+#        if type(value) == list:
+#            # in case of list, look for dict
+#            o_subfeature = value.copy()
+#            print('o_subfeatur:', o_subfeature)  # debug
+#            for i in range(len(value)):
+#                component = value[i]
+#                if (type(component) == dict):
+#                    print('std_feature:', std_feature)  # debug
+#                    print('\n')
+#                    o_component = find_trans_coord_in_wb_feature(component, std_feature[key][i], trans, Ro=Ro)
+#                    o_subfeature[i] = o_component
+#            o_feature[key] = o_subfeature
+    return o_feature
+
+
+def sph_cart_copy(Inputs, Inputs_std, Inputs_wb, Inputs_wb_std, trans=0):
+    '''
+    change spherical coordinates to cartesian coordinates, this one reset the part of the geometry and mesh for one case with 
+    respect to the settings in the others
     Inputs:
         trans (int): 0 - sph to cart; 1 - cart to sph
     '''
+    # get info, todo
+    if trans == 0:
+        Ro = float(Inputs['Geometry model']['Chunk']['Chunk outer radius'])
+    elif trans == 1:
+        Ro = float(Inputs_std['Geometry model']['Chunk']['Chunk outer radius'])  # the std file is spherical
+    else:
+        raise ValueError("%s: wrong value for trans." % Utilities.func_name())
+    # prm file
     Outputs = Inputs.copy()  # initiate outputs by copying inputs
     Outputs['Geometry model'] = Inputs_std['Geometry model']  # assign geometry model
     Outputs['Mesh refinement']['Minimum refinement function'] =\
@@ -654,17 +798,87 @@ def sph_cart_trans(Inputs, Inputs_std, Inputs_wb, Inputs_wb_std, trans=0):
     # Overiding plate
     i0 = ParsePrm.FindWBFeatures(Outputs_wb, 'Overiding plate')
     i1 = ParsePrm.FindWBFeatures(Inputs_wb_std, 'Overiding plate')
-    Outputs_wb['features'][i0]["coordinates"] = Inputs_wb_std['features'][i1]["coordinates"]
+    Outputs_wb['features'][i0] =\
+        find_trans_coord_in_wb_feature(Inputs_wb['features'][i0], Inputs_wb_std['features'][i1], trans, Ro=Ro)
     # Subducting plate
     i0 = ParsePrm.FindWBFeatures(Outputs_wb, 'Subducting plate')
     i1 = ParsePrm.FindWBFeatures(Inputs_wb_std, 'Subducting plate')
+    Outputs_wb['features'][i0] =\
+        find_trans_coord_in_wb_feature(Inputs_wb['features'][i0], Inputs_wb_std['features'][i1], trans, Ro=Ro)
     # slab
     i0 = ParsePrm.FindWBFeatures(Outputs_wb, 'Slab')
     i1 = ParsePrm.FindWBFeatures(Inputs_wb_std, 'Slab')
+    Outputs_wb['features'][i0] =\
+        find_trans_coord_in_wb_feature(Inputs_wb['features'][i0], Inputs_wb_std['features'][i1], trans, Ro=Ro)
     Outputs_wb['features'][i0]["dip point"] = Inputs_wb_std['features'][i1]["dip point"]
-
-
     return Outputs, Outputs_wb
+
+
+def sph_cart_convert(prm_path, wb_path, trans=0, **kwargs):
+    '''
+    We transform from a input file and a world builder file of cartesan/spherical geometry to
+    spherical / cartesian geometry.
+    Inputs:
+        prm_path (str): path of the input prm file
+        wb_path (str): path of the input wb file
+        trans(int):
+            0 - sph to cart; 1 - cart to sph
+        kwargs (dict):
+            std (str): std file to use
+    '''
+    # todo
+    assert(os.access(prm_path, os.R_OK))
+    assert(os.access(wb_path, os.R_OK))
+    inputs = ParsePrm.ReadPrmFile(prm_path)
+    with open(wb_path, 'r') as fin:
+        inputs_wb = json.load(fin)
+    # read standard parameters
+    if trans == 0:  
+        # sph to cart
+        # note that when we want to transit to cartesan, we need a standard file of cartesian geometry.
+        std_prm_path = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'cart_std.prm')
+        std_wb_path = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'cart_std.wb')
+    elif trans == 1:  
+        # cart to sph
+        std_prm_path = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'sph_std.prm')
+        std_wb_path = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'sph_std.wb')
+    else:
+        raise ValueError("%s: wrong value for trans." % Utilities.func_name())
+    assert(os.access(std_prm_path, os.R_OK))
+    inputs_std = ParsePrm.ReadPrmFile(std_prm_path)
+    assert(os.access(std_wb_path, os.R_OK))
+    with open(std_wb_path, 'r') as fin:
+        inputs_wb_std = json.load(fin)
+    # initiate for cartesian geometry
+    outputs, outputs_wb = sph_cart_copy(inputs, inputs_std, inputs_wb, inputs_wb_std, trans)
+    return outputs, outputs_wb
+
+
+def sph_cart_convert_case(case_dir, case_odir, trans=0):
+    '''
+    convert a case in sph geometry to cartesan and vice versa
+    Inputs:
+        case_dir (str): 
+            directory to look for 'case.prm' and 'case.wb' as inputs, note that this directory must
+            contain these two files.
+        case_odir (str):
+            directory to hold new case files. This will be made if not exist yet.
+        trans(int):
+            0 - sph to cart; 1 - cart to sph
+    '''
+    # todo
+    assert(os.path.isdir(case_dir))
+    if not os.path.isdir(case_odir):
+        os.mkdir(case_odir)
+    # call sph_cart_convert function
+    prm_in_path = os.path.join(case_dir, 'case.prm')
+    wb_in_path = os.path.join(case_dir, 'case.wb')
+    outputs, outputs_wb = sph_cart_convert(prm_in_path, wb_in_path, trans)
+    prm_o_path = os.path.join(case_odir, 'case.prm')
+    wb_o_path = os.path.join(case_odir, 'case.wb')
+    ParsePrm.WritePrmFile(prm_o_path, outputs)
+    with open(wb_o_path, 'w') as fout:
+        json.dump(outputs_wb, fout, indent=2)
 
 
 def main():
@@ -720,7 +934,7 @@ def main():
         with open(arg.outputs, 'w') as fout:
             ParsePrm.ParseToDealiiInput(fout, outputs)
     
-    if _commend == 'rheology_cdpt':
+    elif _commend == 'rheology_cdpt':
         # derive parameterization of lower mantle from a prm file and configurations
         # check file existence
         assert(os.access(arg.inputs, os.R_OK))
@@ -737,7 +951,7 @@ def main():
         with open(arg.outputs, 'w') as fout:
             ParsePrm.ParseToDealiiInput(fout, outputs)
     
-    if _commend == 'create':
+    elif _commend == 'create':
         # create cases under a directory
         # read json file and prm file
         # location of prm file is given by the json file
@@ -746,7 +960,7 @@ def main():
             _config = json.load(fin)
         CreateNew(_config)
         
-    if _commend == 'create_with_options':
+    elif _commend == 'create_with_options':
         # create cases under a directory
         # read json file and prm file
         # location of prm file is given by the json file
@@ -759,9 +973,17 @@ def main():
             options = json.load(fin)
         CreateNewWithOptions(_config, options)
     
-    if _commend == 'create_from_snapshot':
+    elif _commend == 'create_from_snapshot':
         # create cases under a directory from one snapshot of a previous case
         CreateNewFromSnapshot(arg.inputs, arg.outputs)
+    
+    elif _commend == 'convert_sph_cart':
+        #
+        # todo
+        sph_cart_convert_case(arg.inputs, arg.outputs, 1)
+    elif (_commend in ['-h', '--help']):
+        # example:
+        Usage()
 
 # run script
 if __name__ == '__main__':

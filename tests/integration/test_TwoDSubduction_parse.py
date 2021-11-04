@@ -1,7 +1,7 @@
 import os
 import json
 import filecmp
-import shilofue.TwoDSubduction0.CreateCases as CreateCases
+import shilofue.TwoDSubduction0.Parse as TwoDParse
 import shilofue.Parse as Parse
 import shilofue.ParsePrm as ParsePrm
 from shutil import rmtree
@@ -28,11 +28,11 @@ def test_generate_case():
     with open(_config_file, 'r') as fin:
         _config = json.load(fin)
     # Initiate Class MyCase
-    MyCase = CreateCases.MYCASE(_inputs, config=_config)
+    MyCase = TwoDParse.MYCASE(_inputs, config=_config)
     # call __call__ function
     _extra = {'T660': 1663.0, 'P660': 21e9, 'LowerV': 1.5e-6}  # extra configuration
     # add operations
-    parse_operations = CreateCases.MY_PARSE_OPERATIONS()
+    parse_operations = TwoDParse.MY_PARSE_OPERATIONS()
     MyCase(parse_operations, dirname='.test', extra=_extra)
     # Assertions
     assert(os.path.isfile(_prm_file))
@@ -55,10 +55,10 @@ def test_generate_case():
         _config = _json_inputs['config']
         _test = _json_inputs.get('test', {})
     # Initiate Class MyCase
-    MyCase = CreateCases.MYCASE(_inputs, config=_config, test=_test)
+    MyCase = TwoDParse.MYCASE(_inputs, config=_config, test=_test)
     # call __call__ function
     _extra = {'T660': 1663.0, 'P660': 21e9, 'LowerV': 1.5e-6}  # extra configuration
-    parse_operations = CreateCases.MY_PARSE_OPERATIONS()
+    parse_operations = TwoDParse.MY_PARSE_OPERATIONS()
     MyCase(parse_operations, dirname='.test', extra=_extra)
     # Assertions
     assert(os.path.isfile(_prm_file))
@@ -82,9 +82,9 @@ def test_generate_case():
         _test = _json_inputs.get('test', {})
         _extra = _json_inputs.get('extra', {})
     # Initiate Class MyCase
-    MyCase = CreateCases.MYCASE(_inputs, config=_config, test=_test, extra=_extra)
+    MyCase = TwoDParse.MYCASE(_inputs, config=_config, test=_test, extra=_extra)
     # call __call__ function
-    parse_operations = CreateCases.MY_PARSE_OPERATIONS()
+    parse_operations = TwoDParse.MY_PARSE_OPERATIONS()
     MyCase(parse_operations, dirname='.test', extra=_extra)
     # Assertions
     assert(os.path.isfile(_prm_file))
@@ -108,9 +108,9 @@ def test_generate_case():
         _test = _json_inputs.get('test', {})
         _extra = _json_inputs.get('extra', {})
     # Initiate Class MyCase
-    MyCase = CreateCases.MYCASE(_inputs, config=_config, test=_test, extra=_extra)
+    MyCase = TwoDParse.MYCASE(_inputs, config=_config, test=_test, extra=_extra)
     # call __call__ function
-    parse_operations = CreateCases.MY_PARSE_OPERATIONS()
+    parse_operations = TwoDParse.MY_PARSE_OPERATIONS()
     MyCase(parse_operations, basename="crust_terminate", dirname='.test', extra=_extra)
     # Assertions
     assert(os.path.isfile(_prm_file))
@@ -133,11 +133,11 @@ def test_generate_group():
     with open(_config_file, 'r') as fin:
         _json_inputs = json.load(fin)
     # Initial test group
-    MyGroup = Parse.GROUP_CASE(CreateCases.MYCASE, _inputs, _json_inputs)
+    MyGroup = Parse.GROUP_CASE(TwoDParse.MYCASE, _inputs, _json_inputs)
     # Call __call__ to generate cases
     _extra = {'T660': 1663.0, 'P660': 21e9, 'LowerV': 1.5e-6}  # extra configuration
     _operations = ['LowerMantle', "MeshRefinement"]  # operations to do
-    parse_operations = CreateCases.MY_PARSE_OPERATIONS()
+    parse_operations = TwoDParse.MY_PARSE_OPERATIONS()
     MyGroup(parse_operations, _odir, operations=_operations, extra=_extra)
     # Assertions
     _case_names = ['ULV1.000e+02testIAR6', 'ULV1.000e+02testIAR8', 'ULV3.000e+01testIAR6','ULV3.000e+01testIAR8']
@@ -147,9 +147,9 @@ def test_generate_group():
         assert(os.path.isfile(_prm_file))
 
 
-def test_sph_cart_trans():
+def test_sph_cart_copy():
     '''
-    test sph_cart_trans
+    test sph_cart_copy
     '''
     file_in_sph = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'spherical_example.prm')
     file_in_sph_wb = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'sph_cart', 'spherical_example.wb')
@@ -165,8 +165,8 @@ def test_sph_cart_trans():
     with open(file_in_cart_wb, 'r') as fin:
         inputs_cart_wb = json.load(fin)
     inputs_cart = ParsePrm.ReadPrmFile(file_in_cart)
-    outputs_cart, outputs_cart_wb = CreateCases.sph_cart_trans(inputs_sph, inputs_cart, inputs_sph_wb, inputs_cart_wb)
+    outputs_cart, outputs_cart_wb = TwoDParse.sph_cart_copy(inputs_sph, inputs_cart, inputs_sph_wb, inputs_cart_wb)
     assert(outputs_cart == inputs_cart)  # assert that the transformed dictionary is identical to the cartesian one.
-    outputs_sph, outputs_sph_wb = CreateCases.sph_cart_trans(inputs_cart, inputs_sph, inputs_cart_wb, inputs_sph_wb)
+    outputs_sph, outputs_sph_wb = TwoDParse.sph_cart_copy(inputs_cart, inputs_sph, inputs_cart_wb, inputs_sph_wb)
     assert(outputs_sph == inputs_sph)  # assert that the transformed dictionary is identical to the spherical one.
     # future: check output of the wb file
