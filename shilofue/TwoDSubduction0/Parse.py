@@ -718,6 +718,8 @@ def find_trans_coord_in_wb_feature(i_feature, std_feature, trans=0, **kwargs):
     todo
     Perform transform of coordinates in world builder features.
     This function would look for coordinates within features and perform the transformation
+    Note that there are still coordinates in sections with these features that are unchanged,
+    be sure to change those by hand.
     Inputs:
         i_feature (str): feature from input
         std_feature (std): a standard output feature
@@ -747,20 +749,6 @@ def find_trans_coord_in_wb_feature(i_feature, std_feature, trans=0, **kwargs):
             # in case of dict, call function recursively
             o_subfeature = find_trans_coord_in_wb_feature(value, std_feature[key], trans, Ro=Ro)
             o_feature[key] = o_subfeature
-        # note that I haven't figure out this bug, as in different files, the layout of the list is
-        # different.
-#        if type(value) == list:
-#            # in case of list, look for dict
-#            o_subfeature = value.copy()
-#            print('o_subfeatur:', o_subfeature)  # debug
-#            for i in range(len(value)):
-#                component = value[i]
-#                if (type(component) == dict):
-#                    print('std_feature:', std_feature)  # debug
-#                    print('\n')
-#                    o_component = find_trans_coord_in_wb_feature(component, std_feature[key][i], trans, Ro=Ro)
-#                    o_subfeature[i] = o_component
-#            o_feature[key] = o_subfeature
     return o_feature
 
 
@@ -879,6 +867,8 @@ def sph_cart_convert_case(case_dir, case_odir, trans=0):
     ParsePrm.WritePrmFile(prm_o_path, outputs)
     with open(wb_o_path, 'w') as fout:
         json.dump(outputs_wb, fout, indent=2)
+    print("Note that there are still coordinates in sections with these features that are unchanged,\
+    make sure to change those by hand.")
 
 
 def main():
