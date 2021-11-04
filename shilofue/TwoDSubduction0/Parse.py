@@ -71,16 +71,25 @@ lower_mantle -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba/case1
 -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_intial_T/case_o.prm\n\
 \n\
   - setup rheology in prm file\n\
+\n\
         python -m shilofue.TwoDSubduction0.Parse rheology_cdpt\n\
 -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/case.prm\n\
 -j /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/rheology.json \n\
 -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear31/eba_test_wet_mod/case_o.prm\n\
-    \n\
+\n\
     in case the lower mantle rheology is read in from json file as well:\n\
         -b 1\n\
 \n\
   - init new case:\n\
+\n\
         python -m shilofue.TwoDSubduction0.Parse create -j ~/ASPECT_PROJECT/TwoDSubduction/non_linear32/init.json\n\
+\n\
+  - convert a case in cartesan geometry to one in spherical(chunk) geometry and vice versa\n\
+\n\
+        Lib_TwoDSubduction0_Parse convert_sph_cart -i ~/ASPECT_PROJECT/TwoDSubduction/wb_sd_issue/wb_cart_cdd50\n\
+        -o ~/ASPECT_PROJECT/TwoDSubduction/wb_sd_issue/wb_sph_cdd50\n\
+\n\
+        default is to transform from cartesian to spherical\n\
         ")
 
 
