@@ -27,6 +27,8 @@ class LINEARPLOT():
     '''
     def __init__(self, _name, options={}):
         '''
+        options contains the instructions to plot figures, if none is given,
+        then default options with be read in through json file.
         _name(str):
             name of the plotting
         options:
