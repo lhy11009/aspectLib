@@ -61,7 +61,6 @@ def generate_input_file(base_file_name,output_file_name,dictionary):
     fh = open(base_file_name,'r')
     if os.path.isfile(output_file_name):
         os.remove(output_file_name)  # haoyuan: run module isn't imported correctly
-    # run(['rm','-f',output_file_name])
     ofh = open(output_file_name,'w')
     for line in fh:        
         for key in dictionary:
@@ -73,9 +72,19 @@ def generate_input_file(base_file_name,output_file_name,dictionary):
 
 
 def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile,**kwargs):
-    """Write the slurm file for peloton"""
+    """
+    Write the slurm file for peloton.
+    Inputs:
+        slurm_file_name(str): full path for the slurm file
+        ncpu (int): numbers of cpu to use
+        tasks_per_node (int): tasks per node
+        job_name (str)
+        prmfile: full path for the prm file
+        kwargs(dict):
+            branch (str): the branch of aspect to run with
+    """
     # modify this to contain the commands necessary to setup MPI environment
-    #environment_setup_commands = "module load openmpi/3.1.3 intel-mkl"
+    # environment_setup_commands = "module load openmpi/3.1.3 intel-mkl"
     # haoyuan: I think we need to load 4.0.5 here
     environment_setup_commands="module unload openmpi/4.0.1\n\
             module load openmpi/4.1.0-mpi-io"
@@ -116,10 +125,16 @@ def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prm
     fh.close()
 
 
-def generate_slurm_file_peloton_rome(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile, **kwargs):
+def generate_slurm_file_peloton_roma(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile, **kwargs):
     """Write the slurm file for peloton roma
-    
-       Rome is the new partition for Magali's group 
+        Inputs:
+            slurm_file_name(str): full path for the slurm file
+            ncpu (int): numbers of cpu to use
+            tasks_per_node (int): tasks per node
+            job_name (str)
+            prmfile: full path for the prm file
+            kwargs(dict):
+                branch (str): the branch of aspect to run with
     """
     # modify this to contain the commands necessary to setup MPI environment
     #environment_setup_commands = "module load openmpi/3.1.3 intel-mkl"
@@ -157,9 +172,16 @@ def generate_slurm_file_peloton_rome(slurm_file_name,ncpu,tasks_per_node,job_nam
 
 
 def generate_slurm_file_stempede2(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile):
-    """Write the slurm file"""
-    # haoyuan:
-    # This function set up the slurm file for one job
+    """Write the slurm file for stempede2
+        Inputs:
+            slurm_file_name(str): full path for the slurm file
+            ncpu (int): numbers of cpu to use
+            tasks_per_node (int): tasks per node
+            job_name (str)
+            prmfile: full path for the prm file
+            kwargs(dict):
+                branch (str): the branch of aspect to run with
+    """
     fh = open(slurm_file_name,'w')
     fh.write("#!/bin/bash\n")
     fh.write("#SBATCH -p skx-normal\n")
@@ -189,73 +211,47 @@ def generate_slurm_file_stempede2(slurm_file_name,ncpu,tasks_per_node,job_name,p
     fh.close()
 
 
-def main():
+def do_tests(server, _path, tasks_per_node, **kwargs):
     '''
-    main function of this module
+    perform the affinity test
     Inputs:
-        sys.arg[1](str):
-            server
-        sys.arg[2](str):
-            _path
+        server(str): options for server
+        _path(str): directory to hold test files, pull path
+        tasks_per_node (int): number of tasks to run on each node.
+        kwargs(dict):
+            branch (str): branch to use, default is master
     '''
-    server = sys.argv[1] # server name
-    _path = sys.argv[2] # path to the files
-    # parse parameters
-    parser = argparse.ArgumentParser(description='Parse parameters')
-    parser.add_argument('-i', '--inputs', type=str, default='', help='Some inputs')
-    parser.add_argument('-o', '--outputs', type=str, default='.', help='Some outputs')
-    parser.add_argument('-b', '--branch', type=str, default=None, help='The branch of code to test')
-    _options = [] 
-    try:
-        _options = sys.argv[3: ]
-    except IndexError:
-        pass
-    arg = parser.parse_args(_options)
-    arg = parser.parse_args(_options)
-
-    
     # Haoyuan: in this file, the field to change are marked with capital letters.
     # e.g.  set Output directory                       = OUTPUT_DIRECTORY
     # The 'base' input file that gets modified
     base_input = os.path.join(ASPECT_LAB_DIR, 'files', 'AffinityTest', 'spherical_shell_expensive_solver.prm')
-    #cluster_label = "PI4CS_aspect-2.0-pre-40tasks"
-    #cluster_label = "peloton-ii-64tasks-hwthread-openmpi-4.0.1"
-    #cluster_label = "peloton-ii-32tasks-core-openmpi-4.0.1"
-    
-    
     
     # slurm parameterization
     # for peloton ii
     # core_counts = [1,2,4,8,16,32,64,128,256,512,768,1024]#,200,300,400]#,500,800,1000,1500]
     # for rome-256-512
     # 64 tasks per node
+    setups = [1, ]
     core_counts = [1,2,4,8,16,32,64, 128,256, 512] # 768,1024]#,200,300,400]#,500,800,1000,1500]
     refinement_levels = [2,3,4,5]#,6]
     #                                          0   1   2   3       4     5    6
     minimum_core_count_for_refinement_level = [0,  0,   1,   1,   10, 100, 500]# for refinement levels 0-6
-    maximum_core_count_for_refinement_level = [0,  0,1000,1000, 1000,2000,2000]
-    
-    setups = [1,]
-    # for peloton ii
-    # tasks_per_node = 32
-    # for rome-256-512
-    tasks_per_node = 128
-    openmpi = "4.1.0"
-    
+    maximum_core_count_for_refinement_level = [0,  0,1000,1000, 1000,2000,2000] 
+    openmpi = "4.1.0"  # change with updates
     cluster_label = "%s-%stasks-socket-openmpi-%s" % (server, tasks_per_node, openmpi) # ?
-
+    # create a directory to hold test results
     tmp_dir = os.path.join(_path, 'tmp')
     if not os.path.isdir(tmp_dir):
         # make a new directory every time
         # shutil.retree(tmp_dir)
-        
         # make a new directory if old one doesn't exist
         os.mkdir(tmp_dir)
-
+    # make a subdirectory with the name of the cluster
     cluster_dir = os.path.join(tmp_dir, cluster_label)
     if not os.path.isdir(cluster_dir):
         os.mkdir(cluster_dir)
-
+    # generate test files
+    branch = kwargs.get('branch', 'master')
     for core_count in core_counts:
         for resolution in refinement_levels:
             if( core_count >= minimum_core_count_for_refinement_level[resolution]
@@ -275,19 +271,31 @@ def main():
                     slurm_file = input_file + ".slurm"
                     # haoyuan: calls function to generate slurm file for one job
                     if server == "peloton-ii":
-                        generate_slurm_file_peloton(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=arg.branch)
+                        generate_slurm_file_peloton(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
                         print("sbatch" + slurm_file)
                         os.system("sbatch " + slurm_file)
                     elif server == "stampede2":
-                        generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=arg.branch)
+                        generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
                         print("sbatch" + slurm_file)
                         os.system("sbatch " + slurm_file)
                     if server == "peloton-rome":
-                        generate_slurm_file_peloton_rome(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=arg.branch)
+                        generate_slurm_file_peloton_roma(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
                         print("sbatch -A billen " + slurm_file)
-                        os.system("sbatch -A billen " + slurm_file)
-                    # haoyuan: submit the job
-                    # os.system("sbatch " + slurm_file)
+                        # os.system("sbatch -A billen " + slurm_file)
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Parse parameters')
+    parser.add_argument('-s', '--server', type=str, default='peloton-rome', help='server and partition to run tests on')
+    parser.add_argument('-p', '--path', type=str, default='.', help='Directory to run affinity tests')
+    parser.add_argument('-b', '--branch', type=str, default=None, help='The branch of aspect to test')
+    parser.add_argument('-t', '--tasks_per_node', type=int, default=32, help='Number of task to run on each node')
+    arg = parser.parse_args(sys.argv[1:])
+    # Haoyuan: in this file, the field to change are marked with capital letters.
+    # e.g.  set Output directory                       = OUTPUT_DIRECTORY
+    # The 'base' input file that gets modified
+    base_input = os.path.join(ASPECT_LAB_DIR, 'files', 'AffinityTest', 'spherical_shell_expensive_solver.prm')
+    do_tests(arg.server, arg.path, arg.tasks_per_node, branch=arg.branch)  # create and submit jobs
 
 
 # run script
