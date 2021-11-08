@@ -1,0 +1,63 @@
+{
+  "version":"0.5",
+  "coordinate system":{"model":"cartesian"},
+  "cross section":[[0,0],[1e6,0]],"surface temperature":273, "force surface temperature":true,
+  "features":
+  [
+    { 
+        "model":"oceanic plate", "name":"Overiding plate", "max depth":150e3,"min depth":-100e3,
+        "coordinates":[[4e6,-5e6],[4e6,5e6],[10e6,5e6],[10e6,-5e6]],
+        "temperature models":
+        [
+        {"model":"plate model constant age", "min depth":-10e3, "max depth":150e3, "plate age":40e6}
+        ],
+        "composition models":
+        [
+        {"model": "uniform", "min depth": -10e3, "max depth": 7.5e3, "compositions": [2]},
+        {"model": "uniform", "min depth": 7.5e3, "max depth": 35.2e3, "compositions": [3]}
+        ]
+    },
+    { 
+        "model":"oceanic plate", "name":"Subducting plate", "max depth":150e3,"min depth":-100e3,
+        "coordinates":[[0,-5e6],[0,5e6],[4e6,5e6],[4e6,-5e6]],
+        "temperature models":
+        [
+        {"model":"plate model", "min depth":-10e3,"max depth":150e3, "spreading velocity":0.05,"ridge coordinates": [[0,-5e6],[0,5e6]]}
+        ],
+        "composition models":
+        [
+        {"model": "uniform", "min depth": -10e3, "max depth": 7.5e3, "compositions": [0]},
+        {"model": "uniform", "min depth": 7.5e3, "max depth": 35.2e3, "compositions": [1]}
+        ]
+    },
+    { 
+        "model":"subducting plate", "name":"Slab",
+        "coordinates":[[4e6,-5e6],[4e6,5e6]],
+        "dip point":[10e6,0],
+        "segments":[
+        {
+            "length":418.88e3, "thickness":[300e3], "top truncation":[-100e3], "angle":[0,60],
+	        "composition models":[
+	        {"model":"uniform", "compositions":[0], "max distance slab top":7.5e3},
+	        {"model":"uniform", "compositions":[1], "min distance slab top":7.5e3, "max distance slab top":35.2e3}
+            ]
+        },
+        {"length":100e3, "thickness":[300e3], "top truncation":[-100e3], "angle":[60,60]}
+        ],
+        "temperature models":
+        [
+        {"model":"mass conserving", "density":3300, "thermal conductivity":3.3,"adiabatic heating":true, 
+         "plate velocity":0.05,"ridge coordinates":[[0,-5e6],[0,5e6]], 
+         "coupling depth":50e3, "shallow dip":60.0, "taper distance":100e3, 
+         "min distance slab top":-100e3, "max distance slab top":300e3}
+        ]  
+    },
+    {
+        "model":"mantle layer", "name": "mantle to substract", "max depth": 3000e3,
+        "coordinates": [[0,-5e6],[0,5e6],[10e6,-5e6],[10e6,5e6]],
+        "temperature models":[
+            {"model": "adiabatic", "max depth": 3000e3, "operation": "subtract"}
+            ]
+    }
+  ]
+}
