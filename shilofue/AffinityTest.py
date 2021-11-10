@@ -1,39 +1,74 @@
 # -*- coding: utf-8 -*-
 r"""Analyze affinity test results
+The first part does the affinity test, while the second part does the analysis.
+Notice that we might not have all the package installed on remote, so one should download the result and then run the analysis on there own laptop.
 
-To this end, this scripts required an organized results of affinity tests to run. To run this scripts, a bash script 'organize_result.sh' should be ran beforehand.
-Upon this, this scripts pull out the time results and plot figures.
-
-This exports: 
+This outputs: 
 
   - a figure of results
-
-This depends on:
-
-  -  
-
-Examples of usage:
-
-  - default usage:
-
-        python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results
-        -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_20211025 -c peloton-rome-128tasks-socket-openmpi-4.1.0
-        (this includes the directory as well as the name of the cluster)
-
 """ 
 import numpy as np
 import sys, os, argparse
-import pathlib, subprocess
+# on peloton,this is no such modules
 import shutil
 import numpy as np
-from matplotlib import cm
-from matplotlib import pyplot as plt
-from shilofue.Utilities import my_assert
+try:
+    import pathlib
+    import subprocess
+    from matplotlib import cm
+    from matplotlib import pyplot as plt
+except ImportError:
+    pass
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 ASPECT_SOURCE_DIR = os.environ['ASPECT_SOURCE_DIR']
-shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+
+
+def Usage():
+    print("\
+Run affinity test and analyze results\n\
+The first part does the affinity test, while the second part does the analysis.\n\
+Notice that we might not have all the package installed on remote, so one should download the result and then run the analysis on there own laptop.\n\
+\n\
+Examples of usage: \n\
+\n\
+  - Do affinity test: \n\
+\n\
+    (run this part on server)\n\
+\n\
+    example:\n\
+\n\
+        (substitute -i and -o options with your own prm file and output directory)\n\
+        python shilofue/AffinityTest.py run_tests -s peloton-rome -t 128\
+ -i /home/lochy/ASPECT_PROJECT/aspectLib/files/AffinityTest/spherical_shell_expensive_solver.prm\
+ -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/rene_affinity_test\n\
+\n\
+  - Analyze results: \n\
+    (run this part on a laptop)\n\
+\n\
+    example:\n\
+\n\
+        python shilofue/AffinityTest.py analyze_results\
+ -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_example\
+ -c peloton-rome-128tasks-socket-openmpi-4.1.0 -o .\n\
+        ")
+
+    
+def my_assert(_condition, _errortype, _message):
+    '''
+    an assert function for runtime use
+    Inputs:
+        _condition(True or False):
+            the condition to assert
+        _errortype(some error):
+            the type of error to raise
+        _message(str):
+            the message to raise
+    '''
+    if _condition is False:
+        raise _errortype(_message)
+
 
 def generate_input_file(base_file_name,output_file_name,dictionary):
     """Read the 'base' input file from base_file_name, replace strings 
@@ -191,20 +226,19 @@ def generate_slurm_file_stempede2(slurm_file_name,ncpu,tasks_per_node,job_name,p
     fh.close()
 
 
-def do_tests(server, _path, tasks_per_node, **kwargs):
+def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
     '''
     perform the affinity test
     Inputs:
         server(str): options for server
         _path(str): directory to hold test files, pull path
         tasks_per_node (int): number of tasks to run on each node.
+        base_input_path: The 'base' input file that gets modified
         kwargs(dict):
             branch (str): branch to use, default is master
     '''
     # Haoyuan: in this file, the field to change are marked with capital letters.
     # e.g.  set Output directory                       = OUTPUT_DIRECTORY
-    # The 'base' input file that gets modified
-    base_input = os.path.join(ASPECT_LAB_DIR, 'files', 'AffinityTest', 'spherical_shell_expensive_solver.prm')
     
     # slurm parameterization
     # for peloton ii
@@ -213,7 +247,9 @@ def do_tests(server, _path, tasks_per_node, **kwargs):
     # 64 tasks per node
     setups = [1, ]
     core_counts = [1,2,4,8,16,32,64, 128,256, 512] # 768,1024]#,200,300,400]#,500,800,1000,1500]
-    refinement_levels = [2,3,4,5]#,6]
+    core_counts = [1,2,4]
+    # refinement_levels = [2,3,4,5]#,6]
+    refinement_levels = [2]
     #                                          0   1   2   3       4     5    6
     minimum_core_count_for_refinement_level = [0,  0,   1,   1,   10, 100, 500]# for refinement levels 0-6
     maximum_core_count_for_refinement_level = [0,  0,1000,1000, 1000,2000,2000] 
@@ -247,7 +283,7 @@ def do_tests(server, _path, tasks_per_node, **kwargs):
                     parameters['RESOLUTION'] = resolution
                     
                     # do string replacement on the base input file
-                    generate_input_file(base_input,input_file,parameters)
+                    generate_input_file(base_input_path,input_file,parameters)
                     slurm_file = input_file + ".slurm"
                     # haoyuan: calls function to generate slurm file for one job
                     if server == "peloton-ii":
@@ -261,7 +297,7 @@ def do_tests(server, _path, tasks_per_node, **kwargs):
                     if server == "peloton-rome":
                         generate_slurm_file_peloton_roma(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
                         print("sbatch -A billen " + slurm_file)
-                        # os.system("sbatch -A billen " + slurm_file)
+                        os.system("sbatch -A billen " + slurm_file)
 
 def organize_result(test_root_dir, cluster):
     '''
@@ -397,11 +433,6 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
 
     pass
 
-
-def Usage():
-    pass
-
-
 def main():
     '''
     main function of this module
@@ -413,11 +444,23 @@ def main():
     '''
     commend = sys.argv[1]
     # parse options
-    parser = argparse.ArgumentParser(description='Parse parameters')
-    parser.add_argument('-o', '--outputs', type=str, default='.', help='Some outputs')
-    parser.add_argument('-c', '--cluster', type=str, default='peloton-ii-32tasks-core-openmpi-4.0.1', help='name of the cluster')
-    parser.add_argument('-s', '--server', type=str, default='peloton-rome', help='server and partition to run tests on')
-    parser.add_argument('-p', '--path', type=str, default='.', help='Directory to run affinity tests')
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('-i', '--inputs', type=str, default='.',\
+            help='Path of input.\n\
+            In case of running the test, this is the path to the prm file\n\
+            In case of analyze the results, this is the path of the directory for testing results')
+    parser.add_argument('-o', '--outputs', type=str, default='.',\
+            help='Path of output.\n\
+            In case of running the test, this is the place to save results\n\
+            In case of analyze the results, this is the place to save images')
+    parser.add_argument('-c', '--cluster', type=str, default='peloton-ii-32tasks-core-openmpi-4.0.1',\
+            help='name of the cluster.\n\
+            This information is only needed when doing analysis.\n\
+            At that time, you need to look into the data directory for the testing results.\n\
+            This variable is the name of the subdirectory in there')
+    parser.add_argument('-s', '--server', type=str, default='peloton-rome',\
+            help='server and partition to run tests on.\n\
+            one in (peloton-ii, peloton-rome, stampede2)')
     parser.add_argument('-b', '--branch', type=str, default=None, help='The branch of aspect to test')
     parser.add_argument('-t', '--tasks_per_node', type=int, default=32, help='Number of task to run on each node')
     _options = []
@@ -429,18 +472,22 @@ def main():
 
     # commands
     if commend == 'run_tests':
-        base_input = os.path.join(ASPECT_LAB_DIR, 'files', 'AffinityTest', 'spherical_shell_expensive_solver.prm')
-        do_tests(arg.server, arg.path, arg.tasks_per_node, branch=arg.branch)  # create and submit jobs
-
+        # base_input_path = os.path.join(ASPECT_LAB_DIR, 'files', 'AffinityTest', 'spherical_shell_expensive_solver.prm')
+        assert(os.path.isdir(arg.outputs))  # check output dir exists
+        do_tests(arg.server, arg.outputs, arg.tasks_per_node, arg.inputs, branch=arg.branch)  # create and submit jobs
     elif commend == 'analyze_results':
         # example:
         # python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results
         # -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_20211025 -c peloton-rome-128tasks-socket-openmpi-4.1.0
         # todo
-        test_results_dir = organize_result(arg.path, arg.cluster)
+        assert(os.path.isdir(arg.outputs))  # check output dir exists
+        test_results_dir = organize_result(arg.inputs, arg.cluster)
         analyze_affinity_test_results(test_results_dir, arg.outputs)
-    elif commend in ['help', 'h']:
+    elif commend in ['help', '-h']:
         Usage()
+        arg = parser.parse_args(['-h'])
+    else:
+        raise ValueError("No such command (%s), see Usage (run with help or -h)" % commend)
 
 # run script
 if __name__ == '__main__':
