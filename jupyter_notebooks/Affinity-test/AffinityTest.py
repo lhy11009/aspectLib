@@ -6,6 +6,11 @@ Notice that we might not have all the package installed on remote, so one should
 This outputs: 
 
   - a figure of results
+
+This depends on:
+  
+  - a prm file of aspect
+  - parse_block_output: a awk script to parse output
 """ 
 import numpy as np
 import sys, os, argparse
@@ -19,9 +24,6 @@ try:
     from matplotlib import pyplot as plt
 except ImportError:
     pass
-
-# directory to the aspect Lab
-ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 
 
 def Usage():
@@ -237,9 +239,7 @@ def do_tests(server, _path, tasks_per_node, base_input_path, aspect_executable):
     # 64 tasks per node
     setups = [1, ]
     core_counts = [1,2,4,8,16,32,64, 128,256, 512] # 768,1024]#,200,300,400]#,500,800,1000,1500]
-    core_counts = [1,2,4]
-    # refinement_levels = [2,3,4,5]#,6]
-    refinement_levels = [2]
+    refinement_levels = [2,3,4,5]#,6]
     #                                          0   1   2   3       4     5    6
     minimum_core_count_for_refinement_level = [0,  0,   1,   1,   10, 100, 500]# for refinement levels 0-6
     maximum_core_count_for_refinement_level = [0,  0,1000,1000, 1000,2000,2000] 
@@ -330,9 +330,10 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
     resolutions = []
     setups = []
     # go into sub dirs
-    temp_file = os.path.join(ASPECT_LAB_DIR, 'temp')  # file to save partial results
+    temp_file = 'temp'  # file to save partial results
     path_obj = pathlib.Path(test_results_dir).rglob("output*")
     i = 0
+    assert(os.path.isfile("./parse_block_output.sh"))
     for _path in path_obj:
         i += 1
         output_file = str(_path)
@@ -340,8 +341,8 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
         patterns = output_file.split('_')
         print("Output file found: %s" % output_path)
         # append data
-        subprocess.run("%s/bash_scripts/parse_block_output.sh  analyze_affinity_test_results %s %s" 
-                       % (ASPECT_LAB_DIR, output_file, temp_file), shell=True)
+        subprocess.run("./parse_block_output.sh  analyze_affinity_test_results %s %s" 
+                       % (output_file, temp_file), shell=True)
         try:
             data = np.genfromtxt(temp_file)
             total_wall_clock.append(data[0, -1])
