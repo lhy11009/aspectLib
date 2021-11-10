@@ -22,7 +22,6 @@ except ImportError:
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
-ASPECT_SOURCE_DIR = os.environ['ASPECT_SOURCE_DIR']
 
 
 def Usage():
@@ -39,17 +38,18 @@ Examples of usage: \n\
 \n\
     example:\n\
 \n\
-        (substitute -i and -o options with your own prm file and output directory)\n\
-        python shilofue/AffinityTest.py run_tests -s peloton-rome -t 128\
- -i /home/lochy/ASPECT_PROJECT/aspectLib/files/AffinityTest/spherical_shell_expensive_solver.prm\
- -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/rene_affinity_test\n\
+        (substitute -e and -o options with your executable and output directory)\n\
+        python AffinityTest.py run_tests -s peloton-rome -t 128\
+ -i spherical_shell_expensive_solver.prm\
+ -o /group/billengrp-mpi-io/lochy/TwoDSubduction/affinity_test_example\
+ -e /group/billengrp/lochy/softwares/aspect/build/aspect\n\
 \n\
   - Analyze results: \n\
     (run this part on a laptop)\n\
 \n\
     example:\n\
 \n\
-        python shilofue/AffinityTest.py analyze_results\
+        python AffinityTest.py analyze_results\
  -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_example\
  -c peloton-rome-128tasks-socket-openmpi-4.1.0 -o .\n\
         ")
@@ -86,7 +86,7 @@ def generate_input_file(base_file_name,output_file_name,dictionary):
     ofh.close()
 
 
-def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile,**kwargs):
+def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile,aspect_executable):
     """
     Write the slurm file for peloton.
     Inputs:
@@ -95,9 +95,9 @@ def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prm
         tasks_per_node (int): tasks per node
         job_name (str)
         prmfile: full path for the prm file
-        kwargs(dict):
-            branch (str): the branch of aspect to run with
+        aspect_executable (str): path for aspect executable
     """
+    assert(os.path.isfile(aspect_executable))
     # modify this to contain the commands necessary to setup MPI environment
     # environment_setup_commands = "module load openmpi/3.1.3 intel-mkl"
     # haoyuan: I think we need to load 4.0.5 here
@@ -121,11 +121,7 @@ def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prm
     fh.write("module list\n")
     fh.write("ulimit -l unlimited\n")
     # command to run
-    branch=kwargs.get('branch', None)
-    if branch==None:
-        fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings {:s}/build/aspect {:s}\n".format(ASPECT_SOURCE_DIR,ncpu,prmfile))
-    else:
-        fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings {:s}/build_{:s}/aspect {:s}\n".format(ncpu, ASPECT_SOURCE_DIR,branch,prmfile))
+    fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings {:s} {:s}\n".format(aspect_executable,ncpu,prmfile))
     #fh.write("srun ./aspect {:s}\n".format(prmfile))
     #fh.write("mpirun -n {:d} --mca btl_openib_use_eager_rdma 1 --mca mpi_leave_pinned 1 --bind-to-core --report-bindings --mca btl_openib_allow_ib 1 ./aspect {:s}\n".format(ncpu,prmfile))
     #fh.write("mpirun -n {:d} --mca btl ^tcp --report-bindings ./aspect {:s}\n".format(ncpu,prmfile))
@@ -140,7 +136,7 @@ def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prm
     fh.close()
 
 
-def generate_slurm_file_peloton_roma(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile, **kwargs):
+def generate_slurm_file_peloton_roma(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile,aspect_executable):
     """Write the slurm file for peloton roma
         Inputs:
             slurm_file_name(str): full path for the slurm file
@@ -148,9 +144,9 @@ def generate_slurm_file_peloton_roma(slurm_file_name,ncpu,tasks_per_node,job_nam
             tasks_per_node (int): tasks per node
             job_name (str)
             prmfile: full path for the prm file
-            kwargs(dict):
-                branch (str): the branch of aspect to run with
+            aspect_executable (str): path for aspect executable
     """
+    assert(os.path.isfile(aspect_executable))
     # modify this to contain the commands necessary to setup MPI environment
     #environment_setup_commands = "module load openmpi/3.1.3 intel-mkl"
     # haoyuan: I think we need to load 4.0.5 here
@@ -177,16 +173,12 @@ def generate_slurm_file_peloton_roma(slurm_file_name,ncpu,tasks_per_node,job_nam
     # one need to change the path to aspect to make this function
     # moreover, there could be a load library issure for openib
     # command to run
-    branch=kwargs.get('branch', None)
-    if branch==None:
-        fh.write("mpirun -n {:d} --bind-to socket --report-bindings {:s}/build/aspect {:s}\n".format(ncpu, ASPECT_SOURCE_DIR,prmfile))
-    else:
-        fh.write("mpirun -n {:d} --bind-to socket --report-bindings {:s}/build_{:s}/aspect {:s}\n".format(ncpu, ASPECT_SOURCE_DIR,branch,prmfile))
+    fh.write("mpirun -n {:d} --bind-to socket --report-bindings {:s} {:s}\n".format(ncpu, aspect_executable, prmfile))
     # fh.write("mpirun -n {:d} --bind-to hwthread --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
     fh.close()
 
 
-def generate_slurm_file_stempede2(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile):
+def generate_slurm_file_stempede2(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile,aspect_executable):
     """Write the slurm file for stempede2
         Inputs:
             slurm_file_name(str): full path for the slurm file
@@ -194,8 +186,7 @@ def generate_slurm_file_stempede2(slurm_file_name,ncpu,tasks_per_node,job_name,p
             tasks_per_node (int): tasks per node
             job_name (str)
             prmfile: full path for the prm file
-            kwargs(dict):
-                branch (str): the branch of aspect to run with
+            aspect_executable(str): executable file for aspect
     """
     fh = open(slurm_file_name,'w')
     fh.write("#!/bin/bash\n")
@@ -221,12 +212,12 @@ def generate_slurm_file_stempede2(slurm_file_name,ncpu,tasks_per_node,job_name,p
     # fh.write("mpirun -n {:d} --bind-to core --mca btl_openib_allow_ib 1 --mca btl openib,self,vader --report-bindings /home/lochy/software/aspect/build/aspect {:s}\n".format(ncpu,prmfile))
     # haoyuan: unload previous openmpi and reload a new one
     # fh.write("module unload openmpi\nexport PATH=/home/rudolph/sw/openmpi-4.0.5/bin:$PATH\n")
-    fh.write("mpirun -n {:d} --bind-to core --report-bindings /home1/06806/hyli/softwares/aspect {:s}\n".format(ncpu,prmfile))
+    fh.write("mpirun -n {:d} --bind-to core --report-bindings {:s} {:s}\n".format(ncpu, aspect_executable, prmfile))
     #fh.write("mpirun -n {:d} ./aspect-impi {:s}\n".format(ncpu,prmfile))
     fh.close()
 
 
-def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
+def do_tests(server, _path, tasks_per_node, base_input_path, aspect_executable):
     '''
     perform the affinity test
     Inputs:
@@ -234,8 +225,7 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
         _path(str): directory to hold test files, pull path
         tasks_per_node (int): number of tasks to run on each node.
         base_input_path: The 'base' input file that gets modified
-        kwargs(dict):
-            branch (str): branch to use, default is master
+        aspect_executable (str): path for aspect executable
     '''
     # Haoyuan: in this file, the field to change are marked with capital letters.
     # e.g.  set Output directory                       = OUTPUT_DIRECTORY
@@ -267,7 +257,6 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
     if not os.path.isdir(cluster_dir):
         os.mkdir(cluster_dir)
     # generate test files
-    branch = kwargs.get('branch', 'master')
     for core_count in core_counts:
         for resolution in refinement_levels:
             if( core_count >= minimum_core_count_for_refinement_level[resolution]
@@ -287,15 +276,15 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
                     slurm_file = input_file + ".slurm"
                     # haoyuan: calls function to generate slurm file for one job
                     if server == "peloton-ii":
-                        generate_slurm_file_peloton(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
+                        generate_slurm_file_peloton(slurm_file,core_count,tasks_per_node,jobname,input_file, aspect_executable)
                         print("sbatch" + slurm_file)
                         os.system("sbatch " + slurm_file)
                     elif server == "stampede2":
-                        generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
+                        generate_slurm_file_stempede2(slurm_file,core_count,tasks_per_node,jobname,input_file, aspect_executable)
                         print("sbatch" + slurm_file)
                         os.system("sbatch " + slurm_file)
                     if server == "peloton-rome":
-                        generate_slurm_file_peloton_roma(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
+                        generate_slurm_file_peloton_roma(slurm_file,core_count,tasks_per_node,jobname,input_file, aspect_executable)
                         print("sbatch -A billen " + slurm_file)
                         os.system("sbatch -A billen " + slurm_file)
 
@@ -461,7 +450,7 @@ def main():
     parser.add_argument('-s', '--server', type=str, default='peloton-rome',\
             help='server and partition to run tests on.\n\
             one in (peloton-ii, peloton-rome, stampede2)')
-    parser.add_argument('-b', '--branch', type=str, default=None, help='The branch of aspect to test')
+    parser.add_argument('-e', '--executable', type=str, default=None, help='executable file of aspect')
     parser.add_argument('-t', '--tasks_per_node', type=int, default=32, help='Number of task to run on each node')
     _options = []
     try:
@@ -472,14 +461,9 @@ def main():
 
     # commands
     if commend == 'run_tests':
-        # base_input_path = os.path.join(ASPECT_LAB_DIR, 'files', 'AffinityTest', 'spherical_shell_expensive_solver.prm')
         assert(os.path.isdir(arg.outputs))  # check output dir exists
-        do_tests(arg.server, arg.outputs, arg.tasks_per_node, arg.inputs, branch=arg.branch)  # create and submit jobs
+        do_tests(arg.server, arg.outputs, arg.tasks_per_node, arg.inputs, arg.executable)  # create and submit jobs
     elif commend == 'analyze_results':
-        # example:
-        # python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results
-        # -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_20211025 -c peloton-rome-128tasks-socket-openmpi-4.1.0
-        # todo
         assert(os.path.isdir(arg.outputs))  # check output dir exists
         test_results_dir = organize_result(arg.inputs, arg.cluster)
         analyze_affinity_test_results(test_results_dir, arg.outputs)
