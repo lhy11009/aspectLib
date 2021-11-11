@@ -19,7 +19,7 @@ descriptions
 """ 
 import numpy as np
 import sys, os, argparse
-# import json, re
+import json, re
 # import pathlib
 # import subprocess
 import numpy as np
@@ -35,6 +35,29 @@ RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
+
+
+class CASE_OPT(Utilities.JSON_OPT):
+    '''
+    Define a class to work with CASE
+    List of keys:
+    '''
+    def __init__(self):
+        '''
+        Initiation, first perform parental class's initiation,
+        then perform daughter class's initiation.
+        '''
+        Utilities.JSON_OPT.__init__(self)
+        pass
+    
+    def check(self):
+        '''
+        check to see if these values make sense
+        '''
+        pass
+
 
 class CASE():
     '''
@@ -44,6 +67,8 @@ class CASE():
             list for name of variables to change
         idict(dict):
             dictionary of parameters
+        wb_dict(idit):
+            dictionary of world builder options
         extra_files(array):
             an array of extra files of this case
     '''
@@ -55,6 +80,8 @@ class CASE():
             idict(dict):
                 dictionary import from a base file
             kwargs:
+                wb_inputs(dict or str):
+                    inputs from a world builder file
         '''
         self.case_name = case_name
         self.extra_files = []
@@ -67,7 +94,19 @@ class CASE():
                 self.idict = ParsePrm.ParseFromDealiiInput(fin)
             pass
         else:
-            raise TypeError("First entry mush be a dictionary or a string")
+            raise TypeError("Inputs must be a dictionary or a string")
+        # read world builder
+        wb_inputs = kwargs.get('wb_inputs', {})
+        if type(wb_inputs) == dict:
+            # direct read if dict is given
+            self.wb_dict = deepcopy(wb_inputs)
+        elif type(wb_inputs)==str:
+            # read from file if file path is given. This has the virtual that the new dict is indepent of the previous one.
+            with open(wb_inputs, 'r') as fin:
+                self.wb_dict = json.load(fin)
+            pass
+        else:
+            raise TypeError("CASE:%s: wb_inputs must be a dictionary or a string" % Utilities.func_name())
     
     def create(self, _root, **kwargs):
         '''
@@ -85,6 +124,7 @@ class CASE():
         os.mkdir(case_dir)
         # file output
         prm_out_path = os.path.join(case_dir, "case.prm")  # prm for running the case
+        wb_out_path = os.path.join(case_dir, "case.wb")  # world builder file
         ParsePrm.WritePrmFile(prm_out_path, self.idict)
         # fast first step
         fast_first_step = kwargs.get('fast_first_step', 0) 
@@ -97,6 +137,10 @@ class CASE():
             base_name = os.path.basename(path)
             path_out = os.path.join(case_dir, base_name)
             copy2(path, path_out)
+        # world builder
+        if self.wb_dict != {}:
+            with open(wb_out_path, 'w') as fout:
+                json.dump(self.wb_dict, fout, indent=2)
         print("New case created: %s" % case_dir)
 
     def configure(self, func, config, **kwargs):
@@ -114,6 +158,12 @@ class CASE():
         else:
             # just apply the configuration
             self.idict = func(self.idict, config)
+    
+    def configure_wb(self):
+        '''
+        Configure world builder file
+        '''
+        pass
 
     def add_extra_file(self, path):
         '''

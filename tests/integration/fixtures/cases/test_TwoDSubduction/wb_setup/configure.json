@@ -1,0 +1,8 @@
+{
+    "use world builder": 1,
+    "world builder":{
+        "sp age trench": 80e3,
+        "sp rate": 0.05,
+        "ov age": 40e3
+    }
+}

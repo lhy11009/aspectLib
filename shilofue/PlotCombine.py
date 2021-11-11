@@ -59,7 +59,7 @@ class PC_OPT(Utilities.JSON_OPT):
     Define a class to work with json files
     List of keys:
         0: root_dir (str) - Path of the root directory
-        1: case_pahts (list) - relative path to individual cases
+        1: case_paths (list) - relative path to individual cases
         2: plots (list) - Plots to incluce
         3: same_for_all (0 or 1) - if we use the same option of plots for all cases
         4: width (float) - width of one subplot
