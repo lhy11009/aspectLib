@@ -452,7 +452,11 @@ def FastZeroStep(Inputs):
 def FindWBFeatures(Inputs_wb, key):
     '''
     find index of feature in a world builder inputs by its key
+    Inputs:
+        Inputs_wb (dict): World buider dictionary
+        key (str): name of the feature
     '''
+    assert(type(Inputs_wb) == dict)
     Features = Inputs_wb['features']
     i = 0
     for feature in Features:
@@ -462,6 +466,20 @@ def FindWBFeatures(Inputs_wb, key):
         if i == len(Features):  # not found
             raise KeyError("%s: There is no feature named %s" % (Utilities.func_name(), key))
     return i
+
+def RemoveWBFeatures(Inputs_wb, i):
+    '''
+    remove a feature in World builder dictionary with an index i
+    Inputs:
+        Inputs_wb (dict): World buider dictionary
+        i (int): index of the feature
+    '''
+    assert(type(Inputs_wb) == dict)
+    Outputs_wb = Inputs_wb.copy()
+    Features = Inputs_wb['features']
+    Features.pop(i)
+    Outputs_wb['features'] = Features
+    return Outputs_wb
 
 
 def main():

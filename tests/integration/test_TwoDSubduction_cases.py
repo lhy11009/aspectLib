@@ -51,6 +51,11 @@ def test_wb_setup():
     Case_Opt.read_json(json_file)
     Case.configure_wb(*Case_Opt.to_configure_wb())
     Case.create(test_dir)
+    case_dir = os.path.join(test_dir, 'wb_setup')
+    case_prm_file = os.path.join(case_dir, 'case.prm')
+    case_wb_file = os.path.join(case_dir, 'case.wb')
+    assert(os.path.isfile(case_prm_file)) # assert files generated
+    assert(os.path.isfile(case_wb_file))
     # assert the context of the generated file
     # assert something 
     assert(True)
