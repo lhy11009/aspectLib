@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 r"""class with basic interfaces for manipulating an aspect case
 
+Logistics:
+    I mean to define every feature in subdfolders, under the folder of a project (also named Cases.py).
+    I expect this processes to be different from model to model (e.g. how to change the size of the domain).
+    As we don't want to repeat the process of changing prms in the prm file, but to summariz possible settings here.
+
 This exports: 
 
   -

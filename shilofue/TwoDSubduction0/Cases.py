@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 r"""class with interfaces for manipulating an aspect case in TwoDSubduction Project
 
+Logistics:
+    I mean to define every feature here, under the folder of a project.
+    I expect this processes to be different from model to model (e.g. how to change the size of the domain).
+    As we don't want to repeat the process of changing prms in the prm file, but to summariz possible settings here.
+
 This exports: 
 
   -
@@ -81,7 +86,7 @@ class CASE_OPT(CasesP.CASE_OPT):
             ["Potential temperature"], 1673.0)
         self.add_key("Width of the Box", float,\
             ["Box Width"], 6.783e6)
-        self.add_key("Geometry", str, ["Geometry"], "chunk")
+        self.add_key("Geometry, \"chunk\" or \"box\"", str, ["Geometry"], "chunk")
         pass
     
     def check(self):
@@ -89,6 +94,8 @@ class CASE_OPT(CasesP.CASE_OPT):
         check to see if these values make sense
         '''
         CasesP.CASE_OPT.check(self)
+        # geometry options
+        assert(self.values[9] in ['chunk', 'box'])
         if self.values[9] == 'box':
             assert(self.values[0] == 1)  # use box geometry, wb is mandatory
         pass
@@ -179,31 +186,36 @@ class CASE(CasesP.CASE):
             # check first if we use wb file for this one
             return
         self.wb_dict['potential mantle temperature'] = potential_T
-        if geometry == 'chunk':
-            self.wb_dict = wb_configure_plates_sph(self.wb_dict, sp_age_trench,\
-            sp_rate, ov_ag, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
-            ov_trans_length=ov_trans_length) # plates
-        else:
-            pass
+        self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
+        sp_rate, ov_ag, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+        ov_trans_length=ov_trans_length, geometry=geometry) # plates
 
 
-def wb_configure_plates_sph(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
+def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     '''
     configure plate in world builder
     '''
     Ro = kwargs.get('Ro', 6371e3)
+    geometry = kwargs.get('geometry', 'chunk')
     o_dict = wb_dict.copy()
     trench_sph = (sp_age_trench * sp_rate / Ro) * 180.0 / np.pi
-    sp_ridge_coords = [[0, -5], [0, -5]]
     max_sph = 180.0  # maximum angle assigned to limit the extent of features.
     side_angle = 5.0  # side angle to creat features in the 3rd dimension
+    if geometry == 'chunk':
+        _side = side_angle
+        _max = max_sph
+        trench = trench_sph
+    else:
+        pass
+    sp_ridge_coords = [[0, -_side], [0, _side]]
     # Overiding plate
     if_ov_trans = kwargs.get('if_ov_trans', False)  # transit to another age
     if if_ov_trans:
         i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate 1')
-        ov_trans_feature, ov_sph =\
-            wb_configure_transit_ov_plates_sph(wb_dict['features'][i0], trench_sph,\
-                ov_age, kwargs['ov_trans_age'], kwargs['ov_trans_length'], Ro=Ro)
+        ov_trans_feature, ov =\
+            wb_configure_transit_ov_plates(wb_dict['features'][i0], trench,\
+                ov_age, kwargs['ov_trans_age'], kwargs['ov_trans_length'],\
+                Ro=Ro, geometry=geometry)
         o_dict['features'][i0] = ov_trans_feature
     else:
         # if no using transit plate, remove the feature
@@ -212,43 +224,44 @@ def wb_configure_plates_sph(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
         except KeyError:
             pass
         o_dict = ParsePrm.RemoveWBFeatures(o_dict, i0)
-        ov_sph = trench_sph
+        ov = trench
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate')
     op_dict = o_dict['features'][i0]
-    op_dict["coordinates"] = [[ov_sph, -side_angle], [ov_sph, side_angle],\
-        [max_sph, -side_angle], [max_sph, side_angle]] # trench position
+    op_dict["coordinates"] = [[ov, -_side], [ov, _side],\
+        [_max, -_side], [_max, _side]] # trench position
     op_dict["temperature models"][0]["plate age"] = ov_age  # age of overiding plate
     o_dict['features'][i0] = op_dict
     # Subducting plate
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Subducting plate')
     sp_dict = o_dict['features'][i0]
-    sp_dict["coordinates"] = [[0.0, -side_angle], [0.0, side_angle],\
-        [trench_sph, -side_angle], [trench_sph, side_angle]] # trench position
+    sp_dict["coordinates"] = [[0.0, -_side], [0.0, _side],\
+        [trench, -_side], [trench, _side]] # trench position
     sp_dict["temperature models"][0]["spreading velocity"] = sp_rate
     sp_dict["temperature models"][0]["ridge coordinates"] = sp_ridge_coords
     o_dict['features'][i0] = sp_dict
     # Slab
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Slab')
     s_dict = o_dict['features'][i0]
-    s_dict["coordinates"] = [[trench_sph, -side_angle], [trench_sph, side_angle]] 
-    s_dict["dip point"] = [max_sph, 0.0]
+    s_dict["coordinates"] = [[trench, -_side], [trench, _side]] 
+    s_dict["dip point"] = [_max, 0.0]
     s_dict["temperature models"][0]["ridge coordinates"] = sp_ridge_coords
     s_dict["temperature models"][0]["plate velocity"] = sp_rate
     o_dict['features'][i0] = s_dict
     # mantle for substracting adiabat
     i0 = ParsePrm.FindWBFeatures(o_dict, 'mantle to substract')
     m_dict = o_dict['features'][i0]
-    m_dict["coordinates"] =[[0.0, -side_angle], [0.0, side_angle],\
-        [max_sph, -side_angle], [max_sph, side_angle]]
+    m_dict["coordinates"] =[[0.0, -_side], [0.0, _side],\
+        [_max, -_side], [_max, _side]]
     o_dict['features'][i0] = m_dict
     return o_dict
 
-def wb_configure_transit_ov_plates_sph(i_feature, trench_sph, ov_age,\
+def wb_configure_transit_ov_plates(i_feature, trench_sph, ov_age,\
     ov_trans_age, ov_trans_length, **kwargs):
     '''
     Transit overiding plate to a younger age at the trench
     See descriptions of the interface to_configure_wb
     '''
+    geometry = kwargs.get('geometry', 'chunk')
     side_angle = 5.0  # side angle to creat features in the 3rd dimension
     Ro = kwargs.get("Ro", 6371e3)
     o_feature = i_feature.copy()
