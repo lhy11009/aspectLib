@@ -43,7 +43,9 @@ Examples of usage: \n\
         (substitute -i and -o options with your own prm file and output directory)\n\
         python shilofue/AffinityTest.py run_tests -s peloton-rome -t 128\
  -i /home/lochy/ASPECT_PROJECT/aspectLib/files/AffinityTest/spherical_shell_expensive_solver.prm\
- -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/rene_affinity_test\n\
+ -o $TwoDSubduction_DIR/rene_affinity_test\
+ -nl topaz-0 topaz-2 topaz-3\
+ -m 385\n\
 \n\
   - Analyze results: \n\
     (run this part on a laptop)\n\

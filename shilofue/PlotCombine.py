@@ -67,6 +67,7 @@ class PC_OPT(Utilities.JSON_OPT):
         6: if_include_case_names (0 or 1) - If we include case names
         7: title (str) - Title
         8: if_include_tile (0 or 1) - If we include a title, note this will affect all other options within the \"Title\" dict
+        9: anchor (int) - The plot to anchor upon
     '''
     def __init__(self):
         '''
@@ -78,12 +79,15 @@ class PC_OPT(Utilities.JSON_OPT):
         self.add_key("Relative Path of case directorys", list, ["cases"], ['foo'])
         self.add_key("Plots to incluce", list, ["plots"], [])
         self.add_key("If use the same option of plots for all cases", int, ["same_for_all"], 0)
-        self.add_key("Width of one subplot", float, ["width"], -1.0)
+        self.add_key("Width of one subplot. This is set to -1.0 by default. By that, the width is determined with the \"anchor\" plot within the sequence",\
+             float, ["width"], -1.0)
         self.add_key("Output directory", str, ["output directory"], '')
         self.add_key("If we include case names", int, ["Title", "Include case names"], 1)
         self.add_key("Title", str, ["Title", "Title"], "")
         self.add_key("If we include a title, note this will affect all other options within the \"Title\" dict",\
              int, ["Include title"], 0)
+        self.add_key("The plot to anchor upon. This only takes effect when \"size\" is not given. Default is to anchor on the 0th plot in a series",\
+             int, ["anchor"], 0)
     
     def check(self):
         '''
@@ -127,7 +131,8 @@ class PC_OPT(Utilities.JSON_OPT):
         Interface for __call__ of PC class
         '''
         # size of the figure
-        sizes = self.values[4]
+        width = self.values[4]
+        anchor = self.values[9]
         # directory to output
         root_dir = self.values[0]
         case_paths = self.values[1]
@@ -151,7 +156,7 @@ class PC_OPT(Utilities.JSON_OPT):
             _title = None
         # if we include a case name
         if_include_case_names = self.values[6]
-        return sizes, output_dir, _title, if_include_case_names
+        return width, anchor, output_dir, _title, if_include_case_names
 
 
 class PLOT_COMBINE():
@@ -204,7 +209,7 @@ class PLOT_COMBINE():
         '''
         pass
     
-    def get_total_size(self, width, _title):
+    def get_total_size(self, width, _title, **kwargs):
         '''
         get the size of new image
         Return:
@@ -212,8 +217,9 @@ class PLOT_COMBINE():
             width: fixed width of a subimage
             _title (str or None) - title
         '''
+        anchor = kwargs.get('anchor', 0)
         if width < 0.0:
-            first_figure_path = os.path.join(self.cases[0], 'img', self.plots[0][0])
+            first_figure_path = os.path.join(self.cases[0], 'img', self.plots[0][anchor])
             Utilities.my_assert(os.path.isfile(first_figure_path), FileNotFoundError,\
              "%s: file doesn't exist (%s)" % (Utilities.func_name(), first_figure_path))
             image = Image.open(first_figure_path)
@@ -230,7 +236,7 @@ class PLOT_COMBINE():
             find = False
             for i in range(self.n_cases):
                 # find an existing file for me
-                _path = first_figure_path = os.path.join(self.cases[i], 'img', self.plots[i][j])
+                _path = os.path.join(self.cases[i], 'img', self.plots[i][j])
                 if os.path.isfile(_path):
                     find = True
                     break
@@ -266,7 +272,7 @@ class PLOT_COMBINE():
                 h_location = self.title_height / 2 + 10
                 d.text((w_location,h_location), case_name, font=fnt, fill=(0, 0, 0))  # anchor option doesn't work
     
-    def __call__(self, width, output_dir, _title, if_include_case_names):
+    def __call__(self, width, anchor, output_dir, _title, if_include_case_names):
         '''
         perform combination
         Inputs:
@@ -276,7 +282,7 @@ class PLOT_COMBINE():
             if_include_case_names (0 or 1) - If we include case names
         '''
         assert(os.path.isdir(output_dir))
-        locations, width = self.get_total_size(width, _title)  # width is the width of a subplot
+        locations, width = self.get_total_size(width, _title, anchor=anchor)  # width is the width of a subplot
         image_size = [locations[0][-1], locations[1][-1]]
         # initiate
         new_image = Image.new('RGB',image_size,(250,250,250))
@@ -287,6 +293,7 @@ class PLOT_COMBINE():
                 plot_path = os.path.join(self.cases[i], 'img', self.plots[i][j])
                 if os.path.isfile(plot_path):
                     image = Image.open(plot_path)
+                    image = image.resize((width, locations[1][i+1] - locations[1][i]))  # resize to fit the spot
                 else:
                     image = Image.new('RGB', (width, 500), (250,250,250)) # append a blank one
                 new_image.paste(image, (locations[0][i], locations[1][j])) # paste image in place

@@ -36,29 +36,62 @@ source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'cases', "test_
 
 def test_wb_setup():
     '''
-    (description)
+    test the configure_wb function of class CASE
     Asserts:
+        1. wb file contains the right parameters
+        2. prm file contains the right parameters
+        3. cases are created successfully
     '''
     source_wb_dir = os.path.join(source_dir, "wb_setup")
     prm_file = os.path.join(source_wb_dir, 'case.prm')
     wb_file = os.path.join(source_wb_dir, 'case.wb')
-    json_file = os.path.join(source_wb_dir, 'configure.json')
     assert(os.access(prm_file, os.R_OK))
     assert(os.access(wb_file, os.R_OK))
+    # test 0
+    json_file = os.path.join(source_wb_dir, 'configure.json')
     assert(os.access(json_file, os.R_OK))
     Case = CASE('wb_setup', prm_file, wb_inputs=wb_file)
     Case_Opt = CASE_OPT()
     Case_Opt.read_json(json_file)
+    Case_Opt.check()
+    Case.configure_prm(*Case_Opt.to_configure_prm())
     Case.configure_wb(*Case_Opt.to_configure_wb())
+    # check the parameters
+    wb_dict = Case.wb_dict
+    assert(len(wb_dict['features']) == 5)  # this has 5 features
+    i0 = ParsePrm.FindWBFeatures(wb_dict,'Overiding plate 1')  # transit plate
+    assert(wb_dict['features'][i0]['coordinates'] == \
+        [[35.972864236749224, 5.0], [35.972864236749224, -5.0],\
+            [41.368793872261605, 5.0], [41.368793872261605, -5.0]]) # position
+    # create new case
     Case.create(test_dir)
     case_dir = os.path.join(test_dir, 'wb_setup')
     case_prm_file = os.path.join(case_dir, 'case.prm')
     case_wb_file = os.path.join(case_dir, 'case.wb')
     assert(os.path.isfile(case_prm_file)) # assert files generated
     assert(os.path.isfile(case_wb_file))
-    # assert the context of the generated file
-    # assert something 
-    assert(True)
+    # test 1
+    json_file = os.path.join(source_wb_dir, 'configure_1.json')
+    assert(os.access(json_file, os.R_OK))
+    Case = CASE('wb_setup_1', prm_file, wb_inputs=wb_file)
+    Case_Opt = CASE_OPT()
+    Case_Opt.read_json(json_file)
+    Case_Opt.check()
+    Case.configure_prm(*Case_Opt.to_configure_prm())
+    Case.configure_wb(*Case_Opt.to_configure_wb())
+    # check the parameters
+    wb_dict = Case.wb_dict
+    assert(len(wb_dict['features']) == 4)  # this has 4 features
+    prm_dict = Case.idict
+    assert(prm_dict['Prescribed temperatures']['Temperature function']['Function constants'] == \
+        "Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=1.0647e+00,\\\n                             AGEOP=1.2614e+15, TS=2.730e+02, TM=1.6730e+03, K=1.000e-06, VSUB=1.5855e-09, PHILIM=1e-6")
+    # create new case
+    Case.create(test_dir)
+    case_dir = os.path.join(test_dir, 'wb_setup_1')
+    case_prm_file = os.path.join(case_dir, 'case.prm')
+    case_wb_file = os.path.join(case_dir, 'case.wb')
+    assert(os.path.isfile(case_prm_file)) # assert files generated
+    assert(os.path.isfile(case_wb_file))
 
     
 # notes

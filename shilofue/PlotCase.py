@@ -47,7 +47,7 @@ Examples of usage: \n\
 \n\
   - default usage: plot case running results, -t option deals with a time range, default is a whole range\n\
 \n\
-        Lib_plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20\
+        Lib_plot_case plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20\
           -t 0.0 -t1 0.5e6\
         ")
 

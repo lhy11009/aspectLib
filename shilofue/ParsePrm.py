@@ -27,6 +27,7 @@ import re
 # import pathlib
 # import subprocess
 import numpy as np
+import json
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -481,6 +482,17 @@ def RemoveWBFeatures(Inputs_wb, i):
     Outputs_wb['features'] = Features
     return Outputs_wb
 
+def DumpToJson(filein, fileout):
+    '''
+    Read in an input file and dump the content to a json file
+    '''
+    assert(os.access(filein, os.R_OK))
+    with open(filein, 'r') as fin:
+        i_dict = ParseFromDealiiInput(fin)
+    with open(fileout, 'w') as fout:
+        json.dump(i_dict, fout, indent=2)
+
+
 
 def main():
     '''
@@ -515,7 +527,9 @@ def main():
         inputs = ReadPrmFile(_path)
         FastZeroStep(inputs)
         WritePrmFile(out_path, inputs)
-
+    
+    if _commend == 'dump_to_json':
+        DumpToJson(arg.inputs, arg.outputs)
 
 # run script
 if __name__ == '__main__':

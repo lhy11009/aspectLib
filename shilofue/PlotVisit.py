@@ -111,6 +111,8 @@ class VISIT_OPTIONS(CASE_OPTIONS):
 
         # plot slab 
         self.options['IF_PLOT_SLAB'] = 'True'
+        self.options['ETA_MIN'] = self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']
+        self.options['ETA_MAX'] = self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity']
         try:
             self.last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])  # it is the last step we have outputs
         except IndexError:

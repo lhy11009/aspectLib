@@ -37,6 +37,7 @@ shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
 
+year = 365 * 24 * 3600.0  # yr to s
 
 class CASE_OPT(CasesP.CASE_OPT):
     '''
@@ -56,6 +57,10 @@ class CASE_OPT(CasesP.CASE_OPT):
                 this is assigned to -1.0 by default, which means we don't use
                 transit plate
             5: ov_trans_length (float) - Length of the transit overiding plate (m)
+            6: type_of_bd (str) - "Type of boundary condition"
+            7: potential_T (float) - Potential temperature of the mantle
+            8: box_width (float) - "Width of the Box"
+            9: geometry (str) - "Geometry"
         '''
         CasesP.CASE_OPT.__init__(self)
         self.add_key("If use world builder", int, ['use world builder'], 0)
@@ -69,6 +74,14 @@ class CASE_OPT(CasesP.CASE_OPT):
             ['world builder', "overiding plate", "transit", 'age'], -1.0)
         self.add_key("Length of the transit overiding plate", float,\
             ['world builder', "overiding plate", "transit", 'length'], 300e3)
+        self.add_key("Type of boundary condition\n\
+            available options in [all free slip, ]", str,\
+            ["boundary condition", "model"], "all free slip")
+        self.add_key("Potential temperature of the mantle", float,\
+            ["Potential temperature"], 1673.0)
+        self.add_key("Width of the Box", float,\
+            ["Box Width"], 6.783e6)
+        self.add_key("Geometry", str, ["Geometry"], "chunk")
         pass
     
     def check(self):
@@ -76,13 +89,27 @@ class CASE_OPT(CasesP.CASE_OPT):
         check to see if these values make sense
         '''
         CasesP.CASE_OPT.check(self)
+        if self.values[9] == 'box':
+            assert(self.values[0] == 1)  # use box geometry, wb is mandatory
         pass
+
+    def to_configure_prm(self):
+        if_wb = self.values[0]
+        type_of_bd = self.values[6]
+        sp_rate = self.values[2]
+        ov_age = self.values[3]
+        potential_T = self.values[7]
+        box_width = self.values[8]
+        geometry = self.values[9]
+        return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age
 
     def to_configure_wb(self):
         '''
         Interface to configure_wb
         '''
         if_wb = self.values[0]
+        geometry = self.values[9]
+        potential_T = self.values[7]
         sp_age_trench = self.values[1]
         sp_rate = self.values[2]
         ov_age = self.values[3]
@@ -92,8 +119,7 @@ class CASE_OPT(CasesP.CASE_OPT):
             if_ov_trans = False
         else:
             if_ov_trans = True
-
-        return if_wb, sp_age_trench, sp_rate, ov_age,\
+        return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
             if_ov_trans, ov_trans_age, ov_trans_length
 
 
@@ -102,21 +128,63 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_wb(self, if_wb, sp_age_trench, sp_rate, ov_ag,\
+    def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age):
+        if geometry == 'chunk':
+            Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
+        o_dict = self.idict.copy()
+        # Adiabatic surface temperature
+        o_dict["Adiabatic surface temperature"] = str(potential_T)
+        # geometry model
+        max_phi = box_width / Ro * 180.0 / np.pi  # extent in term of phi
+        if geometry == 'chunk':
+            o_dict["Geometry model"] = prm_geometry_sph(max_phi)
+        else:
+            pass
+        # set up subsection reset viscosity function
+        if type_of_bd == "all free slip":
+            if_fs_sides = True  # use free slip on both sides
+        else:
+            if_fs_sides = False
+        visco_plastic_twoD = self.idict['Material model']['Visco Plastic TwoD']
+        if geometry == 'chunk':
+            o_dict['Material model']['Visco Plastic TwoD'] =\
+              prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, if_fs_sides=if_fs_sides)
+        else:
+            pass
+        # set up subsection Prescribed temperatures
+        if type_of_bd == "all free slip":
+            o_dict["Prescribe internal temperatures"] = "true"
+            if geometry == 'chunk':
+                o_dict['Prescribed temperatures'] =\
+                    prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age)
+            else:
+                pass
+        else:
+            # remove this feature if otherwise
+            pass
+        self.idict = o_dict
+
+    def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
         if_ov_trans, ov_trans_age, ov_trans_length):
         '''
         Configure world builder file
         Inputs:
             see description of CASE_OPT
         '''
-        Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
+        if geometry == 'chunk':
+            Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
+        else:
+            pass
         if not if_wb:
             # check first if we use wb file for this one
             return
-        self.wb_dict = wb_configure_plates_sph(self.wb_dict, sp_age_trench,\
+        self.wb_dict['potential mantle temperature'] = potential_T
+        if geometry == 'chunk':
+            self.wb_dict = wb_configure_plates_sph(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length) # plates
-        pass
+        else:
+            pass
 
 
 def wb_configure_plates_sph(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
@@ -195,6 +263,94 @@ def wb_configure_transit_ov_plates_sph(i_feature, trench_sph, ov_age,\
     o_feature["temperature models"][0]["ridge coordinates"] =\
         [[ridge_sph, -side_angle], [ridge_sph, side_angle]]
     return o_feature, ov_sph
+
+def prm_geometry_sph(max_phi):
+    '''
+    reset geometry for chunk geometry
+    '''
+    o_dict = {
+        "Model name": "chunk",
+        "Chunk": {
+            "Chunk inner radius": "3.481e6",\
+            "Chunk outer radius": "6.371e6",\
+            "Chunk maximum longitude": "%.4e" % max_phi,\
+            "Chunk minimum longitude": "0.0",\
+            "Longitude repetitions": "2"
+        }
+    }
+    return o_dict
+
+def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, **kwargs):
+    '''
+    reset subsection Visco Plastic TwoD
+    Inputs:
+        visco_plastic_twoD (dict): inputs for the "subsection Visco Plastic TwoD"
+        part in a prm file
+        kwargs(dict):
+    '''
+    o_dict = visco_plastic_twoD.copy()
+    if_fs_sides = kwargs.get('if_fs_sides', True)
+    if if_fs_sides:
+        # use free slip on both sides, set ridges on both sides
+        o_dict['Reset viscosity'] = 'true'
+        o_dict['Reset viscosity function'] =\
+            prm_reset_viscosity_function_sph(max_phi)
+        o_dict["Reaction mor"] = 'true'
+        o_dict["Reaction mor function"] =\
+            prm_reaction_mor_function_sph(max_phi)
+    else:
+        # remove the related options
+        pass
+    return o_dict
+
+def prm_reset_viscosity_function_sph(max_phi):
+    '''
+    Default setting for Reset viscosity function in spherical geometry
+    '''
+    max_phi_in_rad = max_phi * np.pi / 180.0
+    odict = {
+        "Coordinate system": "spherical",
+        "Variable names": "r, phi",
+        "Function constants": "Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=%.4e, CV=1e20" % max_phi_in_rad,
+        "Function expression": "(((r > Ro - Depth) && ((Ro*phi < Width) || (Ro*(PHIM-phi) < Width)))? CV: -1.0)"
+      }
+    return odict
+    
+def prm_reaction_mor_function_sph(max_phi):
+    '''
+    Default setting for Reaction mor function in spherical geometry
+    '''
+    max_phi_in_rad = max_phi * np.pi / 180.0
+    odict = {
+        "Coordinate system": "spherical",\
+        "Variable names": "r, phi",\
+        "Function constants": "Width=2.75e5, Ro=6.371e6, PHIM=%.4e, DCS=7.500e+03, DHS=3.520e+04" % max_phi_in_rad,\
+        "Function expression": "((r > Ro - DCS) && (Ro*phi < Width)) ? 0:\\\n                                        ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*phi < Width)) ? 1:\\\n                                        ((r > Ro - DCS) && (Ro*(PHIM - phi) < Width)) ? 2:\\\n                                        ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*(PHIM - phi) < Width)) ? 3: -1"
+      }
+    return odict
+
+def prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age):
+    '''
+    Default setting for Prescribed temperatures
+    '''
+    max_phi_in_rad = max_phi * np.pi / 180.0
+    odict = {
+        "Indicator function": {
+          "Coordinate system": "spherical",\
+          "Variable names": "r, phi",\
+          "Function constants": "Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=%.4e" % max_phi_in_rad,\
+          "Function expression": "(((r>Ro-Depth)&&((r*phi<Width)||(r*(PHIM-phi)<Width))) ? 1:0)"\
+        },\
+        "Temperature function": {
+          "Coordinate system": "spherical",\
+          "Variable names": "r, phi",\
+          "Function constants": "Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=%.4e,\\\n                             AGEOP=%.4e, TS=2.730e+02, TM=%.4e, K=1.000e-06, VSUB=%.4e, PHILIM=1e-6" %\
+              (max_phi_in_rad, ov_age * year, potential_T, sp_rate / year),\
+          "Function expression": "((r*(PHIM-phi)<Width) ? TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt(K*AGEOP)))):\\\n\t(phi > PHILIM)? (TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt((K*Ro*phi)/VSUB))))): TM)"
+        }
+    }
+    return odict
+
 
 
 def Usage():

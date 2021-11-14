@@ -1,0 +1,15 @@
+{
+    "boundary condition": {
+        "model": "all free slip"
+    },
+    "use world builder": 1,
+    "world builder":{
+        "subducting plate":{
+            "age trench": 80e6,
+            "sp rate": 0.05
+        },
+        "overiding plate":{
+            "age": 40e6
+        }
+    }
+}

@@ -1,5 +1,6 @@
 {
   "version": "0.5",
+  "potential mantle temperature" : 1673.0,
   "coordinate system": {
     "model": "spherical",
     "depth method": "begin segment"

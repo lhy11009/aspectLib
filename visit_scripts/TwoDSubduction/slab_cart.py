@@ -15,6 +15,10 @@
 #   IF_PLOT_SHALLOw
 # steps to visualize fields
 #   GRAPHICAL_STEPS
+# minimum rheology in the domain
+#   ETA_MIN
+# maximum rheology in the domain
+#   ETA_MAX
 
 
 global_trench_view = (3.98859e+06, 4.21503e+06, 2.77067e+06, 2.99403e+06)  # upper 100 km centered on trench
@@ -37,6 +41,8 @@ class SLAB_CART(VISIT_PLOT):
 
         # call __init__ function of parent
         VISIT_PLOT.__init__(self, filein, plot_types=plot_types, vars=vars_, output_dir=output_dir)
+        self.eta_min = ETA_MIN
+        self.eta_max = ETA_MAX
 
         # define the field of the slab
         DefineScalarExpression("slab", "spcrust+spharz")
@@ -127,7 +133,7 @@ class SLAB_CART(VISIT_PLOT):
         
         # set up viscosity
         # change to log scale and invert the color table
-        self.set_pseudo_color('viscosity', color_table="SCM_roma", invert_color=False, log=True)
+        self.set_pseudo_color('viscosity', color_table="SCM_roma", invert_color=False, log=True, limits=[self.eta_min, self.eta_max])
        
         # set up velocity
         SetActivePlots(self.idxs['velocity'])
@@ -175,7 +181,7 @@ class SLAB_CART(VISIT_PLOT):
         
         # set up viscosity
         # change to log scale and invert the color table
-        self.set_pseudo_color('viscosity', color_table="SCM_roma", invert_color=False, log=True)
+        self.set_pseudo_color('viscosity', color_table="SCM_roma", invert_color=False, log=True, limits=[self.eta_min, self.eta_max])
        
         # set up velocity
         SetActivePlots(self.idxs['velocity'])
