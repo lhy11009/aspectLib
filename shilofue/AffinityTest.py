@@ -12,6 +12,7 @@ import sys, os, argparse
 # on peloton,this is no such modules
 import shutil
 import numpy as np
+import math
 try:
     import pathlib
     import subprocess
@@ -150,6 +151,7 @@ def generate_slurm_file_peloton_roma(slurm_file_name,ncpu,tasks_per_node,job_nam
             prmfile: full path for the prm file
             kwargs(dict):
                 branch (str): the branch of aspect to run with
+                nodelist: (list of str) - list of node to run on
     """
     # modify this to contain the commands necessary to setup MPI environment
     #environment_setup_commands = "module load openmpi/3.1.3 intel-mkl"
@@ -157,6 +159,22 @@ def generate_slurm_file_peloton_roma(slurm_file_name,ncpu,tasks_per_node,job_nam
     # haoyuan: unload previous openmpi and reload a new one
     environment_setup_commands="module unload openmpi/4.0.1\n\
             module load openmpi/4.1.0-mpi-io"
+    nodelist= kwargs.get('nodelist', [])
+    assert(type(ncpu) == int)
+    assert(type(tasks_per_node) == int)
+    assert(type(nodelist) == list)
+    optional = ""
+    # append nodelist
+    if len(nodelist) > 0:
+        nnode = int(math.ceil(1.0*ncpu/tasks_per_node))  # number of nodes required by size
+        optional += "#SBATCH --nodelist="
+        for i in range(min(len(nodelist), nnode)):
+            node = nodelist[i]
+            if i == 0:
+                optional += node
+            else:
+                optional += ",%s" % node
+        optional += "\n"
     # haoyuan:
     # This function set up the slurm file for one job
     fh = open(slurm_file_name,'w')
@@ -169,6 +187,8 @@ def generate_slurm_file_peloton_roma(slurm_file_name,ncpu,tasks_per_node,job_nam
     fh.write("#SBATCH --time=02:00:00\n")
     fh.write("#SBATCH --job-name={:s}\n".format(job_name))
     fh.write("#SBATCH --switches=1\n")
+    if optional != "":
+        fh.write(optional) # extra configuration
     fh.write("set -x\n")
     fh.write(environment_setup_commands + "\n")
     fh.write("module list\n")
@@ -236,18 +256,32 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
         base_input_path: The 'base' input file that gets modified
         kwargs(dict):
             branch (str): branch to use, default is master
+            nodelist: (list of str) - list of node to run on
+            debug (int) : debug mode (1), normal (0)
+            max_core_count (int): maximum number for core count
     '''
     # Haoyuan: in this file, the field to change are marked with capital letters.
     # e.g.  set Output directory                       = OUTPUT_DIRECTORY
-    
+    nodelist= kwargs.get('nodelist', [])  # list of nodes
+    assert(type(nodelist) == list)
+    if len(nodelist) > 0:
+        assert(server in ["peloton-rome"]) # this only works with these servers
+    max_core_count = kwargs.get('max_core_count', 10000)
+    debug = kwargs.get('debug', 0) # debug mode
     # slurm parameterization
     # for peloton ii
     # core_counts = [1,2,4,8,16,32,64,128,256,512,768,1024]#,200,300,400]#,500,800,1000,1500]
     # for rome-256-512
     # 64 tasks per node
     setups = [1, ]
-    core_counts = [1,2,4,8,16,32,64, 128,256, 512] # 768,1024]#,200,300,400]#,500,800,1000,1500]
-    core_counts = [1,2,4]
+    all_available_core_counts = [1,2,4,8,16,32,64, 128,256, 512, 768,1024]#,200,300,400]#,500,800,1000,1500]
+    if debug:
+        core_counts = [1,2,4] # debug mode, see all the settings work
+    else:
+        core_counts = []
+        for core_count in all_available_core_counts:
+            if core_count < max_core_count:
+                core_counts.append(core_count)
     # refinement_levels = [2,3,4,5]#,6]
     refinement_levels = [2]
     #                                          0   1   2   3       4     5    6
@@ -255,6 +289,13 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
     maximum_core_count_for_refinement_level = [0,  0,1000,1000, 1000,2000,2000] 
     openmpi = "4.1.0"  # change with updates
     cluster_label = "%s-%stasks-socket-openmpi-%s" % (server, tasks_per_node, openmpi) # ?
+    if len(nodelist) > 0:
+        for i in range(len(nodelist)):
+            node = nodelist[i]
+            if i == 0:
+                cluster_label += "-%s" % node
+            else:
+                cluster_label += "_%s" % node
     # create a directory to hold test results
     tmp_dir = os.path.join(_path, 'tmp')
     if not os.path.isdir(tmp_dir):
@@ -288,16 +329,15 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
                     # haoyuan: calls function to generate slurm file for one job
                     if server == "peloton-ii":
                         generate_slurm_file_peloton(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
-                        print("sbatch" + slurm_file)
-                        os.system("sbatch " + slurm_file)
+                        command_line="sbatch " + slurm_file
                     elif server == "stampede2":
                         generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
-                        print("sbatch" + slurm_file)
-                        os.system("sbatch " + slurm_file)
+                        command_line="sbatch " + slurm_file
                     if server == "peloton-rome":
-                        generate_slurm_file_peloton_roma(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
-                        print("sbatch -A billen " + slurm_file)
-                        os.system("sbatch -A billen " + slurm_file)
+                        generate_slurm_file_peloton_roma(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch, nodelist=nodelist)
+                        command_line="sbatch " + "-A billen " + slurm_file
+                    print(command_line)
+                    os.system(command_line)
 
 def organize_result(test_root_dir, cluster):
     '''
@@ -463,6 +503,15 @@ def main():
             one in (peloton-ii, peloton-rome, stampede2)')
     parser.add_argument('-b', '--branch', type=str, default=None, help='The branch of aspect to test')
     parser.add_argument('-t', '--tasks_per_node', type=int, default=32, help='Number of task to run on each node')
+    parser.add_argument('-nl', '--nodelist', nargs="+", default=[], help='list of nodes to run on, separate with blank in inputs')
+    parser.add_argument('-d', '--debug', type=int, default=0,\
+            help='Run in debug mode by only deploying\
+            a few cases with low number of nodes')
+    parser.add_argument('-m', '--max_cpu', type=int, default=1e10,\
+            help="Maximum number of cpu assigned.\
+            This is not the real maximum number of cpus to be run on,\
+            but meant to manually put a limit on that.\
+            This doesn't work with the debug mode.")
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -474,7 +523,7 @@ def main():
     if commend == 'run_tests':
         # base_input_path = os.path.join(ASPECT_LAB_DIR, 'files', 'AffinityTest', 'spherical_shell_expensive_solver.prm')
         assert(os.path.isdir(arg.outputs))  # check output dir exists
-        do_tests(arg.server, arg.outputs, arg.tasks_per_node, arg.inputs, branch=arg.branch)  # create and submit jobs
+        do_tests(arg.server, arg.outputs, arg.tasks_per_node, arg.inputs, branch=arg.branch, nodelist=arg.nodelist, debug=arg.debug, max_core_count=arg.max_cpu)  # create and submit jobs
     elif commend == 'analyze_results':
         # example:
         # python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results
