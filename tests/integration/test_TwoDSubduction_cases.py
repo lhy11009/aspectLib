@@ -47,7 +47,7 @@ def test_wb_setup():
     wb_file = os.path.join(source_wb_dir, 'case.wb')
     assert(os.access(prm_file, os.R_OK))
     assert(os.access(wb_file, os.R_OK))
-    # test 0
+    # test 0, chunk geometry and use transit ov plate
     json_file = os.path.join(source_wb_dir, 'configure.json')
     assert(os.access(json_file, os.R_OK))
     Case = CASE('wb_setup', prm_file, wb_inputs=wb_file)
@@ -70,7 +70,7 @@ def test_wb_setup():
     case_wb_file = os.path.join(case_dir, 'case.wb')
     assert(os.path.isfile(case_prm_file)) # assert files generated
     assert(os.path.isfile(case_wb_file))
-    # test 1
+    # test 1, chunk geometry and doesn't use transit ov plate
     json_file = os.path.join(source_wb_dir, 'configure_1.json')
     assert(os.access(json_file, os.R_OK))
     Case = CASE('wb_setup_1', prm_file, wb_inputs=wb_file)
@@ -92,7 +92,26 @@ def test_wb_setup():
     case_wb_file = os.path.join(case_dir, 'case.wb')
     assert(os.path.isfile(case_prm_file)) # assert files generated
     assert(os.path.isfile(case_wb_file))
-
+    # test 2, box geometry and doesn't use transit ov plate
+    json_file = os.path.join(source_wb_dir, 'configure_2.json')
+    assert(os.access(json_file, os.R_OK))
+    Case = CASE('wb_setup_2', prm_file, wb_inputs=wb_file)
+    Case_Opt = CASE_OPT()
+    Case_Opt.read_json(json_file)
+    Case_Opt.check()
+    Case.configure_prm(*Case_Opt.to_configure_prm())
+    Case.configure_wb(*Case_Opt.to_configure_wb())
+    # check the parameters
+    wb_dict = Case.wb_dict
+    assert(len(wb_dict['features']) == 4)  # this has 4 features
+    prm_dict = Case.idict
+    # create new case
+    Case.create(test_dir)
+    case_dir = os.path.join(test_dir, 'wb_setup_2')
+    case_prm_file = os.path.join(case_dir, 'case.prm')
+    case_wb_file = os.path.join(case_dir, 'case.wb')
+    assert(os.path.isfile(case_prm_file)) # assert files generated
+    assert(os.path.isfile(case_wb_file))
     
 # notes
     

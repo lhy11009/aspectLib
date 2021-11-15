@@ -86,7 +86,7 @@ class CASE_OPT(CasesP.CASE_OPT):
             ["Potential temperature"], 1673.0)
         self.add_key("Width of the Box", float,\
             ["Box Width"], 6.783e6)
-        self.add_key("Geometry, \"chunk\" or \"box\"", str, ["Geometry"], "chunk")
+        self.add_key("Geometry, \"chunk\" or \"box\"", str, ["geometry"], "chunk")
         pass
     
     def check(self):
@@ -136,36 +136,47 @@ class CASE(CasesP.CASE):
     More Attributes:
     '''
     def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age):
-        if geometry == 'chunk':
-            Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
+        Ro = 6371e3
+        if type_of_bd == "all free slip":  # boundary conditions
+            if_fs_sides = True  # use free slip on both sides
+        else:
+            if_fs_sides = False
         o_dict = self.idict.copy()
         # Adiabatic surface temperature
         o_dict["Adiabatic surface temperature"] = str(potential_T)
         # geometry model
-        max_phi = box_width / Ro * 180.0 / np.pi  # extent in term of phi
         if geometry == 'chunk':
+            max_phi = box_width / Ro * 180.0 / np.pi  # extent in term of phi
             o_dict["Geometry model"] = prm_geometry_sph(max_phi)
-        else:
-            pass
+        elif geometry == 'box':
+            o_dict["Geometry model"] = prm_geometry_cart(box_width)
+        # refinement
+        if geometry == 'chunk':
+            o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph()
+        elif geometry == 'box':
+            o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart()
+        # boundary temperature model
+        if geometry == 'chunk':
+            o_dict['Boundary temperature model'] = prm_boundary_temperature_sph()
+        elif geometry == 'box':
+            o_dict['Boundary temperature model'] = prm_boundary_temperature_cart()
         # set up subsection reset viscosity function
-        if type_of_bd == "all free slip":
-            if_fs_sides = True  # use free slip on both sides
-        else:
-            if_fs_sides = False
         visco_plastic_twoD = self.idict['Material model']['Visco Plastic TwoD']
         if geometry == 'chunk':
             o_dict['Material model']['Visco Plastic TwoD'] =\
               prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, if_fs_sides=if_fs_sides)
-        else:
-            pass
+        elif geometry == 'box':
+            o_dict['Material model']['Visco Plastic TwoD'] =\
+              prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, if_fs_sides=if_fs_sides)
         # set up subsection Prescribed temperatures
         if type_of_bd == "all free slip":
             o_dict["Prescribe internal temperatures"] = "true"
             if geometry == 'chunk':
                 o_dict['Prescribed temperatures'] =\
                     prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age)
-            else:
-                pass
+            elif geometry == 'box':
+                o_dict['Prescribed temperatures'] =\
+                    prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age)
         else:
             # remove this feature if otherwise
             pass
@@ -178,17 +189,33 @@ class CASE(CasesP.CASE):
         Inputs:
             see description of CASE_OPT
         '''
-        if geometry == 'chunk':
-            Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
-        else:
-            pass
         if not if_wb:
             # check first if we use wb file for this one
             return
+        # potential T
         self.wb_dict['potential mantle temperature'] = potential_T
-        self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
-        sp_rate, ov_ag, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
-        ov_trans_length=ov_trans_length, geometry=geometry) # plates
+        # geometry
+        if geometry == 'chunk':
+            self.wb_dict["coordinate system"] = {"model": "spherical", "depth method": "begin segment"}
+            self.wb_dict["cross section"] = [[0, 0], [180.0, 0.0]]
+        elif geometry == 'box':
+            self.wb_dict["coordinate system"] = {"model": "cartesian"}
+            self.wb_dict["cross section"] = [[0, 0], [1e7, 0.0]]
+        else:
+            raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
+        # plates
+        if geometry == 'chunk':
+            Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
+            self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
+            sp_rate, ov_ag, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+            ov_trans_length=ov_trans_length, geometry=geometry) # plates
+        elif geometry == 'box':
+            Xmax = 7e6  # lateral extent of the box
+            self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
+            sp_rate, ov_ag, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+            ov_trans_length=ov_trans_length, geometry=geometry) # plates
+        else:
+            raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
 
 
 def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
@@ -196,16 +223,23 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     configure plate in world builder
     '''
     Ro = kwargs.get('Ro', 6371e3)
+    Xmax = kwargs.get('Xmax', 7e6)
     geometry = kwargs.get('geometry', 'chunk')
     o_dict = wb_dict.copy()
     trench_sph = (sp_age_trench * sp_rate / Ro) * 180.0 / np.pi
+    trench_cart = sp_age_trench * sp_rate
     max_sph = 180.0  # maximum angle assigned to limit the extent of features.
+    max_cart = 2 * Xmax
     side_angle = 5.0  # side angle to creat features in the 3rd dimension
+    side_dist = 1e3
     if geometry == 'chunk':
         _side = side_angle
         _max = max_sph
         trench = trench_sph
-    else:
+    elif geometry == 'box':
+        _side = side_dist
+        _max = max_cart
+        trench = trench_cart
         pass
     sp_ridge_coords = [[0, -_side], [0, _side]]
     # Overiding plate
@@ -277,6 +311,7 @@ def wb_configure_transit_ov_plates(i_feature, trench_sph, ov_age,\
         [[ridge_sph, -side_angle], [ridge_sph, side_angle]]
     return o_feature, ov_sph
 
+
 def prm_geometry_sph(max_phi):
     '''
     reset geometry for chunk geometry
@@ -292,6 +327,80 @@ def prm_geometry_sph(max_phi):
         }
     }
     return o_dict
+
+
+def prm_minimum_refinement_sph(**kwargs):
+    """
+    minimum refinement function for spherical geometry
+    """
+    Ro = kwargs.get('Ro', 6371e3)
+    o_dict = {
+      "Coordinate system": "spherical",
+      "Variable names": "r,phi,t",
+      "Function constants": "Ro=%.4e, UM=670e3, DD=100e3" % Ro,
+      "Function expression": "((Ro-r<UM)? \\\n                                   ((Ro-r<DD)? 8: 6): 0.0)"
+    }
+    return o_dict
+
+
+def prm_minimum_refinement_cart(**kwargs):
+    """
+    minimum refinement function for cartesian geometry
+    """
+    Do = kwargs.get('Do', 2890e3)
+    o_dict = {
+      "Coordinate system": "cartesian",
+      "Variable names": "x, y, t",
+      "Function constants": "Do=%.4e, UM=670e3, DD=100e3" % Do,
+      "Function expression": "((Do-y<UM)? \\\n                                   ((Do-y<DD)? 8: 6): 0.0)"
+    }
+    return o_dict
+
+
+def prm_boundary_temperature_sph():
+    '''
+    boundary temperature model in spherical geometry
+    '''
+    o_dict = {
+        "Fixed temperature boundary indicators": "bottom, top",
+        "List of model names": "spherical constant",
+        "Spherical constant": {
+            "Inner temperature": "3500", 
+            "Outer temperature": "273"
+        }
+    }
+    return o_dict
+
+
+def prm_boundary_temperature_cart():
+    '''
+    boundary temperature model in cartesian geometry
+    '''
+    o_dict = {
+        "Fixed temperature boundary indicators": "bottom, top",
+        "List of model names": "box",
+        "Box": {
+            "Bottom temperature": "3500",
+            "Top temperature": "273"
+            }
+    }
+    return o_dict
+
+
+def prm_geometry_cart(box_width):
+    '''
+    reset geometry for box geometry
+    '''
+    o_dict = {
+        "Model name": "box",
+        "Box": {
+            "X extent": "%.4e" % box_width,
+            "Y extent": "2.8900e6",
+            "X repetitions": "2"
+        }
+    }
+    return o_dict
+
 
 def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, **kwargs):
     '''
@@ -316,6 +425,31 @@ def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, **kwargs):
         pass
     return o_dict
 
+
+def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, **kwargs):
+    '''
+    reset subsection Visco Plastic TwoD
+    Inputs:
+        visco_plastic_twoD (dict): inputs for the "subsection Visco Plastic TwoD"
+        part in a prm file
+        kwargs(dict):
+    '''
+    o_dict = visco_plastic_twoD.copy()
+    if_fs_sides = kwargs.get('if_fs_sides', True)
+    if if_fs_sides:
+        # use free slip on both sides, set ridges on both sides
+        o_dict['Reset viscosity'] = 'true'
+        o_dict['Reset viscosity function'] =\
+            prm_reset_viscosity_function_cart(box_width)
+        o_dict["Reaction mor"] = 'true'
+        o_dict["Reaction mor function"] =\
+            prm_reaction_mor_function_cart(box_width)
+    else:
+        # remove the related options
+        pass
+    return o_dict
+
+
 def prm_reset_viscosity_function_sph(max_phi):
     '''
     Default setting for Reset viscosity function in spherical geometry
@@ -328,10 +462,24 @@ def prm_reset_viscosity_function_sph(max_phi):
         "Function expression": "(((r > Ro - Depth) && ((Ro*phi < Width) || (Ro*(PHIM-phi) < Width)))? CV: -1.0)"
       }
     return odict
-    
+
+
+def prm_reset_viscosity_function_cart(box_width):
+    '''
+    Default setting for Reset viscosity function in cartesian geometry
+    '''
+    odict = {
+        "Coordinate system": "cartesian",
+        "Variable names": "x, y",
+        "Function constants": "Depth=1.45e5, Width=2.75e5, Do=2.890e6, xm=%.4e, CV=1e20" % box_width,
+        "Function expression": "(((y > Do - Depth) && ((x < Width) || (xm-x < Width)))? CV: -1.0)"
+    }
+    return odict
+
+
 def prm_reaction_mor_function_sph(max_phi):
     '''
-    Default setting for Reaction mor function in spherical geometry
+    Default setting for Reaction mor function in cartesian geometry
     '''
     max_phi_in_rad = max_phi * np.pi / 180.0
     odict = {
@@ -342,9 +490,23 @@ def prm_reaction_mor_function_sph(max_phi):
       }
     return odict
 
+
+def prm_reaction_mor_function_cart(box_width):
+    '''
+    Default setting for Reaction mor function in cartesian geometry
+    '''
+    odict = {
+        "Coordinate system": "cartesian",
+        "Variable names": "x, y",
+        "Function constants": "Width=2.75e5, Do=2.890e6, xm=%.4e, DCS=7.500e+03, DHS=3.520e+04" % box_width,
+        "Function expression": "((y > Do - DCS) && (x < Width)) ? 0:\\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (x < Width)) ? 1:\\\n                                        ((y > Do - DCS) && (xm - x < Width)) ? 2:\\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (xm - x < Width)) ? 3: -1"
+    }
+    return odict
+
+
 def prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age):
     '''
-    Default setting for Prescribed temperatures
+    Default setting for Prescribed temperatures in spherical geometry
     '''
     max_phi_in_rad = max_phi * np.pi / 180.0
     odict = {
@@ -360,6 +522,28 @@ def prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age):
           "Function constants": "Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=%.4e,\\\n                             AGEOP=%.4e, TS=2.730e+02, TM=%.4e, K=1.000e-06, VSUB=%.4e, PHILIM=1e-6" %\
               (max_phi_in_rad, ov_age * year, potential_T, sp_rate / year),\
           "Function expression": "((r*(PHIM-phi)<Width) ? TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt(K*AGEOP)))):\\\n\t(phi > PHILIM)? (TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt((K*Ro*phi)/VSUB))))): TM)"
+        }
+    }
+    return odict
+
+
+def prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age):
+    '''
+    Default setting for Prescribed temperatures in cartesian geometry
+    '''
+    odict = {
+        "Indicator function": {
+          "Coordinate system": "cartesian",
+          "Variable names": "x, y",
+          "Function constants": "Depth=1.45e5, Width=2.75e5, Do=2.890e6, xm=%.4e" % box_width,
+          "Function expression": "(((y>Do-Depth)&&((x<Width)||(xm-x<Width))) ? 1:0)"
+        },
+        "Temperature function": {
+          "Coordinate system": "cartesian",
+          "Variable names": "x, y",
+          "Function constants": "Depth=1.45e5, Width=2.75e5, Do=2.890e6, xm=%.4e,\\\n                             AGEOP=%.4e, TS=2.730e+02, TM=%.4e, K=1.000e-06, VSUB=%.4e, XLIM=6" %\
+                (box_width, ov_age * year, potential_T, sp_rate / year),\
+          "Function expression": "(xm-x<Width) ? TS+(TM-TS)*(1-erfc(abs(Do-y)/(2*sqrt(K*AGEOP)))):\\\n\t((x > XLIM)? (TS+(TM-TS)*(1-erfc(abs(Do-y)/(2*sqrt((K*x)/VSUB))))): TM)"
         }
     }
     return odict
