@@ -66,6 +66,9 @@ class CASE_OPT(CasesP.CASE_OPT):
             7: potential_T (float) - Potential temperature of the mantle
             8: box_width (float) - "Width of the Box"
             9: geometry (str) - "Geometry"
+            10: base_dir - Base directory (inputs)
+            11: o_dir - Output directory
+            12 name - Name of the case
         '''
         CasesP.CASE_OPT.__init__(self)
         self.add_key("If use world builder", int, ['use world builder'], 0)
@@ -87,6 +90,9 @@ class CASE_OPT(CasesP.CASE_OPT):
         self.add_key("Width of the Box", float,\
             ["Box Width"], 6.783e6)
         self.add_key("Geometry, \"chunk\" or \"box\"", str, ["geometry"], "chunk")
+        self.add_key("Base directory (inputs)", str, ["base directory"], ".")
+        self.add_key("Output directory", str, ["output directory"], ".")
+        self.add_key("Name of the case", str, ["name"], ".")
         pass
     
     def check(self):
@@ -99,6 +105,9 @@ class CASE_OPT(CasesP.CASE_OPT):
         if self.values[9] == 'box':
             assert(self.values[0] == 1)  # use box geometry, wb is mandatory
         pass
+        # output and input dirs
+        os.path.isdir(self.values[10])
+        os.path.isdir(self.values[11])
 
     def to_configure_prm(self):
         if_wb = self.values[0]
@@ -128,6 +137,23 @@ class CASE_OPT(CasesP.CASE_OPT):
             if_ov_trans = True
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
             if_ov_trans, ov_trans_age, ov_trans_length
+    
+    # todo
+    def to_init():
+        pass
+
+    def wb_inputs_path():
+        pass
+
+    def prm_file_path():
+        pass
+
+    def wb_file_path():
+        pass
+
+
+
+
 
 
 class CASE(CasesP.CASE):
@@ -547,6 +573,28 @@ def prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age):
         }
     }
     return odict
+
+
+def create_case(json_file):
+    '''
+    A wrapper for the CASES class
+    Inputs:
+        json_file(str): path of a json file
+        todo
+    '''
+    assert(os.access(json_file, os.R_OK))
+    Case_Opt = CASE_OPT()
+    Case_Opt.read_json(json_file)
+    Case_Opt.check()
+    # Case = CASE('wb_setup', prm_file, wb_inputs=wb_file)
+    Case = CASE(Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())
+    Case.configure_prm(*Case_Opt.to_configure_prm())
+    Case.configure_wb(*Case_Opt.to_configure_wb())
+    # create new case
+    Case.create(Case_Opt.o_dir())
+    assert(os.path.isfile(Case_Opt.prm_file_path())) # assert files generated
+    assert(os.path.isfile(Case_Opt.wb_file_path()))
+
 
 
 
