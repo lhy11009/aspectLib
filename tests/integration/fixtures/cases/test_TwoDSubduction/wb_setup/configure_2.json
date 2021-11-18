@@ -10,7 +10,11 @@
             "sp rate": 0.05
         },
         "overiding plate":{
-            "age": 40e6
+            "age": 40e6,
+            "transit":{
+                "age": 20e6,
+                "length": 600e3
+            }
         }
     }
 }

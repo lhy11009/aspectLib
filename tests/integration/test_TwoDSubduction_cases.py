@@ -103,7 +103,7 @@ def test_wb_setup():
     Case.configure_wb(*Case_Opt.to_configure_wb())
     # check the parameters
     wb_dict = Case.wb_dict
-    assert(len(wb_dict['features']) == 4)  # this has 4 features
+    assert(len(wb_dict['features']) == 5)  # this has 5 features
     prm_dict = Case.idict
     # create new case
     Case.create(test_dir)
