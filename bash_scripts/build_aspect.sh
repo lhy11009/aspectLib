@@ -231,7 +231,9 @@ main(){
     # main function
     ###
     [[ -n "$1" ]] && command="$1" || cecho $BAD "\$1 must be given for options"
-    if [[ "${command}" = "all" ]]; then
+    if [[ "${command}" = "-h" ]]; then
+        usage
+    elif [[ "${command}" = "all" ]]; then
         ##
         # Build the main program with all the plugins
         # Inputs:
