@@ -279,7 +279,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     o_dict['features'][i0] = m_dict
     return o_dict
 
-def wb_configure_transit_ov_plates(i_feature, trench_sph, ov_age,\
+def wb_configure_transit_ov_plates(i_feature, trench, ov_age,\
     ov_trans_age, ov_trans_length, **kwargs):
     '''
     Transit overiding plate to a younger age at the trench
@@ -287,19 +287,27 @@ def wb_configure_transit_ov_plates(i_feature, trench_sph, ov_age,\
     '''
     geometry = kwargs.get('geometry', 'chunk')
     side_angle = 5.0  # side angle to creat features in the 3rd dimension
+    side_dist = 1e3
     Ro = kwargs.get("Ro", 6371e3)
     o_feature = i_feature.copy()
     trans_angle = ov_trans_length / Ro / np.pi * 180.0
-    ov_sph = trench_sph  + trans_angle  # new ending point of the default overiding plage
+    if geometry == 'chunk':
+        ov = trench  + trans_angle  # new ending point of the default overiding plage
+        side = side_angle
+        ridge = trench - trans_angle * ov_trans_age / (ov_age - ov_trans_age)
+    elif geometry == 'box':
+        ov = trench + ov_trans_length
+        side = side_dist
+        ridge = trench - ov_trans_length * ov_trans_age / (ov_age - ov_trans_age)
+    else:
+        pass
     v = ov_trans_length / (ov_age - ov_trans_age)
-    ridge_sph = trench_sph -\
-        ov_trans_length * ov_trans_age / (ov_age - ov_trans_age) / Ro * 180.0 / np.pi
-    o_feature["coordinates"] = [[trench_sph, side_angle], [trench_sph, -side_angle],\
-        [ov_sph, side_angle], [ov_sph, -side_angle]]
     o_feature["temperature models"][0]["spreading velocity"] = v
+    o_feature["coordinates"] = [[trench, side], [trench, -side],\
+        [ov, side], [ov, -side]]
     o_feature["temperature models"][0]["ridge coordinates"] =\
-        [[ridge_sph, -side_angle], [ridge_sph, side_angle]]
-    return o_feature, ov_sph
+        [[ridge, -side], [ridge, side]]
+    return o_feature, ov
 
 
 def prm_geometry_sph(max_phi):
