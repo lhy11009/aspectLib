@@ -25,6 +25,48 @@
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
 source "${ASPECT_LAB_DIR}/bash_scripts/utilities.sh"
 
+
+usage(){
+  # usage of this script
+    _text="
+${BASH_SOURCE[0]}
+
+(Descriptions)
+
+Dependencies:
+   env:
+       ASPECT_LAB_DIR
+       ASPECT_SOURCE_DIR
+
+Example Usage:
+
+    build all (all plugins, release and debug mode):
+
+        Lib_build_aspect all master_TwoD
+
+        the last one is the branch to build
+
+     build a plugin:
+        (build it in a build directory of aspect)
+        Lib_build_aspect.sh subduction_temperature2d TwoDSubduction
+    
+        (build it in a seperate folder)
+        Lib_build_aspect.sh visco_plastic_TwoD master_TwoD ${ASPECT_SOURCE_DIR}/build_plugins
+
+    build all plugins separately
+        Lib_build_aspect.sh all_plugins master_TwoD_hefesto
+
+    fix test
+        Lib_build_aspect.sh fix_test "${ASPECT_SOURCE_DIR}" "build_master_TwoD" TwoDSubduction_HeFESTo_steinberg
+    
+
+
+"
+    printf "${_text}"
+
+}
+
+
 build_aspect_project(){
     ###
     # build a project in aspect
@@ -34,14 +76,22 @@ build_aspect_project(){
     ###
     local build_dir
     [[ $1 == "main" ]] && build_dir="${ASPECT_SOURCE_DIR}/build" || build_dir="${ASPECT_SOURCE_DIR}/build_$1"
-    [[ -d ${build_dir} ]] || mkdir ${build_dir}
     local mode
     if [[ -n $2 ]]; then
-        [[ mode="debug" || mode="release" ]] || { cecho ${BAD} "${FUNCNAME[0]}: mode is either \'debug\' or \'release\'"; exit 1; }
+        [[ $2 == "debug" || $2 == "release" ]] || { cecho ${BAD} "${FUNCNAME[0]}: mode is either \'debug\' or \'release\'"; exit 1; }
         mode="$2"
     else
         mode="debug"
     fi
+    [[ ${mode} == "debug" ]] && build_dir="${build_dir}_debug"
+    [[ -d ${build_dir} ]] || mkdir ${build_dir}
+
+    # shift the git dir
+    cd "${ASPECT_SOURCE_DIR}"
+    echo "checkout $1 branch"
+    eval "git checkout $1"
+    quit_if_fail "${FUNCNAME[0]}: git checkout doesn't work"
+    cd "${ASPECT_LAB_DIR}"
 
     # get the list of plugins
     local plugins_dir="${ASPECT_SOURCE_DIR}/plugins"
@@ -188,7 +238,8 @@ main(){
         # Terninal Outputs
         ##
     	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
-        build_aspect_project "$2" "$3"
+        build_aspect_project "$2" "release"
+        build_aspect_project "$2" "debug"
     elif [[ "${command}" = "all_plugins" ]]; then
         ##
         # Build all the plugins separately
