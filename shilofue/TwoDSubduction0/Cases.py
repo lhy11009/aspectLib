@@ -53,46 +53,26 @@ class CASE_OPT(CasesP.CASE_OPT):
         '''
         Initiation, first perform parental class's initiation,
         then perform daughter class's initiation.
-        List of keys:
-            0: if_wb (int) - If use world builder
-            1: sp_age_trench (float) - Age of the subducting plate at trench (yr)
-            2: sp_rate - Spreading rate of the subducting plate (m/ yr)
-            3: ov_age (float) - Age of the overiding plate (yr)
-            4: ov_trans_age (float) - Age of the transit overiding plate (yr)
-                this is assigned to -1.0 by default, which means we don't use
-                transit plate
-            5: ov_trans_length (float) - Length of the transit overiding plate (m)
-            6: type_of_bd (str) - "Type of boundary condition"
-            7: potential_T (float) - Potential temperature of the mantle
-            8: box_width (float) - "Width of the Box"
-            9: geometry (str) - "Geometry"
-            10: base_dir - Base directory (inputs)
-            11: o_dir - Output directory
-            12 name - Name of the case
+        see document (run with -h option) for detail
         '''
         CasesP.CASE_OPT.__init__(self)
-        self.add_key("If use world builder", int, ['use world builder'], 0)
+        self.start = self.number_of_keys()
+        self.add_key("If use world builder", int, ['use world builder'], 0, nick='if_wb')
         self.add_key("Age of the subducting plate at trench", float,\
-            ['world builder', 'subducting plate','age trench'], 80e6)
+            ['world builder', 'subducting plate','age trench'], 80e6, nick='sp_age_trench')
         self.add_key("Spreading rate of the subducting plate", float,\
-            ['world builder', 'subducting plate', 'sp rate'], 0.05)
+            ['world builder', 'subducting plate', 'sp rate'], 0.05, nick='sp_rate')
         self.add_key("Age of the overiding plate", float,\
-            ['world builder', "overiding plate", 'age'], 40e6)
+            ['world builder', "overiding plate", 'age'], 40e6, nick='ov_age')
         self.add_key("Age of the transit overiding plate", float,\
-            ['world builder', "overiding plate", "transit", 'age'], -1.0)
+            ['world builder', "overiding plate", "transit", 'age'], -1.0, nick='ov_trans_age')
         self.add_key("Length of the transit overiding plate", float,\
-            ['world builder', "overiding plate", "transit", 'length'], 300e3)
+            ['world builder', "overiding plate", "transit", 'length'], 300e3, nick='ov_trans_length')
         self.add_key("Type of boundary condition\n\
             available options in [all free slip, ]", str,\
-            ["boundary condition", "model"], "all free slip")
-        self.add_key("Potential temperature of the mantle", float,\
-            ["Potential temperature"], 1673.0)
+            ["boundary condition", "model"], "all free slip", nick='type_of_bd')
         self.add_key("Width of the Box", float,\
-            ["Box Width"], 6.783e6)
-        self.add_key("Geometry, \"chunk\" or \"box\"", str, ["geometry"], "chunk")
-        self.add_key("Base directory (inputs)", str, ["base directory"], ".")
-        self.add_key("Output directory", str, ["output directory"], ".")
-        self.add_key("Name of the case", str, ["name"], ".")
+            ["Box Width"], 6.783e6, nick='box_width')
         pass
     
     def check(self):
@@ -101,59 +81,43 @@ class CASE_OPT(CasesP.CASE_OPT):
         '''
         CasesP.CASE_OPT.check(self)
         # geometry options
-        assert(self.values[9] in ['chunk', 'box'])
-        if self.values[9] == 'box':
-            assert(self.values[0] == 1)  # use box geometry, wb is mandatory
+        Utilities.my_assert(self.values[3] in ['chunk', 'box'], ValueError,\
+        "%s: The geometry for TwoDSubduction cases must be \"chunk\" or \"box\"" \
+        % Utilities.func_name())
+        if self.values[3] == 'box':
+            Utilities.my_assert(self.values[self.start + 0] == 1, ValueError,\
+            "%s: When using the box geometry, world builder must be used for initial conditions" \
+            % Utilities.func_name())  # use box geometry, wb is mandatory
         pass
-        # output and input dirs
-        os.path.isdir(self.values[10])
-        os.path.isdir(self.values[11])
 
     def to_configure_prm(self):
-        if_wb = self.values[0]
-        type_of_bd = self.values[6]
-        sp_rate = self.values[2]
-        ov_age = self.values[3]
-        potential_T = self.values[7]
-        box_width = self.values[8]
-        geometry = self.values[9]
+        if_wb = self.values[self.start + 0]
+        type_of_bd = self.values[self.start + 6]
+        sp_rate = self.values[self.start + 2]
+        ov_age = self.values[self.start + 3]
+        potential_T = self.values[4]
+        box_width = self.values[self.start + 7]
+        geometry = self.values[3]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age
 
     def to_configure_wb(self):
         '''
         Interface to configure_wb
         '''
-        if_wb = self.values[0]
-        geometry = self.values[9]
-        potential_T = self.values[7]
-        sp_age_trench = self.values[1]
-        sp_rate = self.values[2]
-        ov_age = self.values[3]
-        ov_trans_age = self.values[4]
-        ov_trans_length = self.values[5]
-        if self.values[4] < 0.0:
+        if_wb = self.values[self.start + 0]
+        geometry = self.values[3]
+        potential_T = self.values[4]
+        sp_age_trench = self.values[self.start + 1]
+        sp_rate = self.values[self.start + 2]
+        ov_age = self.values[self.start + 3]
+        ov_trans_age = self.values[self.start + 4]
+        ov_trans_length = self.values[self.start + 5]
+        if self.values[self.start + 4] < 0.0:
             if_ov_trans = False
         else:
             if_ov_trans = True
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
             if_ov_trans, ov_trans_age, ov_trans_length
-    
-    # todo
-    def to_init():
-        pass
-
-    def wb_inputs_path():
-        pass
-
-    def prm_file_path():
-        pass
-
-    def wb_file_path():
-        pass
-
-
-
-
 
 
 class CASE(CasesP.CASE):
@@ -575,39 +539,43 @@ def prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age):
     return odict
 
 
-def create_case(json_file):
+def create_case_with_json(json_file):
     '''
     A wrapper for the CASES class
     Inputs:
         json_file(str): path of a json file
         todo
     '''
+    print("%s: Creating case" % Utilities.func_name())
     assert(os.access(json_file, os.R_OK))
     Case_Opt = CASE_OPT()
     Case_Opt.read_json(json_file)
     Case_Opt.check()
     # Case = CASE('wb_setup', prm_file, wb_inputs=wb_file)
-    Case = CASE(Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())
+    Case = CASE(*Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())
     Case.configure_prm(*Case_Opt.to_configure_prm())
     Case.configure_wb(*Case_Opt.to_configure_wb())
     # create new case
     Case.create(Case_Opt.o_dir())
-    assert(os.path.isfile(Case_Opt.prm_file_path())) # assert files generated
-    assert(os.path.isfile(Case_Opt.wb_file_path()))
-
-
+#    assert(os.path.isfile(Case_Opt.prm_file_path())) # assert files generated
+#    assert(os.path.isfile(Case_Opt.wb_file_path()))
 
 
 def Usage():
+    Case_Opt = CASE_OPT()
     print("\
 (One liner description\n\
 \n\
 Examples of usage: \n\
 \n\
-  - default usage: \n\
+  - create case with json file: \n\
 \n\
-        python -m \
-        ")
+        python -m shilofue.TwoDSubduction0.Cases create_with_json -j \
+        /home/lochy/ASPECT_PROJECT/TwoDSubduction/wb_create_test/configure_1.json \n\
+\n\
+  - options defined in the json file:\n\
+        %s\n\
+        " % Case_Opt.document_str())
 
 def SomeFunction(foo):
     '''
@@ -635,6 +603,9 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='Some inputs')
+    parser.add_argument('-j', '--json', type=str,
+                        default='',
+                        help='path to a json file')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -646,9 +617,9 @@ def main():
     if (_commend in ['-h', '--help']):
         # example:
         Usage()
-    elif _commend == 'foo':
+    elif _commend == 'create_with_json':
         # example:
-        SomeFunction('foo')
+        create_case_with_json(arg.json)
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)

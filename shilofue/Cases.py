@@ -55,13 +55,44 @@ class CASE_OPT(Utilities.JSON_OPT):
         then perform daughter class's initiation.
         '''
         Utilities.JSON_OPT.__init__(self)
+        # todo
+        self.add_key("Name of the case", str, ["name"], "foo", nick='name')
+        self.add_key("Base directory (inputs)", str, ["base directory"], ".", nick='base_dir')
+        self.add_key("Output directory", str, ["output directory"], ".", nick='o_dir')
+        self.add_key("Geometry", str, ["geometry"], "chunk", nick='geometry')
+        self.add_key("Potential temperature of the mantle", float,\
+            ["Potential temperature"], 1673.0, nick='potential_T')
         pass
     
     def check(self):
         '''
         check to see if these values make sense
         '''
+        # output and input dirs
+        os.path.isdir(self.values[1])
+        os.path.isdir(self.values[2])
         pass
+
+    # todo 
+    def to_init(self):
+        '''
+        Interface to init
+        '''
+        inputs = os.path.join(self.values[1], 'case.prm')
+        return self.values[0], inputs
+
+    def wb_inputs_path(self):
+        '''
+        Interface to wb_inputs
+        '''
+        wb_inputs = os.path.join(self.values[1], 'case.wb')
+        return wb_inputs
+    
+    def o_dir(self):
+        '''
+        Interface to output dir
+        '''
+        return self.values[2]
 
 
 class CASE():
@@ -92,9 +123,11 @@ class CASE():
         self.extra_files = []
         if type(inputs)==dict:
             # direct read if dict is given
+            print("    Read inputs from a dictionary")
             self.idict = deepcopy(inputs)
         elif type(inputs)==str:
             # read from file if file path is given. This has the virtual that the new dict is indepent of the previous one.
+            print("    Read inputs from %s" % inputs) 
             with open(inputs, 'r') as fin:
                 self.idict = ParsePrm.ParseFromDealiiInput(fin)
             pass
@@ -104,9 +137,11 @@ class CASE():
         wb_inputs = kwargs.get('wb_inputs', {})
         if type(wb_inputs) == dict:
             # direct read if dict is given
+            print("    Read world builder options from a dictionary")
             self.wb_dict = deepcopy(wb_inputs)
         elif type(wb_inputs)==str:
             # read from file if file path is given. This has the virtual that the new dict is indepent of the previous one.
+            print("    Read world builder options from %s" % wb_inputs)
             with open(wb_inputs, 'r') as fin:
                 self.wb_dict = json.load(fin)
             pass
