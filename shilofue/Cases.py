@@ -214,15 +214,18 @@ class CASE():
         self.extra_files.append(path)
 
 
-def SomeFunction(foo):
+def GROUP():
     '''
-    descriptions
-    Inputs:
-        -
-    Returns:
-        -
+    A group of cases
+    Attributes
+        iCASE (class) - class of the case to use
     '''
-    pass
+    def __init__(self, iCASE):
+        '''
+        Input:
+            iCASE(class of case)
+        '''
+        self.iCASE = iCASE
 
 
 def main():
