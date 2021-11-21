@@ -8,18 +8,6 @@
 #    utilities.sh
 #    env:
 #        ASPECT_SOURCE_DIR
-# Example Usage:
-#   build main program and plugins:
-#    ./bash_scripts/build_aspect.sh all TwoDSubduction release
-#   build a plugin:
-#    (build it in a build directory of aspect)
-#    ./bash_scripts/build_aspect.sh subduction_temperature2d TwoDSubduction
-#    (build it in a seperate folder)
-#    ./bash_scripts/build_aspect.sh visco_plastic_TwoD master_TwoD ${ASPECT_SOURCE_DIR}/build_plugins
-#   build all plugins separately
-#    ./bash_scripts/build_aspect.sh all_plugins master_TwoD_hefesto
-#   fix test
-#    ./bash_scripts/build_aspect.sh fix_test "${ASPECT_SOURCE_DIR}" "build_master_TwoD" TwoDSubduction_HeFESTo_steinberg
 ################################################################################
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
@@ -48,16 +36,16 @@ Example Usage:
 
      build a plugin:
         (build it in a build directory of aspect)
-        Lib_build_aspect.sh subduction_temperature2d TwoDSubduction
+        Lib_build_aspect subduction_temperature2d TwoDSubduction
     
         (build it in a seperate folder)
-        Lib_build_aspect.sh visco_plastic_TwoD master_TwoD ${ASPECT_SOURCE_DIR}/build_plugins
+        Lib_build_aspect visco_plastic_TwoD master_TwoD ${ASPECT_SOURCE_DIR}/build_plugins
 
     build all plugins separately
-        Lib_build_aspect.sh all_plugins master_TwoD_hefesto
+        Lib_build_aspect all_plugins master_TwoD_hefesto
 
     fix test
-        Lib_build_aspect.sh fix_test "${ASPECT_SOURCE_DIR}" "build_master_TwoD" TwoDSubduction_HeFESTo_steinberg
+        Lib_build_aspect fix_test "${ASPECT_SOURCE_DIR}" "build_master_TwoD" TwoDSubduction_HeFESTo_steinberg
     
 
 
