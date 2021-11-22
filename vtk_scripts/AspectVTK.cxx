@@ -33,6 +33,46 @@
 #include <vtkCellData.h>
 #include "AspectVTK.h"
 
+void WordTransform(ifstream &map_file, ifstrean &input)
+{
+    // build map
+    auto trans_map = BuildMap(map_file);
+    std::string text;
+    while (getline(input, text)){
+        std::istringstream stream(text);
+        std::string word;
+        bool first_word = true;
+        while (stream >> word)
+        {
+            if (first_word)
+                first_word = false;
+            else
+                std::cout << ' ';
+            std::cout << transform(word, trans_map);
+        }
+        std::cout << std::endl;
+    }
+}
+
+std::map<std::string, std::string> BuildMap(ifstream &map_file){
+    std::map<std::string, std::string> trans_map;
+    std::string key, value;
+    while (map_file>>key && getline(map_file, value)){
+        if (value.size() > 1)
+            trans_map[key] = value[1];  // remove the leading blank
+        else 
+            throw runtime_error("no rule defined for " + key)
+    }
+    return trans_map;
+}
+
+const std::string transform(std::string &s, std::map<std::string, std::string> &m){
+    auto map_it = m.find(s);
+    if (map_it != m.cend())
+        return map_it->second;  // return the substitution.
+    else
+        return s;  // return the original string if not found
+}
 
 void AspectVtk::readfile(std::string filename)
 {

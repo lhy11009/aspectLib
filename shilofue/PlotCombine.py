@@ -88,6 +88,7 @@ class PC_OPT(Utilities.JSON_OPT):
              int, ["Include title"], 0)
         self.add_key("The plot to anchor upon. This only takes effect when \"size\" is not given. Default is to anchor on the 0th plot in a series",\
              int, ["anchor"], 0)
+        self.add_key("Name of the plot", str, ["Name"], "foo", nick="_name")
     
     def check(self):
         '''
@@ -156,7 +157,9 @@ class PC_OPT(Utilities.JSON_OPT):
             _title = None
         # if we include a case name
         if_include_case_names = self.values[6]
-        return width, anchor, output_dir, _title, if_include_case_names
+        # name of the plot
+        _name = self.values[10]
+        return width, anchor, output_dir, _title, if_include_case_names, _name
 
 
 class PLOT_COMBINE():
@@ -272,7 +275,7 @@ class PLOT_COMBINE():
                 h_location = self.title_height / 2 + 10
                 d.text((w_location,h_location), case_name, font=fnt, fill=(0, 0, 0))  # anchor option doesn't work
     
-    def __call__(self, width, anchor, output_dir, _title, if_include_case_names):
+    def __call__(self, width, anchor, output_dir, _title, if_include_case_names, _name):
         '''
         perform combination
         Inputs:
@@ -280,6 +283,7 @@ class PLOT_COMBINE():
             output_dir: directory to output to
             _title (str or None) - title
             if_include_case_names (0 or 1) - If we include case names
+            _name (str) - name of the plot
         '''
         assert(os.path.isdir(output_dir))
         locations, width = self.get_total_size(width, _title, anchor=anchor)  # width is the width of a subplot
@@ -297,7 +301,7 @@ class PLOT_COMBINE():
                 else:
                     image = Image.new('RGB', (width, 500), (250,250,250)) # append a blank one
                 new_image.paste(image, (locations[0][i], locations[1][j])) # paste image in place
-        new_image_path = os.path.join(output_dir, 'combined_figure.png')
+        new_image_path = os.path.join(output_dir, '%s.png' % _name)
         print("%s: save figure: %s" % (Utilities.func_name(), new_image_path))
         new_image.save(new_image_path)
         return new_image_path

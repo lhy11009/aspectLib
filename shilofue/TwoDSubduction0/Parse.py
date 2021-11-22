@@ -608,6 +608,11 @@ def CreateNewFromSnapshot(case_dir, output_dir, **kwargs):
         path_in_str = str(path)
         extra_paths.append(path_in_str)
         print('\t%s' % path_in_str)
+    pathlist = Path(case_dir).rglob('*.wb') 
+    for path in pathlist: 
+        path_in_str = str(path)
+        extra_paths.append(path_in_str)
+        print('\t%s' % path_in_str)
    
     # create case, using the interface defined in Cases.py.
     case_name = os.path.basename(case_dir) + '_' + snapshot_selected
