@@ -284,8 +284,8 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
         for core_count in all_available_core_counts:
             if core_count < max_core_count:
                 core_counts.append(core_count)
-    # refinement_levels = [2,3,4,5]#,6]
-    refinement_levels = [2]
+    refinement_levels = [2,3,4,5]#,6]
+    # refinement_levels = [2]
     #                                          0   1   2   3       4     5    6
     minimum_core_count_for_refinement_level = [0,  0,   1,   1,   10, 100, 500]# for refinement levels 0-6
     maximum_core_count_for_refinement_level = [0,  0,1000,1000, 1000,2000,2000] 
