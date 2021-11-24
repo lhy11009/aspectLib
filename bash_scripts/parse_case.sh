@@ -127,6 +127,10 @@ parse_block_output_to_file(){
     printf "${contents}" >> "${ofile}"
 }
 
+################################################################################
+# functions to parse run time info
+################################################################################
+
 parse_run_time_info_last_step(){
     # parse run time output
     # $1(str): log file
@@ -164,7 +168,6 @@ parse_all_time_info(){
     done
 }
  
-
 locate_workdir_with_id(){
     # todo
     # locate work directory of a job with job id
@@ -178,6 +181,40 @@ locate_workdir_with_id(){
     else
         cecho "${BAD}" "no job (id: $1) found"; return 1
     fi
+}
+
+################################################################################
+# functions to submit cases
+################################################################################
+
+submit_case(){
+    ####
+    # todo
+    # submit case to slurm
+    # Inputs:
+    #   $1: case directory
+    return 0
+}
+
+restart_case(){
+    ####
+    # todo
+    # restart a case
+    # Inputs:
+    #   $1: case directory
+    ####
+    return 0
+}
+
+check_time_restart_case(){
+    ####
+    # todo
+    # restart a case if the run time of that case is not reached
+    # Inputs:
+    #   $1: case directory
+    #   $2: run time
+    ####
+    return 0
 }
 
 # future remove unneeded functions and add one to parse case info(i.e. id job given, case name, wall clock, core*hrs, step

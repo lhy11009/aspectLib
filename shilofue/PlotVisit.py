@@ -113,8 +113,13 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         self.options['IF_PLOT_SLAB'] = 'True'
         self.options['ETA_MIN'] = self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']
         # try using the value for the background
-        self.options['ETA_MAX'] =\
-            Utilities.string2list(self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity'], float)[0]
+        try:
+            self.options['ETA_MAX'] =\
+                Utilities.string2list(self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity'], float)[0]
+        except ValueError:
+            eta_max_inputs =\
+                ParsePrm.COMPOSITION(self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity']) 
+            self.options['ETA_MAX'] = eta_max_inputs.data['background'][0] # use phases
         try:
             self.last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])  # it is the last step we have outputs
         except IndexError:
