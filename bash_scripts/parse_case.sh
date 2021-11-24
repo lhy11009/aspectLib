@@ -134,7 +134,6 @@ parse_block_output_to_file(){
 parse_run_time_info_last_step(){
     # parse run time output
     # $1(str): log file
-    # todo
     [[ -e ${1} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile(${1}) doesn't exist"
     local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output" "$1")
     IFS=$'\n'; local entries=(${outputs})
@@ -146,7 +145,6 @@ parse_run_time_info_last_step(){
 parse_run_time_info_last_step_with_id(){
     # parse run time output with job id
     # $1(str): job id
-    # todo
     printf "job_id: $1\n"
     locate_workdir_with_id "$1"
     [[ $? == 1 ]] && return 1
@@ -160,7 +158,6 @@ parse_run_time_info_last_step_with_id(){
 
 parse_all_time_info(){
     # show all jobs info
-    # todo
     local outputs=$(squeue -u "${USER}" -o %A)
     IFS=$'\n'; local job_ids=(${outputs})
     for job_id in ${job_ids[@]}; do
@@ -169,7 +166,6 @@ parse_all_time_info(){
 }
  
 locate_workdir_with_id(){
-    # todo
     # locate work directory of a job with job id
     # $1 (str): job
     local outputs=$(scontrol show job "$1" | grep WorkDir)
@@ -187,12 +183,16 @@ locate_workdir_with_id(){
 # functions to submit cases
 ################################################################################
 
-submit_case(){
+submit_case_peloton_rome(){
     ####
     # todo
     # submit case to slurm
     # Inputs:
     #   $1: case directory
+    now="${pwd}"
+    cd "$1"
+    eval "sbatch -A biilen job_rome.sh"
+    cd "${now}"
     return 0
 }
 
@@ -203,6 +203,13 @@ restart_case(){
     # Inputs:
     #   $1: case directory
     ####
+    # change options in the case.prm file
+    local case_dir="$1"
+    local prm_file="${case_dir}/case.prm"
+    [[ -e ${prm_file} ]] || { cecho "${BAD}" "No such file ${prm_file}"; exit 1; } 
+    util_rewrite_prm "${prm_file}" "Resume Computation" "true"
+    submit_case_peloton_rome "${case_dir}"
+    # todo
     return 0
 }
 
@@ -214,6 +221,16 @@ check_time_restart_case(){
     #   $1: case directory
     #   $2: run time
     ####
+    local case_dir="$1"
+    local run_time_std="$2"
+    # read run_time
+    local log_file="$1/output/log.txt"
+    [[ -e ${log_fiel} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile(${log_file}) doesn't exist"
+    local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output" "${log_file}")
+    IFS=$'\n'; local entries=(${outputs})
+    IFS=' '; return_value=(${entries[*]: -1})
+    # run_time = 
+    # [[ ]] && restart_case "$1"
     return 0
 }
 
