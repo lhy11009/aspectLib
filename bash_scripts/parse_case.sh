@@ -138,6 +138,7 @@ parse_run_time_info_last_step(){
     local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output" "$1")
     IFS=$'\n'; local entries=(${outputs})
     IFS=' '; return_value=(${entries[*]: -1})
+    [[ ${return_value} =~ "#" ]] && return_value=""  # if only header is retured, reset
     printf "Step\t Time(unit defined in prm)\t Wall_clock(s)\n"
     printf "${return_value[*]}\n"
 }
@@ -207,9 +208,8 @@ restart_case(){
     local case_dir="$1"
     local prm_file="${case_dir}/case.prm"
     [[ -e ${prm_file} ]] || { cecho "${BAD}" "No such file ${prm_file}"; exit 1; } 
-    util_rewrite_prm "${prm_file}" "Resume Computation" "true"
+    util_substitute_prm_file_contents "${prm_file}" "Resume computation" "true"
     submit_case_peloton_rome "${case_dir}"
-    # todo
     return 0
 }
 
@@ -263,6 +263,8 @@ main(){
 	parse_run_time_info_last_step_with_id "$2"
     elif [[ "$1" = "all_case_info" ]]; then
 	parse_all_time_info
+    elif [[ "$1" == "restart" ]]; then
+        restart_case "$2"
     else
     	cecho "${BAD}" "option ${1} is not valid\n"
     fi
