@@ -157,6 +157,25 @@ parse_run_time_info_last_step_with_id(){
     return 0
 }
 
+check_case_running(){
+    # todo
+    # check if a case is running on slurm
+    # Inputs:
+    #   $1: path to the case
+    local outputs=$(squeue -u "${USER}" -o %A)
+    IFS=$'\n'; local job_ids=(${outputs})
+    for job_id in ${job_ids[@]}; do
+        if [[ ${job_id} =~ ^[0-9]+$ ]]; then 
+            locate_workdir_with_id "$1"  # first locate where this is
+            [[ $? == 1 ]] && return 1
+            [[ -d "${return_value}" ]] ||  { cecho ${BAD} "${FUNCNAME[0]}: work directory(${return_value}) doesn't exist"; exit 1; }
+            local path=$(fix_route "${return_value}")
+            local case_path=$(fix_route "$1")
+            printf "${path}\n${case_path}\n\n"
+        fi
+    done
+}
+
 parse_all_time_info(){
     # show all jobs info
     local outputs=$(squeue -u "${USER}" -o %A)
@@ -210,6 +229,7 @@ restart_case(){
     [[ -e ${prm_file} ]] || { cecho "${BAD}" "No such file ${prm_file}"; exit 1; } 
     util_substitute_prm_file_contents "${prm_file}" "Resume computation" "true"
     submit_case_peloton_rome "${case_dir}"
+    # check for the restarted case
     return 0
 }
 
@@ -222,15 +242,17 @@ check_time_restart_case(){
     #   $2: run time
     ####
     local case_dir="$1"
-    local run_time_std="$2"
+    local time_plan="$2"
     # read run_time
     local log_file="$1/output/log.txt"
-    [[ -e ${log_fiel} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile(${log_file}) doesn't exist"
-    local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output" "${log_file}")
+    [[ -e ${log_file} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile(${log_file}) doesn't exist"
+    local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_log_last_step" "${log_file}")
     IFS=$'\n'; local entries=(${outputs})
-    IFS=' '; return_value=(${entries[*]: -1})
-    # run_time = 
-    # [[ ]] && restart_case "$1"
+    local time=$(sed -E "s/^[^ ]*(\t|\ )*//g" <<< "${outputs}")
+    if (( $(eval "awk 'BEGIN{print ("${time}"<"${time_plan}")?1:0}'") )); then
+        printf "Going to restart $1"
+        restart_case "$1"
+    fi
     return 0
 }
 
@@ -258,6 +280,9 @@ main(){
 	log_file="$2/output/log.txt"
 	[[ -e "${log_file}" ]] || { cecho "${BAD}" "log file (${log_file}) doesn't exist"; exit 1; }
 	parse_run_time_info_last_step "${log_file}"
+    elif [[ "$1" = "check_case_running" ]]; then 
+        [[ -n "$2" ]] || { cecho "$BAD" "path of case (\$2) must be given"; exit 1; }
+        check_case_running "$2"
     elif [[ "$1" = "case_info_with_id" ]]; then
 	[[ -n "$2" ]] || { cecho "${BAD}" "no id number given (\$2)"; exit 1; }
 	parse_run_time_info_last_step_with_id "$2"
@@ -265,6 +290,10 @@ main(){
 	parse_all_time_info
     elif [[ "$1" == "restart" ]]; then
         restart_case "$2"
+    elif [[ "$1" == "check_time_restart" ]]; then
+        [[ -n "$2" && -n "$3" ]] || \
+        { cecho "$BAD" "path of case (\$2) and time (\$3) must be given"; exit 1; }
+        check_time_restart_case "$2" "$3"
     else
     	cecho "${BAD}" "option ${1} is not valid\n"
     fi
