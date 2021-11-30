@@ -33,11 +33,19 @@ Dependencies:
 Example Usage:
    case run time info (last step):
        
-       Lib_parse_case.sh case_info /group/billengrp-mpi-io/lochy/TwoDSubduction/wb/wb_cart_4
+       Lib_parse_case case_info /group/billengrp-mpi-io/lochy/TwoDSubduction/wb/wb_cart_4
    
    case run time info by given an id (must be running):
 
-      Lib_parse_case.sh case_info_with_id 250256 
+      Lib_parse_case case_info_with_id 250256 
+
+   information about all the runnign case:
+      
+      Lib_parse_case all_case_info
+    
+   Restart case by checkng running time:
+      Lib_parse_case check_time_restart /group/billengrp-mpi-io/lochy/TwoDSubduction/wb/wb_cart_4 10e6
+    
 "
     printf "${_text}"
 
