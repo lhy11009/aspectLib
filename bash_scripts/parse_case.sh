@@ -219,7 +219,7 @@ submit_case_peloton_rome(){
     #   $1: case directory
     now="${pwd}"
     cd "$1"
-    eval "sbatch -A biilen job_rome.sh"
+    eval "sbatch -A billen job_rome.sh"
     cd "${now}"
     return 0
 }
@@ -258,7 +258,7 @@ check_time_restart_case(){
     IFS=$'\n'; local entries=(${outputs})
     local time=$(sed -E "s/^[^ ]*(\t|\ )*//g" <<< "${outputs}")
     if (( $(eval "awk 'BEGIN{print ("${time}"<"${time_plan}")?1:0}'") )); then
-        printf "Going to restart $1"
+        printf "Going to restart $1\n"
         restart_case "$1"
     fi
     return 0
