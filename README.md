@@ -14,3 +14,93 @@ On the second order, there are subfolders under the 'python_scripts' folder (e.g
 
 In the scripts, I define "parental" classes and class functions in the first order scripts and make "daughter" classes that inherit there parents in the second order scripts.
 A good example could be seen in the script of (todo).py
+
+
+# Topics
+
+## Run on server
+
+The basic idea is to only use bash to nevigate around the package managing issue of python.
+
+### Case managements
+
+The entire workflow here is:
+* read configuration from a json file
+* periodically check the running case to update the run time file
+* perform operations like restart / terminate/ download a running case when needed.
+* put up a report since last check
+
+#### Reading configuration from a json file
+
+script: 
+	bash_scripts/parse_case.sh
+	utilities/bash_scripts/utilities.sh
+	utilities/bash_scripts/JSON.sh
+
+
+#### Save case running info in a file (todo)
+
+script: 
+	bash_scripts/parse_case.sh
+
+Here, I put case run time info into a separte file "run_time.log", the format of this file is like:
+
+	key = value
+
+The information I want to include:
+* step : step in model
+* last_restart_step : last step it restarted
+* time : time in model
+* last_restart_time : last time in model it restarted
+* wallclock : total wallclock
+* this_wallclock : wallclock after last restart
+
+#### Restart a previous case (to be tested)
+
+script: 
+	bash_scripts/parse_case.sh
+
+Here, I'd like to restart a case if it doesn't reach the end time I set here (e.g. due to a maintainance of the server).
+
+# Projects
+
+## TwoDSubduction
+
+### Cases
+
+Related script:
+
+	TwoDSubduction/Cases.py
+
+An interfaces for creating new cases.
+
+In this script, I inherit from the parental class (Case.py) and create one for operation and one for handling and passing around variables.
+
+	class CASE(CasesP.CASE):
+
+	class CASE_OPT(CasesP.CASE_OPT):
+
+In this first one, I basically coded sections in the prm file to substitute a existing prm file.
+These operations are done in two different ways:
+* Substitute by key word and value.
+* Rewrite a big chunk of settings directly.
+The first one is the standard, while the second one is needed for changing some major setting (sph vs cart).
+
+The idea of working like this are:
+* Be able to reproduce all the major settings
+* Note down all the major steps that I don't rework them (unless some specific tests are needed.).
+
+#### Code logistics
+
+With the "class CASE", there are two major operation, namely:
+
+	configure_prm()
+
+and
+
+	configure_wb()
+
+"configure_prm" contains these few sections:
+* geometry (i.e. chunk or box)
+* material model (e.g. shear zone, yielding, upper to lower mantle)
+(todo, write this cleanly like above, i.e, put everything in a "configure geometry function")
