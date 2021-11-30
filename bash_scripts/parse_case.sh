@@ -144,8 +144,8 @@ parse_run_time_info_last_step(){
     # $1(str): log file
     [[ -e ${1} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile(${1}) doesn't exist"
     local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output" "$1")
-    IFS=$'\n'; local entries=(${outputs})
-    IFS=' '; return_value=(${entries[*]: -1})
+    IFS=$'\n'; local entries=(${outputs})  # each member in entries is a separate line
+    IFS=' '; return_value=(${entries[*]: -1})  # get the last line and split with ' '
     [[ ${return_value} =~ "#" ]] && return_value=""  # if only header is retured, reset
     printf "Step\t Time(unit defined in prm)\t Wall_clock(s)\n"
     printf "${return_value[*]}\n"
@@ -163,6 +163,26 @@ parse_run_time_info_last_step_with_id(){
     parse_run_time_info_last_step "${log_file}"
     printf "\n"
     return 0
+}
+
+parse_export_run_time_info(){
+    # parse run time info and export to a file
+    # $1 (str): case directory
+    # $2 (str): file to export
+    # todo
+    # check
+    local case_dir="$1"
+    local log_file="${case_dir}/output/log.txt"
+    [[ -d "${case_dir}" ]] ||  { cecho ${BAD} "${FUNCNAME[0]}: case directory(${case_dir}) doesn't exist"; exit 1; }
+    # read file contents
+    contents = ""
+    [[ -e "${run_time_log}" ]] && contents = 
+    # parse case info
+    [[ -e ${log_file} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile(${log_file}) doesn't exist"
+    local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output" "${log_file}")
+    IFS=$'\n'; local entries=(${outputs})  # each member in entries is a separate line
+    IFS=' '; return_value=(${entries[*]: -1})  # get the last line and split with ' '
+    # export
 }
 
 check_case_running(){
@@ -292,8 +312,12 @@ main(){
         [[ -n "$2" ]] || { cecho "$BAD" "path of case (\$2) must be given"; exit 1; }
         check_case_running "$2"
     elif [[ "$1" = "case_info_with_id" ]]; then
-	[[ -n "$2" ]] || { cecho "${BAD}" "no id number given (\$2)"; exit 1; }
-	parse_run_time_info_last_step_with_id "$2"
+    	[[ -n "$2" ]] || { cecho "${BAD}" "no id number given (\$2)"; exit 1; }
+	    parse_run_time_info_last_step_with_id "$2"
+    elif [[ "$1" = "export_case_info" ]]; then
+        # todo
+    	[[ -n "$2" ]] || { cecho "${BAD}" "no id number given (\$2)"; exit 1; }
+	    parse_export_run_time_info "$2" "$3"
     elif [[ "$1" = "all_case_info" ]]; then
 	parse_all_time_info
     elif [[ "$1" == "restart" ]]; then

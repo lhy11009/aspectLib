@@ -42,6 +42,7 @@ script:
 
 script: 
 	bash_scripts/parse_case.sh
+	bash_scripts/awk_states/parse_block_output
 
 Here, I put case run time info into a separte file "run_time.log", the format of this file is like:
 
@@ -54,6 +55,8 @@ The information I want to include:
 * last_restart_time : last time in model it restarted
 * wallclock : total wallclock
 * this_wallclock : wallclock after last restart
+
+The second script is used to parse block output with awk. The functions in the first script simply takes care of the output.
 
 #### Restart a previous case (to be tested)
 
