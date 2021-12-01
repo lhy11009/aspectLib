@@ -55,13 +55,14 @@ class CASE_OPT(Utilities.JSON_OPT):
         then perform daughter class's initiation.
         '''
         Utilities.JSON_OPT.__init__(self)
-        # todo
         self.add_key("Name of the case", str, ["name"], "foo", nick='name')
         self.add_key("Base directory (inputs)", str, ["base directory"], ".", nick='base_dir')
         self.add_key("Output directory", str, ["output directory"], ".", nick='o_dir')
         self.add_key("Geometry", str, ["geometry"], "chunk", nick='geometry')
         self.add_key("Potential temperature of the mantle", float,\
             ["Potential temperature"], 1673.0, nick='potential_T')
+        self.add_key("Include fast first step", int,\
+            ["Include fast first step"], 0, nick='if_fast_first_step')
         pass
     
     def check(self):
@@ -73,7 +74,6 @@ class CASE_OPT(Utilities.JSON_OPT):
         os.path.isdir(self.values[2])
         pass
 
-    # todo 
     def to_init(self):
         '''
         Interface to init

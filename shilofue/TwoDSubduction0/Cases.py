@@ -118,6 +118,13 @@ class CASE_OPT(CasesP.CASE_OPT):
             if_ov_trans = True
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
             if_ov_trans, ov_trans_age, ov_trans_length
+    
+    def if_fast_first_step(self):
+        '''
+        If we generate a case with fast-first-step computation
+        '''
+        return self.values[6]
+        pass
 
 
 class CASE(CasesP.CASE):
@@ -552,7 +559,6 @@ def create_case_with_json(json_file):
     A wrapper for the CASES class
     Inputs:
         json_file(str): path of a json file
-        todo
     '''
     print("%s: Creating case" % Utilities.func_name())
     assert(os.access(json_file, os.R_OK))
@@ -564,7 +570,7 @@ def create_case_with_json(json_file):
     Case.configure_prm(*Case_Opt.to_configure_prm())
     Case.configure_wb(*Case_Opt.to_configure_wb())
     # create new case
-    Case.create(Case_Opt.o_dir())
+    Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step())
 #    assert(os.path.isfile(Case_Opt.prm_file_path())) # assert files generated
 #    assert(os.path.isfile(Case_Opt.wb_file_path()))
 
@@ -578,7 +584,7 @@ Examples of usage: \n\
 \n\
   - create case with json file: \n\
 \n\
-        python -m shilofue.TwoDSubduction0.Cases create_with_json -j \
+        Lib_TwoDSubduction0_Cases create_with_json -j \
         /home/lochy/ASPECT_PROJECT/TwoDSubduction/wb_create_test/configure_1.json \n\
 \n\
   - options defined in the json file:\n\

@@ -442,12 +442,8 @@ def FastZeroStep(Inputs):
     todo
     '''
     Inputs['End time'] = '0' # end time is 0
-    # limit the number of non-linear iterations to only 1
-    Inputs['Max nonlinear iterations'] = '1'
-    Inputs['Max nonlinear iterations in pre-refinement'] = '0'
-    # make the linear tolerance really big
-    Inputs['Solver parameters']['Stokes solver parameters'] = \
-    {'Number of cheap Stokes solver steps': '0', 'Linear solver tolerance': '0.9999'}
+    # don't solve it
+    Inputs['Nonlinear solver scheme'] = 'no Advection, no Stokes'
 
 
 def FindWBFeatures(Inputs_wb, key):
