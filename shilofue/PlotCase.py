@@ -63,7 +63,7 @@ def PlotCaseRun(case_path, **kwargs):
         -
     '''
     # get case parameters
-    prm_path = os.path.join(case_path, 'case.prm')
+    prm_path = os.path.join(case_path, 'output', 'original.prm')
     inputs = ReadPrmFile(prm_path)
     # get solver scheme
     solver_scheme = inputs.get('Nonlinear solver scheme', 'single Advection, single Stokes')

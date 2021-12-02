@@ -65,6 +65,10 @@ script:
 
 Here, I'd like to restart a case if it doesn't reach the end time I set here (e.g. due to a maintainance of the server).
 
+## Post-process
+
+(todo) change usage of case.prm to output/original.prm
+
 # Projects
 
 ## TwoDSubduction

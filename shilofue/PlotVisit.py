@@ -189,7 +189,7 @@ def GetSnapsSteps(case_dir, type_='graphical'):
     case_output_dir = os.path.join(case_dir, 'output')
 
     # import parameters
-    prm_file = os.path.join(case_dir, 'case.prm')
+    prm_file = os.path.join(case_dir, 'output', 'original.prm')
     Utilities.my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,
               'case prm file - %s cannot be read' % prm_file)
     with open(prm_file, 'r') as fin:
