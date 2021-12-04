@@ -43,20 +43,34 @@ script:
 script: 
 	bash_scripts/parse_case.sh
 	bash_scripts/awk_states/parse_block_output
+The second script is used to parse block output with awk. The functions in the first script simply takes care of the output.
 
-Here, I put case run time info into a separte file "run_time.log", the format of this file is like:
-
-	key = value
+Here, I put case run time info into a separte file "run_time.log",
 
 The information I want to include:
 * step : step in model
 * last_restart_step : last step it restarted
 * time : time in model
 * last_restart_time : last time in model it restarted
-* wallclock : total wallclock
-* this_wallclock : wallclock after last restart
+* wallclock : wallclock after last restart
+* total_wallclock : total wallclock
 
-The second script is used to parse block output with awk. The functions in the first script simply takes care of the output.
+Format: 
+
+(try looking at the awk commands before I do this. The key is to read in a 'key' and look for an 'index' in the header.)
+* header: 
+	# 1 step
+	# 2 last_restart_step
+* data:
+	1000	600
+
+(bug) one of the number contains multiple " " in it. Run with:
+	Lib_parse_case export_case_info ~/ASPECT_PROJECT/TwoDSubduction/wb_sd_issue_2/wb_sph_cdd50_substract_T_op40_20Ma_hr export_test.txt
+
+
+#### Generate a log file for running cases
+
+This file should be saved project wise (e.g. under TwoDSubduction_DIR)
 
 #### Restart a previous case (to be tested)
 
@@ -68,6 +82,20 @@ Here, I'd like to restart a case if it doesn't reach the end time I set here (e.
 ## Post-process
 
 (todo) change usage of case.prm to output/original.prm
+
+### Plot results in "statistic" file
+
+(todo) Change the length of number label on axis, currently they are too long so parts are blocked.
+
+## work with prm
+
+(todo) put utilitie functions in the ParsePrm.py, and put interfaces into the Case.py
+
+## Case management
+
+### pinpoint snapshots(restarting file)
+
+(todo) add solution.00000.*.vtu to the file list
 
 # Projects
 

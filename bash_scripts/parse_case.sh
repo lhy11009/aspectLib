@@ -172,16 +172,35 @@ parse_export_run_time_info(){
     # todo
     # check
     local case_dir="$1"
+    local file_path="$2"
     local log_file="${case_dir}/output/log.txt"
     [[ -d "${case_dir}" ]] ||  { cecho ${BAD} "${FUNCNAME[0]}: case directory(${case_dir}) doesn't exist"; exit 1; }
-    # read file contents
-    contents = ""
-    [[ -e "${run_time_log}" ]] && contents = 
+    headers=("step" "last_restart_step" "Time" "wallclock" "total_wallclock")
     # parse case info
     [[ -e ${log_file} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile(${log_file}) doesn't exist"
     local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output" "${log_file}")
     IFS=$'\n'; local entries=(${outputs})  # each member in entries is a separate line
     IFS=' '; return_value=(${entries[*]: -1})  # get the last line and split with ' '
+    data0=("${return_value[0]}")
+    data2=("${return_value[1]}")
+    # parse resume-computation info
+    local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_resume_computation" "${log_file}")
+    IFS=$'\n'; local entries=(${outputs})  # each member in entries is a separate line
+    IFS=' '; return_value=(${entries[*]: -1})  # get the last line and split with ' '
+    data3=("${return_value[2]}")  # wall clock since last restart
+    IFS=' '; return_value=(${entries[*]: -2})  # get the previous line and split with ' '
+    data1=("${return_value[0]}")  # step of last restart
+    local total='0.0'
+    local temp
+    for entry in "${entries[@]}"; do
+        return_value=(${entry})
+        temp="${return_value[2]}"
+        total=$(awk -v a="${total}" -v b="${temp}" 'BEGIN{printf "%.2e", (a + b)}')
+    done
+    data4=("${total}")  # total wallclock
+    util_write_file_with_header "${file_path}"
+    unset headers
+    unset data0
     # export
 }
 
@@ -233,7 +252,6 @@ locate_workdir_with_id(){
 
 submit_case_peloton_rome(){
     ####
-    # todo
     # submit case to slurm
     # Inputs:
     #   $1: case directory
@@ -246,7 +264,6 @@ submit_case_peloton_rome(){
 
 restart_case(){
     ####
-    # todo
     # restart a case
     # Inputs:
     #   $1: case directory
@@ -263,7 +280,6 @@ restart_case(){
 
 check_time_restart_case(){
     ####
-    # todo
     # restart a case if the run time of that case is not reached
     # Inputs:
     #   $1: case directory

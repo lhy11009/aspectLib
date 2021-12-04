@@ -579,7 +579,10 @@ def CreateNewFromSnapshot(case_dir, output_dir, **kwargs):
     # read parameters
     prm_path = os.path.join(case_dir, 'case.prm')
     snapshot_dir = os.path.join(case_dir, 'snap_shot')
-    assert(os.path.isdir(snapshot_dir))
+    try:
+        assert(os.path.isdir(snapshot_dir))
+    except AssertionError as e:
+        raise AssertionError("No snapshots saved for case %s" % case_dir) from e
 
     # select snapshots
     snapshots = []
