@@ -265,12 +265,24 @@ class PLOT_COMBINE():
             if_include_case_names (0 or 1) - If we include case names
             w_locations (list of int): locations along the width
         '''
-        fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 40)  # get a font
+        individual_figure_width = w_locations[1] - w_locations[0]
+        if False:
+            fnt_size = 40
+        else:
+            fnt_size = 40
+        fnt0 = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", fnt_size)  # get a font
         d = ImageDraw.Draw(image)
-        d.text((10,10), _title, font=fnt, fill=(0, 0, 0))  # anchor option doesn't workf
+        d.text((10,10), _title, font=fnt0, fill=(0, 0, 0))  # anchor option doesn't workf
         if if_include_case_names:
             for i in range(self.n_cases):
                 case_name = os.path.basename(self.cases[i])
+                str_len = fnt0.getsize(case_name)
+                if str_len[0] > 0.9 * individual_figure_width:
+                    # resize font with longer case name
+                    fnt_size_re = int(fnt_size * 0.9 * individual_figure_width // str_len[0])
+                    fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", fnt_size_re)
+                else:
+                    fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", fnt_size)
                 w_location = w_locations[i] + 10
                 h_location = self.title_height / 2 + 10
                 d.text((w_location,h_location), case_name, font=fnt, fill=(0, 0, 0))  # anchor option doesn't work
