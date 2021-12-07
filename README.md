@@ -87,6 +87,11 @@ Here, I'd like to restart a case if it doesn't reach the end time I set here (e.
 
 (todo) Change the length of number label on axis, currently they are too long so parts are blocked.
 
+### Combine figures
+
+Some notes:
+* font size in case names are adjusted to fill the individual boxes
+
 ## work with prm
 
 (todo) put utilitie functions in the ParsePrm.py, and put interfaces into the Case.py
