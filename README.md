@@ -38,7 +38,7 @@ script:
 	utilities/bash_scripts/JSON.sh
 
 
-#### Save case running info in a file (todo)
+#### Save case running info in a file
 
 script: 
 	bash_scripts/parse_case.sh
@@ -47,7 +47,7 @@ The second script is used to parse block output with awk. The functions in the f
 
 Here, I put case run time info into a separte file "run_time.log",
 
-The information I want to include:
+The information I include:
 * step : step in model
 * last_restart_step : last step it restarted
 * time : time in model
@@ -57,16 +57,15 @@ The information I want to include:
 
 Format: 
 
-(try looking at the awk commands before I do this. The key is to read in a 'key' and look for an 'index' in the header.)
 * header: 
 	# 1 step
 	# 2 last_restart_step
+	...
 * data:
-	1000	600
+	1000	600 ...
 
-(bug) one of the number contains multiple " " in it. Run with:
-	Lib_parse_case export_case_info ~/ASPECT_PROJECT/TwoDSubduction/wb_sd_issue_2/wb_sph_cdd50_substract_T_op40_20Ma_hr export_test.txt
-
+run with
+	Lib_parse_case -h for more details
 
 #### Generate a log file for running cases
 
@@ -77,7 +76,7 @@ This file should be saved project wise (e.g. under TwoDSubduction_DIR)
 script: 
 	bash_scripts/parse_case.sh
 
-Here, I'd like to restart a case if it doesn't reach the end time I set here (e.g. due to a maintainance of the server).
+* restart a case if it doesn't reach the end time I set here (e.g. due to a maintainance of the server).
 
 ## Post-process
 

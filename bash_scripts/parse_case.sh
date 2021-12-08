@@ -43,6 +43,10 @@ Example Usage:
       
       Lib_parse_case all_case_info
     
+   export run time info of a case to a log file
+    
+      Lib_parse_case export_case_info ~/ASPECT_PROJECT/TwoDSubduction/wb_sd_issue_2/wb_sph_cdd50_substract_T_op40_20Ma_hr export_test.txt
+    
    Restart case by checkng running time:
       Lib_parse_case check_time_restart /group/billengrp-mpi-io/lochy/TwoDSubduction/wb/wb_cart_4 10e6
     
@@ -171,6 +175,7 @@ parse_export_run_time_info(){
     # $2 (str): file to export
     # todo
     # check
+    local temp
     local case_dir="$1"
     local file_path="$2"
     local log_file="${case_dir}/output/log.txt"
@@ -181,17 +186,16 @@ parse_export_run_time_info(){
     local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output" "${log_file}")
     IFS=$'\n'; local entries=(${outputs})  # each member in entries is a separate line
     IFS=' '; return_value=(${entries[*]: -1})  # get the last line and split with ' '
-    data0=("${return_value[0]}")
-    data2=("${return_value[1]}")
+    temp=$(util_neat_word "${return_value[0]}"); data0=("${temp}")  # step
+    temp=$(util_neat_word "${return_value[1]}"); data2=("${temp}")  # time
     # parse resume-computation info
     local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_resume_computation" "${log_file}")
     IFS=$'\n'; local entries=(${outputs})  # each member in entries is a separate line
     IFS=' '; return_value=(${entries[*]: -1})  # get the last line and split with ' '
-    data3=("${return_value[2]}")  # wall clock since last restart
+    temp=$(util_neat_word "${return_value[2]}"); data3=("${temp}")  # wall clock since last restart
     IFS=' '; return_value=(${entries[*]: -2})  # get the previous line and split with ' '
-    data1=("${return_value[0]}")  # step of last restart
+    temp=$(util_neat_word "${return_value[0]}"); data1=("${temp}")  # step of last restart
     local total='0.0'
-    local temp
     for entry in "${entries[@]}"; do
         return_value=(${entry})
         temp="${return_value[2]}"
@@ -201,7 +205,6 @@ parse_export_run_time_info(){
     util_write_file_with_header "${file_path}"
     unset headers
     unset data0
-    # export
 }
 
 check_case_running(){
