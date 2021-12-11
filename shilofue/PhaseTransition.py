@@ -43,6 +43,8 @@ class PHASE_OPT(Utilities.JSON_OPT):
         self.add_key("Density differences", list, ["drho"], [], nick='drho')
         self.add_key("Compositional volume proportion", list, ["xc"], [], nick='xc')
         self.add_key("Name of this composition", str, ["name"], 'pyrolite', nick='name')
+        self.add_key("Clapeyron slop", list, ["clapeyron slope"], [], nick='cl')
+        self.add_key("Name of boundaries", list, ["boundary"], [], nick='boundary')
     
     def get_name(self):
         '''
@@ -51,6 +53,22 @@ class PHASE_OPT(Utilities.JSON_OPT):
             name (str)
         '''
         return self.values[3]
+    
+    def to_get_reference_density(self):
+        '''
+        todo
+        interface to get_reference_density()
+        '''
+        return self.values[0], self.values[1], self.values[2]
+
+    def to_get_latent_heat_contribution(self):
+        return  self.values[0], self.values[1], self.values[2], self.values[4]
+    
+    def total(self):
+        '''
+        get total number of phase transitions
+        '''
+        return len(self.values[1])
     
     def get_dict(self):
         '''
@@ -62,7 +80,7 @@ class PHASE_OPT(Utilities.JSON_OPT):
             "rho0": self.values[0],
             "drho": self.values[1],
             "xc": self.values[2],
-            "name": self.values[3]
+            "name": self.values[3],
         }
         return _dict
     
@@ -89,23 +107,23 @@ class CDPT_OPT(Utilities.JSON_OPT):
         '''
         Utilities.my_assert(len(self.values[0]) > 0, ValueError, "Read parameters from file failed")
     
-    def toPPTF(self):
+    def get_compositions(self):
         '''
         An interface to the ParsePhaseTransitionFile
         '''
         return self.values[0]
 
 
-def ParsePhaseInput(inputs):
+def ParsePhaseInput(phase_opt):
     '''
     parse input of phases to a aspect input form
     
     '''
     output = ""
-
     # number of transition
-    total = len(inputs['drho'])
-    rho = Get_reference_density(inputs)
+    # todo
+    total = phase_opt.total()
+    rho = Get_reference_density(*phase_opt.to_get_reference_density())
     # generate output
     output += "%.1f" % rho[0]
     for i in range(1, total+1):
@@ -126,47 +144,55 @@ def ParsePhaseTransitionFile(inputs):
         # read dict
         # get the outputs
         outputs = "density = "
+        is_first = True
         for phase_opt in inputs:
             name = phase_opt.get_name()
-            output = ParsePhaseInput(phase_opt.get_dict())
-            outputs += "%s: %s, " % (name, output)
+            # todo
+            output = ParsePhaseInput(phase_opt)
+            if is_first:
+                is_first = False
+            else:
+                outputs += ', '
+            outputs += "%s: %s" % (name, output)
     elif type(inputs) == str:
         # read file
         Utilities.my_assert(os.access(inputs, os.R_OK), FileExistsError, "Json file doesn't exist.")
         cdpt_opt = CDPT_OPT()
         cdpt_opt.read_json(inputs)
-        outputs = ParsePhaseTransitionFile(cdpt_opt.toPPTF())
+        outputs = ParsePhaseTransitionFile(cdpt_opt.get_compositions())
     else:
         # error
         raise TypeError("type of inputs must be list or str, not %s" % type(inputs))
     return outputs
 
 
-def Get_reference_density(inputs):
+def Get_reference_density(rho0, drho, xc):
     '''
     Get reference density of phases
     Inputs:
-        inputs (dict): dictionary of phase transitions
     Returns:
         rho_p (list): reference density of phases
     '''
     # todo
     # compute density
-    # read in density of the base phase
-    rho0 = inputs.get("rho0", 3300.0)
     Utilities.my_assert(type(rho0) == float, TypeError, "base value for density must be a float")
-    # read in the density change with each transtion
-    drho = inputs.get("drho", [0.0])
     Utilities.my_assert(type(drho) == list, TypeError, "value of density change must be a list")
     total = len(drho)  # number of phase transitions
     # read in the fraction with each transtion
-    xc = inputs.get("xc", [1.0])
     Utilities.my_assert(len(xc) == total, ValueError, "length of xc and drho must be the same")
     Utilities.my_assert(type(xc) == list, TypeError, "value of fraction with transition must be a list")
     rho_p = rho0 * np.ones(total + 1)
     for i in range(total):
         rho_p[i+1:] += drho[i] * xc[i]
     return rho_p
+
+def Effective_density_change_on_660():
+    '''
+    Compute effect_density_change
+    Inputs:
+        inputs
+    '''
+    pass
     
 
 def Get_effective_density_change_on_660(phase_opt):
@@ -181,8 +207,12 @@ def Get_effective_density_change_on_660(phase_opt):
     lh_660 = 0.0
     name = phase_opt.get_name()
     phase_dict = phase_opt.get_dict()
-    lh_660 += Get_latent_heat_contribution(phase_dict)
-    rho_p = Get_reference_density(phase_dict)
+    print(phase_dict)  # debug
+    for i_dx in range(len(phase_dict['drho'])):
+        boundary = phase_dict['boundary'][i_dx]
+        if re.match('660', boudnary):
+            lh_660 += Get_latent_heat_contribution(phase_dict, i_dx)
+    rho_p = Get_reference_density(*phase_opt.to_get_reference_density())
     # get the index of ringwoodite phase
     i660_rd = 0
     for i in len(phase_dict['boundary']):
@@ -196,17 +226,21 @@ def Get_effective_density_change_on_660(phase_opt):
     return drho_660_eff
 
 
-def Get_latent_heat_contribution(inputs):
+def Get_entropy_change(rho0, drho, xc, cl):
     '''
-    Get the contribution to total latent heat from a single phase transition
-    Inputs:
-        inputs(dict): dictionary of a single phase transition
+    Get entropy changes on individual phases
+    phase_dict:
+        phase_dict(dict): dictionary of a single phase transition
     Returns:
         lh_contribution (float): contribution to total latent heat
     '''
     # todo
-    lh_contribution = 0.0
-    return lh_contribution
+    lh=[]
+    rho_p = Get_reference_density(rho0, drho, xc)
+    for i_dx in range(len(drho)):
+        rho = (rho_p[i_dx] + rho_p[i_dx+1]) / 2.0
+        lh.append( -1.0 * cl[i_dx] * drho[i_dx] *xc[i_dx] / rho**2.0)
+    return lh
 
 
 def Usage():
@@ -269,7 +303,10 @@ def main():
         print(outputs)
     elif _commend == "effective_660":
         # todo
-        drho_660_eff =  0.0
+        cdpt_opt = CDPT_OPT()
+        cdpt_opt.read_json(arg.inputs)
+        phase_opt = cdpt_opt.get_compositions()[0]
+        drho_660_eff = Get_effective_density_change_on_660(phase_opt)
         print("Effective density jump on 660 for latent heat computation is %s" % drho_660_eff)
     else:
         # no such option, give an error message
