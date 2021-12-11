@@ -990,37 +990,6 @@ def GetSubCases(_dir):
     return case_dirs
 
 
-def ParsePhaseInput(inputs):
-    '''
-    parse input of phases to a aspect input form
-    todo
-    '''
-    output = ""
-
-    # read in density of the base phase
-    rho_base = inputs.get("rho_base", 3300.0)
-    my_assert(type(rho_base) == float, TypeError, "base value for density must be a float")
-    # read in the density change with each transtion
-    drho = inputs.get("drho", [0.0])
-    my_assert(type(drho) == list, TypeError, "value of density change must be a list")
-    # read in the fraction with each transtion
-    xc = inputs.get("xc", [1.0])
-    my_assert(type(xc) == list, TypeError, "value of fraction with transition must be a list")
-    # number of transition
-    total = len(drho)
-    my_assert(len(xc) == total, ValueError, "length of xc and drho must be the same")
-
-    # compute density
-    rho = rho_base * np.ones(total + 1)
-    for i in range(total):
-        rho[i+1:] += drho[i] * xc[i]
-
-    # generate output
-    output += "%.1f" % rho[0]
-    for i in range(1, total+1):
-        output += "|%.1f" % rho[i]
-
-    return output
 
 
 def SaveLastSnapShot(case_dir):
@@ -1084,34 +1053,12 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='Some inputs')
-    parser.add_argument('-j', '--json_file', type=str,
-                        default='./config_case.json',
-                        help='Filename for json file')
     _options = []
     try:
         _options = sys.argv[2: ]
     except IndexError:
         pass
     arg = parser.parse_args(_options)
-
-    # commands
-
-    if _commend == 'phase_input':
-        # example:
-        #   python -m shilofue.Parse phase_input -j ./files/TwoDSubduction/phases_1_0.json
-        my_assert(os.access(arg.json_file, os.R_OK), FileExistsError, "Json file doesn't exist.")
-        with open(arg.json_file) as fin:
-            inputs = json.load(fin)
-
-        # get the outputs
-        outputs = "density = "
-        for key, value in inputs.items():
-            if type(value) == dict:
-                output = ParsePhaseInput(value)
-                outputs += "%s: %s, " % (key, output)
-
-        # print the output
-        print(outputs)
 
     if _commend == 'save_case_last_snapshot':
         # python -m shilofue.Parse save_case_last_snapshot -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/eba1/initial_condition1_re

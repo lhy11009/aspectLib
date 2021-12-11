@@ -29,6 +29,34 @@ sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
 
 
+class PHASE_OPT(Utilities.JSON_OPT):
+    '''
+    Define a class to work with phase transitions
+    '''
+    def __init__(self):
+        '''
+        Initiation, first perform parental class's initiation,
+        then perform daughter class's initiation.
+        '''
+        Utilities.JSON_OPT.__init__(self)
+        self.add_key("Reference density of this composition", float, ["rho0"], 3300.0, nick='rho0')
+        self.add_key("Density differences", list, ["drho"], [], nick='drho')
+        self.add_key("Compositional volume proportion", list, ["xc"], [], nick='xc')
+
+
+class CDPT_OPT(Utilities.JSON_OPT):
+    '''
+    Define a class to work with composition-dependent phase transitions(CDPT)
+    '''
+    def __init__(self):
+        '''
+        Initiation, first perform parental class's initiation,
+        then perform daughter class's initiation.
+        '''
+        Utilities.JSON_OPT.__init__(self)
+        self.add_features("Individual compositions", ["compositions"], PHASE_OPT, nick='compositions')
+
+
 def ParsePhaseInput(inputs):
     '''
     parse input of phases to a aspect input form
@@ -62,6 +90,7 @@ def ParsePhaseInput(inputs):
     return output
 
 def Usage():
+    CDPT_opt=CDPT_OPT()
     print("\
 (One liner description\n\
 \n\
@@ -71,7 +100,10 @@ Examples of usage: \n\
 \n\
         python -m shilofue.Parse phase_input -i ./files/TwoDSubduction/phases_1_0.json\n\
 \n\
-        ")
+    %s\n\
+\n\
+" % CDPT_opt.document()
+        )
 
 def SomeFunction(foo):
     '''
