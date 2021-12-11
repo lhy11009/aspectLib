@@ -139,15 +139,3 @@ def test_pattern_from_value():
     assert(Parse.PatternFromValue(100) == '100')
     pass
 
-
-def test_parse_phase_input():
-    '''
-    Test parse phase input
-    '''
-    Inputs = {
-        "rho_base" : 3300.0,\
-        "drho" : [520.0, 250.0, 670.0, 840.0, 560.0, 597.0, 1170.0],\
-        "xc" : [0.55, 0.55, 0.05, 0.55, 0.4, 0.4, 0.4]
-    }
-    output = Parse.ParsePhaseInput(Inputs)
-    assert(output == "3300.0|3586.0|3723.5|3757.0|4219.0|4443.0|4681.8|5149.8")
