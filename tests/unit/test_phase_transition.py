@@ -40,7 +40,7 @@ def test_parse_phase_input():
     Test parse phase input
     '''
     Inputs = {
-        "rho_base" : 3300.0,\
+        "rho0" : 3300.0,\
         "drho" : [520.0, 250.0, 670.0, 840.0, 560.0, 597.0, 1170.0],\
         "xc" : [0.55, 0.55, 0.05, 0.55, 0.4, 0.4, 0.4]
     }
