@@ -67,7 +67,7 @@ Format:
 run with
 	Lib_parse_case -h for more details
 
-#### Generate a log file for running cases
+#### Generate a log file for all cases
 
 This file should be saved project wise (e.g. under TwoDSubduction_DIR)
 
@@ -90,6 +90,7 @@ script:
 
 Some notes:
 * font size in case names are adjusted to fill the individual boxes
+
 
 ## work with prm
 

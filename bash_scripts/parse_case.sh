@@ -173,7 +173,6 @@ parse_export_run_time_info(){
     # parse run time info and export to a file
     # $1 (str): case directory
     # $2 (str): file to export
-    # todo
     # check
     local temp
     local case_dir="$1"
@@ -207,8 +206,33 @@ parse_export_run_time_info(){
     unset data0
 }
 
-check_case_running(){
+parse_export_all_run_time_info_in_directory(){
+    # parse run time info for all the cases in a directory
     # todo
+    dir="$1"
+    [[ -d "${dir}" ]] ||  cecho ${BAD} "${FUNCNAME[0]}: directory(${dir}) doesn't exist"
+    log_file="${dir}/cases.log"
+    local is_case
+    for sub_dir in "${dir}"/*; do
+	echo "${sub_dir}" # debug
+	if [[ -d "${sub_dir}" ]]; then
+		check_case "${sub_dir}" || parse_export_run_time_info "${sub_dir}" "${log_file}"
+	fi
+    done
+    
+}
+
+check_case(){
+    # check a directory contains case data
+    # Inputs:
+    #	$1: directory
+    # todo
+    [[ -d "$1" ]] ||  cecho ${BAD} "${FUNCNAME[0]}: directory(${1}) doesn't exist"
+    prm_path="$1/case.prm"
+    [[ -e "${prm_file}" ]] && return 0 || return 1
+}
+
+check_case_running(){
     # check if a case is running on slurm
     # Inputs:
     #   $1: path to the case
@@ -321,7 +345,6 @@ main(){
         local ofile="$3"
         parse_block_output_to_file "${log_file}" "${ofile}" "Assemble Stokes system" "Solve Stokes system"
     elif [[ "$1" = "case_info" ]]; then
-        # todo
 	[[ -n "$2" ]] || { cecho "${BAD}" "no case directory given (\$2)"; exit 1; }
 	[[ -d "$2" ]] || { cecho "${BAD}" "directory given (\$2) doesn't exist"; exit 1; }
 	log_file="$2/output/log.txt"
@@ -334,9 +357,12 @@ main(){
     	[[ -n "$2" ]] || { cecho "${BAD}" "no id number given (\$2)"; exit 1; }
 	    parse_run_time_info_last_step_with_id "$2"
     elif [[ "$1" = "export_case_info" ]]; then
-        # todo
-    	[[ -n "$2" ]] || { cecho "${BAD}" "no id number given (\$2)"; exit 1; }
+    	[[ -n "$2" ]] || { cecho "${BAD}" "no case directory (\$2)"; exit 1; }
 	    parse_export_run_time_info "$2" "$3"
+    elif [[ "$1" = "export_all_case_info_in_directory" ]]; then
+	# todo
+    	[[ -n "$2" ]] || { cecho "${BAD}" "no directory (\$2)"; exit 1; }
+	parse_export_all_run_time_info_in_directory "$2"
     elif [[ "$1" = "all_case_info" ]]; then
 	parse_all_time_info
     elif [[ "$1" == "restart" ]]; then
