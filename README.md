@@ -64,6 +64,10 @@ Format:
 * data:
 	1000	600 ...
 
+Options:
+
+	this could be done for either one case or multiple cases within the same directory.
+
 run with
 	Lib_parse_case -h for more details
 

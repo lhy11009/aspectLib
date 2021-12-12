@@ -49,6 +49,9 @@ Example Usage:
     
    Restart case by checkng running time:
       Lib_parse_case check_time_restart /group/billengrp-mpi-io/lochy/TwoDSubduction/wb/wb_cart_4 10e6
+
+   export run time info with a directory (all the cases in this directory) to \"cases.log\":
+      Lib_parse_case export_all_case_info_in_directory . 
     
 "
     printf "${_text}"
@@ -177,6 +180,7 @@ parse_export_run_time_info(){
     local temp
     local case_dir="$1"
     local file_path="$2"
+    local append="$3"  # append to old file
     local log_file="${case_dir}/output/log.txt"
     [[ -d "${case_dir}" ]] ||  { cecho ${BAD} "${FUNCNAME[0]}: case directory(${case_dir}) doesn't exist"; exit 1; }
     headers=("step" "last_restart_step" "Time" "wallclock" "total_wallclock")
@@ -201,22 +205,26 @@ parse_export_run_time_info(){
         total=$(awk -v a="${total}" -v b="${temp}" 'BEGIN{printf "%.2e", (a + b)}')
     done
     data4=("${total}")  # total wallclock
-    util_write_file_with_header "${file_path}"
+    util_write_file_with_header "${file_path}" "${append}"
     unset headers
     unset data0
 }
 
 parse_export_all_run_time_info_in_directory(){
     # parse run time info for all the cases in a directory
-    # todo
+    # Inputs:
+    # 	$1: directory
+    # File outout:
+    # 	cases.log : log file of run time info
     dir="$1"
     [[ -d "${dir}" ]] ||  cecho ${BAD} "${FUNCNAME[0]}: directory(${dir}) doesn't exist"
     log_file="${dir}/cases.log"
     local is_case
+    local if_second="0"
     for sub_dir in "${dir}"/*; do
-	echo "${sub_dir}" # debug
 	if [[ -d "${sub_dir}" ]]; then
-		check_case "${sub_dir}" || parse_export_run_time_info "${sub_dir}" "${log_file}"
+		check_case "${sub_dir}" || parse_export_run_time_info "${sub_dir}" "${log_file}" "${if_second}"
+		[[ "${if_second}" == "0" ]] && if_second="1"  # in case this is the first entry
 	fi
     done
     
@@ -226,7 +234,9 @@ check_case(){
     # check a directory contains case data
     # Inputs:
     #	$1: directory
-    # todo
+    # Return:
+    # 	0: if this is an aspect case
+    #   1: if not
     [[ -d "$1" ]] ||  cecho ${BAD} "${FUNCNAME[0]}: directory(${1}) doesn't exist"
     prm_path="$1/case.prm"
     [[ -e "${prm_file}" ]] && return 0 || return 1
@@ -360,7 +370,6 @@ main(){
     	[[ -n "$2" ]] || { cecho "${BAD}" "no case directory (\$2)"; exit 1; }
 	    parse_export_run_time_info "$2" "$3"
     elif [[ "$1" = "export_all_case_info_in_directory" ]]; then
-	# todo
     	[[ -n "$2" ]] || { cecho "${BAD}" "no directory (\$2)"; exit 1; }
 	parse_export_all_run_time_info_in_directory "$2"
     elif [[ "$1" = "all_case_info" ]]; then
