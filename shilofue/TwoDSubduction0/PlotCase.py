@@ -64,7 +64,7 @@ def TwoDSubduction_PlotCaseRun(case_path, **kwargs):
         -
     '''
     # get case parameters
-    prm_path = os.path.join(case_path, 'case.prm')
+    prm_path = os.path.join(case_path, 'output', 'original.prm')
 
     # plot visit
     Visit_Options = PlotVisit.VISIT_OPTIONS(case_path)

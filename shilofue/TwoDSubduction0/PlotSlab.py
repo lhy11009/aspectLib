@@ -307,7 +307,7 @@ def main():
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
-        prm_file = os.path.join(arg.inputs, 'case.prm')
+        prm_file = os.path.join(arg.inputs, 'output', 'original.prm')
         SlabPlot.ReadPrm(prm_file)
         SlabPlot.PlotMorph(arg.inputs)
 
