@@ -82,6 +82,36 @@ script:
 
 * restart a case if it doesn't reach the end time I set here (e.g. due to a maintainance of the server).
 
+
+## Prepare cases
+
+### Create new case
+
+I put the configurations in a json file and wrote a script in each project to create new cases
+
+These options are read into a CASE_OPT class, While the operations are defined in a CASE class.
+In all the operations, I took the approach of first importing a prm file and then substitute the entries.
+
+An example usage (TwoDSubduction)
+	Lib_TwoDSubduction0_Cases create_with_json -j \
+        /home/lochy/ASPECT_PROJECT/TwoDSubduction/wb_create_test/configure_1.json \n\
+
+### Cooperate with Hefesto
+
+I wrote a python script "PostHefesto.py" 
+
+The job it does is: 
+
+Check file format (for the first and second entries, I.e. P and T) 
+
+Convert Hefesto file to perplex table 
+
+Resample in terms of P and T 
+
+Fix other fields if they are missing (but not P and T) 
+
+This is a test called test_post_hefesto.py in the integration folder. Look at that to see how this work. 
+
 ## Post-process
 
 (todo) change usage of case.prm to output/original.prm

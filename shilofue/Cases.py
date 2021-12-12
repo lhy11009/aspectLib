@@ -214,6 +214,25 @@ class CASE():
         self.extra_files.append(path)
 
 
+# todo
+def create_case_with_json(json_file, CASE, CASE_OPT):
+    '''
+    A wrapper for the CASES class
+    Inputs:
+        json_file(str): path of a json file
+    '''
+    print("%s: Creating case" % Utilities.func_name())
+    assert(os.access(json_file, os.R_OK))
+    Case_Opt = CASE_OPT()
+    Case_Opt.read_json(json_file)
+    Case_Opt.check()
+    Case = CASE(*Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())
+    Case.configure_prm(*Case_Opt.to_configure_prm())
+    Case.configure_wb(*Case_Opt.to_configure_wb())
+    # create new case
+    Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step())
+
+
 def GROUP():
     '''
     A group of cases

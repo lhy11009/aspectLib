@@ -554,25 +554,6 @@ def prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age):
     return odict
 
 
-def create_case_with_json(json_file):
-    '''
-    A wrapper for the CASES class
-    Inputs:
-        json_file(str): path of a json file
-    '''
-    print("%s: Creating case" % Utilities.func_name())
-    assert(os.access(json_file, os.R_OK))
-    Case_Opt = CASE_OPT()
-    Case_Opt.read_json(json_file)
-    Case_Opt.check()
-    # Case = CASE('wb_setup', prm_file, wb_inputs=wb_file)
-    Case = CASE(*Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())
-    Case.configure_prm(*Case_Opt.to_configure_prm())
-    Case.configure_wb(*Case_Opt.to_configure_wb())
-    # create new case
-    Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step())
-#    assert(os.path.isfile(Case_Opt.prm_file_path())) # assert files generated
-#    assert(os.path.isfile(Case_Opt.wb_file_path()))
 
 
 def Usage():
@@ -633,7 +614,8 @@ def main():
         Usage()
     elif _commend == 'create_with_json':
         # example:
-        create_case_with_json(arg.json)
+        # todo
+        CasesP.create_case_with_json(arg.json, CASE, CASE_OPT)
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
