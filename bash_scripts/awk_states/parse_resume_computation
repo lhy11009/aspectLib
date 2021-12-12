@@ -1,0 +1,37 @@
+#!/usr/bin/awk -f
+
+################################################################################
+# Look for where case restarted(step, time and wall clock) from a ASPECT log file
+# 
+# Example Usage:
+#   eval "awk -f ${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_resume_computation ${log_file} > ${ofile}"
+################################################################################
+
+BEGIN {
+  print "# 1: Step\n# 2: Time\n# 3: Last wall clock (s)"
+  resume=0
+  wallClock=0
+}
+
+{
+  if($0 ~ /*** Timestep/) {
+    len = length($3)
+    timeStep = substr($3, 0, len-1)
+    time = substr($4, 3)
+    if (resume == 1){
+      printf "%s\t %12s\t %12s\n", timeStep, time, wallClock
+      resume = 0
+    }
+  }
+  else if ($0 ~ /*** Resuming from snapshot!/) {
+    resume = 1
+  }
+  else if ($0 ~ /^\| Total wallclock/) {
+    len = length($9)
+    wallClock = substr($9, 0, len-1)
+  }
+}
+
+END{
+  printf "%s\t %12s\t %12s\n", timeStep, time, wallClock
+}
