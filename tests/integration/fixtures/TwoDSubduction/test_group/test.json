@@ -1,0 +1,16 @@
+{
+    "base name": "test_group", 
+    "base json": "${ASPECT_LAB_DIR}/tests/integration/fixtures/TwoDSubduction/test_group/case.json",
+    "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/211201",
+    "output directory": "${ASPECT_LAB_DIR}/.test/test_group",
+    "features":[
+        {
+            "name": "Age of the subducting plate",
+            "key": ["world builder", "subducting plate", "age trench"],
+            "unit": "Myr",
+            "values": [20e6, 40e6, 60e6],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["SA", 1e-6]
+        }
+    ]
+}

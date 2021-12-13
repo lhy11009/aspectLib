@@ -92,7 +92,7 @@ class CASE_OPT(Utilities.JSON_OPT):
         '''
         Interface to output dir
         '''
-        return self.values[2]
+        return Utilities.var_subs(self.values[2])
 
 
 class CASE():
@@ -155,6 +155,8 @@ class CASE():
             _root(str): a directory to put the new case
             **kwargs:
                 "fast_first_step": generate another file for fast running the 0th step
+        Return:
+            case_dir(str): path to created case.
         '''
         # folder
         case_dir = os.path.join(_root, self.case_name)
@@ -182,6 +184,8 @@ class CASE():
             with open(wb_out_path, 'w') as fout:
                 json.dump(self.wb_dict, fout, indent=2)
         print("New case created: %s" % case_dir)
+        # todo
+        return case_dir
 
     def configure(self, func, config, **kwargs):
         '''
@@ -215,22 +219,32 @@ class CASE():
 
 
 # todo
-def create_case_with_json(json_file, CASE, CASE_OPT):
+def create_case_with_json(json_opt, CASE, CASE_OPT):
     '''
     A wrapper for the CASES class
     Inputs:
-        json_file(str): path of a json file
+        json_opt(str, dict): path or dict a json file
+    Returns:
+        case_dir: return case directory
     '''
+    # todo
     print("%s: Creating case" % Utilities.func_name())
-    assert(os.access(json_file, os.R_OK))
     Case_Opt = CASE_OPT()
-    Case_Opt.read_json(json_file)
+    if type(json_opt) == str:
+        assert(os.access(json_opt, os.R_OK))
+        Case_Opt.read_json(json_opt)
+    elif type(json_opt) == dict:
+        Case_Opt.import_options(json_opt)
+    else:
+        raise TypeError("Type of json_opt must by str or dict")
     Case_Opt.check()
     Case = CASE(*Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())
     Case.configure_prm(*Case_Opt.to_configure_prm())
     Case.configure_wb(*Case_Opt.to_configure_wb())
     # create new case
-    Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step())
+    case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step())
+    return case_dir
+    
 
 
 def GROUP():

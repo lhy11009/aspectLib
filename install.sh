@@ -45,7 +45,7 @@ options(){
     list_of_bash_scripts_to_install=("rsync_case.sh" "run_aspect.sh" "build_aspect.sh" "parse_case.sh")
     list_of_py_scripts_to_install=("TwoDSubduction0/PlotCase.py" "TwoDSubduction0/Parse.py" \
     "ParsePrm.py" "PlotRunTime.py" "PlotVisit.py" "PlotCase.py" "PlotCombine.py" \
-    "TwoDSubduction0/Cases.py")
+    "TwoDSubduction0/Cases.py" "TwoDSubduction0/Group.py")
 }
 
 
