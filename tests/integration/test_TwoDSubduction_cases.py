@@ -25,6 +25,7 @@ import os
 # import numpy as np
 # import shilofue.Foo as Foo  # import test module
 from shilofue.TwoDSubduction0.Cases import *
+from shilofue.Cases import create_case_with_json
 # from matplotlib import pyplot as plt
 from shutil import rmtree  # for remove directories
 
@@ -112,6 +113,24 @@ def test_wb_setup():
     case_wb_file = os.path.join(case_dir, 'case.wb')
     assert(os.path.isfile(case_prm_file)) # assert files generated
     assert(os.path.isfile(case_wb_file))
+
+
+def test_create_cases():
+    '''
+    test
+    Asserts:
+        1. wb file contains the right parameters
+        2. prm file contains the right parameters
+        3. cases are created successfully
+    '''
+    # test 1: test changing the ages of the plates
+    source_case_dir = os.path.join(source_dir, "change_plate_ages")
+    json_path = os.path.join(source_case_dir, 'case.json')
+    output_dir = os.path.join(test_dir,'change_plate_ages_0')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)
+    assert(os.path.isdir(output_dir))  # check case generation
     
 # notes
     

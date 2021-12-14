@@ -1,0 +1,23 @@
+{
+	"base directory": "${ASPECT_LAB_DIR}/files/TwoDSubduction/211201", 
+	"output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
+	"name": "change_plate_ages_0",
+	"Include fast first step": 1,
+	"geometry": "box",
+	"boundary condition": {"model": "all free slip"},
+	"prescribe temperature method": "plate model",
+	"use world builder": 1, 
+	"world builder": 
+	{
+		"subducting plate": 
+		{
+			"age trench": 20e6, 
+			"sp rate": 0.05
+		},
+		"overiding plate": 
+		{
+			"age": 40e6, 
+			"transit": {"age": 10e6, "length": 600e3}
+		}
+	}
+}

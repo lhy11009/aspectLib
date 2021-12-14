@@ -127,8 +127,8 @@ class CASE():
             self.idict = deepcopy(inputs)
         elif type(inputs)==str:
             # read from file if file path is given. This has the virtual that the new dict is indepent of the previous one.
-            print("    Read inputs from %s" % inputs) 
-            with open(inputs, 'r') as fin:
+            print("    Read inputs from %s" % Utilities.var_subs(inputs)) 
+            with open(Utilities.var_subs(inputs), 'r') as fin:
                 self.idict = ParsePrm.ParseFromDealiiInput(fin)
             pass
         else:
@@ -141,8 +141,8 @@ class CASE():
             self.wb_dict = deepcopy(wb_inputs)
         elif type(wb_inputs)==str:
             # read from file if file path is given. This has the virtual that the new dict is indepent of the previous one.
-            print("    Read world builder options from %s" % wb_inputs)
-            with open(wb_inputs, 'r') as fin:
+            print("    Read world builder options from %s" % Utilities.var_subs(wb_inputs))
+            with open(Utilities.var_subs(wb_inputs), 'r') as fin:
                 self.wb_dict = json.load(fin)
             pass
         else:

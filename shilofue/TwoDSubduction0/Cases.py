@@ -27,6 +27,7 @@ import sys, os, argparse
 import json, re
 # import pathlib
 # import subprocess
+import warnings
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
@@ -73,6 +74,8 @@ class CASE_OPT(CasesP.CASE_OPT):
             ["boundary condition", "model"], "all free slip", nick='type_of_bd')
         self.add_key("Width of the Box", float,\
             ["Box Width"], 6.783e6, nick='box_width')
+        self.add_key("Method to use for prescribing temperature", str,\
+         ["prescribe temperature method"], 'function', nick="prescribe_T_method")
         pass
     
     def check(self):
@@ -98,7 +101,8 @@ class CASE_OPT(CasesP.CASE_OPT):
         potential_T = self.values[4]
         box_width = self.values[self.start + 7]
         geometry = self.values[3]
-        return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age
+        prescribe_T_method = self.values[self.start + 8]
+        return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method
 
     def to_configure_wb(self):
         '''
@@ -132,7 +136,7 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age):
+    def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
@@ -169,11 +173,17 @@ class CASE(CasesP.CASE):
         if type_of_bd == "all free slip":
             o_dict["Prescribe internal temperatures"] = "true"
             if geometry == 'chunk':
+                if prescribe_T_method == 'plate model':
+                    warnings.warn("plate model only works for cartesian model right now, reset to using function")
                 o_dict['Prescribed temperatures'] =\
                     prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age)
             elif geometry == 'box':
-                o_dict['Prescribed temperatures'] =\
-                    prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age)
+                if prescribe_T_method == 'function':
+                    o_dict['Prescribed temperatures'] =\
+                        prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age)
+                elif prescribe_T_method == 'plate model':
+                    o_dict['Prescribed temperatures'] =\
+                        prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate, ov_age)
         else:
             # remove this feature if otherwise
             pass
@@ -554,6 +564,23 @@ def prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age):
     return odict
 
 
+def prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate, ov_age):
+    '''
+    Default setting for Prescribed temperatures in cartesian geometry using the plate model
+    '''
+    odict = {
+        "Model name": "plate model",
+        "Indicator function": {
+          "Coordinate system": "cartesian",
+          "Variable names": "x, y",
+          "Function constants": "Depth=1.45e5, Width=2.75e5, Do=2.890e6, xm=%.4e" % box_width,
+          "Function expression": "(((y>Do-Depth)&&((x<Width)||(xm-x<Width))) ? 1:0)"
+        },
+        "Plate model":{
+            "Subducting plate velocity" : "%.4e" % (sp_rate/year)
+        }
+    }
+    return odict
 
 
 def Usage():
@@ -614,7 +641,6 @@ def main():
         Usage()
     elif _commend == 'create_with_json':
         # example:
-        # todo
         CasesP.create_case_with_json(arg.json, CASE, CASE_OPT)
     else:
         # no such option, give an error message

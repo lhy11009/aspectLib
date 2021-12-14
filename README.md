@@ -96,6 +96,16 @@ An example usage (TwoDSubduction)
 	Lib_TwoDSubduction0_Cases create_with_json -j \
         /home/lochy/ASPECT_PROJECT/TwoDSubduction/wb_create_test/configure_1.json \n\
 
+(todo) fix the change_plate_ages test, there is still a temperature discontinuity in the prescribing-temperature corner region.
+
+
+### Create new group
+
+Here, the task is to create mutiple cases at a time and hold them in a single folder.
+
+I made use of the previous script I used for create a single case (Cases.py), and write a new script Group.py.
+In this new scripts, I read in a json file with the configurations and write a bundle of json case-configuring files for interfaces defined in Cases.py.
+
 ### Cooperate with Hefesto
 
 I wrote a python script "PostHefesto.py" 
