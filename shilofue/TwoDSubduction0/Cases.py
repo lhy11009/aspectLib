@@ -76,6 +76,13 @@ class CASE_OPT(CasesP.CASE_OPT):
             ["Box Width"], 6.783e6, nick='box_width')
         self.add_key("Method to use for prescribing temperature", str,\
          ["prescribe temperature method"], 'function', nick="prescribe_T_method")
+        self.add_key("Method to use for adjusting plate age.\n\
+        The default method \"by values\" is to assign values of box_width, sp_rate, and sp_age_trench.\n\
+        The method \"adjust box width\" is to change box_width\
+        by assuming a default box_width for a default sp_age_trench\
+         and extend the box for an older sp_age_trench.",\
+         str,\
+         ["world builder", "plate age method"], 'by values', nick="plate_age_method")
         pass
     
     def check(self):
@@ -102,6 +109,16 @@ class CASE_OPT(CasesP.CASE_OPT):
         box_width = self.values[self.start + 7]
         geometry = self.values[3]
         prescribe_T_method = self.values[self.start + 8]
+        plate_age_method = self.values[self.start + 9] 
+        if plate_age_method == 'adjust box width':
+            if box_width != self.defaults[self.start + 7]:
+                warnings.warn("By using \"adjust box width\" method for subduction plate age\
+                box width will be automatically adjusted. Thus the given\
+                value is not taken.")
+            box_width = re_write_geometry_while_assigning_plate_age(
+            *self.to_re_write_geometry_pa()
+            ) # adjust box width
+
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method
 
     def to_configure_wb(self):
@@ -122,6 +139,11 @@ class CASE_OPT(CasesP.CASE_OPT):
             if_ov_trans = True
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
             if_ov_trans, ov_trans_age, ov_trans_length
+    
+
+    def to_re_write_geometry_pa(self):
+        return self.defaults[self.start+7], self.defaults[self.start+1],\
+        self.values[self.start+1], self.values[self.start+2]
     
     def if_fast_first_step(self):
         '''
@@ -581,6 +603,19 @@ def prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate,
         }
     }
     return odict
+
+
+def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_rate):
+    '''
+    adjust box width with assigned spreading rate of subducting plate and subducting plate age
+    Inputs:
+        box_width0: default box width
+        sp_age0: default plate age
+        sp_age: plate age
+        sp_rate: spreading rate of the subducting plate
+    '''
+    box_width = box_width0 + (sp_age - sp_age0) * sp_rate
+    return box_width
 
 
 def Usage():
