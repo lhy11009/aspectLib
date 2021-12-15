@@ -39,15 +39,18 @@ sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
 
 def Usage():
+    Group_Opt = GROUP_OPT()
     print("\
 (One liner description\n\
 \n\
 Examples of usage: \n\
 \n\
-  - default usage: \n\
+  - default usage, create group: \n\
+        Lib_TwoDSubduction0_Group create_group -j ~/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/TwoDSubduction/test_group/test.json\n\
 \n\
-        python -m \
-        ")
+  - options defined in the json file:\n\
+        %s\n\
+        " % Group_Opt.document_str())
 
 class GROUP_OPT(GroupP.GROUP_OPT):
     pass

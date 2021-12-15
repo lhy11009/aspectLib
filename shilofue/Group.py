@@ -26,6 +26,7 @@ from shilofue.Cases import create_case_with_json
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from shutil import rmtree
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -65,7 +66,7 @@ class FEATURE_OPT(Utilities.JSON_OPT):
         self.add_key("Abbrevation in case name", list, ["abbreviating value options"], [None, None], nick='abbrev_value_options')
         self.add_key("If abbrevate case name by value defined in this featue", int, ["abbreviation by value"], 0, nick='is_abbrev_value')
         self.add_key("Abbrevation by a given string", list, ["abbreviating strings"], [], nick='abbrev_strings')
-    
+
     def check(self):
         assert(len(self.values[3]) == 2)  # abbreviation has 2 entries (name, scale)
         if self.if_abbrev_value():
@@ -107,6 +108,14 @@ class GROUP_OPT(Utilities.JSON_OPT):
         self.add_features('Features to look for', ['features'], FEATURE_OPT)
         self.add_key("Base json file", str, ["base json"], "foo.json", nick='base_json')
         self.add_key("Directory to output to", str, ["output directory"], ".", nick='output_dir')
+        self.add_key("Bindings in feature", list, ["bindings"], [], nick='bindings')
+    
+    def check(self):
+        if self.values[4] != []:
+            for binding in self.values[4]:
+                assert(len(binding) == len(self.values[1]))  # binding has length of features
+                for i in range(len(binding)):
+                    assert(type(binding[i]) == int)
 
     def get_base_json_path(self):
         return Utilities.var_subs(self.values[2])
@@ -122,6 +131,9 @@ class GROUP_OPT(Utilities.JSON_OPT):
         return output directory
         '''
         return Utilities.var_subs(self.values[3])
+    
+    def to_create_group(self):
+        return self.values[1], Utilities.var_subs(self.values[3]), self.values[0], self.values[4]
 
 
 class GROUP():
@@ -145,8 +157,8 @@ class GROUP():
         assert(os.access(json_file, os.R_OK))
         with open(json_file, 'r') as fin:
             self.base_options = json.load(fin)
-    
-    def create_group(self, features, output_dir):
+
+    def create_group(self, features, output_dir, base_name, bindings):
         '''
         create new group
         '''
@@ -159,23 +171,47 @@ class GROUP():
             sub_totals.append(total)
             sizes.append(len(feature.get_values()))
             total *= len(feature.get_values())
-        for i in range(total):
-            options = self.base_options.copy()
-            for j in range(len(features)):
-                feature = features[j]
-                x_j = i//sub_totals[j] % len(feature.get_values())
-                values = feature.get_values()
-                options = Utilities.write_dict_recursive(options,\
-                    feature.get_keys(), values[x_j])
-                if feature.if_abbrev_value():
-                    name_appendix = get_name_appendix(feature.get_abbrev_value_options(), values[x_j]) # appendix by value
-                else:
-                    name_appendix = feature.get_abbrev_strings()[x_j]  # appendix by string
-                options['name'] += ('_' + name_appendix)
-            case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT)
-            json_path = os.path.join(case_dir, "case.json")
-            with open(json_path, 'w') as fout:
-                json.dump(options, fout)
+        if bindings == []:
+            for i in range(total):
+                options = self.base_options.copy()
+                options['name'] =  base_name
+                for j in range(len(features)):
+                    feature = features[j]
+                    x_j = i//sub_totals[j] % len(feature.get_values())
+                    values = feature.get_values()
+                    options = Utilities.write_dict_recursive(options,\
+                        feature.get_keys(), values[x_j])
+                    if feature.if_abbrev_value():
+                        name_appendix = get_name_appendix(feature.get_abbrev_value_options(), values[x_j]) # appendix by value
+                    else:
+                        name_appendix = feature.get_abbrev_strings()[x_j]  # appendix by string
+                    options['name'] += ('_' + name_appendix)
+                options["output directory"] = output_dir
+                case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT)
+                json_path = os.path.join(case_dir, "case.json")
+                with open(json_path, 'w') as fout:
+                    json.dump(options, fout)
+        else:
+            for binding in bindings:
+                options = self.base_options.copy()
+                options['name'] =  base_name
+                for j in range(len(features)):
+                    feature = features[j]
+                    x_j = binding[j]
+                    values = feature.get_values()
+                    options = Utilities.write_dict_recursive(options,\
+                        feature.get_keys(), values[x_j])
+                    if feature.if_abbrev_value():
+                        name_appendix = get_name_appendix(feature.get_abbrev_value_options(), values[x_j]) # appendix by value
+                    else:
+                        name_appendix = feature.get_abbrev_strings()[x_j]  # appendix by string
+                    options['name'] += ('_' + name_appendix)
+                options["output directory"] = output_dir
+                case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT)
+                json_path = os.path.join(case_dir, "case.json")
+                with open(json_path, 'w') as fout:
+                    json.dump(options, fout)
+            
         pass
 
 
@@ -208,8 +244,13 @@ def CreateGroup(json_path, CASE, CASE_OPT):
     group = GROUP(CASE, CASE_OPT)
     group.read_json_base(group_opt.get_base_json_path())
     if os.path.isdir(group_opt.get_output_dir()):
-        raise ValueError("This directory (%s) already exists, stop." % group_opt.get_base_json_path())
-    group.create_group(group_opt.get_features(), group_opt.get_output_dir())
+        is_pursue = input("Directory (%s) already exists, delete ? (y/n): " % group_opt.get_output_dir())
+        if is_pursue == 'y':
+            rmtree(group_opt.get_output_dir())
+        else:
+            print("Aborting")
+            return 0
+    group.create_group(*group_opt.to_create_group())
 
 
 def main():
