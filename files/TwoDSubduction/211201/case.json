@@ -19,5 +19,6 @@
 			"age": 40e6, 
 			"transit": {"age": 10e6, "length": 600e3}
 		}
-	}
+	},
+	"additional files": ["job_rome.sh"]
 }

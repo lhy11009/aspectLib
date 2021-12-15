@@ -109,6 +109,7 @@ class GROUP_OPT(Utilities.JSON_OPT):
         self.add_key("Base json file", str, ["base json"], "foo.json", nick='base_json')
         self.add_key("Directory to output to", str, ["output directory"], ".", nick='output_dir')
         self.add_key("Bindings in feature", list, ["bindings"], [], nick='bindings')
+        self.add_key("Base directory to import", str, ["base directory"], ".", nick='base_dir')
     
     def check(self):
         if self.values[4] != []:
@@ -133,7 +134,7 @@ class GROUP_OPT(Utilities.JSON_OPT):
         return Utilities.var_subs(self.values[3])
     
     def to_create_group(self):
-        return self.values[1], Utilities.var_subs(self.values[3]), self.values[0], self.values[4]
+        return self.values[1], Utilities.var_subs(self.values[5]), Utilities.var_subs(self.values[3]), self.values[0], self.values[4]
 
 
 class GROUP():
@@ -158,7 +159,7 @@ class GROUP():
         with open(json_file, 'r') as fin:
             self.base_options = json.load(fin)
 
-    def create_group(self, features, output_dir, base_name, bindings):
+    def create_group(self, features, base_dir, output_dir, base_name, bindings):
         '''
         create new group
         '''
@@ -195,6 +196,8 @@ class GROUP():
             for binding in bindings:
                 options = self.base_options.copy()
                 options['name'] =  base_name
+                options["output directory"] = output_dir
+                options['base directory'] = base_dir
                 for j in range(len(features)):
                     feature = features[j]
                     x_j = binding[j]
@@ -206,7 +209,6 @@ class GROUP():
                     else:
                         name_appendix = feature.get_abbrev_strings()[x_j]  # appendix by string
                     options['name'] += ('_' + name_appendix)
-                options["output directory"] = output_dir
                 case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT)
                 json_path = os.path.join(case_dir, "case.json")
                 with open(json_path, 'w') as fout:

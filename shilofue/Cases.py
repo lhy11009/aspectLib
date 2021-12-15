@@ -63,6 +63,9 @@ class CASE_OPT(Utilities.JSON_OPT):
             ["Potential temperature"], 1673.0, nick='potential_T')
         self.add_key("Include fast first step", int,\
             ["Include fast first step"], 0, nick='if_fast_first_step')
+        # todo
+        self.add_key("Additional files to include", list,\
+            ["additional files"], [], nick='additional_files')
         pass
     
     def check(self):
@@ -93,6 +96,19 @@ class CASE_OPT(Utilities.JSON_OPT):
         Interface to output dir
         '''
         return Utilities.var_subs(self.values[2])
+    
+    def get_additional_files(self):
+        '''
+        Interface to add_files
+        '''
+        # todo
+        files = []
+        for additional_file in self.values[6]:
+            _path = os.path.join(self.values[1], additional_file)
+            Utilities.my_assert(os.access(_path, os.R_OK), FileNotFoundError,\
+            "Additional file %s is not found" % _path)
+            files.append(_path)
+        return files
 
 
 class CASE():
@@ -184,7 +200,6 @@ class CASE():
             with open(wb_out_path, 'w') as fout:
                 json.dump(self.wb_dict, fout, indent=2)
         print("New case created: %s" % case_dir)
-        # todo
         return case_dir
 
     def configure(self, func, config, **kwargs):
@@ -218,7 +233,6 @@ class CASE():
         self.extra_files.append(path)
 
 
-# todo
 def create_case_with_json(json_opt, CASE, CASE_OPT):
     '''
     A wrapper for the CASES class
@@ -227,7 +241,6 @@ def create_case_with_json(json_opt, CASE, CASE_OPT):
     Returns:
         case_dir: return case directory
     '''
-    # todo
     print("%s: Creating case" % Utilities.func_name())
     Case_Opt = CASE_OPT()
     if type(json_opt) == str:
@@ -241,6 +254,9 @@ def create_case_with_json(json_opt, CASE, CASE_OPT):
     Case = CASE(*Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())
     Case.configure_prm(*Case_Opt.to_configure_prm())
     Case.configure_wb(*Case_Opt.to_configure_wb())
+    # todo
+    for _path in Case_Opt.get_additional_files():
+        Case.add_extra_file(_path)
     # create new case
     case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step())
     return case_dir

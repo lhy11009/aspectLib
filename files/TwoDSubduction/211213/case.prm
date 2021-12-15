@@ -1,13 +1,13 @@
 set Dimension = 2
 set Use years in output instead of seconds = true
 set Start time = 0
-set End time = 10e6
+set End time = 60e6
 set Output directory = output
 set Timing output frequency = 10
 set Additional shared libraries = $ASPECT_SOURCE_DIR/build_master_TwoD/prescribe_field/libprescribed_temperature.so, $ASPECT_SOURCE_DIR/build_master_TwoD/visco_plastic_TwoD/libvisco_plastic_TwoD.so, $ASPECT_SOURCE_DIR/build_master_TwoD/subduction_temperature2d_ellipse/libsubduction_temperature2d_ellipse.so
 set Pressure normalization = surface
 set Surface pressure = 0
-set Adiabatic surface temperature = 1573
+set Adiabatic surface temperature = 1673
 set Prescribe internal temperatures = true
 set Resume computation = false
 set Nonlinear solver scheme = single Advection, iterated Newton Stokes
