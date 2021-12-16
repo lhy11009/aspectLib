@@ -26,7 +26,9 @@ import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 from shilofue.ParsePrm import ReadPrmFile
-import shilofue.PlotVisit as PlotVisit
+# todo
+from shilofue.PlotVisit import RunScripts
+from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 import shilofue.PlotCase as PlotCase
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
@@ -67,7 +69,8 @@ def TwoDSubduction_PlotCaseRun(case_path, **kwargs):
     prm_path = os.path.join(case_path, 'output', 'original.prm')
 
     # plot visit
-    Visit_Options = PlotVisit.VISIT_OPTIONS(case_path)
+    # todo
+    Visit_Options = VISIT_OPTIONS(case_path)
     Visit_Options.Interpret(last_steps=3)  # interpret scripts, plot the last 3 steps
     odir = os.path.join(case_path, 'visit_scripts')
     if not os.path.isdir(odir):
@@ -85,7 +88,7 @@ def TwoDSubduction_PlotCaseRun(case_path, **kwargs):
     Visit_Options.substitute()
     ofile_path = Visit_Options.save(ofile, relative=True)
     print("Visualizing using visit")
-    PlotVisit.RunScripts(ofile_path)  # run scripts
+    RunScripts(ofile_path)  # run scripts
 
 
 def main():

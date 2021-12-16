@@ -91,7 +91,6 @@ class VISIT_OPTIONS(CASE_OPTIONS):
 
         # get snaps for plots
         graphical_snaps_guess, _, _ = GetSnapsSteps(self._case_dir, 'graphical')
-        # todo
         graphical_snaps = []
         for graphical_snap in graphical_snaps_guess:
             pvtu_file_path = os.path.join(self.options["DATA_OUTPUT_DIR"], "solution", "solution-%05d.pvtu" % graphical_snap)
@@ -102,24 +101,8 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         particle_snaps, _, _ = GetSnapsSteps(self._case_dir, 'particle')
         self.options['ALL_AVAILABLE_PARTICLE_SNAPSHOTS'] = str(particle_snaps)
         
-        # default settings
-        self.options['IF_PLOT_SLAB'] = 'False'
-        self.options['IF_PLOT_SHALLOW'] = kwargs.get('if_plot_shallow', "False") # plot the shallow part of the slab.
-        self.options['IF_EXPORT_SLAB_MORPH'] = 'False'
         particle_output_dir = os.path.join(self._output_dir, "slab_morphs")
         self.options["PARTICLE_OUTPUT_DIR"] = particle_output_dir
-
-        # plot slab 
-        self.options['IF_PLOT_SLAB'] = 'True'
-        self.options['ETA_MIN'] = self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']
-        # try using the value for the background
-        try:
-            self.options['ETA_MAX'] =\
-                Utilities.string2list(self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity'], float)[0]
-        except ValueError:
-            eta_max_inputs =\
-                ParsePrm.COMPOSITION(self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity']) 
-            self.options['ETA_MAX'] = eta_max_inputs.data['background'][0] # use phases
         try:
             self.last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])  # it is the last step we have outputs
         except IndexError:
@@ -132,8 +115,6 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             self.options['GRAPHICAL_STEPS'] += [i for i in range(self.last_step - last_steps + 1, self.last_step + 1)]
         else:
             self.options['GRAPHICAL_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
-        # self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
-        self.options['IF_DEFORM_MECHANISM'] = 1
 
     def visit_options(self, extra_options):
         '''
@@ -293,7 +274,6 @@ def RunVTKScripts(operation, vtk_option_path):
     print("run vtk script: \n%s %s" % (vtk_executable, vtk_option_path))
     completed_process = subprocess.run([vtk_executable, vtk_option_path], capture_output=True, text=True)
     print("\nOutput from vtk script:\n %s" % completed_process.stdout)
-    # todo: return outputs
     return completed_process.stdout
 
 
