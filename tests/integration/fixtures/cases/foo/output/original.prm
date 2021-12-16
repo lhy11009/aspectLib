@@ -1,20 +1,19 @@
 set Dimension = 2
 set Use years in output instead of seconds = true
 set Start time = 0
-set End time = 0
+set End time = 1e6
 set Output directory = output
-set Timing output frequency = 10
-set Additional shared libraries = $ASPECT_SOURCE_DIR/build_TwoDSubduction/subduction_temperature2d_ellipse/libsubduction_temperature2d_ellipse.so, $ASPECT_SOURCE_DIR/build_TwoDSubduction/prescribe_field/libprescribed_temperature.so
+set Additional shared libraries = /home/lochy/software/aspect/plugins/subduction_temperature2d/libsubduction_temperature2d.so, /home/lochy/software/aspect/plugins/prescribe_field/libprescribed_temperature.so
 set Pressure normalization = surface
 set Surface pressure = 0
-set Adiabatic surface temperature = 1673
+set Adiabatic surface temperature = 273
 set Prescribe internal temperatures = true
 set Resume computation = false
-set Nonlinear solver scheme = no Advection, no Stokes
-set CFL number = 0.5
-set Max nonlinear iterations = 100
+set Nonlinear solver scheme = iterated Advection and Newton Stokes
+set CFL number = 0.25
+set Max nonlinear iterations = 75
 set Max nonlinear iterations in pre-refinement = 0
-set Nonlinear solver tolerance = 1e-4
+set Nonlinear solver tolerance = 2e-05
 
 subsection Discretization
     set Composition polynomial degree = 2
@@ -32,9 +31,9 @@ end
 subsection Solver parameters
     subsection Newton solver parameters
         set Max pre-Newton nonlinear iterations = 20
-        set Nonlinear Newton solver switch tolerance = 0.1
+        set Nonlinear Newton solver switch tolerance = 1e-3
         set Max Newton line search iterations = 0
-        set Maximum linear Stokes solver tolerance = 0.9
+        set Maximum linear Stokes solver tolerance = 0.01
         set Use Newton residual scaling method = true
         set Use Newton failsafe = true
         set Stabilization preconditioner = SPD
@@ -65,16 +64,14 @@ end
 
 subsection Mesh refinement
     set Initial global refinement = 5
-    set Initial adaptive refinement = 5
+    set Initial adaptive refinement = 6
     set Minimum refinement level = 5
-    set Strategy = isosurfaces, minimum refinement function, viscosity
+    set Strategy = isosurfaces, minimum refinement function
     set Time steps between mesh refinement = 10
-    set Refinement fraction = 0.2
-    set Coarsening fraction = 0.2
     set Run postprocessors on initial refinement = true
     set Skip solvers on initial refinement = true
     subsection Isosurfaces
-        set Isosurfaces = 10, 11, spcrust: 0.5 | 1.0; 9, 11, spharz: 0.5 | 1.0;  9, 11, opcrust: 0.5 | 1.0; 8, 11, opharz: 0.5 | 1.0; 9, 11, Temperature: 270.0 | 1173.0
+        set Isosurfaces = 11, 12, spcrust: 0.5 | 1.0; 10, 12, spharz: 0.5 | 1.0;  10, 12, opcrust: 0.5 | 1.0; 9, 12, opharz: 0.5 | 1.0; 10, 12, Temperature: 270.0 | 1173.0
     end
     subsection Minimum refinement function
         set Coordinate system = spherical
@@ -91,25 +88,8 @@ subsection Boundary velocity model
 end
 
 
-subsection Heating model
-    set List of model names = adiabatic heating
-end
-
-
 subsection Initial temperature model
-    set List of model names = subduction adiabatic, subduction 2d temperature ellipse
-    set List of model operators = add
-    subsection Subduction adiabatic
-        subsection Function
-            set Function expression = 0.0; 0.0; 0.0; 0.0
-        end
-    end
-    subsection Subduction 2d temperature ellipse
-        set Thermal boundary width factor in = 1.0
-        set Thermal boundary width factor out = 0.5
-        set Extended boussinesq = true
-        set Adiabatic surface temperature gradient = 3.73e-4
-    end
+    set Model name = subduction 2d temperature
 end
 
 
@@ -117,7 +97,7 @@ subsection Boundary temperature model
     set Fixed temperature boundary indicators = bottom, top
     set List of model names = spherical constant
     subsection Spherical constant
-        set Inner temperature = 3500
+        set Inner temperature = 1673
         set Outer temperature = 273
     end
 end
@@ -131,7 +111,23 @@ end
 
 
 subsection Initial composition model
-    set List of model names = subduction 2d composition ellipse
+    set List of model names = function
+    set List of model operators = add
+    subsection Function
+        set Coordinate system = spherical
+        set Variable names = r, phi
+        set Function constants = PHIC=0.628319, Ro=6.371e6, RC=4.000e+05, \
+                ST=2.000e+05, DCS=7.500e+03, DHS=3.520e+04, DCO=7.500e+03, DHO=3.520e+04
+        set Function expression = (((phi<PHIC)&&(Ro-r<=DCS)) ? 1.0 : \
+                (((phi>=PHIC)&&(Ro-r<=ST)&&(phi*Ro<=PHIC*Ro+min(RC,sqrt(abs(2.0*RC*(Ro-r)-(Ro-r)^2.0)))) && \
+                   (RC-sqrt(abs(((phi-PHIC)*Ro)^2.0+((Ro-r)-RC)^2.0))<=DCS) ) ? 1 : 0)); \
+                (((phi<PHIC)&&(Ro-r>DCS)&&(Ro-r<=DHS)) ? 1.0 : \
+                (((phi>=PHIC)&&(Ro-r<=ST)&&(phi*Ro<=PHIC*Ro+min(RC,sqrt(abs(2.0*RC*(Ro-r)-(Ro-r)^2.0)))) \
+                   &&(RC-sqrt(abs(((phi-PHIC)*Ro)^2.0+((Ro-r)-RC)^2.0))>DCS) \
+                   &&(RC-sqrt(abs(((phi-PHIC)*Ro)^2.0+((Ro-r)-RC)^2.0))<=DHS))? 1.0 : 0));\
+                (((Ro-r<=DCO)&&(phi*Ro>PHIC*Ro+min(RC,sqrt(abs(2.0*RC*(Ro-r)-(Ro-r)^2.0))))) ? 1.0 : 0);\
+                (((Ro-r>DCO)&&(Ro-r<=DHO)&&(phi*Ro>PHIC*Ro+min(RC,sqrt(abs(2.0*RC*(Ro-r)-(Ro-r)^2.0))))) ? 1.0 : 0)
+    end
 end
 
 
@@ -151,33 +147,27 @@ subsection Material model
     subsection Visco Plastic
         set Reference temperature = 273
         set Reference viscosity = 1e20
+        set Adiabat temperature gradient for viscosity = 7.7075e-09
         set Minimum strain rate = 1.e-20
         set Reference strain rate = 1.e-15
-        set Minimum viscosity = 1e18
-        set Maximum viscosity = 1e24
-        set Phase transition depths = background:410e3|520e3|560e3|670e3|670e3|670e3|670e3, spcrust: 80e3|665e3|720e3, spharz: 410e3|520e3|560e3|670e3|670e3|670e3|670e3
-        set Phase transition widths = background:5e3|5e3|5e3|5e3|5e3|5e3|5e3, spcrust: 5e3|5e3|5e3, spharz: 5e3|5e3|5e3|5e3|5e3|5e3|5e3
-        set Phase transition temperatures = background:1662.0|1662.0|1662.0|1662.0|1662.0|1662.0|1662.0, spcrust: 1173.0|1662.0|1662.0, spharz: 1662.0|1662.0|1662.0|1662.0|1662.0|1662.0|1662.0
-        set Phase transition Clapeyron slopes = background:4e6|4.1e6|4e6|-2e6|4e6|-3.1e6|1.3e6, spcrust: 0.0|4e6|1.3e6, spharz: 4e6|4.1e6|4e6|-2e6|4e6|-3.1e6|1.3e6
-        set Manually define phase method crust = background: 0.0, spcrust: 1.3, spharz:0.0
-        set Manually define phase method pyrolite = background:1.0, spcrust: 0.0, spharz:0.0
-        set Manually define phase method harzburgite = background:0.0, spcrust: 0.0, spharz:1.0
-        set Decoupling eclogite viscosity = false
+        set Minimum viscosity = 1e19
+        set Maximum viscosity = 1e+24
+        set Phase transition depths = background:670e3
+        set Phase transition widths = background:5e3
+        set Phase transition temperatures = background:1662.0
+        set Phase transition Clapeyron slopes = background:-2e6
         set Thermal diffusivities = 1.0e-6, 1.0e-6, 1.0e-6, 1.0e-6,1.0e-6
-        set Heat capacities = 1250.0
-        set Densities = background: 3300.0|3394.4|3442.1|3453.2|3617.6|3691.5|3774.7|3929.1,\
-                        spharz: 3235.0|3372.3|3441.7|3441.7|3680.8|3717.8|3759.4|3836.6,\
-                        spcrust: 3000.0|3540.0|3613.0|3871.7,\
-                        opcrust: 3000.0, opharz: 3235.0
-        set Thermal expansivities = 3.1e-5
+        set Heat capacities = background:1250.0|1250.0, spcrust:1250, spharz:1250, opcrust:1250, opharz:1250
+        set Densities = background:3300.0|3300.0, spcrust:3000, spharz:3235, opcrust:3000, opharz:3235
+        set Thermal expansivities = background:3.1e-5|3.1e-5, spcrust:3.1e-5, spharz:3.1e-5, opcrust:3.1e-5, opharz:3.1e-5
         set Viscosity averaging scheme = harmonic
         set Viscous flow law = composite
         set Yield mechanism = drucker
         set Grain size = 1.0000e-02
-        set Prefactors for diffusion creep = background:1.4250e-15|1.4250e-15|1.4250e-15|1.4250e-15|1.2833e-17|1.2833e-17|1.2833e-17|1.2833e-17, spcrust:5.0000e-21|1.4250e-15|1.2833e-17|1.2833e-17, spharz:1.4250e-15|1.4250e-15|1.4250e-15|1.4250e-15|1.2833e-17|1.2833e-17|1.2833e-17|1.2833e-17, opcrust:1.4250e-15, opharz:1.4250e-15
-        set Grain size exponents for diffusion creep = background:3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00, spcrust:0.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00, spharz:3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00, opcrust:3.0000e+00, opharz:3.0000e+00
-        set Activation energies for diffusion creep = background:3.1700e+05|3.1700e+05|3.1700e+05|3.1700e+05|3.1700e+05|3.1700e+05|3.1700e+05|3.1700e+05, spcrust:0.0000e+00|3.1700e+05|3.1700e+05|3.1700e+05, spharz:3.1700e+05|3.1700e+05|3.1700e+05|3.1700e+05|3.1700e+05|3.1700e+05|3.1700e+05|3.1700e+05, opcrust:3.1700e+05, opharz:3.1700e+05
-        set Activation volumes for diffusion creep = background:4.0000e-06|4.0000e-06|4.0000e-06|4.0000e-06|3.0000e-06|3.0000e-06|3.0000e-06|3.0000e-06, spcrust:0.0000e+00|4.0000e-06|3.0000e-06|3.0000e-06, spharz:4.0000e-06|4.0000e-06|4.0000e-06|4.0000e-06|3.0000e-06|3.0000e-06|3.0000e-06|3.0000e-06, opcrust:4.0000e-06, opharz:4.0000e-06
+        set Prefactors for diffusion creep = background:1.4250e-15|1.0657e-18, spcrust:5.0000e-21, spharz:1.4250e-15, opcrust:1.4250e-15, opharz:1.4250e-15
+        set Grain size exponents for diffusion creep = background:3.0000e+00|3.0000e+00, spcrust:0.0000e+00, spharz:3.0000e+00, opcrust:3.0000e+00, opharz:3.0000e+00
+        set Activation energies for diffusion creep = background:3.1700e+05|3.1700e+05, spcrust:0.0000e+00, spharz:3.1700e+05, opcrust:3.1700e+05, opharz:3.1700e+05
+        set Activation volumes for diffusion creep = background:4.0000e-06|1.5000e-06, spcrust:0.0000e+00, spharz:4.0000e-06, opcrust:4.0000e-06, opharz:4.0000e-06
         set Prefactors for dislocation creep = background:6.859e-15, spcrust:6.859e-15, spharz:6.859e-15, opcrust:6.859e-15, opharz:6.859e-15
         set Stress exponents for dislocation creep = background:3.5, spcrust:3.5, spharz:3.5, opcrust:3.5, opharz:3.5
         set Activation energies for dislocation creep = background:480.0e3, spcrust:480.0e3, spharz:480.0e3, opcrust:480.0e3, opharz:480.0e3
@@ -200,19 +190,6 @@ subsection Material model
                                         ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*phi < Width)) ? 1:\
                                         ((r > Ro - DCS) && (Ro*(PHIM - phi) < Width)) ? 2:\
                                         ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*(PHIM - phi) < Width)) ? 3: -1
-        end
-        subsection Eclogite transition
-            set Temperature for eclogite transition = 673.0
-            set Temperature width for eclogite transition = 200.0
-            set Temperature slope for eclogite transition = -20e6
-            set Pressure for eclogite transition = 1.5e9
-            set Pressure width for eclogite transition = 0.5e9
-            set Max pressure for eclogite transition = 5e9
-            set Max pressure width for eclogite transition = 1.5e9
-        end
-        subsection Eclogite decoupled viscosity
-            set Decoupled depth = 100e3
-            set Decoupled depth width = 10e3
         end
     end
 end
@@ -249,7 +226,7 @@ subsection Postprocess
         set Time between graphical output = 0
     end
     subsection Visualization
-        set List of output variables = density, viscosity, error indicator, named additional outputs
+        set List of output variables = density, viscosity, error indicator
         set Output format = vtu
         set Time between graphical output = 0.1e6
     end
@@ -257,7 +234,7 @@ subsection Postprocess
         set Particle generator name = ascii file
         set Data output format = vtu
         set List of particle properties = initial position, pT path
-        set Time between data output = 10000
+        set Time between data output = 0.2e6
         subsection Generator
             subsection Ascii file
                 set Data directory = ./

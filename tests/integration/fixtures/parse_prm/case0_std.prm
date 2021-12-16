@@ -9,9 +9,9 @@ set Surface pressure = 0
 set Adiabatic surface temperature = 1673
 set Prescribe internal temperatures = true
 set Resume computation = false
-set Nonlinear solver scheme = iterated Advection and Newton Stokes
+set Nonlinear solver scheme = no Advection, no Stokes
 set CFL number = 0.5
-set Max nonlinear iterations = 1
+set Max nonlinear iterations = 100
 set Max nonlinear iterations in pre-refinement = 0
 set Nonlinear solver tolerance = 1e-4
 
@@ -39,10 +39,6 @@ subsection Solver parameters
         set Stabilization preconditioner = SPD
         set Stabilization velocity block = SPD
         set Use Eisenstat Walker method for Picard iterations = true
-    end
-    subsection Stokes solver parameters
-        set Number of cheap Stokes solver steps = 0
-        set Linear solver tolerance = 0.9999
     end
 end
 

@@ -51,10 +51,11 @@ def test_create_group():
     group.read_json_base(group_opt.get_base_json_path())
     if os.path.isdir(group_opt.get_output_dir()):
         rmtree(group_opt.get_output_dir())  # remove old directory
-    group.create_group(group_opt.get_features(), group_opt.get_output_dir())
-    dir_stds = ['foo_SA20.0', 'foo_SA40.0', 'foo_SA60.0']
+    group.create_group(*group_opt.to_create_group())
+    dir_stds = ['test_group_SA20.0', 'test_group_SA40.0', 'test_group_SA60.0']
     for dir_std in dir_stds:
         case_dir = os.path.join(group_opt.get_output_dir(), dir_std)
+        print(case_dir)  # case directory
         assert(os.path.isdir(case_dir)) # case generation
         prm_path = os.path.join(case_dir, 'case.prm')
         assert(os.path.isfile(prm_path))
