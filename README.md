@@ -15,6 +15,8 @@ On the second order, there are subfolders under the 'python_scripts' folder (e.g
 In the scripts, I define "parental" classes and class functions in the first order scripts and make "daughter" classes that inherit there parents in the second order scripts.
 A good example could be seen in the script of (todo).py
 
+(todo) use route like '.'
+
 
 # Topics
 
@@ -54,6 +56,8 @@ The information I include:
 * last_restart_time : last time in model it restarted
 * wallclock : wallclock after last restart
 * total_wallclock : total wallclock
+* state: state of the case (running, stopped, terminated) (todo)
+* last_update: time of last update
 
 Format: 
 
@@ -124,7 +128,9 @@ This is a test called test_post_hefesto.py in the integration folder. Look at th
 
 ## Post-process
 
-(todo) change usage of case.prm to output/original.prm
+Clearify the usage of prm:
+
+I use case.prm to create cases as well as analytical analysis, while using output/original.prm for post-process.
 
 ### Plot results in "statistic" file
 
