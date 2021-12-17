@@ -179,32 +179,37 @@ parse_export_run_time_info(){
     # check
     local temp
     local case_dir="$1"
+    local case_name=$(basename "${case_dir}")
+    data0=("${case_name}") # case name
     local file_path="$2"
     local append="$3"  # append to old file
     local log_file="${case_dir}/output/log.txt"
     [[ -d "${case_dir}" ]] ||  { cecho ${BAD} "${FUNCNAME[0]}: case directory(${case_dir}) doesn't exist"; exit 1; }
-    headers=("step" "last_restart_step" "Time" "wallclock" "total_wallclock")
+    # todo
+    headers=("case_name" "status" "step" "last_restart_step" "Time" "wallclock" "total_wallclock")
     # parse case info
     [[ -e ${log_file} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile(${log_file}) doesn't exist"
     local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_block_output" "${log_file}")
     IFS=$'\n'; local entries=(${outputs})  # each member in entries is a separate line
     IFS=' '; return_value=(${entries[*]: -1})  # get the last line and split with ' '
-    temp=$(util_neat_word "${return_value[0]}"); data0=("${temp}")  # step
-    temp=$(util_neat_word "${return_value[1]}"); data2=("${temp}")  # time
+    temp=$(util_neat_word "${return_value[0]}"); data2=("${temp}")  # step
+    temp=$(util_neat_word "${return_value[1]}"); data4=("${temp}")  # time
+    # status, todo
+    temp=$(get_case_status "${case_dir}"); data1=("${temp}")
     # parse resume-computation info
     local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_resume_computation" "${log_file}")
     IFS=$'\n'; local entries=(${outputs})  # each member in entries is a separate line
     IFS=' '; return_value=(${entries[*]: -1})  # get the last line and split with ' '
-    temp=$(util_neat_word "${return_value[2]}"); data3=("${temp}")  # wall clock since last restart
+    temp=$(util_neat_word "${return_value[2]}"); data5=("${temp}")  # wall clock since last restart
     IFS=' '; return_value=(${entries[*]: -2})  # get the previous line and split with ' '
-    temp=$(util_neat_word "${return_value[0]}"); data1=("${temp}")  # step of last restart
+    temp=$(util_neat_word "${return_value[0]}"); data3=("${temp}")  # step of last restart
     local total='0.0'
     for entry in "${entries[@]}"; do
         return_value=(${entry})
         temp="${return_value[2]}"
         total=$(awk -v a="${total}" -v b="${temp}" 'BEGIN{printf "%.2e", (a + b)}')
     done
-    data4=("${total}")  # total wallclock
+    data6=("${total}")  # total wallclock
     util_write_file_with_header "${file_path}" "${append}"
     unset headers
     unset data0
@@ -214,20 +219,22 @@ parse_export_all_run_time_info_in_directory(){
     # parse run time info for all the cases in a directory
     # Inputs:
     # 	$1: directory
+    #   $2: output file (optional)
     # File outout:
     # 	cases.log : log file of run time info
+    local dir; local log_file;
     dir="$1"
     [[ -d "${dir}" ]] ||  cecho ${BAD} "${FUNCNAME[0]}: directory(${dir}) doesn't exist"
-    log_file="${dir}/cases.log"
+    [[ -n "$2" ]] && log_file="$2" || log_file="${dir}/cases.log"
     local is_case
     local if_second="0"
     for sub_dir in "${dir}"/*; do
-	if [[ -d "${sub_dir}" ]]; then
-		check_case "${sub_dir}" || parse_export_run_time_info "${sub_dir}" "${log_file}" "${if_second}"
-		[[ "${if_second}" == "0" ]] && if_second="1"  # in case this is the first entry
-	fi
+    	if [[ -d "${sub_dir}" ]]; then
+    		check_case "${sub_dir}" || parse_export_run_time_info "${sub_dir}" "${log_file}" "${if_second}"
+    		[[ "${if_second}" = "0" ]] && if_second="1"  # in case this is the first entry
+    	fi
     done
-    
+    echo "${FUNCNAME[0]}: log file generated: ${log_file}"
 }
 
 check_case(){
@@ -258,6 +265,23 @@ check_case_running(){
             printf "${path}\n${case_path}\n\n"
         fi
     done
+}
+
+get_case_status(){
+    # todo
+    # get the status of case (i.e. running (R), ended (E), terminate (T))
+    # Inputs:
+    #   $1: case_dir
+    local case_dir="$1"
+    prm_path="${case_dir}/case.prm"
+    unset return_values
+    util_get_prm_file_value "${prm_path}" "End time"
+    local end_time="${return_values}"
+    echo "end_time: ${end_time}"  # debug
+    # todo
+    local status
+    # [[  ]]
+    echo "${status}"
 }
 
 parse_all_time_info(){

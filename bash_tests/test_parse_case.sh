@@ -13,8 +13,10 @@
 
 # source "${ASPECT_LAB_DIR}/bash_scripts/foo.sh"
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"  # dir of this script
+source "${ASPECT_LAB_DIR}/utilities/bash_scripts/utilities.sh"
+source "${ASPECT_LAB_DIR}/bash_scripts/parse_case.sh"
 test_output_dir="${ASPECT_LAB_DIR}/.test"  # output to this dir
-test_dir="${dir}/test_parse_case"
+test_dir="${ASPECT_LAB_DIR}/bash_tests/test_parse_case"
 
 test_parse_block_output()
 {
@@ -94,6 +96,25 @@ test_parse_timestep_last()
     return 0
 }
 
+test_parse_parse_export_all_run_time_info_in_directory()
+{
+    # todo
+    local_passed_tests=0
+    local_failed_tests=0
+    # test1
+    local test_source_dir="${test_dir}/cases"
+    local log_file="${test_output_dir}/cases.log"
+    [[ -e "${log_file}" ]] && rm "${log_file}"  # remove old file
+	parse_export_all_run_time_info_in_directory "${test_source_dir}" "${log_file}"
+    if [[ $? = 0 ]]; then
+        ((local_passed_tests++))
+    else
+        ((local_failed_tests++))
+    fi
+    final_message ${FUNCNAME[0]} ${local_passed_tests} ${local_failed_tests}
+    return 0
+}
+
 test_foo()
 {
     ###
@@ -137,7 +158,11 @@ main(){
     test_parse_timestep_last
     ((passed_tests+=local_passed_tests))
     ((failed_tests+=local_failed_tests))
-
+    
+    # test parse_parse_export_all_run_time_info_in_directory()
+    test_parse_parse_export_all_run_time_info_in_directory
+    ((passed_tests+=local_passed_tests))
+    ((failed_tests+=local_failed_tests))
 
     # message
     final_message 'test_parse_case.sh' ${passed_tests} ${failed_tests}

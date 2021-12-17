@@ -40,7 +40,7 @@ script:
 	utilities/bash_scripts/JSON.sh
 
 
-#### Save case running info in a file
+#### Save case runtime info in a file
 
 script: 
 	bash_scripts/parse_case.sh
@@ -50,14 +50,15 @@ The second script is used to parse block output with awk. The functions in the f
 Here, I put case run time info into a separte file "run_time.log",
 
 The information I include:
+* case name
+* state: state of the case (running, stopped, terminated) (todo)
 * step : step in model
 * last_restart_step : last step it restarted
 * time : time in model
 * last_restart_time : last time in model it restarted
 * wallclock : wallclock after last restart
 * total_wallclock : total wallclock
-* state: state of the case (running, stopped, terminated) (todo)
-* last_update: time of last update
+* last_update: time of last update (todo)
 
 Format: 
 
@@ -68,23 +69,31 @@ Format:
 * data:
 	1000	600 ...
 
-Options:
-
-	this could be done for either one case or multiple cases within the same directory.
+Operations:
+* a. Parse runtime output for a single case
+* b. Parse runtime output for multiple cases within the same directory.
+* c. Assemble this information projectwise by combine these outputs (todo)
 
 run with
 	Lib_parse_case -h for more details
 
-#### Generate a log file for all cases
+##### get the state of a case
 
-This file should be saved project wise (e.g. under TwoDSubduction_DIR)
+determine wheter a case is running (R), stopped (S), terminated (T) or having issue (I)
+* R: This case runtime information is found in slurm
+* S: This case is stoped and the end time is not reached
+* T: This case is terminated manually
+* E: This case has run to an end.
+* I: This case may run into an issue
 
 #### Restart a previous case (to be tested)
 
 script: 
 	bash_scripts/parse_case.sh
 
-* restart a case if it doesn't reach the end time I set here (e.g. due to a maintainance of the server).
+Operations:
+* a. restart a case if it doesn't reach the end time I set here (e.g. due to a maintainance of the server).
+* b. loop in a directory and restart cases where "End time" is not reached (todo)
 
 
 ## Prepare cases
