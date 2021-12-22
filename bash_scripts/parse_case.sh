@@ -185,7 +185,6 @@ parse_export_run_time_info(){
     local append="$3"  # append to old file
     local log_file="${case_dir}/output/log.txt"
     [[ -d "${case_dir}" ]] ||  { cecho ${BAD} "${FUNCNAME[0]}: case directory(${case_dir}) doesn't exist"; exit 1; }
-    # todo
     headers=("case_name" "status" "step" "last_restart_step" "Time" "wallclock" "total_wallclock")
     # parse case info
     [[ -e ${log_file} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile(${log_file}) doesn't exist"
@@ -194,7 +193,7 @@ parse_export_run_time_info(){
     IFS=' '; return_value=(${entries[*]: -1})  # get the last line and split with ' '
     temp=$(util_neat_word "${return_value[0]}"); data2=("${temp}")  # step
     temp=$(util_neat_word "${return_value[1]}"); data4=("${temp}")  # time
-    # status, todo
+    # status
     temp=$(get_case_status "${case_dir}"); data1=("${temp}")
     # parse resume-computation info
     local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_resume_computation" "${log_file}")
@@ -268,7 +267,6 @@ check_case_running(){
 }
 
 get_case_status(){
-    # todo
     # get the status of case (i.e. running (R), ended (E), terminate (T))
     # Inputs:
     #   $1: case_dir
@@ -278,7 +276,6 @@ get_case_status(){
     util_get_prm_file_value "${prm_path}" "End time"
     local end_time="${return_values}"
     echo "end_time: ${end_time}"  # debug
-    # todo
     local status
     # [[  ]]
     echo "${status}"
@@ -350,14 +347,35 @@ check_time_restart_case(){
     local time_plan="$2"
     # read run_time
     local log_file="$1/output/log.txt"
-    [[ -e ${log_file} ]] || cecho ${BAD} "${FUNCNAME[0]}: logfile(${log_file}) doesn't exist"
-    local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_log_last_step" "${log_file}")
-    IFS=$'\n'; local entries=(${outputs})
-    local time=$(sed -E "s/^[^ ]*(\t|\ )*//g" <<< "${outputs}")
-    if (( $(eval "awk 'BEGIN{print ("${time}"<"${time_plan}")?1:0}'") )); then
-        printf "Going to restart $1\n"
-        restart_case "$1"
+    if [[ -e ${log_file} ]]; then 
+        local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_log_last_step" "${log_file}")
+        IFS=$'\n'; local entries=(${outputs})
+        local time=$(sed -E "s/^[^ ]*(\t|\ )*//g" <<< "${outputs}")
+        if (( $(eval "awk 'BEGIN{print ("${time}"<"${time_plan}")?1:0}'") )); then
+            printf "Going to restart $1\n"
+            restart_case "$1"
+        fi
+    else
+        echo "${FUNCNAME[0]}: logfile(${log_file}) doesn't exist yet, going to start case"
+        submit_case_peloton_rome "${case_dir}"
     fi
+    return 0
+}
+
+check_time_restart_case_in_directory(){
+    ####
+    # restart a case if the run time of that case is not reached
+    # Inputs:
+    #   $1: root directory
+    #   $2: run time
+    ####
+    [[ -d "$1" ]] || { cecho "${BAD}" "no such directory $1"; exit 1; }
+    [[ -n "$2" ]] || { cecho "${BAD}" "an end time must by assigned"; exit 1; }
+    for sub_dir in "$1"/*; do
+    	if [[ -d "${sub_dir}" ]]; then
+    		check_case "${sub_dir}" ||  check_time_restart_case "${sub_dir}" "$2"
+        fi
+    done
     return 0
 }
 
@@ -404,6 +422,8 @@ main(){
         [[ -n "$2" && -n "$3" ]] || \
         { cecho "$BAD" "path of case (\$2) and time (\$3) must be given"; exit 1; }
         check_time_restart_case "$2" "$3"
+    elif [[ "$1" == "check_time_restart_directory" ]]; then
+        check_time_restart_case_in_directory "$2" "$3"
     else
     	cecho "${BAD}" "option ${1} is not valid\n"
     fi
