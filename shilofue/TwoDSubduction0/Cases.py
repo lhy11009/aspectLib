@@ -273,7 +273,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     sp_ridge_coords = [[0, -_side], [0, _side]]
     # Overiding plate
     if_ov_trans = kwargs.get('if_ov_trans', False)  # transit to another age
-    if if_ov_trans:
+    if if_ov_trans and ov_age > (1e6 + kwargs['ov_trans_age']):  # only transfer to younger age
         i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate 1')
         ov_trans_feature, ov =\
             wb_configure_transit_ov_plates(wb_dict['features'][i0], trench,\
