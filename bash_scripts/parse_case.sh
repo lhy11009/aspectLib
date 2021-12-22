@@ -47,11 +47,14 @@ Example Usage:
     
       Lib_parse_case export_case_info ~/ASPECT_PROJECT/TwoDSubduction/wb_sd_issue_2/wb_sph_cdd50_substract_T_op40_20Ma_hr export_test.txt
     
+   export run time info with a directory (all the cases in this directory) to \"cases.log\":
+      Lib_parse_case export_all_case_info_in_directory . 
+
    Restart case by checkng running time:
       Lib_parse_case check_time_restart /group/billengrp-mpi-io/lochy/TwoDSubduction/wb/wb_cart_4 10e6
 
-   export run time info with a directory (all the cases in this directory) to \"cases.log\":
-      Lib_parse_case export_all_case_info_in_directory . 
+   Restart cases by checking run time in a directory
+      Lib_parse_case check_time_restart_directory ./EBA_CDPT 60e6 high2
     
 "
     printf "${_text}"
@@ -275,7 +278,6 @@ get_case_status(){
     unset return_values
     util_get_prm_file_value "${prm_path}" "End time"
     local end_time="${return_values}"
-    echo "end_time: ${end_time}"  # debug
     local status
     # [[  ]]
     echo "${status}"
@@ -313,9 +315,21 @@ submit_case_peloton_rome(){
     # submit case to slurm
     # Inputs:
     #   $1: case directory
-    now="${pwd}"
+    now=$(pwd)
     cd "$1"
     eval "sbatch -A billen job_rome.sh"
+    cd "${now}"
+    return 0
+}
+
+submit_case_peloton_high2(){
+    ####
+    # submit case to slurm
+    # Inputs:
+    #   $1: case directory
+    now=$(pwd)
+    cd "$1"
+    eval "sbatch job_high2.sh"
     cd "${now}"
     return 0
 }
@@ -325,13 +339,20 @@ restart_case(){
     # restart a case
     # Inputs:
     #   $1: case directory
+    #   $2: partition
     ####
     # change options in the case.prm file
     local case_dir="$1"
+    local partition
+    [[ -n "$2" ]] && partition="$2" || partition="rome"
     local prm_file="${case_dir}/case.prm"
     [[ -e ${prm_file} ]] || { cecho "${BAD}" "No such file ${prm_file}"; exit 1; } 
     util_substitute_prm_file_contents "${prm_file}" "Resume computation" "true"
-    submit_case_peloton_rome "${case_dir}"
+    if [[ ${partition} == "rome" ]]; then
+        submit_case_peloton_rome "${case_dir}"
+    elif [[ ${partition} == "high2" ]]; then
+        submit_case_peloton_high2 "${case_dir}"
+    fi
     # check for the restarted case
     return 0
 }
@@ -342,22 +363,33 @@ check_time_restart_case(){
     # Inputs:
     #   $1: case directory
     #   $2: run time
+    #   $3: partition
     ####
     local case_dir="$1"
     local time_plan="$2"
+    local partition
+    [[ -n "$3" ]] && partition="$3" || partition="rome"
     # read run_time
     local log_file="$1/output/log.txt"
-    if [[ -e ${log_file} ]]; then 
+    local restart_file="$1/output/restart.mesh"
+    if [[ -e ${log_file} && -e ${restart_file} ]]; then 
         local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_log_last_step" "${log_file}")
-        IFS=$'\n'; local entries=(${outputs})
         local time=$(sed -E "s/^[^ ]*(\t|\ )*//g" <<< "${outputs}")
-        if (( $(eval "awk 'BEGIN{print ("${time}"<"${time_plan}")?1:0}'") )); then
-            printf "Going to restart $1\n"
-            restart_case "$1"
+        if [[ $(eval "awk 'BEGIN{print ("${time}"<"${time_plan}")?1:0}'") ]]; then
+	    outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_snapshot" "${log_file}")
+            IFS=$'\n'; local entries=(${outputs})
+    	    IFS=' '; local return_value=(${entries[*]: -1})  # get the last line and split with ' '
+	    [[ ${#return_value[*]} == 3 ]] || { cecho "${BAD}" "${FUNCNAME[0]}: entries from parsing snap shots mismatch"; exit 1; }
+            printf "Going to restart $1 at step ${return_value[0]} time ${return_value[1]}\n"
+            restart_case "$1" "$3"
         fi
     else
-        echo "${FUNCNAME[0]}: logfile(${log_file}) doesn't exist yet, going to start case"
-        submit_case_peloton_rome "${case_dir}"
+        echo "${FUNCNAME[0]}: no snapshots to restart from, going to run from the start"
+        if [[ ${partition} == "rome" ]]; then
+            submit_case_peloton_rome "${case_dir}"
+        elif [[ ${partition} == "high2" ]]; then
+            submit_case_peloton_high2 "${case_dir}"
+        fi
     fi
     return 0
 }
@@ -371,9 +403,12 @@ check_time_restart_case_in_directory(){
     ####
     [[ -d "$1" ]] || { cecho "${BAD}" "no such directory $1"; exit 1; }
     [[ -n "$2" ]] || { cecho "${BAD}" "an end time must by assigned"; exit 1; }
+    local partition
+    [[ -n "$3" ]] && partition="$3" || partition="rome"
     for sub_dir in "$1"/*; do
-    	if [[ -d "${sub_dir}" ]]; then
-    		check_case "${sub_dir}" ||  check_time_restart_case "${sub_dir}" "$2"
+	local full_route=$(fix_route "${sub_dir}")
+    	if [[ -d "${full_route}" ]]; then
+    		check_case "${full_route}" ||  { echo "Find case ${full_route}"; check_time_restart_case "${full_route}" "$2" "${partition}"; }
         fi
     done
     return 0
@@ -421,9 +456,9 @@ main(){
     elif [[ "$1" == "check_time_restart" ]]; then
         [[ -n "$2" && -n "$3" ]] || \
         { cecho "$BAD" "path of case (\$2) and time (\$3) must be given"; exit 1; }
-        check_time_restart_case "$2" "$3"
+        check_time_restart_case "$2" "$3" "$4"
     elif [[ "$1" == "check_time_restart_directory" ]]; then
-        check_time_restart_case_in_directory "$2" "$3"
+        check_time_restart_case_in_directory "$2" "$3" "$4"
     else
     	cecho "${BAD}" "option ${1} is not valid\n"
     fi

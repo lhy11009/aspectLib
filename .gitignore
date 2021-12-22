@@ -160,3 +160,15 @@ $GIT_DIR/output/
 
 # excecutables
 /bin
+
+# output file
+*.out
+
+# swap file
+*.swp
+*.swo
+*.swn
+*.swl
+
+# utilities
+utilities
