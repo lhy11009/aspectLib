@@ -26,7 +26,7 @@ from shilofue.Cases import create_case_with_json
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
-from shutil import rmtree
+from shutil import rmtree, copy
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -173,6 +173,7 @@ class GROUP():
             sizes.append(len(feature.get_values()))
             total *= len(feature.get_values())
         if bindings == []:
+            # no bindings assigned, just follow the order in values
             for i in range(total):
                 options = self.base_options.copy()
                 options['name'] =  base_name
@@ -191,8 +192,9 @@ class GROUP():
                 case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT)
                 json_path = os.path.join(case_dir, "case.json")
                 with open(json_path, 'w') as fout:
-                    json.dump(options, fout)
+                    json.dump(options, fout, indent=2)
         else:
+            # follow the assigned binding
             for binding in bindings:
                 options = self.base_options.copy()
                 options['name'] =  base_name
@@ -212,7 +214,7 @@ class GROUP():
                 case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT)
                 json_path = os.path.join(case_dir, "case.json")
                 with open(json_path, 'w') as fout:
-                    json.dump(options, fout)
+                    json.dump(options, fout, indent=2)
             
         pass
 
@@ -250,8 +252,11 @@ def CreateGroup(json_path, CASE, CASE_OPT):
         if is_pursue == 'y':
             rmtree(group_opt.get_output_dir())
         else:
-            print("Aborting")
-            return 0
+            is_pursue = input("update ? (y/n)")
+            if is_pursue != 'y':
+                print("Aborting")
+                return 0
+    copy(json_path, os.path.join(group_opt.get_output_dir(), "group.json"))
     group.create_group(*group_opt.to_create_group())
 
 
