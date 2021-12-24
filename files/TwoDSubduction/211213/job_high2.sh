@@ -16,4 +16,4 @@ module load openmpi/4.1.0-mpi-io
 >&2 module list
 >&2 echo "aspect source: ${ASPECT_SOURCE_DIR}"
 
-srun  /home/lochy/software/aspect/build_master_TwoD/aspect case.prm
+srun  ${ASPECT_SOURCE_DIR}/build_master_TwoD/aspect case.prm
