@@ -13,6 +13,7 @@ On the first order, there are scripts below 'python_scripts(shilofue)' that shou
 On the second order, there are subfolders under the 'python_scripts' folder (e.g. TwoDSubduction0). Those contains scripts for that specific program.
 
 In the scripts, I define "parental" classes and class functions in the first order scripts and make "daughter" classes that inherit there parents in the second order scripts.
+
 A good example could be seen in the script of (todo).py
 
 (todo) use route like '.'
@@ -23,6 +24,8 @@ A good example could be seen in the script of (todo).py
 ## Run on server
 
 The basic idea is to only use bash to nevigate around the package managing issue of python.
+
+### Command alias
 
 ### Case managements
 
@@ -119,6 +122,8 @@ Here, the task is to create mutiple cases at a time and hold them in a single fo
 I made use of the previous script I used for create a single case (Cases.py), and write a new script Group.py.
 In this new scripts, I read in a json file with the configurations and write a bundle of json case-configuring files for interfaces defined in Cases.py.
 
+## Cooperate with other models / analytic results / laws
+
 ### Cooperate with Hefesto
 
 I wrote a python script "PostHefesto.py" 
@@ -133,7 +138,9 @@ Resample in terms of P and T
 
 Fix other fields if they are missing (but not P and T) 
 
-This is a test called test_post_hefesto.py in the integration folder. Look at that to see how this work. 
+This is a test called test_post_hefesto.py in the integration folder. Look at that to see how this work.
+
+### Work with flow laws
 
 ## Post-process
 

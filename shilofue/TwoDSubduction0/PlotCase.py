@@ -51,11 +51,14 @@ Examples of usage: \n\
   - default usage: plot case running results, -t option deals with a time range, default is a whole range\n\
 \n\
         Lib_TwoDSubduction0_PlotCase plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20\
-          -t 0.0 -t1 0.5e6\
+ -t 0.0 -t1 0.5e6\n\
+\n\
+  - plot cases in a directory (loop), same options as before:\n\
+        Lib_TwoDSubduction0_PlotCase  plot_case_in_dir -i ~/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT\
         ")
 
 
-def TwoDSubduction_PlotCaseRun(case_path, **kwargs):
+def PlotCaseRun(case_path, **kwargs):
     '''
     Plot case run result
     Inputs:
@@ -91,6 +94,7 @@ def TwoDSubduction_PlotCaseRun(case_path, **kwargs):
     RunScripts(ofile_path)  # run scripts
 
 
+
 def main():
     '''
     main function of this module
@@ -121,13 +125,10 @@ def main():
 
     # commands
     if _commend == 'plot_case':
-        # example:
-        if arg.time != None and arg.time1 != None:
-            PlotCase.PlotCaseRun(arg.inputs, time_range=[arg.time, arg.time1])
-            TwoDSubduction_PlotCaseRun(arg.inputs, time_range=[arg.time, arg.time1])
-        else:
-            PlotCase.PlotCaseRun(arg.inputs)
-            TwoDSubduction_PlotCaseRun(arg.inputs)
+        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, [arg.time, arg.time1])
+    elif _commend == 'plot_case_in_dir':
+        PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, [arg.time, arg.time1])
+        pass
     elif (_commend in ['-h', '--help']):
         # example:
         Usage()

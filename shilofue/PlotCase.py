@@ -105,6 +105,46 @@ def PlotCaseRun(case_path, **kwargs):
         print("Skipping newton solver history")
 
 
+def PlotCaseCombined(modules, inputs, time_range):
+    '''
+    combine several modules in plotting
+    inputs:
+        modules (list of function)
+        inputs (str): path to a case
+        time_range ([None, None] or [double, double]): range of time to plot
+    '''
+    assert(type(modules) == list)
+    if type(time_range) == list and\
+        type(time_range[0]) == float and\
+            type(time_range[1]) == float:
+        # There is a meaningful time range
+        for module in modules:
+            module(inputs, time_range=time_range)
+    else:
+        # There is not meaningful time range, plot the whole series
+        for module in modules:
+            module(inputs)
+    pass
+
+
+def PlotCaseCombinedDir(modules, dir, time_range):
+    '''
+    combine several modules in plotting
+    inputs:
+        modules (list of function)
+        dir (str): path to a directory
+        time_range ([None, None] or [double, double]): range of time to plot
+    '''
+    assert(os.path.isdir(dir))
+    for subdir, dirs, _ in os.walk(dir):
+        for _dir in dirs:
+            _path = os.path.join(subdir, _dir)
+            case_prm = os.path.join(_path, 'case.prm')
+            if os.path.isfile(case_prm):
+                print("\nFind case %s" % _path)
+                PlotCaseCombined(modules, _path, time_range)
+
+
 def main():
     '''
     main function of this module
