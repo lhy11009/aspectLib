@@ -108,6 +108,9 @@ I put the configurations in a json file and wrote a script in each project to cr
 These options are read into a CASE_OPT class, While the operations are defined in a CASE class.
 In all the operations, I took the approach of first importing a prm file and then substitute the entries.
 
+Note: I defined a clase CASE here for preparing and creating cases, while I have another class named CASE_OPTIONS
+to deal with post-process.
+
 An example usage (TwoDSubduction)
 	Lib_TwoDSubduction0_Cases create_with_json -j \
         /home/lochy/ASPECT_PROJECT/TwoDSubduction/wb_create_test/configure_1.json \n\

@@ -19,6 +19,8 @@
 #   ETA_MIN
 # maximum rheology in the domain
 #   ETA_MAX
+# rotation of the domain
+#   ROTATION_ANGLE
 
 
 
@@ -54,7 +56,7 @@ class SLAB_CART(VISIT_PLOT):
             self.add_plot("Pseudocolor", "deform_mechanism")
         
         # set transformation
-        self.set_rotation_transform(52.0)
+        self.set_rotation_transform(ROTATION_ANGLE)
 
         # set thresholds
         threshold_idxs_tuple=tuple([self.idxs['spcrust'], self.idxs['spharz']])
