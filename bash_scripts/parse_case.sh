@@ -251,10 +251,10 @@ check_case(){
     [[ -e "${prm_file}" ]] && return 0 || return 1
 }
 
-check_case_running(){
+check_job_id(){
     # check if a case is running on slurm
     # Inputs:
-    #   $1: path to the case
+    #   $1: jobid
     local outputs=$(squeue -u "${USER}" -o %A)
     IFS=$'\n'; local job_ids=(${outputs})
     for job_id in ${job_ids[@]}; do
@@ -267,6 +267,25 @@ check_case_running(){
             printf "${path}\n${case_path}\n\n"
         fi
     done
+}
+
+check_case_running(){
+    # check if a case is running
+    # Inputs:
+    #   $1: case path
+    local case_path=$(fix_route "$1")
+    local outputs=$(squeue -u "${USER}" -o %A)  # get all the job ids
+    IFS=$'\n'; local job_ids=(${outputs})
+    for job_id in ${job_ids[@]}; do
+        if [[ ${job_id} =~ ^[0-9]+$ ]]; then 
+            locate_workdir_with_id "${job_id}" 1  # first locate where this is
+            [[ $? == 1 ]] && { cecho "$BAD" "${FUNCNAME[0]}: job id ${job_id} is not found in file system"; exit 1; }
+            [[ -d "${return_value}" ]] ||  { cecho ${BAD} "${FUNCNAME[0]}: work directory(${return_value}) doesn't exist"; exit 1; }
+            local path=$(fix_route "${return_value}")
+	    [[ ${case_path} == ${path} ]] && { echo "case ${case_path} is running"; return 1; }  # case is running
+	fi
+    done
+    return 0  # case not found
 }
 
 get_case_status(){
@@ -295,11 +314,14 @@ parse_all_time_info(){
 locate_workdir_with_id(){
     # locate work directory of a job with job id
     # $1 (str): job
+    # $2 (0 or 1): quiet
     local outputs=$(scontrol show job "$1" | grep WorkDir)
+    local quiet
+    [[ -n "$2" ]] && quiet="$2" || quiet="0"
     if [[ -n ${outputs} ]]; then
         IFS='='; local entries=(${outputs})
 	return_value=${entries[*]: -1}
-	printf "workdir: ${return_value}\n"
+	[[ ${quiet} == "0" ]] && printf "workdir: ${return_value}\n"
 	return 0
     else
         cecho "${BAD}" "no job (id: $1) found"; return 1
@@ -437,9 +459,11 @@ main(){
 	log_file="$2/output/log.txt"
 	[[ -e "${log_file}" ]] || { cecho "${BAD}" "log file (${log_file}) doesn't exist"; exit 1; }
 	parse_run_time_info_last_step "${log_file}"
-    elif [[ "$1" = "check_case_running" ]]; then 
+    elif [[ "$1" = "check_job_id" ]]; then 
         [[ -n "$2" ]] || { cecho "$BAD" "path of case (\$2) must be given"; exit 1; }
-        check_case_running "$2"
+        check_job_id "$2"
+    elif [[ "$1" = "check_case_running" ]]; then 
+	check_case_running "$2"
     elif [[ "$1" = "case_info_with_id" ]]; then
     	[[ -n "$2" ]] || { cecho "${BAD}" "no id number given (\$2)"; exit 1; }
 	    parse_run_time_info_last_step_with_id "$2"
