@@ -251,11 +251,14 @@ def CreateGroup(json_path, CASE, CASE_OPT):
         is_pursue = input("Directory (%s) already exists, delete ? (y/n): " % group_opt.get_output_dir())
         if is_pursue == 'y':
             rmtree(group_opt.get_output_dir())
+            os.mkdir(group_opt.get_output_dir())
         else:
             is_pursue = input("update ? (y/n)")
             if is_pursue != 'y':
                 print("Aborting")
                 return 0
+    else:
+        os.mkdir(group_opt.get_output_dir())
     copy(json_path, os.path.join(group_opt.get_output_dir(), "group.json"))
     group.create_group(*group_opt.to_create_group())
 
