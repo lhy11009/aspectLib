@@ -285,7 +285,7 @@ check_case_running(){
 	    [[ ${case_path} == ${path} ]] && { echo "case ${case_path} is running"; return 1; }  # case is running
 	fi
     done
-    return 0  # case not found
+    return 1  # case not found
 }
 
 get_case_status(){
@@ -391,6 +391,8 @@ check_time_restart_case(){
     local time_plan="$2"
     local partition
     [[ -n "$3" ]] && partition="$3" || partition="rome"
+    # check if this is running
+    check_case_running "$1" || return 0
     # read run_time
     local log_file="$1/output/log.txt"
     local restart_file="$1/output/restart.mesh"
