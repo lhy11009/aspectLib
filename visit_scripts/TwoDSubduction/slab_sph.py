@@ -28,7 +28,7 @@ global_trench_view = (-200000, 200000, 6.1e+06, 6.372e+06)
 global_upper_mantle_view = (-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06)
 
 
-class SLAB_CART(VISIT_PLOT):
+class SLAB_SPH(VISIT_PLOT):
 
     def __init__(self, filein, **kwargs):
         """
@@ -303,7 +303,7 @@ class EXPORT_PARTICLE(VISIT_PLOT):
 
 def main():
     if IF_PLOT_SLAB:
-        Slab = SLAB_CART("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
+        Slab = SLAB_SPH("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
         # First number is the number of initial adaptive refinements
         # Second one is the snapshot to plot
         # here we prefer to use a series of snapshots.

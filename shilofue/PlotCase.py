@@ -64,6 +64,9 @@ def PlotCaseRun(case_path, **kwargs):
     '''
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
+    if not os.path.isfile(prm_path):
+        print('original.prm is missing, it\'s likely that there is no outputs. Skip.')
+        return 1
     inputs = ReadPrmFile(prm_path)
     # get solver scheme
     solver_scheme = inputs.get('Nonlinear solver scheme', 'single Advection, single Stokes')
@@ -103,6 +106,7 @@ def PlotCaseRun(case_path, **kwargs):
         PlotRunTime.PlotNewtonSolverHistory(log_file, fig_path, step_range=step_range)
     else:
         print("Skipping newton solver history")
+    return 0
 
 
 def PlotCaseCombined(modules, inputs, time_range):

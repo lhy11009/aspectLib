@@ -145,6 +145,8 @@ This is a test called test_post_hefesto.py in the integration folder. Look at th
 
 ### Work with flow laws
 
+
+
 ## Post-process
 
 Clearify the usage of prm:
@@ -159,6 +161,9 @@ I use case.prm to create cases as well as analytical analysis, while using outpu
 
 Some notes:
 * font size in case names are adjusted to fill the individual boxes
+
+### Generate a journal of the pictures plot within the dya
+(todo)
 
 
 ## work with prm
