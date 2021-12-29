@@ -1,0 +1,25 @@
+{
+    "base name": "eba_cdpt", 
+    "base json": "${ASPECT_LAB_DIR}/files/TwoDSubduction/211226/case.json",
+    "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/211226",
+    "output directory": "${ASPECT_LAB_DIR}/.test/EBA_CDPT1",
+    "features":[
+        {
+            "name": "Age of the subducting plate",
+            "key": ["world builder", "subducting plate", "age trench"],
+            "unit": "yr",
+            "values": [40e6, 80e6],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["SA", 1e-6]
+        },
+        {
+            "name": "Age of the overiding plate",
+            "key": ["world builder", "overiding plate", "age"],
+            "unit": "yr",
+            "values": [20e6, 40e6],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["OA", 1e-6]
+        }
+    ],
+    "bindings": [[0, 0], [1, 0], [1, 1]]
+}
