@@ -21,6 +21,8 @@
 #   ETA_MAX
 # rotation of the domain
 #   ROTATION_ANGLE
+# if peierls rheology is included
+#   INCLUDE_PEIERLS_RHEOLOGY
 
 
 
@@ -51,8 +53,19 @@ class SLAB_SPH(VISIT_PLOT):
         DefineScalarExpression("slab", "spcrust+spharz")
         
         # define a new field if needed
+        if INCLUDE_PEIERLS_RHEOLOGY:
+            prt1 = "if(lt(peierls_viscosity, dislocation_viscosity), 3.0, 1.0)"
+            prt2 = "if(lt(peierls_viscosity, diffusion_viscosity), 3.0, 0.0)"
+            prt3 = "2.0"
+        else:
+            prt1 = "1.0"
+            prt2 = "0.0"
+            prt3 = "2.0"
+        deformation_mechanism_argument = \
+        "if(lt(viscosity, 0.99e24), if(lt(dislocation_viscosity,diffusion_viscosity), %s, %s), %s)"\
+        % (prt1, prt2, prt3)
         if IF_DEFORM_MECHANISM:
-            DefineScalarExpression("deform_mechanism", "if(lt(viscosity, 0.99e24),if(lt(dislocation_viscosity,diffusion_viscosity), 1.0, 0.0), 2.0)")
+            DefineScalarExpression("deform_mechanism", deformation_mechanism_argument)
             self.add_plot("Pseudocolor", "deform_mechanism")
         
         # set transformation
@@ -165,7 +178,7 @@ class SLAB_SPH(VISIT_PLOT):
         self.set_view_attrs(global_trench_view)
         
         # set up deform_mechanism
-        self.set_pseudo_color('deform_mechanism', color_table='viridis')
+        self.set_pseudo_color('deform_mechanism', color_table='viridis', limits=[0.0, 3.0])
        
         SetActivePlots((self.idxs['deform_mechanism']))
         HideActivePlots()
