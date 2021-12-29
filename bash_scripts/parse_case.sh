@@ -369,7 +369,9 @@ restart_case(){
     [[ -n "$2" ]] && partition="$2" || partition="rome"
     local prm_file="${case_dir}/case.prm"
     [[ -e ${prm_file} ]] || { cecho "${BAD}" "No such file ${prm_file}"; exit 1; } 
+    unset return_values  # rewrite prm file
     util_substitute_prm_file_contents "${prm_file}" "Resume computation" "true"
+    printf "${return_values[@]}" > "${prm_file}"
     if [[ ${partition} == "rome" ]]; then
         submit_case_peloton_rome "${case_dir}"
     elif [[ ${partition} == "high2" ]]; then
@@ -403,7 +405,7 @@ check_time_restart_case(){
 	    outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_snapshot" "${log_file}")
             IFS=$'\n'; local entries=(${outputs})
     	    IFS=' '; local return_value=(${entries[*]: -1})  # get the last line and split with ' '
-	    [[ ${#return_value[*]} == 3 ]] || { cecho "${BAD}" "${FUNCNAME[0]}: entries from parsing snap shots mismatch"; exit 1; }
+	    [[ ${#return_value[*]} == 3 ]] || { cecho "${BAD}" "${FUNCNAME[0]}: entries from parsing snap shots mismatch, it's most likely there is old restart file in the folder, clean those up before proceed"; exit 1; }
             printf "Going to restart $1 at step ${return_value[0]} time ${return_value[1]}\n"
             restart_case "$1" "$3"
         fi
