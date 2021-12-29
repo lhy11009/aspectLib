@@ -335,6 +335,18 @@ def PlotCombineFigures(json_path):
     assert(os.path.isfile(figure_path))
 
 
+def PrepareResults(json_path):
+    '''
+    Prepare results using the IMAGE_OPT module.
+    Inputs:
+        json_path(str): path to the json file
+    '''
+    assert(os.path.isfile(json_path))
+    pillow_opt = Utilities.PILLOW_OPT()
+    pillow_opt.read_json(json_path)
+    Utilities.PillowRun(*pillow_opt.to_pillow_run())
+
+
 def main():
     '''
     main function of this module
@@ -365,6 +377,10 @@ def main():
         # combine figures:
         assert(os.access(arg.inputs, os.R_OK))
         PlotCombineFigures(arg.inputs)
+    elif _commend == 'prepare_results':
+        # prepare results
+        assert(os.access(arg.inputs, os.R_OK))
+        PrepareResults(arg.inputs)
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)

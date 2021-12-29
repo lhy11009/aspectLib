@@ -165,6 +165,10 @@ Some notes:
 ### Generate a journal of the pictures plot within the dya
 (todo)
 
+### Using the Image module to prepare results
+I implement an IMAGE_OPT module in the "Utilities.py" script which takes a json file and combines results accordingly
+For detail, see the test "test_img_operation.py"
+
 
 ## work with prm
 
