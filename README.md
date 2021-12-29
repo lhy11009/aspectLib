@@ -166,8 +166,14 @@ Some notes:
 (todo)
 
 ### Using the Image module to prepare results
+
 I implement an IMAGE_OPT module in the "Utilities.py" script which takes a json file and combines results accordingly
 For detail, see the test "test_img_operation.py"
+
+For this to work, I need to generate a tranperant frame in AI, and merge that on top of a plot from visit
+
+#### work flow of generating the frame
+(todo)
 
 
 ## work with prm

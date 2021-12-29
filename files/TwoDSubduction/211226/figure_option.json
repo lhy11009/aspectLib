@@ -1,0 +1,22 @@
+{
+    "figures": [
+        {
+            "path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA80.0_OA20.0/img/um_temperature000103.png"
+        },
+        {
+            "path": "/home/lochy/Documents/papers/documented_files/TwoDSubduction/upper_mantle_frame/upper_mantle_frame_transparent.png",
+            "operation": "paste",
+            "mask": 1,
+            "resize": 1.0,
+            "position": [124, 331],
+            "save path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA80.0_OA20.0/img/results/temp000103.png",
+            "temp" : 1
+        },
+        {
+            "path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA80.0_OA20.0/img/results/temp000103.png",
+            "operation": "crop",
+            "position": [124, 331, 1000, 900],
+            "save path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA80.0_OA20.0/img/results/step000103.png"
+        }
+    ]
+}
