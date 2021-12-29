@@ -285,7 +285,7 @@ check_case_running(){
 	    [[ ${case_path} == ${path} ]] && { echo "case ${case_path} is running"; return 1; }  # case is running
 	fi
     done
-    return 1  # case not found
+    return 0  # case not found
 }
 
 get_case_status(){
