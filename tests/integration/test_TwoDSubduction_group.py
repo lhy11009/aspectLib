@@ -22,7 +22,7 @@ descriptions:
 
 import os
 # import pytest
-# import filecmp  # for compare file contents
+import filecmp  # for compare file contents
 # import numpy as np
 # import shilofue.Foo as Foo  # import test module
 from shilofue.TwoDSubduction0.Group import *
@@ -43,6 +43,7 @@ def test_create_group():
     Asserts:
         case (directory) and files are generated
     '''
+    # test 1
     json_path = os.path.join(source_dir, 'test.json')
     group_opt = GROUP_OPT()
     group_opt.read_json(json_path)
@@ -61,6 +62,33 @@ def test_create_group():
         assert(os.path.isfile(prm_path))
         wb_path = os.path.join(case_dir, 'case.wb')
         assert(os.path.isfile(wb_path))
+    # test 2
+    json_path = os.path.join(source_dir, 'test_EBA_CDPT.json')
+    group_opt = GROUP_OPT()
+    group_opt.read_json(json_path)
+    feature_opt = group_opt.values[1][0]
+    group = GROUP(CASE, CASE_OPT)
+    group.read_json_base(group_opt.get_base_json_path())
+    if os.path.isdir(group_opt.get_output_dir()):
+        rmtree(group_opt.get_output_dir())  # remove old directory
+    group.create_group(*group_opt.to_create_group())
+    dir_stds = ['eba_cdpt_SA80.0_OA40.0', 'eba_cdpt_SA80.0_OA20.0', 'eba_cdpt_SA40.0_OA20.0']
+    for dir_std in dir_stds:
+        case_dir = os.path.join(group_opt.get_output_dir(), dir_std)
+        print(case_dir)  # case directory
+        assert(os.path.isdir(case_dir)) # case generation
+        prm_path = os.path.join(case_dir, 'case.prm')
+        assert(os.path.isfile(prm_path))
+        wb_path = os.path.join(case_dir, 'case.wb')
+        assert(os.path.isfile(wb_path))
+    # check prm & wb file
+    out_path = os.path.join(group_opt.get_output_dir(), 'eba_cdpt_SA80.0_OA40.0', 'case.prm')
+    std_path = os.path.join(source_dir, 'eba_cdpt_SA80.0_OA40.0.prm')
+    assert(filecmp.cmp(out_path, std_path))
+    out_path = os.path.join(group_opt.get_output_dir(), 'eba_cdpt_SA80.0_OA40.0', 'case.wb')
+    std_path = os.path.join(source_dir, 'eba_cdpt_SA80.0_OA40.0.wb')
+    assert(filecmp.cmp(out_path, std_path))
+
 
     
 # notes
