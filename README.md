@@ -173,7 +173,12 @@ For detail, see the test "test_img_operation.py"
 For this to work, I need to generate a tranperant frame in AI, and merge that on top of a plot from visit
 
 #### work flow of generating the frame
-(todo)
+
+* open the raw figure from visit in Adobe Illustrator.
+* pin and paint the frame, open a new file with it.
+* Lay a bigger while rectangle and crop out what's inside the frame
+* Change background to transparent (view->show transperant grid)
+* Save using the "Export->Save for web" option, choose png24 as format.
 
 
 ## work with prm
