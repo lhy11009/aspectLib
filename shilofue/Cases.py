@@ -104,11 +104,18 @@ class CASE_OPT(Utilities.JSON_OPT):
         # todo
         files = []
         for additional_file in self.values[6]:
-            _path = os.path.join(self.values[1], additional_file)
+            _path = Utilities.var_subs(os.path.join(self.values[1], additional_file))
             Utilities.my_assert(os.access(_path, os.R_OK), FileNotFoundError,\
             "Additional file %s is not found" % _path)
             files.append(_path)
         return files
+    
+    def if_fast_first_step(self):
+        '''
+        If we generate a case with fast-first-step computation
+        '''
+        return self.values[5]
+        pass
 
 
 class CASE():

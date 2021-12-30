@@ -83,6 +83,9 @@ class CASE_OPT(CasesP.CASE_OPT):
          and extend the box for an older sp_age_trench.",\
          str,\
          ["world builder", "plate age method"], 'by values', nick="plate_age_method")
+        # todo
+        self.add_key("Include peierls creep", int, ['include peierls creep'], 0, nick='if_peierls')
+        
         pass
     
     def check(self):
@@ -118,8 +121,9 @@ class CASE_OPT(CasesP.CASE_OPT):
             box_width = re_write_geometry_while_assigning_plate_age(
             *self.to_re_write_geometry_pa()
             ) # adjust box width
-
-        return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method
+        if_peierls = self.values[self.start + 10]
+        # todo
+        return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method, if_peierls
 
     def to_configure_wb(self):
         '''
@@ -145,12 +149,6 @@ class CASE_OPT(CasesP.CASE_OPT):
         return self.defaults[self.start+7], self.defaults[self.start+1],\
         self.values[self.start+1], self.values[self.start+2]
     
-    def if_fast_first_step(self):
-        '''
-        If we generate a case with fast-first-step computation
-        '''
-        return self.values[6]
-        pass
 
 
 class CASE(CasesP.CASE):
@@ -158,7 +156,8 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method):
+    # todo
+    def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method, if_peierls):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
@@ -209,6 +208,16 @@ class CASE(CasesP.CASE):
         else:
             # remove this feature if otherwise
             pass
+        # Include peierls rheology
+        # todo
+        if if_peierls:
+            try:
+                temp = o_dict['Material model']['Visco Plastic TwoD']['Peierls fitting parameters']
+            except KeyError as e:
+                raise KeyError('The options use Peierls rheology by there are missing parameters in the prm file') from e
+            o_dict['Material model']['Visco Plastic TwoD']['Include Peierls creep'] = 'true'
+        else:
+            o_dict['Material model']['Visco Plastic TwoD']['Include Peierls creep'] = 'false'
         self.idict = o_dict
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
