@@ -153,12 +153,18 @@ Clearify the usage of prm:
 
 I use case.prm to create cases as well as analytical analysis, while using output/original.prm for post-process.
 
+### Interfaces to substitute words in a script
+
+A CaseOptions class is defined. There, I stored information in a dictionary, then I use the values to substitute
+the keys in a script.
+
 ### Plot results in "statistic" file
 
 (todo) Change the length of number label on axis, currently they are too long so parts are blocked.
 
 ### Combine figures
 
+Combine plots in different cases
 Some notes:
 * font size in case names are adjusted to fill the individual boxes
 
@@ -171,6 +177,9 @@ I implement an IMAGE_OPT module in the "Utilities.py" script which takes a json 
 For detail, see the test "test_img_operation.py"
 
 For this to work, I need to generate a tranperant frame in AI, and merge that on top of a plot from visit
+
+I also defined a PREPARE_RESULTS class in the file PlotCombine.py for this. This class would take a template (in this case a json file)
+and substitute the key words with values (e.g. The directory to saved images.)
 
 #### work flow of generating the frame
 

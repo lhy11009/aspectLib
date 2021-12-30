@@ -45,12 +45,14 @@ Also combines figures from individual cases to a bigger one.\n\
 \n\
 Examples of usage: \n\
 \n\
-  - combine figures with a json file: \n\
+  - combine figures with a json file (from different cases): \n\
 \n\
         Lib_PlotCombine combine_figures -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/wb_sd_issue/combine_figures.json \n\
 \n\
-  - options in the json file:\n\
+  - prepare_results using the IMAGE_OPT module (from one case, e.g. combine plots from one step)\n\
+        Lib_PlotCombine prepare_results -i ~/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/211230/figure_option.json \n\
 \n\
+  - options in the json file:\n\
     %s\n\
         " % Pc_opt.document())
 

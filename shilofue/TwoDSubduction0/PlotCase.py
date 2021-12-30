@@ -26,9 +26,9 @@ import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 from shilofue.ParsePrm import ReadPrmFile
-# todo
 from shilofue.PlotVisit import RunScripts
-from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
+import shilofue.PlotCombine as PlotCombine
+from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS, PREPARE_RESULT_OPTIONS
 import shilofue.PlotCase as PlotCase
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
@@ -54,7 +54,10 @@ Examples of usage: \n\
  -t 0.0 -t1 0.5e6\n\
 \n\
   - plot cases in a directory (loop), same options as before:\n\
-        Lib_TwoDSubduction0_PlotCase  plot_case_in_dir -i ~/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT\
+        Lib_TwoDSubduction0_PlotCase  plot_case_in_dir -i ~/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT\n\
+\n\
+  - prepare result of a single step by combining figures:\n\
+        Lib_TwoDSubduction0_PlotCase prepare_result_step -i ~/ASPECT_PROJECT/TwoDSubduction/test_peierls1/peierls\
         ")
 
 
@@ -72,7 +75,6 @@ def PlotCaseRun(case_path, **kwargs):
     prm_path = os.path.join(case_path, 'output', 'original.prm')
 
     # plot visit
-    # todo
     Visit_Options = VISIT_OPTIONS(case_path)
     Visit_Options.Interpret(last_steps=3)  # interpret scripts, plot the last 3 steps
     odir = os.path.join(case_path, 'visit_scripts')
@@ -93,6 +95,25 @@ def PlotCaseRun(case_path, **kwargs):
     print("Visualizing using visit")
     RunScripts(ofile_path)  # run scripts
 
+
+def PrepareResultStep(case_path, step):
+    '''
+    Prepare results
+    Inputs:
+        case_path(str): path to the case
+        step(int): step in computation
+    '''
+    # Generate json file
+    pr_script = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "figure_step_template.json")
+    odir = os.path.join(case_path, 'json_files')
+    ofile = os.path.join(odir, 'figure_step.json')
+    assert(os.path.isfile(pr_script))
+    Prepare_Result = PREPARE_RESULT_OPTIONS(case_path)
+    Prepare_Result.Interpret(step=step)
+    Prepare_Result.read_contents(pr_script)
+    Prepare_Result.substitute()
+    ofile_path = Prepare_Result.save(ofile, relative=True)
+    PlotCombine.PrepareResults(ofile_path)  # call function with the generated json file
 
 
 def main():
@@ -116,6 +137,9 @@ def main():
     parser.add_argument('-t1', '--time1', type=float,
                         default=None,
                         help='Time1')
+    parser.add_argument('-s', '--step', type=int,
+                        default=0,
+                        help='step')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -129,6 +153,8 @@ def main():
     elif _commend == 'plot_case_in_dir':
         PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, [arg.time, arg.time1])
         pass
+    elif _commend == 'prepare_result_step':
+        PrepareResultStep(arg.inputs, arg.step)
     elif (_commend in ['-h', '--help']):
         # example:
         Usage()

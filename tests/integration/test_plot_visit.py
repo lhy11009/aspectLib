@@ -84,6 +84,25 @@ def test_visit_options():
     assert(filecmp.cmp(ofile_path, ofile_std))
 
 
+def test_prepare_result():
+    # check the script to test
+    pr_script = os.path.join(source_dir, 'test_prepare_result.json')
+    case_dir = os.path.join(test_cases_dir, 'test_visit')
+    assert(os.path.isfile(pr_script))
+    # interpret and generate file
+    Prepare_Result = PREPARE_RESULT_OPTIONS(case_dir)
+    Prepare_Result.Interpret()
+    Prepare_Result.read_contents(pr_script)
+    Prepare_Result.substitute()
+    ofile = os.path.join(test_dir, 'prepare_result.json')
+    ofile_path = Prepare_Result.save(ofile)
+    # assert file generated
+    assert(os.path.isfile(ofile_path))
+    # assert file is identical with standard
+    ofile_std = os.path.join(source_dir, 'prepare_result_std.json')
+    assert(os.path.isfile(ofile_std))
+    assert(filecmp.cmp(ofile_path, ofile_std))
+
 
 #def test_visit_options():
 #    case_dir = os.path.join(test_source_dir, 'foo')

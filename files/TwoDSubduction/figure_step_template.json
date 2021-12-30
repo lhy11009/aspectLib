@@ -1,7 +1,7 @@
 {
     "figures": [
         {
-            "path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/um_temperature000059.png"
+            "path": "IMG_OUTPUT_DIR/um_temperatureGRAPHICAL_STEP.png"
         },
         {
             "path": "/home/lochy/Documents/papers/documented_files/TwoDSubduction/upper_mantle_frame/upper_mantle_frame_transparent_scaled.png",
@@ -9,14 +9,14 @@
             "mask": 1,
             "resize": 1.0,
             "position": [124, 397],
-            "save path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/results/temp000059.png",
+            "save path": "IMG_OUTPUT_DIR/results/temp_sNUMERICAL_STEP.png",
             "temp" : 1
         },
         {
-            "path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/results/temp000059.png",
+            "path": "IMG_OUTPUT_DIR/results/temp_sNUMERICAL_STEP.png",
             "operation": "crop",
             "position": [150, 450, 1000, 900],
-            "save path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/results/temperature000059.png"
+            "save path": "IMG_OUTPUT_DIR/results/temperatureGRAPHICAL_STEP.png"
         },
         {
             "path": "/home/lochy/Documents/papers/documented_files/TwoDSubduction/color_tables/temperature_0_1900.png",
@@ -25,10 +25,10 @@
             "resize": 1.0,
             "position": [200, 420],
             "method": "use_new_one",
-            "save path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/results/temperature000059.png"
+            "save path": "IMG_OUTPUT_DIR/results/temperature_sNUMERICAL_STEP.png"
         },
         {
-            "path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/um_viscosity_snap000059.png"
+            "path": "IMG_OUTPUT_DIR/um_viscosity_snapGRAPHICAL_STEP.png"
         },
         {
             "path": "/home/lochy/Documents/papers/documented_files/TwoDSubduction/upper_mantle_frame/upper_mantle_frame_transparent_scaled.png",
@@ -36,14 +36,14 @@
             "mask": 1,
             "resize": 1.0,
             "position": [124, 397],
-            "save path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/results/temp000059_1.png",
+            "save path": "IMG_OUTPUT_DIR/results/temp_sNUMERICAL_STEP_1.png",
             "temp" : 1
         },
         {
-            "path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/results/temp000059_1.png",
+            "path": "IMG_OUTPUT_DIR/results/temp_sNUMERICAL_STEP_1.png",
             "operation": "crop",
             "position": [150, 450, 1000, 900],
-            "save path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/results/viscosity000059.png"
+            "save path": "IMG_OUTPUT_DIR/results/viscosity_sNUMERICAL_STEP.png"
         },
         {
             "path": "/home/lochy/Documents/papers/documented_files/TwoDSubduction/color_tables/viscosity_18_24.png",
@@ -52,18 +52,18 @@
             "resize": 1.0,
             "position": [220, 420],
             "method": "use_new_one",
-            "save path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/results/viscosity000059.png"
+            "save path": "IMG_OUTPUT_DIR/results/viscosity_sNUMERICAL_STEP.png"
         },
         {
-            "path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/results/temperature000059.png"
+            "path": "IMG_OUTPUT_DIR/results/temperature_sNUMERICAL_STEP.png"
         },
         {
-            "path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/results/viscosity000059.png",
+            "path": "IMG_OUTPUT_DIR/results/viscosity_sNUMERICAL_STEP.png",
             "operation": "paste",
             "method": "use_new_one",
             "mask": 0,
             "position": [0, 530],
-            "save path": "${TwoDSubduction_DIR}/EBA_CDPT1/eba_cdpt_SA40.0_OA20.0/img/results/step000059.png"
+            "save path": "IMG_OUTPUT_DIR/results/step_sNUMERICAL_STEP.png"
         }
     ]
 }

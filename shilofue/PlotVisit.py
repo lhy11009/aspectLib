@@ -75,20 +75,10 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         particle_file = os.path.join(self._output_dir, 'particles.visit')
         if os.access(particle_file, os.R_OK):
             self.options["VISIT_PARTICLE_FILE"] = particle_file
-        # directory to output data
-        self.options["DATA_OUTPUT_DIR"] = self._output_dir
-        # directory to output images
-        if not os.path.isdir(self._img_dir):
-            os.mkdir(self._img_dir)
-        self.options["IMG_OUTPUT_DIR"] = self._img_dir
         # visit file
         self.options["VISIT_FILE"] = self._visit_file
         # houriz_avg file
         self.options['VTK_HORIZ_FILE'] = os.path.join(ASPECT_LAB_DIR, 'output', 'depth_average_output')
-        # own implementations
-        # initial adaptive refinement
-        self.options['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
-
         # get snaps for plots
         graphical_snaps_guess, _, _ = GetSnapsSteps(self._case_dir, 'graphical')
         graphical_snaps = []
@@ -159,6 +149,23 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         _time = vtk_step * time_between_graphical_output
         step = self.Statistics.GetStep(_time)
         return _time, step
+
+
+class PREPARE_RESULT_OPTIONS(CASE_OPTIONS):
+    """
+    parse .prm file to a option file that bash can easily read
+    """
+    def Interpret(self, **kwargs):
+        """
+        Interpret the inputs, to be reloaded in children
+        kwargs: options
+        """
+        # call function from parent
+        CASE_OPTIONS.Interpret(self)
+        step = kwargs.get('step', 0)
+        # step & format for a visit output
+        self.options['NUMERICAL_STEP'] = "%06d" % step
+        self.options['GRAPHICAL_STEP'] =  "%06d" % (step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT']))
 
  
 def GetSnapsSteps(case_dir, type_='graphical'):
