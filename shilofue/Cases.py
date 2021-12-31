@@ -63,7 +63,6 @@ class CASE_OPT(Utilities.JSON_OPT):
             ["Potential temperature"], 1673.0, nick='potential_T')
         self.add_key("Include fast first step", int,\
             ["Include fast first step"], 0, nick='if_fast_first_step')
-        # todo
         self.add_key("Additional files to include", list,\
             ["additional files"], [], nick='additional_files')
         pass
@@ -97,11 +96,18 @@ class CASE_OPT(Utilities.JSON_OPT):
         '''
         return Utilities.var_subs(self.values[2])
     
+    def case_name(self):
+        '''
+        Return name of the case
+        Return:
+            case name (str)
+        '''
+        return self.values[0]
+    
     def get_additional_files(self):
         '''
         Interface to add_files
         '''
-        # todo
         files = []
         for additional_file in self.values[6]:
             _path = Utilities.var_subs(os.path.join(self.values[1], additional_file))
@@ -238,13 +244,16 @@ class CASE():
             path(str): an extra file
         '''
         self.extra_files.append(path)
+    
 
 
-def create_case_with_json(json_opt, CASE, CASE_OPT):
+def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     '''
     A wrapper for the CASES class
     Inputs:
         json_opt(str, dict): path or dict a json file
+        kwargs (dict):
+            update (bool): update existing cases?
     Returns:
         case_dir: return case directory
     '''
@@ -258,10 +267,18 @@ def create_case_with_json(json_opt, CASE, CASE_OPT):
     else:
         raise TypeError("Type of json_opt must by str or dict")
     Case_Opt.check()
+    # check if the case already exists. If so, only update if it is explicitly 
+    # required
+    is_update = kwargs.get('update', False)
+    case_dir_to_check = os.path.join(Case_Opt.o_dir(), Case_Opt.case_name())
+    if not is_update:
+        if os.path.isdir(case_dir_to_check):
+            print("Case %s doesn't exist, aborting" % case_dir_to_check)
+            return case_dir_to_check
+    # Manage case files
     Case = CASE(*Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())
     Case.configure_prm(*Case_Opt.to_configure_prm())
     Case.configure_wb(*Case_Opt.to_configure_wb())
-    # todo
     for _path in Case_Opt.get_additional_files():
         Case.add_extra_file(_path)
     # create new case

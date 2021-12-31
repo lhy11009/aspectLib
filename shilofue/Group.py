@@ -159,13 +159,17 @@ class GROUP():
         with open(json_file, 'r') as fin:
             self.base_options = json.load(fin)
 
-    def create_group(self, features, base_dir, output_dir, base_name, bindings):
+    def create_group(self, features, base_dir, output_dir, base_name, bindings, **kwargs):
         '''
         create new group
+        Inputs:
+            kwargs (dict):
+                update (bool): update existing cases?
         '''
         total = 1
         sub_totals = []
         sizes = []
+        is_update = kwargs.get('update', False)
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)  # make dir if not existing
         for feature in features:
@@ -177,6 +181,7 @@ class GROUP():
             for i in range(total):
                 options = self.base_options.copy()
                 options['name'] =  base_name
+                # assemble the features for case option
                 for j in range(len(features)):
                     feature = features[j]
                     x_j = i//sub_totals[j] % len(feature.get_values())
@@ -189,7 +194,8 @@ class GROUP():
                         name_appendix = feature.get_abbrev_strings()[x_j]  # appendix by string
                     options['name'] += ('_' + name_appendix)
                 options["output directory"] = output_dir
-                case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT)
+                # call function to create the case
+                case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT, update=is_update)
                 json_path = os.path.join(case_dir, "case.json")
                 with open(json_path, 'w') as fout:
                     json.dump(options, fout, indent=2)
@@ -200,6 +206,7 @@ class GROUP():
                 options['name'] =  base_name
                 options["output directory"] = output_dir
                 options['base directory'] = base_dir
+                # assemble the features for case option
                 for j in range(len(features)):
                     feature = features[j]
                     x_j = binding[j]
@@ -211,7 +218,8 @@ class GROUP():
                     else:
                         name_appendix = feature.get_abbrev_strings()[x_j]  # appendix by string
                     options['name'] += ('_' + name_appendix)
-                case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT)
+                # call function to create the case
+                case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT, update=is_update)
                 json_path = os.path.join(case_dir, "case.json")
                 with open(json_path, 'w') as fout:
                     json.dump(options, fout, indent=2)
@@ -250,17 +258,24 @@ def CreateGroup(json_path, CASE, CASE_OPT):
     if os.path.isdir(group_opt.get_output_dir()):
         is_pursue = input("Directory (%s) already exists, delete ? (y/n): " % group_opt.get_output_dir())
         if is_pursue == 'y':
-            rmtree(group_opt.get_output_dir())
-            os.mkdir(group_opt.get_output_dir())
+            is_pursue1 = input("Delete, are you sure ? (y/n): ")
+            if is_pursue1 == 'y':
+                rmtree(group_opt.get_output_dir())
+                os.mkdir(group_opt.get_output_dir())
         else:
             is_pursue = input("update ? (y/n)")
             if is_pursue != 'y':
                 print("Aborting")
                 return 0
+            temp = input("update existing cases ? (y/n)")
+            if temp == 'y':
+                is_update_existing = True
+            else:
+                is_update_existing = False
     else:
         os.mkdir(group_opt.get_output_dir())
     copy(json_path, os.path.join(group_opt.get_output_dir(), "group.json"))
-    group.create_group(*group_opt.to_create_group())
+    group.create_group(*group_opt.to_create_group(), update=is_update_existing)
 
 
 def main():
