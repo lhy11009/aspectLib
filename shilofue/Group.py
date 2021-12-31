@@ -66,6 +66,8 @@ class FEATURE_OPT(Utilities.JSON_OPT):
         self.add_key("Abbrevation in case name", list, ["abbreviating value options"], [None, None], nick='abbrev_value_options')
         self.add_key("If abbrevate case name by value defined in this featue", int, ["abbreviation by value"], 0, nick='is_abbrev_value')
         self.add_key("Abbrevation by a given string", list, ["abbreviating strings"], [], nick='abbrev_strings')
+        # todo
+        self.add_key("if appending abbreviation (same length with values)", list, ["if abbreviating"], [], nick='if_append_abbrev')
 
     def check(self):
         assert(len(self.values[3]) == 2)  # abbreviation has 2 entries (name, scale)
@@ -76,6 +78,17 @@ class FEATURE_OPT(Utilities.JSON_OPT):
             # number of strings equal number of values
             assert(len(self.values[5]) == len(self.values[2]))
         pass
+        # todo
+        # check the values assigned for "if abbreviation"
+        if self.values[6] == []:
+            # no assigned, abbrevtion for all
+            self.values[6] = [1 for i in range(len(self.values[2]))]
+        else:
+            assert(len(self.values[6]) == len(self.values[2]))
+            for i in self.values[6]:
+               Utilities.my_assert(i == 0 or i == 1, ValueError,\
+               "Value of \"if abbreviation\" is either 0 or 1") 
+            
 
     def get_keys(self):
         return self.values[1]
@@ -91,6 +104,16 @@ class FEATURE_OPT(Utilities.JSON_OPT):
 
     def get_abbrev_strings(self):
         return self.values[5]
+    
+    def if_append_abbrev(self, index):
+        # todo
+        '''
+        whether appending abbrevation to case name for entry i
+        in the list of values
+        Inputs:
+            index (int): index of the entry
+        '''
+        return self.values[6][index]
 
 
 class GROUP_OPT(Utilities.JSON_OPT):
@@ -188,11 +211,13 @@ class GROUP():
                     values = feature.get_values()
                     options = Utilities.write_dict_recursive(options,\
                         feature.get_keys(), values[x_j])
-                    if feature.if_abbrev_value():
-                        name_appendix = get_name_appendix(feature.get_abbrev_value_options(), values[x_j]) # appendix by value
-                    else:
-                        name_appendix = feature.get_abbrev_strings()[x_j]  # appendix by string
-                    options['name'] += ('_' + name_appendix)
+                    # todo
+                    if feature.if_append_abbrev(x_j):
+                        if feature.if_abbrev_value():
+                            name_appendix = get_name_appendix(feature.get_abbrev_value_options(), values[x_j]) # appendix by value
+                        else:
+                            name_appendix = feature.get_abbrev_strings()[x_j]  # appendix by string
+                        options['name'] += ('_' + name_appendix)
                 options["output directory"] = output_dir
                 # call function to create the case
                 case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT, update=is_update)
@@ -213,11 +238,13 @@ class GROUP():
                     values = feature.get_values()
                     options = Utilities.write_dict_recursive(options,\
                         feature.get_keys(), values[x_j])
-                    if feature.if_abbrev_value():
-                        name_appendix = get_name_appendix(feature.get_abbrev_value_options(), values[x_j]) # appendix by value
-                    else:
-                        name_appendix = feature.get_abbrev_strings()[x_j]  # appendix by string
-                    options['name'] += ('_' + name_appendix)
+                    # todo
+                    if feature.if_append_abbrev(x_j):
+                        if feature.if_abbrev_value():
+                            name_appendix = get_name_appendix(feature.get_abbrev_value_options(), values[x_j]) # appendix by value
+                        else:
+                            name_appendix = feature.get_abbrev_strings()[x_j]  # appendix by string
+                        options['name'] += ('_' + name_appendix)
                 # call function to create the case
                 case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT, update=is_update)
                 json_path = os.path.join(case_dir, "case.json")
@@ -255,6 +282,7 @@ def CreateGroup(json_path, CASE, CASE_OPT):
     feature_opt = group_opt.values[1][0]
     group = GROUP(CASE, CASE_OPT)
     group.read_json_base(group_opt.get_base_json_path())
+    is_update_existing = False
     if os.path.isdir(group_opt.get_output_dir()):
         is_pursue = input("Directory (%s) already exists, delete ? (y/n): " % group_opt.get_output_dir())
         if is_pursue == 'y':

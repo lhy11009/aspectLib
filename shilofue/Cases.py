@@ -269,11 +269,13 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     Case_Opt.check()
     # check if the case already exists. If so, only update if it is explicitly 
     # required
-    is_update = kwargs.get('update', False)
+    is_update = kwargs.get('update', True)
     case_dir_to_check = os.path.join(Case_Opt.o_dir(), Case_Opt.case_name())
-    if not is_update:
-        if os.path.isdir(case_dir_to_check):
-            print("Case %s doesn't exist, aborting" % case_dir_to_check)
+    if os.path.isdir(case_dir_to_check):
+        if is_update:
+            print("Case %s already exists, updating" % case_dir_to_check)
+        else:
+            print("Case %s already exists, aborting" % case_dir_to_check)
             return case_dir_to_check
     # Manage case files
     Case = CASE(*Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())

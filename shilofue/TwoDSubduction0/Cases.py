@@ -83,9 +83,9 @@ class CASE_OPT(CasesP.CASE_OPT):
          and extend the box for an older sp_age_trench.",\
          str,\
          ["world builder", "plate age method"], 'by values', nick="plate_age_method")
-        # todo
         self.add_key("Include peierls creep", int, ['include peierls creep'], 0, nick='if_peierls')
-        
+        self.add_key("Coupling the eclogite phase to shear zone viscosity",\
+         int, ['coupling the eclogite phase to shear zone viscosity'], 0, nick='if_couple_eclogite_viscosity')
         pass
     
     def check(self):
@@ -122,8 +122,9 @@ class CASE_OPT(CasesP.CASE_OPT):
             *self.to_re_write_geometry_pa()
             ) # adjust box width
         if_peierls = self.values[self.start + 10]
-        # todo
-        return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method, if_peierls
+        if_couple_eclogite_viscosity = self.values[self.start + 11]
+        
+        return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity
 
     def to_configure_wb(self):
         '''
@@ -148,7 +149,6 @@ class CASE_OPT(CasesP.CASE_OPT):
     def to_re_write_geometry_pa(self):
         return self.defaults[self.start+7], self.defaults[self.start+1],\
         self.values[self.start+1], self.values[self.start+2]
-    
 
 
 class CASE(CasesP.CASE):
@@ -156,8 +156,7 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    # todo
-    def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method, if_peierls):
+    def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
@@ -209,7 +208,6 @@ class CASE(CasesP.CASE):
             # remove this feature if otherwise
             pass
         # Include peierls rheology
-        # todo
         if if_peierls:
             try:
                 temp = o_dict['Material model']['Visco Plastic TwoD']['Peierls fitting parameters']
@@ -218,6 +216,11 @@ class CASE(CasesP.CASE):
             o_dict['Material model']['Visco Plastic TwoD']['Include Peierls creep'] = 'true'
         else:
             o_dict['Material model']['Visco Plastic TwoD']['Include Peierls creep'] = 'false'
+        # Couple eclogite viscosity
+        if if_couple_eclogite_viscosity:
+            o_dict['Material model']['Visco Plastic TwoD']["Decoupling eclogite viscosity"] = 'false'
+        else:
+            o_dict['Material model']['Visco Plastic TwoD']["Decoupling eclogite viscosity"] = 'true'
         self.idict = o_dict
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
