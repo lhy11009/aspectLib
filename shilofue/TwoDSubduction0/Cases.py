@@ -73,7 +73,7 @@ class CASE_OPT(CasesP.CASE_OPT):
             available options in [all free slip, ]", str,\
             ["boundary condition", "model"], "all free slip", nick='type_of_bd')
         self.add_key("Width of the Box", float,\
-            ["Box Width"], 6.783e6, nick='box_width')
+            ["box width"], 6.783e6, nick='box_width')
         self.add_key("Method to use for prescribing temperature", str,\
          ["prescribe temperature method"], 'function', nick="prescribe_T_method")
         self.add_key("Method to use for adjusting plate age.\n\
@@ -86,6 +86,11 @@ class CASE_OPT(CasesP.CASE_OPT):
         self.add_key("Include peierls creep", int, ['include peierls creep'], 0, nick='if_peierls')
         self.add_key("Coupling the eclogite phase to shear zone viscosity",\
          int, ['coupling the eclogite phase to shear zone viscosity'], 0, nick='if_couple_eclogite_viscosity')
+        self.add_key("Width of the Box before adjusting for the age of the trench.\
+This is used with the option \"adjust box width\" for configuring plate age at the trench.\
+This value is the width of box for a default age (i.e. 80Myr), while the width of box for a\
+different age will be adjusted.",\
+          float, ["world builder", "box width before adjusting"], 6.783e6, nick='box_width_pre_adjust')
         pass
     
     def check(self):
@@ -102,6 +107,20 @@ class CASE_OPT(CasesP.CASE_OPT):
             "%s: When using the box geometry, world builder must be used for initial conditions" \
             % Utilities.func_name())  # use box geometry, wb is mandatory
         pass
+        # check the setting for adjust box width
+        plate_age_method = self.values[self.start + 9] 
+        if plate_age_method == 'adjust box width':
+            box_width = self.values[self.start + 7]
+            if box_width != self.defaults[self.start + 7]:
+                warnings.warn("By using \"adjust box width\" method for subduction plate age\
+                box width will be automatically adjusted. Thus the given\
+                value is not taken.")
+            box_width_pre_adjust = self.values[self.start+12]
+            sp_age_trench_default = self.defaults[self.start+1]  # default value for age at trench
+            sp_rate_default = self.defaults[self.start+2]  # default value for spreading rate
+            Utilities.my_assert(box_width_pre_adjust > sp_age_trench_default * sp_rate_default, ValueError,\
+            "For the \"adjust box width\" method to work, the box width before adjusting needs to be wider\
+than the multiplication of the default values of \"sp rate\" and \"age trench\"")
 
     def to_configure_prm(self):
         if_wb = self.values[self.start + 0]
@@ -114,10 +133,6 @@ class CASE_OPT(CasesP.CASE_OPT):
         prescribe_T_method = self.values[self.start + 8]
         plate_age_method = self.values[self.start + 9] 
         if plate_age_method == 'adjust box width':
-            if box_width != self.defaults[self.start + 7]:
-                warnings.warn("By using \"adjust box width\" method for subduction plate age\
-                box width will be automatically adjusted. Thus the given\
-                value is not taken.")
             box_width = re_write_geometry_while_assigning_plate_age(
             *self.to_re_write_geometry_pa()
             ) # adjust box width
@@ -147,7 +162,8 @@ class CASE_OPT(CasesP.CASE_OPT):
     
 
     def to_re_write_geometry_pa(self):
-        return self.defaults[self.start+7], self.defaults[self.start+1],\
+        box_width_pre_adjust = self.values[self.start+12]
+        return box_width_pre_adjust, self.defaults[self.start+1],\
         self.values[self.start+1], self.values[self.start+2]
 
 
