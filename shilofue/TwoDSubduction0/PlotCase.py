@@ -57,7 +57,10 @@ Examples of usage: \n\
         Lib_TwoDSubduction0_PlotCase  plot_case_in_dir -i ~/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT\n\
 \n\
   - prepare result of a single step by combining figures:\n\
-        Lib_TwoDSubduction0_PlotCase prepare_result_step -i ~/ASPECT_PROJECT/TwoDSubduction/test_peierls1/peierls\
+        Lib_TwoDSubduction0_PlotCase prepare_result_step -i ~/ASPECT_PROJECT/TwoDSubduction/test_peierls1/peierls\n\
+\n\
+  - plot and then prepare result of a single step by combining figures:\n\
+        Lib_TwoDSubduction0_PlotCase plot_prepare_result_step -i ~/ASPECT_PROJECT/TwoDSubduction/test_peierls1/peierls\
         ")
 
 
