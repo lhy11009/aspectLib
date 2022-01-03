@@ -80,6 +80,13 @@ class FEATURE_OPT(Utilities.JSON_OPT):
         pass
         # todo
         # check the values assigned for "if abbreviation"
+        is_abbrev_value = self.values[4]
+        assert(is_abbrev_value in [0, 1])
+        if is_abbrev_value == 1:
+            abbrev_value_options = self.values[3]  # abbrev_value_options contains a string and a float
+            assert(len(abbrev_value_options)==2 and\
+            type(abbrev_value_options[0]) == str and\
+            type(abbrev_value_options[1]) == float)
         if self.values[6] == []:
             # no assigned, abbrevtion for all
             self.values[6] = [1 for i in range(len(self.values[2]))]

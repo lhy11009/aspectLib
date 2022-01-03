@@ -214,6 +214,7 @@ class CASE(CasesP.CASE):
                 o_dict['Prescribed temperatures'] =\
                     prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age)
             elif geometry == 'box':
+                o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
                 if prescribe_T_method == 'function':
                     o_dict['Prescribed temperatures'] =\
                         prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age)
