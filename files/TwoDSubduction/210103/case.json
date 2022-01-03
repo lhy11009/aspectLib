@@ -1,5 +1,5 @@
 {
-	"base directory": "${ASPECT_LAB_DIR}/files/TwoDSubduction/211230", 
+	"base directory": "${ASPECT_LAB_DIR}/files/TwoDSubduction/210103", 
 	"output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
 	"name": "peierls_test",
 	"Include fast first step": 1,

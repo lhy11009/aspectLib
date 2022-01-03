@@ -94,7 +94,7 @@ end
 
 
 subsection Boundary velocity model
-    set Tangential velocity boundary indicators = west, east, bottom, top
+    set Tangential velocity boundary indicators = 0, 1, 2, 3
 end
 
 
@@ -115,7 +115,7 @@ end
 
 
 subsection Boundary temperature model
-    set Fixed temperature boundary indicators = bottom, top
+    set Fixed temperature boundary indicators = 0, 1
     set List of model names = spherical constant
     subsection Spherical constant
         set Inner temperature = 3500
@@ -137,7 +137,7 @@ end
 
 
 subsection Boundary composition model
-    set Fixed composition boundary indicators = west,east
+    set Fixed composition boundary indicators = 0, 1
     set List of model names = initial composition
     subsection Initial composition
         set Minimal composition = 0
