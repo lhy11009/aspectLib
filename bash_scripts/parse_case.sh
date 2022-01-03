@@ -344,6 +344,18 @@ submit_case_peloton_rome(){
     return 0
 }
 
+submit_case_peloton_p-billen(){
+    ####
+    # submit case to slurm
+    # Inputs:
+    #   $1: case directory
+    now=$(pwd)
+    cd "$1"
+    eval "sbatch -A billen job_p-billen.sh"
+    cd "${now}"
+    return 0
+}
+
 submit_case_peloton_high2(){
     ####
     # submit case to slurm
@@ -371,11 +383,12 @@ restart_case(){
     [[ -e ${prm_file} ]] || { cecho "${BAD}" "No such file ${prm_file}"; exit 1; } 
     unset return_values  # rewrite prm file
     util_substitute_prm_file_contents "${prm_file}" "Resume computation" "true"
-    printf "${return_values[@]}" > "${prm_file}"
     if [[ ${partition} == "rome" ]]; then
         submit_case_peloton_rome "${case_dir}"
     elif [[ ${partition} == "high2" ]]; then
         submit_case_peloton_high2 "${case_dir}"
+    elif [[ ${partition} == "p-billen" ]]; then
+        submit_case_peloton_p-billen "${case_dir}"
     fi
     # check for the restarted case
     return 0
@@ -415,6 +428,8 @@ check_time_restart_case(){
             submit_case_peloton_rome "${case_dir}"
         elif [[ ${partition} == "high2" ]]; then
             submit_case_peloton_high2 "${case_dir}"
+    	elif [[ ${partition} == "p-billen" ]]; then
+            submit_case_peloton_p-billen "${case_dir}"
         fi
     fi
     return 0
