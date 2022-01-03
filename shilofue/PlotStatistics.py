@@ -32,7 +32,6 @@ import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 from shilofue.Plot import LINEARPLOT
-from shilofue.Utilities import UNITCONVERT
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -40,6 +39,8 @@ RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
 
 class STATISTICS_PLOT(LINEARPLOT):
     '''
@@ -71,12 +72,22 @@ class STATISTICS_PLOT(LINEARPLOT):
     
     def GetTime(self, step):
         '''
-        future
         Inputs:
             step(int)
         get time to a value of model step
         '''
+        col_t = self.header['Time']['col']
+        col_step = self.header['Time_step_number']['col']
+        times = self.data[:, col_t]
+        steps = self.data[:, col_step]
+        assert(len(times) == len(steps))
         time = 0.0
+        found = False
+        for i in range(len(steps)):  # search for step
+            if step == int(steps[i]):
+                time = times[i]
+                found = True
+        Utilities.my_assert(found, ValueError, "step %d is not a valid step" % step)
         return time
 
 
@@ -90,7 +101,7 @@ def PlotFigure(file_path, fig_path):
         -
     '''
     # Init the UnitConvert class
-    UnitConvert = UNITCONVERT()
+    UnitConvert = Utilities.UNITCONVERT()
     json_file = os.path.join(ASPECT_LAB_DIR, 'shilofue', 'json_files', 'post_process.json')
     with open(json_file, 'r') as fin:
         pdict = json.load(fin)

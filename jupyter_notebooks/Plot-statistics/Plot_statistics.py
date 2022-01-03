@@ -544,12 +544,22 @@ class STATISTICS_PLOT(LINEARPLOT):
     
     def GetTime(self, step):
         '''
-        future
         Inputs:
             step(int)
         get time to a value of model step
         '''
+        col_t = self.header['Time']['col']
+        col_step = self.header['Time_step_number']['col']
+        times = self.data[:, col_t]
+        steps = self.data[:, col_step]
+        assert(len(times) == len(steps))
         time = 0.0
+        found = False
+        for i in range(len(steps)):  # search for step
+            if step == int(steps[i]):
+                time = times[i]
+                found = True
+        Utilities.my_assert(found, ValueError, "step %d is not a valid step" % step)
         return time
 
 

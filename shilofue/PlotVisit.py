@@ -173,6 +173,9 @@ class PREPARE_RESULT_OPTIONS(CASE_OPTIONS):
         # step & format for a visit output
         self.options['NUMERICAL_STEP'] = "%06d" % step
         self.options['GRAPHICAL_STEP'] =  "%06d" % (step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT']))
+        # time
+        time = self.Statistics.GetTime(step)
+        self.options['STEP_TIME_STAMP'] = "step %d, %.4e yrs" % (step, time)
 
  
 def GetSnapsSteps(case_dir, type_='graphical'):

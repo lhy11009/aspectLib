@@ -64,6 +64,14 @@
             "mask": 0,
             "position": [0, 530],
             "save path": "IMG_OUTPUT_DIR/results/step_sNUMERICAL_STEP.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/results/step_sNUMERICAL_STEP.png",
+            "operation": "text",
+            "text": "STEP_TIME_STAMP",
+            "font size": 30,
+            "position": [200, 10],
+            "save path": "IMG_OUTPUT_DIR/results/step_sNUMERICAL_STEP.png"
         }
     ]
 }
