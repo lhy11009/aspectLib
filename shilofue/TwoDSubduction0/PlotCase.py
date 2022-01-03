@@ -89,12 +89,7 @@ def PlotCaseRun(case_path, **kwargs):
     odir = os.path.join(case_path, 'visit_scripts')
     if not os.path.isdir(odir):
         os.mkdir(odir)
-    if Visit_Options.get_geometry() == 'chunk':
-        py_script = 'slab_sph.py'
-    elif Visit_Options.get_geometry() == 'box':
-        py_script = 'slab_cart.py'
-    else:
-        raise ValueError('%s: no option related to geometry : %s' % (Utilities.func_name(), Visit_Options.get_geometry()))
+    py_script = 'slab.py'
     ofile = os.path.join(odir, py_script)
     visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', py_script)
     visit_script_base = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'base.py')
