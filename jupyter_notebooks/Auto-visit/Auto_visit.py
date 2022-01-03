@@ -118,7 +118,7 @@ class VISIT_OPTIONS():
         """
         Interpret the inputs parsed from a prm file
         kwargs: options
-            last_steps(list): plot the last few steps
+            last_step(list): plot the last few steps
         """
         # visit file
         self.options["VISIT_FILE"] = self.visit_file
@@ -141,9 +141,9 @@ class VISIT_OPTIONS():
         # plot slab 
         self.options['IF_PLOT_SLAB'] = 'True'
         last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])
-        last_steps = kwargs.get('last_steps', None)
-        if type(last_steps) == int:
-            self.options['PLOT_SLAB_STEPS'] = [i for i in range(last_step - last_steps + 1, last_step + 1)]
+        last_step = kwargs.get('last_step', None)
+        if type(last_step) == int:
+            self.options['PLOT_SLAB_STEPS'] = [i for i in range(last_step - last_step + 1, last_step + 1)]
         else:
             self.options['PLOT_SLAB_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
         # self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
@@ -209,4 +209,4 @@ def GetSnapsSteps(case_dir, type_='graphical'):
 
 # Initiate the class, Parse the variables from a prm file(case.prm) by saving it in a dictionary(self.idict).
 visit_options = VISIT_OPTIONS('.')
-# visit_options.Interpret(last_steps=3)
+# visit_options.Interpret(last_step=3)

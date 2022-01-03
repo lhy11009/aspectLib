@@ -68,6 +68,7 @@ def PlotCaseRun(case_path, **kwargs):
         case_path(str): path to the case
         kwargs:
             time_range
+            step(int): if this is given as an int, only plot this step
     Returns:
         -
     '''
@@ -76,7 +77,12 @@ def PlotCaseRun(case_path, **kwargs):
 
     # plot visit
     Visit_Options = VISIT_OPTIONS(case_path)
-    Visit_Options.Interpret(last_steps=3)  # interpret scripts, plot the last 3 steps
+    # provide steps to plot and interpret
+    step = kwargs.get('step', None)
+    if type(step) == int:
+        Visit_Options.Interpret(steps=[step])  # only plot a single step
+    else:
+        Visit_Options.Interpret(last_step=3)  # by default, plot the last 3 steps
     odir = os.path.join(case_path, 'visit_scripts')
     if not os.path.isdir(odir):
         os.mkdir(odir)
@@ -89,7 +95,7 @@ def PlotCaseRun(case_path, **kwargs):
     ofile = os.path.join(odir, py_script)
     visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', py_script)
     visit_script_base = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'base.py')
-    Visit_Options.read_contents(visit_script_base, visit_script)
+    Visit_Options.read_contents(visit_script_base, visit_script)  # combine these two scripts
     Visit_Options.substitute()
     ofile_path = Visit_Options.save(ofile, relative=True)
     print("Visualizing using visit")
@@ -114,6 +120,18 @@ def PrepareResultStep(case_path, step):
     Prepare_Result.substitute()
     ofile_path = Prepare_Result.save(ofile, relative=True)
     PlotCombine.PrepareResults(ofile_path)  # call function with the generated json file
+
+
+def PlotPrepareResultStep(case_path, step):
+    '''
+    First plot and then prepare results
+    Inputs:
+        case_path(str): path to the case
+        step(int): step in computation
+    '''
+    # prepare result
+    PlotCaseRun(case_path, step=step)
+    PrepareResultStep(case_path, step)
 
 
 def main():
@@ -155,9 +173,13 @@ def main():
         pass
     elif _commend == 'prepare_result_step':
         PrepareResultStep(arg.inputs, arg.step)
+    elif _commend == 'plot_prepare_result_step':
+        PlotPrepareResultStep(arg.inputs, arg.step)
     elif (_commend in ['-h', '--help']):
         # example:
         Usage()
+    else:
+        raise ValueError("Invalid command: use -h for help information")
 
 # run script
 if __name__ == '__main__':

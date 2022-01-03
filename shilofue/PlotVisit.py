@@ -67,7 +67,8 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         """
         Interpret the inputs, to be reloaded in children
         kwargs: options
-            last_steps(list): plot the last few steps
+            steps (int): plot some steps
+            last_step(list): plot the last few steps
         """
         # call function from parent
         CASE_OPTIONS.Interpret(self)
@@ -98,11 +99,17 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         except IndexError:
             # no snaps, stay on the safe side
             self.last_step = -1
-        last_steps = kwargs.get('last_steps', None)
-        if type(last_steps) == int:
+        steps = kwargs.get('steps', None)
+        last_step = kwargs.get('last_step', None)
+        # set steps to plot
+        if type(steps) == list:
+            for step in steps:
+                assert(type(step) == int)
+            self.options['GRAPHICAL_STEPS'] = steps  # always plot the 0 th step
+        elif type(last_step) == int:
             # by this option, plot the last few steps
             self.options['GRAPHICAL_STEPS'] = [0]  # always plot the 0 th step
-            self.options['GRAPHICAL_STEPS'] += [i for i in range(self.last_step - last_steps + 1, self.last_step + 1)]
+            self.options['GRAPHICAL_STEPS'] += [i for i in range(self.last_step - last_step + 1, self.last_step + 1)]
         else:
             self.options['GRAPHICAL_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
 
