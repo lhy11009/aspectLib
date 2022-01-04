@@ -29,6 +29,7 @@ from shilofue.ParsePrm import ReadPrmFile
 import shilofue.PlotVisit as PlotVisit
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
+import imageio
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -147,6 +148,44 @@ def PlotCaseCombinedDir(modules, dir, time_range):
             if os.path.isfile(case_prm):
                 print("\nFind case %s" % _path)
                 PlotCaseCombined(modules, _path, time_range)
+
+
+def AnimateCaseResults(PrepareS, case_path, **kwargs):
+    '''
+    create animation
+    Inputs:
+        case_path(str): path to the case
+        kwargs(dict):
+            step_range(list of 2): a list of steps to animate
+    '''
+    name = kwargs.get('name', 'ani')  # name of the animation
+    VisitOptions = PlotVisit.VISIT_OPTIONS(case_path)
+    VisitOptions.Interpret()
+    last_step = VisitOptions.last_step
+    print('last_step: ', last_step)
+    try:
+        step_range = kwargs['step_range']
+    except KeyError:
+        steps = range(0, last_step+1)  # no range given, take all
+    else:
+        # with a range, compare the left and right limits
+        step_range_fixed = [max(step_range[0], 0), min(step_range[1], last_step)]
+        steps = range(step_range_fixed[0], step_range_fixed[1]+1)
+    # plot results
+    filenames = []
+    for step in steps:
+        # prepare results, if the figure is already generated, skip
+        filename = PrepareS(case_path, step, update=False)
+        filenames.append(filename)
+    o_dir = os.path.dirname(filenames[-1])  # just use this directory as output
+    o_path = os.path.join(o_dir, "%s.gif" % name)
+    print("%s: saving file %s" % (Utilities.func_name(), o_path))
+    with imageio.get_writer(o_path, mode='I') as writer:
+        for filename in filenames:
+            image = imageio.imread(filename)
+            writer.append_data(image)
+    pass
+
 
 
 def main():

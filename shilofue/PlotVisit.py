@@ -169,12 +169,17 @@ class PREPARE_RESULT_OPTIONS(CASE_OPTIONS):
         """
         # call function from parent
         CASE_OPTIONS.Interpret(self)
-        step = kwargs.get('step', 0)
+        visual_step = kwargs.get('step', 0)
         # step & format for a visit output
-        self.options['NUMERICAL_STEP'] = "%06d" % step
-        self.options['GRAPHICAL_STEP'] =  "%06d" % (step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT']))
+        self.options['NUMERICAL_STEP'] = "%06d" % visual_step
+        self.options['GRAPHICAL_STEP'] =  "%06d" % (visual_step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT']))
         # time
-        time = self.Statistics.GetTime(step)
+        try:
+            time_between_graphical_output = float(self.idict['Postprocess']['Visualization']['Time between graphical output'])
+        except KeyError:
+            time_between_graphical_output = 1e8
+        time = visual_step * time_between_graphical_output
+        step = self.Statistics.GetStep(time)
         self.options['STEP_TIME_STAMP'] = "step %d, %.4e yrs" % (step, time)
 
  
