@@ -108,12 +108,16 @@ def PrepareResultStep(case_path, step):
         step(int): step in computation
     '''
     # Generate json file
-    pr_script = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "figure_step_template.json")
     odir = os.path.join(case_path, 'json_files')
     ofile = os.path.join(odir, 'figure_step.json')
-    assert(os.path.isfile(pr_script))
     Prepare_Result = PREPARE_RESULT_OPTIONS(case_path)
     Prepare_Result.Interpret(step=step)
+    # script to use
+    if Prepare_Result.get_geometry() == "chunk":
+        pr_script = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "figure_step_template.json")
+    elif Prepare_Result.get_geometry() == "box":
+        pr_script = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "figure_step_template_box.json")
+    assert(os.path.isfile(pr_script))
     Prepare_Result.read_contents(pr_script)
     Prepare_Result.substitute()
     ofile_path = Prepare_Result.save(ofile, relative=True)

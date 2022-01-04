@@ -1,0 +1,77 @@
+{
+    "figures": [
+        {
+            "path": "IMG_OUTPUT_DIR/um_temperatureGRAPHICAL_STEP.png"
+        },
+        {
+            "path": "/home/lochy/Documents/papers/documented_files/TwoDSubduction/upper_mantle_frame/upper_mantle_frame_box_transparent_scaled.png",
+            "operation": "paste",
+            "mask": 1,
+            "resize": 1.0,
+            "position": [103, 333],
+            "save path": "IMG_OUTPUT_DIR/results/temp_sNUMERICAL_STEP.png",
+            "temp" : 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/results/temp_sNUMERICAL_STEP.png",
+            "operation": "crop",
+            "position": [110, 400, 1000, 950],
+            "save path": "IMG_OUTPUT_DIR/results/temperatureGRAPHICAL_STEP.png"
+        },
+        {
+            "path": "/home/lochy/Documents/papers/documented_files/TwoDSubduction/color_tables/temperature_0_1900.png",
+            "operation": "paste",
+            "mask": 1,
+            "resize": 1.0,
+            "position": [250, 520],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/results/temperature_sNUMERICAL_STEP.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/um_viscosity_snapGRAPHICAL_STEP.png"
+        },
+        {
+            "path": "/home/lochy/Documents/papers/documented_files/TwoDSubduction/upper_mantle_frame/upper_mantle_frame_box_transparent_scaled.png",
+            "operation": "paste",
+            "mask": 1,
+            "resize": 1.0,
+            "position": [103, 333],
+            "save path": "IMG_OUTPUT_DIR/results/temp_sNUMERICAL_STEP_1.png",
+            "temp" : 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/results/temp_sNUMERICAL_STEP_1.png",
+            "operation": "crop",
+            "position": [110, 440, 1000, 950],
+            "save path": "IMG_OUTPUT_DIR/results/viscosity_sNUMERICAL_STEP.png"
+        },
+        {
+            "path": "/home/lochy/Documents/papers/documented_files/TwoDSubduction/color_tables/viscosity_18_24.png",
+            "operation": "paste",
+            "mask": 1,
+            "resize": 1.0,
+            "position": [250, 480],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/results/viscosity_sNUMERICAL_STEP.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/results/temperature_sNUMERICAL_STEP.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/results/viscosity_sNUMERICAL_STEP.png",
+            "operation": "paste",
+            "method": "use_new_one",
+            "mask": 0,
+            "position": [0, 660],
+            "save path": "IMG_OUTPUT_DIR/results/step_sNUMERICAL_STEP.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/results/step_sNUMERICAL_STEP.png",
+            "operation": "text",
+            "text": "STEP_TIME_STAMP",
+            "font size": 30,
+            "position": [250, 10],
+            "save path": "IMG_OUTPUT_DIR/results/step_sNUMERICAL_STEP.png"
+        }
+    ]
+}
