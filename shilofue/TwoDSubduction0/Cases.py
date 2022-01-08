@@ -91,7 +91,6 @@ This is used with the option \"adjust box width\" for configuring plate age at t
 This value is the width of box for a default age (i.e. 80Myr), while the width of box for a\
 different age will be adjusted.",\
           float, ["world builder", "box width before adjusting"], 6.783e6, nick='box_width_pre_adjust')
-        # todo
         self.add_key("Model to use for mantle phase transitions", str,\
          ["phase transition model"], 'CDPT', nick="phase_model")
         self.add_key("Root directory for lookup tables", str,\
@@ -127,7 +126,6 @@ different age will be adjusted.",\
             "For the \"adjust box width\" method to work, the box width before adjusting needs to be wider\
 than the multiplication of the default values of \"sp rate\" and \"age trench\"")
         # check the method to use for phase transition
-        # todo
         phase_model = self.values[self.start + 13]
         Utilities.my_assert( phase_model in ["CDPT", "HeFESTo"], ValueError,\
         "%s: Models to use for phases must by CDPT or HeFESTo" \
@@ -156,7 +154,6 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             ) # adjust box width
         if_peierls = self.values[self.start + 10]
         if_couple_eclogite_viscosity = self.values[self.start + 11]
-        # todo
         phase_model = self.values[self.start + 13]
         HeFESTo_data_dir = self.values[self.start + 14]
         root_level = self.values[7]
@@ -266,7 +263,6 @@ class CASE(CasesP.CASE):
             o_dict['Material model']['Visco Plastic TwoD']["Decoupling eclogite viscosity"] = 'true'
         self.idict = o_dict
         # phase model
-        # todo
         if phase_model == "HeFESTo":
             o_dict['Material model']['Visco Plastic TwoD']["Use lookup table"] = 'true'
             o_dict['Material model']['Visco Plastic TwoD']["Lookup table"]["Data directory"] = HeFESTo_data_dir
