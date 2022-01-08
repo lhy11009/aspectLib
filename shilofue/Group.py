@@ -185,7 +185,7 @@ class GROUP():
         '''
         Read the base json file
         '''
-        assert(os.access(json_file, os.R_OK))
+        Utilities.my_assert(os.access(json_file, os.R_OK), FileExistsError, "%s doesn't exist." % json_file)
         with open(json_file, 'r') as fin:
             self.base_options = json.load(fin)
 

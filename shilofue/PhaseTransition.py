@@ -45,6 +45,22 @@ class PHASE_OPT(Utilities.JSON_OPT):
         self.add_key("Name of this composition", str, ["name"], 'pyrolite', nick='name')
         self.add_key("Clapeyron slop", list, ["clapeyron slope"], [], nick='cl')
         self.add_key("Name of boundaries", list, ["boundary"], [], nick='boundary')
+
+    def check(self):
+        '''
+        check
+        '''
+        Utilities.JSON_OPT.check(self) # call parental function
+        # check the length of vectors
+        drho = self.values[1]
+        xc = self.values[2]
+        cl = self.values[4]
+        boundary = self.values[5]
+        length = len(drho)
+        assert(length == len(xc))
+        assert(length == len(cl))
+        assert(length == len(boundary))
+
     
     def get_name(self):
         '''
@@ -53,6 +69,9 @@ class PHASE_OPT(Utilities.JSON_OPT):
             name (str)
         '''
         return self.values[3]
+
+    def get_boundary_names(self):
+        return self.values[5]
     
     def to_get_reference_density(self):
         '''
@@ -207,7 +226,6 @@ def Get_effective_density_change_on_660(phase_opt):
     lh_660 = 0.0
     name = phase_opt.get_name()
     phase_dict = phase_opt.get_dict()
-    print(phase_dict)  # debug
     for i_dx in range(len(phase_dict['drho'])):
         boundary = phase_dict['boundary'][i_dx]
         if re.match('660', boudnary):
@@ -221,7 +239,6 @@ def Get_effective_density_change_on_660(phase_opt):
             break
     rho_660 = rho_p[i660_rd] + rho_p[i660_rd+1]
     cl_660 = phase_dict['claperon slope'][i660_rd-1]
-    print("rho660: %s, cl_660: %s" % (rho_660, cl_660))  # debug
     drho_660_eff = lh_660 * rho_660^2.0 / cl_660
     return drho_660_eff
 
@@ -243,6 +260,25 @@ def Get_entropy_change(rho0, drho, xc, cl):
     return lh
 
 
+def Show_entropy_changes(file_path):
+    '''
+    todo
+    Use the Get_entropy_change function and show entropy changes on phase transitions
+    Inputs:
+        file_path(str): a configuration for phases
+    '''
+    assert(os.access(file_path, os.R_OK))
+    cdpt_opt = CDPT_OPT()
+    cdpt_opt.read_json(file_path)
+    compositions = cdpt_opt.get_compositions()
+    for i in range(len(compositions)):
+        phase_opt = compositions[i]
+        lh = Get_entropy_change(*phase_opt.to_get_latent_heat_contribution())
+        print("Composition: ", phase_opt.get_name())
+        print(phase_opt.get_boundary_names())  # screen output
+        print(lh)
+
+
 def Usage():
     CDPT_opt=CDPT_OPT()
     print("\
@@ -254,6 +290,9 @@ Examples of usage: \n\
 \n\
         python -m shilofue.Parse phase_input -i ./files/TwoDSubduction/phases_1_0.json\n\
 \n\
+    - show the entropy changes on phase transitions\n\
+\n\
+        python -m shilofue.PhaseTransition show_entropy_changes -i /home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/phase_transitions/phases.json\n\
     %s\n\
 \n\
 " % CDPT_opt.document()
@@ -308,6 +347,9 @@ def main():
         phase_opt = cdpt_opt.get_compositions()[0]
         drho_660_eff = Get_effective_density_change_on_660(phase_opt)
         print("Effective density jump on 660 for latent heat computation is %s" % drho_660_eff)
+    elif _commend == "show_entropy_changes":
+        # todo
+        Show_entropy_changes(arg.inputs)
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
