@@ -157,6 +157,7 @@ def AnimateCaseResults(PrepareS, case_path, **kwargs):
         case_path(str): path to the case
         kwargs(dict):
             step_range(list of 2): a list of steps to animate
+            name(str): name of the animation
     '''
     name = kwargs.get('name', 'ani')  # name of the animation
     VisitOptions = PlotVisit.VISIT_OPTIONS(case_path)
@@ -185,6 +186,31 @@ def AnimateCaseResults(PrepareS, case_path, **kwargs):
             image = imageio.imread(filename)
             writer.append_data(image)
     pass
+
+
+def AnimateCombinedDir(PrepareS, dir, **kwargs):
+    '''
+    combine animation for cases in a directory
+    inputs:
+        PrepareS
+        case_path(str): path to the case
+        kwargs(dict):
+            step_range(list of 2): a list of steps to animate
+    '''
+    assert(os.path.isdir(dir))
+    name = kwargs.get('name', 'ani')  # name of the animation
+    for subdir, dirs, _ in os.walk(dir):
+        for _dir in dirs:
+            _path = os.path.join(subdir, _dir)
+            case_prm = os.path.join(_path, 'case.prm')
+            if os.path.isfile(case_prm):
+                print("\nFind case %s" % _path)
+                try:
+                    step_range = kwargs['step_range']
+                except KeyError:
+                    AnimateCaseResults(PrepareS, _path, name=name)
+                else:
+                    AnimateCaseResults(PrepareS, _path, step_range=step_range, name=name)
 
 
 

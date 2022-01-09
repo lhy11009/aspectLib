@@ -63,7 +63,10 @@ Examples of usage: \n\
         Lib_TwoDSubduction0_PlotCase plot_prepare_result_step -i ~/ASPECT_PROJECT/TwoDSubduction/test_peierls1/peierls\n\
 \n\
   - generate animation: \n\
-        Lib_TwoDSubduction0_PlotCase animate_case -i ~/ASPECT_PROJECT/TwoDSubduction/test_peierls1/peierls\
+        Lib_TwoDSubduction0_PlotCase animate_case -i ~/ASPECT_PROJECT/TwoDSubduction/test_peierls1/peierls\n\
+\n\
+  - generate animation for cases in a directory: \n\
+        Lib_TwoDSubduction0_PlotCase animate_case_in_dir -i `pwd`\
         ")
 
 
@@ -288,6 +291,9 @@ def main():
     elif _commend == 'animate_case':
         Plotter = PLOTTER(PREPARE_RESULT_OPTIONS)
         PlotCase.AnimateCaseResults(Plotter.PlotPrepareResultStep, arg.inputs)
+    elif _commend == 'animate_case_in_dir':
+        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS)
+        PlotCase.AnimateCombinedDir(Plotter.PlotPrepareResultStep, arg.inputs)
     elif (_commend in ['-h', '--help']):
         # example:
         Usage()
