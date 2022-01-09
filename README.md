@@ -238,6 +238,7 @@ For an example usage, see:
 
 * loop for steps and use the PIL module to prepare results
 * Use the imageio module to generate animation
+* There is option to generate animation for one case or for cases in a directory
 
 For example, see:
 	/home/lochy/ASPECT_PROJECT/aspectLib/shilofue/TwoDSubduction0/PlotCase.py
