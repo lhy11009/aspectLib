@@ -196,6 +196,7 @@ def AnimateCombinedDir(PrepareS, dir, **kwargs):
         case_path(str): path to the case
         kwargs(dict):
             step_range(list of 2): a list of steps to animate
+            name(str): name of the animation
     '''
     assert(os.path.isdir(dir))
     name = kwargs.get('name', 'ani')  # name of the animation
