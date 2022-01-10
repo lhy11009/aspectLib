@@ -242,7 +242,7 @@ class PARALLEL_WRAPPER_FOR_VTK():
         if pvtu_step <= self.last_pvtu_step and not self.if_rewrite:
             # skip existing steps
             return 0
-        if os.path.isfile(expect_result_file):
+        if os.path.isfile(expect_result_file) and not self.if_rewrite:
             # load file content
             print("%s: previous result exists(%s), load" % (Utilities.func_name(), expect_result_file))
             with open(expect_result_file, 'r') as fin:
@@ -281,6 +281,18 @@ class PARALLEL_WRAPPER_FOR_VTK():
                     self.outputs[i] = self.outputs[j]
                     self.outputs[j] = temp
         return self.pvtu_steps, self.outputs
+    
+    def delete_temp_files(self, pvtu_steps):
+        '''
+        delete temp files
+        Inputs:
+            pvtu_steps(list of int): step to look for
+        '''
+        print('delete temp files')
+        for pvtu_step in pvtu_steps:
+            expect_result_file = os.path.join(self.case_dir, 'vtk_outputs', '%s_s%06d' % (self.name, pvtu_step))
+            if os.path.isfile(expect_result_file):
+                os.remove(expect_result_file)
     
     def clear(self):
         '''

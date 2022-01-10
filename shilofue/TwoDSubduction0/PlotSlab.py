@@ -46,6 +46,9 @@ This scripts analyze slab morphology\n\
 \n\
 Examples of usage: \n\
 \n\
+  - plot the contour of slab of a give step and interact with the plot\n\
+    python -m shilofue.TwoDSubduction0.PlotSlab plot_morph_contour_step -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT1/eba_cdpt_SA80.0_OA40.0 -s 12\n\
+\n\
   - generate slab_morph.txt: \n\
     (what this does is looping throw all visualizing steps, so it takes time)\n\
     python -m shilofue.TwoDSubduction0.PlotSlab morph_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 \n\
@@ -240,6 +243,8 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     # get slab morphology
     ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', vtk_and_slab_morph, last_pvtu_step=last_pvtu_step, if_rewrite=if_rewrite)
     ParallelWrapper.configure(case_dir)  # assign case directory
+    if if_rewrite:
+        ParallelWrapper.delete_temp_files(available_pvtu_steps)  # delete intermediate file if rewrite
     num_cores = multiprocessing.cpu_count()
     Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
     for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
@@ -261,6 +266,27 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
         with open(output_file, 'a') as fout:
             for output in outputs:
                 fout.write("%s" % output)
+
+
+def plot_morph_contour_step(case_dir, step):
+    '''
+    plot slab morphology contour
+    '''
+    file_in_path = os.path.join(case_dir, 'vtk_outputs', 'contour_slab_%05d.txt' % (step))
+    assert(os.path.isfile(file_in_path))
+    ## load data
+    data = np.loadtxt(file_in_path)
+    fig, ax = plt.subplots()
+    ax.plot(data[:, 0], data[:, 1], 'b.')
+    ax.set_xlim([0, 6371e3])
+    ax.set_ylim([0, 6371e3])
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    temp_dir = os.path.join(case_dir, 'temp_output')
+    if not os.path.isdir(temp_dir):
+        os.path.mkdir(temp_dir)
+    file_out = os.path.join(temp_dir, "slab_contour_s%05d.png" % step)
+    plt.show()
     
 
 def main():
@@ -278,8 +304,8 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='Some inputs')
-    parser.add_argument('-s', '--step', type=str,
-                        default='0',
+    parser.add_argument('-s', '--step', type=int,
+                        default=0,
                         help='Timestep')
     parser.add_argument('-r', '--rewrite', type=int,
                         default=0,
@@ -299,6 +325,8 @@ def main():
         # slab_morphology, input is the case name
         # example:
         vtk_and_slab_morph(arg.inputs, int(arg.step))
+    elif _commend == 'plot_morph_contour_step':
+        plot_morph_contour_step(arg.inputs, arg.step)
     elif _commend == 'morph_case':
         # slab_morphology, input is the case name
         # example:
