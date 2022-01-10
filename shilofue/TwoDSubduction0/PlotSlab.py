@@ -204,7 +204,7 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
     '''
     print("pvtu_step: %s\n" % str(pvtu_step))
     vtk_option_path, _time, step = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis',\
-    vtk_step=pvtu_step, include_step_in_filename=True)
+    vtk_step=pvtu_step, include_step_in_filename=True, generate_horiz=True)
     _stdout = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
     slab_outputs = slab_morph(_stdout)
     # output string

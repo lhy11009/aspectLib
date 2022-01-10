@@ -27,6 +27,7 @@ from matplotlib import pyplot as plt
 import shilofue.Plot as Plot
 import shilofue.ParsePrm as ParsePrm
 from shilofue.CaseOptions import CASE_OPTIONS
+from shilofue.PlotDepthAverage import ExportData
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -79,21 +80,27 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         # visit file
         self.options["VISIT_FILE"] = self._visit_file
         # get snaps for plots
-        graphical_snaps_guess, _, _ = GetSnapsSteps(self._case_dir, 'graphical')
+        graphical_snaps_guess, _, time_steps_guess = GetSnapsSteps(self._case_dir, 'graphical')
         graphical_snaps = []
-        for graphical_snap in graphical_snaps_guess:
+        time_steps = []
+        for i in range(len(graphical_snaps_guess)):
+            graphical_snap = graphical_snaps_guess[i]
+            time_step = time_steps_guess[i]
             pvtu_file_path = os.path.join(self.options["DATA_OUTPUT_DIR"], "solution", "solution-%05d.pvtu" % graphical_snap)
             if os.path.isfile(pvtu_file_path):
                 graphical_snaps.append(graphical_snap)
-        
+                time_steps.append(time_step)
+        self.all_graphical_snaps = graphical_snaps
+        self.all_graphical_timesteps = time_steps 
         self.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'] = str(graphical_snaps)
+        self.options['ALL_AVAILABLE_GRAPHICAL_TIMESTEPS'] = str(time_steps)
         particle_snaps, _, _ = GetSnapsSteps(self._case_dir, 'particle')
         self.options['ALL_AVAILABLE_PARTICLE_SNAPSHOTS'] = str(particle_snaps)
         
         particle_output_dir = os.path.join(self._output_dir, "slab_morphs")
         self.options["PARTICLE_OUTPUT_DIR"] = particle_output_dir
         try:
-            self.last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])  # it is the last step we have outputs
+            self.last_step = max(0, graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT']))  # it is the last step we have outputs
         except IndexError:
             # no snaps, stay on the safe side
             self.last_step = -1
@@ -109,7 +116,18 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             self.options['GRAPHICAL_STEPS'] = [0]  # always plot the 0 th step
             self.options['GRAPHICAL_STEPS'] += [i for i in range(self.last_step - last_step + 1, self.last_step + 1)]
         else:
-            self.options['GRAPHICAL_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
+            # by default append 7 steps
+            self.options['GRAPHICAL_STEPS'] = [i for i in range(min(self.last_step+1, 7))]
+
+        # get time steps
+        self.options['TIME_STEPS'] = []
+        for step in self.options['GRAPHICAL_STEPS']:
+            found = False
+            for i in range(len(graphical_snaps)):
+                if step == max(0, graphical_snaps[i] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])):
+                    found = True
+                    self.options['TIME_STEPS'].append(time_steps[i])
+            Utilities.my_assert(found, ValueError, "%s: step %d is not found" % (Utilities.func_name(), step))
 
     def visit_options(self, extra_options):
         '''
@@ -133,10 +151,21 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         '''
         options of vtk scripts
         '''
+        generate_horiz_file = kwargs.get('generate_horiz', False)
         operation = kwargs.get('operation', 'slab')
         vtk_step = int(kwargs.get('vtk_step', 0))
         # houriz_avg file
-        self.options['VTK_HORIZ_FILE'] = os.path.join(ASPECT_LAB_DIR, 'output', 'depth_average_output')
+        if generate_horiz_file:
+            _, time_step = self.get_time_and_step(vtk_step)
+            depth_average_path = os.path.join(self.options["DATA_OUTPUT_DIR"], 'depth_average.txt')
+            assert(os.path.isfile(depth_average_path))
+            output_dir = os.path.join(self._case_dir, 'temp_output')
+            if not os.path.isdir(output_dir): # check this exists
+                os.mkdir(output_dir)
+            _, ha_output_file = ExportData(depth_average_path, output_dir, time_step=time_step)
+            self.options['VTK_HORIZ_FILE'] = ha_output_file
+        else:
+            self.options['VTK_HORIZ_FILE'] = os.path.join(ASPECT_LAB_DIR, 'output', 'depth_average_output')
         # directory to output from vtk script
         self.options['VTK_OUTPUT_DIR'] = os.path.join(self._case_dir, "vtk_outputs")
         if not os.path.isdir(self.options['VTK_OUTPUT_DIR']):
@@ -149,13 +178,19 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         '''
         Convert vtk_step to step and time in model
         ''' 
-        try:
-            time_between_graphical_output = float(self.idict['Postprocess']['Visualization']['Time between graphical output'])
-        except KeyError:
-            time_between_graphical_output = 1e8
-        _time = vtk_step * time_between_graphical_output
-        step = self.Statistics.GetStep(_time)
-        return _time, step
+        assert(len(self.all_graphical_snaps) > 0)
+        assert(len(self.all_graphical_timesteps) > 0)
+        # find step in all available steps
+        found = False
+        i = 0
+        for snap_shot in self.all_graphical_snaps:
+            if vtk_step == max(0, int(snap_shot) - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])):
+                found = True
+                step = int(self.all_graphical_timesteps[i])
+            i += 1
+        Utilities.my_assert(found, ValueError, "%s: vtk_step %d is not found" % (Utilities.func_name(), vtk_step))
+        time = self.Statistics.GetTime(step)
+        return time, step
 
 
 class PARALLEL_WRAPPER_FOR_VTK():
@@ -368,13 +403,14 @@ def PrepareVTKOptions(case_dir, operation, **kwargs):
             include_step_in_filename
     '''
     vtk_step = kwargs.get('vtk_step', 0)
+    generate_horiz = kwargs.get('generate_horiz', False)
     include_step_in_filename = kwargs.get('include_step_in_filename', False)
     vtk_config_dir = os.path.join(ASPECT_LAB_DIR, 'vtk_scripts', "inputs")
     assert(os.path.isdir(vtk_config_dir))
     vtk_config_file = os.path.join(vtk_config_dir, "%s.input" % operation)
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
-    Visit_Options.vtk_options(vtk_step=vtk_step)
+    Visit_Options.vtk_options(vtk_step=vtk_step, generate_horiz=generate_horiz)
     Visit_Options.read_contents(vtk_config_file)
     Visit_Options.substitute()
     try:
