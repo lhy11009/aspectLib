@@ -27,7 +27,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
 from shilofue.Plot import LINEARPLOT
-from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, VISIT_OPTIONS
+from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, VISIT_OPTIONS, PARALLEL_WRAPPER_FOR_VTK
+from joblib import Parallel, delayed
+import multiprocessing
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -201,16 +203,26 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
             new: remove old output file
     '''
     print("pvtu_step: %s\n" % str(pvtu_step))
-    output_dir = os.path.join(case_dir, 'vtk_outputs')
-    output_file = os.path.join(output_dir, 'slab_morph.txt')
-    vtk_option_path, _time, step = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', vtk_step=pvtu_step)
+    vtk_option_path, _time, step = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis',\
+    vtk_step=pvtu_step, include_step_in_filename=True)
     _stdout = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
     slab_outputs = slab_morph(_stdout)
-    # header
-    file_header = "# 1: pvtu_step\n# 2: step\n# 3: time (yr)\n# 4: trench (rad)\n# 5: slab depth (m)\n# 6: 100km dip (rad)\n"
     # output string
     outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e%-14.4e\n"\
     % (pvtu_step, step, _time, slab_outputs['trench_theta'], slab_outputs['slab_depth'], slab_outputs['dip100'])
+    return pvtu_step, outputs
+
+
+def assemble_vtk_and_slab_morph(case_dir, **kwargs):
+    '''
+    assemble the results from runnning vtk and read in slab morph
+    Inputs:
+        case_dir (str): case directory
+        kwargs:
+            new: remove old output file
+    '''
+    output_dir = os.path.join(case_dir, 'vtk_outputs')
+    output_file = os.path.join(output_dir, 'slab_morph.txt')
     # remove old file
     is_new = kwargs.get('new', False)
     if is_new and os.path.isfile(output_file):
@@ -252,16 +264,28 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     else:
         last_pvtu_step = -1
     # get slab morphology
-    for pvtu_step in available_pvtu_steps:
-        if pvtu_step <= last_pvtu_step and if_rewrite == 0:
-            # skip existing steps
-            continue
-        if pvtu_step == 0:
-            # start new file with the 0th step
-            vtk_and_slab_morph(case_dir, pvtu_step, new=True)
-        else:
-            vtk_and_slab_morph(case_dir, pvtu_step)
-    pass
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', case_dir, last_pvtu_step=last_pvtu_step, if_rewrite=if_rewrite)
+    num_cores = multiprocessing.cpu_count()
+    Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
+    for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
+    ParallelWrapper.clear()
+    for pvtu_step in available_pvtu_steps:  # then run in on cpu to assemble these results
+        ParallelWrapper(pvtu_step)
+    pvtu_steps_o, outputs = ParallelWrapper.assemble()
+    # last, output
+    # header
+    file_header = "# 1: pvtu_step\n# 2: step\n# 3: time (yr)\n# 4: trench (rad)\n# 5: slab depth (m)\n# 6: 100km dip (rad)\n"
+    output_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+    # output data
+    if not os.path.isfile(output_file):
+        with open(output_file, 'w') as fout:
+            fout.write(file_header)
+        print('Create output: %s' % output_file)
+    else:
+        print('Update output: %s' % output_file)
+        with open(output_file, 'a') as fout:
+            for output in outputs:
+                fout.write("%s" % output)
     
 
 def main():

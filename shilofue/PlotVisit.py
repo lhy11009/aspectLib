@@ -158,6 +158,91 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         return _time, step
 
 
+class PARALLEL_WRAPPER_FOR_VTK():
+    '''
+    a parallel wrapper for analyzing slab morphology
+    Attributes:
+        name(str): name of this plot
+        case_dir (str): case directory
+        last_pvtu_step (str): restart from this step, as there was previous results
+        if_rewrite (True or False): rewrite previous results if this is true
+        pvtu_steps (list of int): record the steps
+        outputs (list of str): outputs
+    '''
+    def __init__(self, name, case_dir, **kwargs):
+        '''
+        Initiation
+        Inputs:
+            kwargs (dict)
+                last_pvtu_step
+                if_rewrite
+        '''
+        self.name = name
+        self.case_dir = case_dir
+        self.last_pvtu_step = kwargs.get('last_pvtu_step', -1)
+        self.if_rewrite = kwargs.get('if_rewrite', False)
+        self.pvtu_steps = []
+        self.outputs = []
+        pass
+    
+    def __call__(self, pvtu_step):
+        '''
+        call function
+        Inputs:
+            pvtu_step (int): the step to plot
+        '''
+        expect_result_file = os.path.join(self.case_dir, 'vtk_outputs', '%s_s%06d' % (self.name, pvtu_step))
+        if pvtu_step <= self.last_pvtu_step and not self.if_rewrite:
+            # skip existing steps
+            return 0
+        if os.path.isfile(expect_result_file):
+            # load file content
+            print("%s: previous result exists(%s), load" % (Utilities.func_name(), expect_result_file))
+            with open(expect_result_file, 'r') as fin:
+                pvtu_step = int(fin.readline())
+                output = fin.readline()
+        else:    
+            if pvtu_step == 0:
+                # start new file with the 0th step
+                pvtu_step, output = vtk_and_slab_morph(self.case_dir, pvtu_step, new=True)
+            else:
+                pvtu_step, output = vtk_and_slab_morph(self.case_dir, pvtu_step)
+            with open(expect_result_file, 'w') as fout:
+                fout.write('%d\n' % pvtu_step)
+                fout.write(output)
+        print("%s: pvtu_step - %d, output - %s" % (Utilities.func_name(), pvtu_step, output))
+        self.pvtu_steps.append(pvtu_step) # append to data
+        self.outputs.append(output)
+        return 0
+    
+    def assemble(self):
+        '''
+        Returns:
+            pvtu_steps
+            outputs
+        '''
+        assert(len(self.pvtu_steps) == len(self.outputs))
+        length = len(self.pvtu_steps)
+        # bubble sort
+        for i in range(length):
+            for j in range(i+1, length):
+                if self.pvtu_steps[j] < self.pvtu_steps[i]:
+                    temp = self.pvtu_steps[i]
+                    self.pvtu_steps[i] = self.pvtu_steps[j]
+                    self.pvtu_steps[j] = temp
+                    temp = self.outputs[i]
+                    self.outputs[i] = self.outputs[j]
+                    self.outputs[j] = temp
+        return self.pvtu_steps, self.outputs
+    
+    def clear(self):
+        '''
+        clear data
+        '''
+        self.pvtu_steps = []
+        self.outputs = []
+
+
 class PREPARE_RESULT_OPTIONS(CASE_OPTIONS):
     """
     parse .prm file to a option file that bash can easily read
@@ -264,20 +349,29 @@ def RunScripts(visit_script):
 def PrepareVTKOptions(case_dir, operation, **kwargs):
     '''
     prepare vtk options for vtk scripts
+    Inputs:
+        kwargs
+            output
+            vtk_step
+            include_step_in_filename
     '''
+    vtk_step = kwargs.get('vtk_step', 0)
+    include_step_in_filename = kwargs.get('include_step_in_filename', False)
     vtk_config_dir = os.path.join(ASPECT_LAB_DIR, 'vtk_scripts', "inputs")
     assert(os.path.isdir(vtk_config_dir))
     vtk_config_file = os.path.join(vtk_config_dir, "%s.input" % operation)
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
-    vtk_step = kwargs.get('vtk_step', 0)
     Visit_Options.vtk_options(vtk_step=vtk_step)
     Visit_Options.read_contents(vtk_config_file)
     Visit_Options.substitute()
     try:
         ofile = kwargs['output']
     except KeyError:
-        ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], os.path.basename(vtk_config_file))
+        if include_step_in_filename:
+            ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], "%s_s%06d" % (os.path.basename(vtk_config_file), vtk_step))
+        else:
+            ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], os.path.basename(vtk_config_file))
     ofile_path = Visit_Options.save(ofile)
     print('%s: %s generated' % (Utilities.func_name(), ofile_path))
     # get time and step
