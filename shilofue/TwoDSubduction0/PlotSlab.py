@@ -213,32 +213,6 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
     return pvtu_step, outputs
 
 
-def assemble_vtk_and_slab_morph(case_dir, **kwargs):
-    '''
-    assemble the results from runnning vtk and read in slab morph
-    Inputs:
-        case_dir (str): case directory
-        kwargs:
-            new: remove old output file
-    '''
-    output_dir = os.path.join(case_dir, 'vtk_outputs')
-    output_file = os.path.join(output_dir, 'slab_morph.txt')
-    # remove old file
-    is_new = kwargs.get('new', False)
-    if is_new and os.path.isfile(output_file):
-        os.remove(output_file)
-    # output data
-    if not os.path.isfile(output_file):
-        with open(output_file, 'w') as fout:
-            fout.write(file_header)
-            fout.write(outputs)
-        print('Create output: %s' % output_file)
-    else:
-        with open(output_file, 'a') as fout:
-            fout.write(outputs)
-        print('Update output: %s' % output_file)
-
-
 def vtk_and_slab_morph_case(case_dir, **kwargs):
     '''
     run vtk and get outputs for every snapshots
@@ -264,7 +238,8 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     else:
         last_pvtu_step = -1
     # get slab morphology
-    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', case_dir, last_pvtu_step=last_pvtu_step, if_rewrite=if_rewrite)
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', vtk_and_slab_morph, last_pvtu_step=last_pvtu_step, if_rewrite=if_rewrite)
+    ParallelWrapper.configure(case_dir)  # assign case directory
     num_cores = multiprocessing.cpu_count()
     Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
     for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output

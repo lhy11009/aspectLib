@@ -78,8 +78,6 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             self.options["VISIT_PARTICLE_FILE"] = particle_file
         # visit file
         self.options["VISIT_FILE"] = self._visit_file
-        # houriz_avg file
-        self.options['VTK_HORIZ_FILE'] = os.path.join(ASPECT_LAB_DIR, 'output', 'depth_average_output')
         # get snaps for plots
         graphical_snaps_guess, _, _ = GetSnapsSteps(self._case_dir, 'graphical')
         graphical_snaps = []
@@ -137,6 +135,8 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         '''
         operation = kwargs.get('operation', 'slab')
         vtk_step = int(kwargs.get('vtk_step', 0))
+        # houriz_avg file
+        self.options['VTK_HORIZ_FILE'] = os.path.join(ASPECT_LAB_DIR, 'output', 'depth_average_output')
         # directory to output from vtk script
         self.options['VTK_OUTPUT_DIR'] = os.path.join(self._case_dir, "vtk_outputs")
         if not os.path.isdir(self.options['VTK_OUTPUT_DIR']):
@@ -164,26 +164,38 @@ class PARALLEL_WRAPPER_FOR_VTK():
     Attributes:
         name(str): name of this plot
         case_dir (str): case directory
+        module (a function): a function to use for plotting
         last_pvtu_step (str): restart from this step, as there was previous results
         if_rewrite (True or False): rewrite previous results if this is true
         pvtu_steps (list of int): record the steps
         outputs (list of str): outputs
     '''
-    def __init__(self, name, case_dir, **kwargs):
+    def __init__(self, name, module, **kwargs):
         '''
         Initiation
         Inputs:
+            name(str): name of this plot
+            module (a function): a function to use for plotting
             kwargs (dict)
                 last_pvtu_step
                 if_rewrite
         '''
         self.name = name
-        self.case_dir = case_dir
+        self.module = module
         self.last_pvtu_step = kwargs.get('last_pvtu_step', -1)
         self.if_rewrite = kwargs.get('if_rewrite', False)
         self.pvtu_steps = []
         self.outputs = []
         pass
+
+    def configure(self, case_dir):
+        '''
+        configure
+        Inputs:
+            case_dir (str): case diretory to assign
+        '''
+        os.path.isdir(case_dir)
+        self.case_dir = case_dir
     
     def __call__(self, pvtu_step):
         '''
@@ -204,9 +216,9 @@ class PARALLEL_WRAPPER_FOR_VTK():
         else:    
             if pvtu_step == 0:
                 # start new file with the 0th step
-                pvtu_step, output = vtk_and_slab_morph(self.case_dir, pvtu_step, new=True)
+                pvtu_step, output = self.module(self.case_dir, pvtu_step, new=True)
             else:
-                pvtu_step, output = vtk_and_slab_morph(self.case_dir, pvtu_step)
+                pvtu_step, output = self.module(self.case_dir, pvtu_step)
             with open(expect_result_file, 'w') as fout:
                 fout.write('%d\n' % pvtu_step)
                 fout.write(output)
