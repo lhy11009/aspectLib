@@ -103,8 +103,10 @@ build_aspect_project(){
     # build source code
     local cmake_appendix=""
     [[ -n $WORLD_BUILDER_SOURCE_DIR ]] && cmake_appendix="${cmake_appendix} -DWORLD_BUILDER_SOURCE_DIR=$WORLD_BUILDER_SOURCE_DIR"
+    echo "cmake .. ${cmake_appendix}"
     eval "cmake .. ${cmake_appendix}"
     quit_if_fail "${FUNCNAME[0]}: cmake inside ${build_dir} failed"
+    echo "make ${mode}"
     eval "make ${mode}"
     quit_if_fail "${FUNCNAME[0]}: \"make ${mode}\" inside ${build_dir} failed"
     echo "make -j ${nproc}"  # screen output
