@@ -114,7 +114,7 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         elif type(last_step) == int:
             # by this option, plot the last few steps
             self.options['GRAPHICAL_STEPS'] = [0]  # always plot the 0 th step
-            self.options['GRAPHICAL_STEPS'] += [i for i in range(self.last_step - last_step + 1, self.last_step + 1)]
+            self.options['GRAPHICAL_STEPS'] += [i for i in range(max(self.last_step - last_step + 1, 0), self.last_step + 1)]
         else:
             # by default append 7 steps
             self.options['GRAPHICAL_STEPS'] = [i for i in range(min(self.last_step+1, 7))]

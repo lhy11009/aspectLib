@@ -254,11 +254,9 @@ For example, see:
 
 (todo) add solution.00000.*.vtu to the file list
 
-# Projects
+# Projects - TwoDSubduction
 
-## TwoDSubduction
-
-### Cases
+## Cases
 
 Related script:
 
@@ -282,7 +280,7 @@ The idea of working like this are:
 * Be able to reproduce all the major settings
 * Note down all the major steps that I don't rework them (unless some specific tests are needed.).
 
-#### Code logistics
+### Code logistic~/ASPECT_PROJECT/TwoDSubduction/EBA_CDPTs
 
 With the "class CASE", there are two major operation, namely:
 
@@ -296,3 +294,12 @@ and
 * geometry (i.e. chunk or box)
 * material model (e.g. shear zone, yielding, upper to lower mantle)
 (todo, write this cleanly like above, i.e, put everything in a "configure geometry function")
+
+## Post process
+
+### trench motion
+
+I use the vtk package in c++ to anaylyze trench motion here:
+* a, convert results into inputs for the vtk script
+* b, run the vtk script and loop for steps. Combine results into a new file
+* c, plot the results in this file.

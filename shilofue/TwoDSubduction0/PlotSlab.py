@@ -115,7 +115,7 @@ class SLABPLOT(LINEARPLOT):
             os.mkdir(morph_dir)
         # read parameters
         Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
-        # read data
+        # read dat/home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT1/eba_cdpt_SA80.0_OA40.0/temp_output/slab_contour_s00005.pnga
         slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
         assert(os.path.isfile(slab_morph_file))
         self.ReadHeader(slab_morph_file)
