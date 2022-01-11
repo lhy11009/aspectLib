@@ -27,7 +27,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
 from shilofue.Plot import LINEARPLOT
-from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, VISIT_OPTIONS
+from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, VISIT_OPTIONS, PARALLEL_WRAPPER_FOR_VTK
+from joblib import Parallel, delayed
+import multiprocessing
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -43,6 +45,9 @@ def Usage():
 This scripts analyze slab morphology\n\
 \n\
 Examples of usage: \n\
+\n\
+  - plot the contour of slab of a give step and interact with the plot\n\
+    python -m shilofue.TwoDSubduction0.PlotSlab plot_morph_contour_step -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT1/eba_cdpt_SA80.0_OA40.0 -s 12\n\
 \n\
   - generate slab_morph.txt: \n\
     (what this does is looping throw all visualizing steps, so it takes time)\n\
@@ -201,30 +206,14 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
             new: remove old output file
     '''
     print("pvtu_step: %s\n" % str(pvtu_step))
-    output_dir = os.path.join(case_dir, 'vtk_outputs')
-    output_file = os.path.join(output_dir, 'slab_morph.txt')
-    vtk_option_path, _time, step = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', vtk_step=pvtu_step)
+    vtk_option_path, _time, step = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis',\
+    vtk_step=pvtu_step, include_step_in_filename=True, generate_horiz=True)
     _stdout = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
     slab_outputs = slab_morph(_stdout)
-    # header
-    file_header = "# 1: pvtu_step\n# 2: step\n# 3: time (yr)\n# 4: trench (rad)\n# 5: slab depth (m)\n# 6: 100km dip (rad)\n"
     # output string
     outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e%-14.4e\n"\
     % (pvtu_step, step, _time, slab_outputs['trench_theta'], slab_outputs['slab_depth'], slab_outputs['dip100'])
-    # remove old file
-    is_new = kwargs.get('new', False)
-    if is_new and os.path.isfile(output_file):
-        os.remove(output_file)
-    # output data
-    if not os.path.isfile(output_file):
-        with open(output_file, 'w') as fout:
-            fout.write(file_header)
-            fout.write(outputs)
-        print('Create output: %s' % output_file)
-    else:
-        with open(output_file, 'a') as fout:
-            fout.write(outputs)
-        print('Update output: %s' % output_file)
+    return pvtu_step, outputs
 
 
 def vtk_and_slab_morph_case(case_dir, **kwargs):
@@ -252,16 +241,52 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     else:
         last_pvtu_step = -1
     # get slab morphology
-    for pvtu_step in available_pvtu_steps:
-        if pvtu_step <= last_pvtu_step and if_rewrite == 0:
-            # skip existing steps
-            continue
-        if pvtu_step == 0:
-            # start new file with the 0th step
-            vtk_and_slab_morph(case_dir, pvtu_step, new=True)
-        else:
-            vtk_and_slab_morph(case_dir, pvtu_step)
-    pass
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', vtk_and_slab_morph, last_pvtu_step=last_pvtu_step, if_rewrite=if_rewrite)
+    ParallelWrapper.configure(case_dir)  # assign case directory
+    if if_rewrite:
+        ParallelWrapper.delete_temp_files(available_pvtu_steps)  # delete intermediate file if rewrite
+    num_cores = multiprocessing.cpu_count()
+    Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
+    for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
+    ParallelWrapper.clear()
+    for pvtu_step in available_pvtu_steps:  # then run in on cpu to assemble these results
+        ParallelWrapper(pvtu_step)
+    pvtu_steps_o, outputs = ParallelWrapper.assemble()
+    # last, output
+    # header
+    file_header = "# 1: pvtu_step\n# 2: step\n# 3: time (yr)\n# 4: trench (rad)\n# 5: slab depth (m)\n# 6: 100km dip (rad)\n"
+    output_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+    # output data
+    if not os.path.isfile(output_file):
+        with open(output_file, 'w') as fout:
+            fout.write(file_header)
+        print('Create output: %s' % output_file)
+    else:
+        print('Update output: %s' % output_file)
+        with open(output_file, 'a') as fout:
+            for output in outputs:
+                fout.write("%s" % output)
+
+
+def plot_morph_contour_step(case_dir, step):
+    '''
+    plot slab morphology contour
+    '''
+    file_in_path = os.path.join(case_dir, 'vtk_outputs', 'contour_slab_%05d.txt' % (step))
+    assert(os.path.isfile(file_in_path))
+    ## load data
+    data = np.loadtxt(file_in_path)
+    fig, ax = plt.subplots()
+    ax.plot(data[:, 0], data[:, 1], 'b.')
+    ax.set_xlim([0, 6371e3])
+    ax.set_ylim([0, 6371e3])
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    temp_dir = os.path.join(case_dir, 'temp_output')
+    if not os.path.isdir(temp_dir):
+        os.path.mkdir(temp_dir)
+    file_out = os.path.join(temp_dir, "slab_contour_s%05d.png" % step)
+    plt.show()
     
 
 def main():
@@ -279,8 +304,8 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='Some inputs')
-    parser.add_argument('-s', '--step', type=str,
-                        default='0',
+    parser.add_argument('-s', '--step', type=int,
+                        default=0,
                         help='Timestep')
     parser.add_argument('-r', '--rewrite', type=int,
                         default=0,
@@ -300,6 +325,8 @@ def main():
         # slab_morphology, input is the case name
         # example:
         vtk_and_slab_morph(arg.inputs, int(arg.step))
+    elif _commend == 'plot_morph_contour_step':
+        plot_morph_contour_step(arg.inputs, arg.step)
     elif _commend == 'morph_case':
         # slab_morphology, input is the case name
         # example:

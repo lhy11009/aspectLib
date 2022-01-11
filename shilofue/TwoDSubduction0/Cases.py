@@ -91,6 +91,10 @@ This is used with the option \"adjust box width\" for configuring plate age at t
 This value is the width of box for a default age (i.e. 80Myr), while the width of box for a\
 different age will be adjusted.",\
           float, ["world builder", "box width before adjusting"], 6.783e6, nick='box_width_pre_adjust')
+        self.add_key("Model to use for mantle phase transitions", str,\
+         ["phase transition model"], 'CDPT', nick="phase_model")
+        self.add_key("Root directory for lookup tables", str,\
+         ["HeFESTo model", "data directory"], '.', nick="HeFESTo_data_dir")
         pass
     
     def check(self):
@@ -121,6 +125,18 @@ different age will be adjusted.",\
             Utilities.my_assert(box_width_pre_adjust > sp_age_trench_default * sp_rate_default, ValueError,\
             "For the \"adjust box width\" method to work, the box width before adjusting needs to be wider\
 than the multiplication of the default values of \"sp rate\" and \"age trench\"")
+        # check the method to use for phase transition
+        phase_model = self.values[self.start + 13]
+        Utilities.my_assert( phase_model in ["CDPT", "HeFESTo"], ValueError,\
+        "%s: Models to use for phases must by CDPT or HeFESTo" \
+        % Utilities.func_name())
+        # check the directory for HeFESTo
+        o_dir = self.values[2]
+        root_level = self.values[7]
+        HeFESTo_data_dir = self.values[self.start + 14]
+        HeFESTo_data_dir_pull_path = os.path.join(o_dir, ".." * (root_level - 1), HeFESTo_data_dir)
+        Utilities.my_assert(os.path.isdir(HeFESTo_data_dir_pull_path),\
+        FileNotFoundError, "%s is not a directory" % HeFESTo_data_dir_pull_path)
 
     def to_configure_prm(self):
         if_wb = self.values[self.start + 0]
@@ -138,8 +154,13 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             ) # adjust box width
         if_peierls = self.values[self.start + 10]
         if_couple_eclogite_viscosity = self.values[self.start + 11]
-        
-        return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity
+        phase_model = self.values[self.start + 13]
+        HeFESTo_data_dir = self.values[self.start + 14]
+        root_level = self.values[7]
+        HeFESTo_data_dir_relative_path = os.path.join("../"*root_level, HeFESTo_data_dir)
+        return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
+        ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
+        HeFESTo_data_dir_relative_path
 
     def to_configure_wb(self):
         '''
@@ -172,7 +193,9 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity):
+    def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T,\
+    sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
+    HeFESTo_data_dir):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
@@ -239,6 +262,14 @@ class CASE(CasesP.CASE):
         else:
             o_dict['Material model']['Visco Plastic TwoD']["Decoupling eclogite viscosity"] = 'true'
         self.idict = o_dict
+        # phase model
+        if phase_model == "HeFESTo":
+            o_dict['Material model']['Visco Plastic TwoD']["Use lookup table"] = 'true'
+            o_dict['Material model']['Visco Plastic TwoD']["Lookup table"]["Data directory"] = HeFESTo_data_dir
+            pass
+        elif phase_model == "CDPT":
+            o_dict['Material model']['Visco Plastic TwoD']["Use lookup table"] = 'false'
+            pass
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
         if_ov_trans, ov_trans_age, ov_trans_length):

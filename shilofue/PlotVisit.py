@@ -27,6 +27,7 @@ from matplotlib import pyplot as plt
 import shilofue.Plot as Plot
 import shilofue.ParsePrm as ParsePrm
 from shilofue.CaseOptions import CASE_OPTIONS
+from shilofue.PlotDepthAverage import ExportData
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -78,24 +79,28 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             self.options["VISIT_PARTICLE_FILE"] = particle_file
         # visit file
         self.options["VISIT_FILE"] = self._visit_file
-        # houriz_avg file
-        self.options['VTK_HORIZ_FILE'] = os.path.join(ASPECT_LAB_DIR, 'output', 'depth_average_output')
         # get snaps for plots
-        graphical_snaps_guess, _, _ = GetSnapsSteps(self._case_dir, 'graphical')
+        graphical_snaps_guess, _, time_steps_guess = GetSnapsSteps(self._case_dir, 'graphical')
         graphical_snaps = []
-        for graphical_snap in graphical_snaps_guess:
+        time_steps = []
+        for i in range(len(graphical_snaps_guess)):
+            graphical_snap = graphical_snaps_guess[i]
+            time_step = time_steps_guess[i]
             pvtu_file_path = os.path.join(self.options["DATA_OUTPUT_DIR"], "solution", "solution-%05d.pvtu" % graphical_snap)
             if os.path.isfile(pvtu_file_path):
                 graphical_snaps.append(graphical_snap)
-        
+                time_steps.append(time_step)
+        self.all_graphical_snaps = graphical_snaps
+        self.all_graphical_timesteps = time_steps 
         self.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'] = str(graphical_snaps)
+        self.options['ALL_AVAILABLE_GRAPHICAL_TIMESTEPS'] = str(time_steps)
         particle_snaps, _, _ = GetSnapsSteps(self._case_dir, 'particle')
         self.options['ALL_AVAILABLE_PARTICLE_SNAPSHOTS'] = str(particle_snaps)
         
         particle_output_dir = os.path.join(self._output_dir, "slab_morphs")
         self.options["PARTICLE_OUTPUT_DIR"] = particle_output_dir
         try:
-            self.last_step = graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])  # it is the last step we have outputs
+            self.last_step = max(0, graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT']))  # it is the last step we have outputs
         except IndexError:
             # no snaps, stay on the safe side
             self.last_step = -1
@@ -111,7 +116,18 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             self.options['GRAPHICAL_STEPS'] = [0]  # always plot the 0 th step
             self.options['GRAPHICAL_STEPS'] += [i for i in range(self.last_step - last_step + 1, self.last_step + 1)]
         else:
-            self.options['GRAPHICAL_STEPS'] = [0, 1, 2, 3, 4, 5, 6, 7]
+            # by default append 7 steps
+            self.options['GRAPHICAL_STEPS'] = [i for i in range(min(self.last_step+1, 7))]
+
+        # get time steps
+        self.options['TIME_STEPS'] = []
+        for step in self.options['GRAPHICAL_STEPS']:
+            found = False
+            for i in range(len(graphical_snaps)):
+                if step == max(0, graphical_snaps[i] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])):
+                    found = True
+                    self.options['TIME_STEPS'].append(time_steps[i])
+            Utilities.my_assert(found, ValueError, "%s: step %d is not found" % (Utilities.func_name(), step))
 
     def visit_options(self, extra_options):
         '''
@@ -135,8 +151,21 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         '''
         options of vtk scripts
         '''
+        generate_horiz_file = kwargs.get('generate_horiz', False)
         operation = kwargs.get('operation', 'slab')
         vtk_step = int(kwargs.get('vtk_step', 0))
+        # houriz_avg file
+        if generate_horiz_file:
+            _, time_step = self.get_time_and_step(vtk_step)
+            depth_average_path = os.path.join(self.options["DATA_OUTPUT_DIR"], 'depth_average.txt')
+            assert(os.path.isfile(depth_average_path))
+            output_dir = os.path.join(self._case_dir, 'temp_output')
+            if not os.path.isdir(output_dir): # check this exists
+                os.mkdir(output_dir)
+            _, ha_output_file = ExportData(depth_average_path, output_dir, time_step=time_step)
+            self.options['VTK_HORIZ_FILE'] = ha_output_file
+        else:
+            self.options['VTK_HORIZ_FILE'] = os.path.join(ASPECT_LAB_DIR, 'output', 'depth_average_output')
         # directory to output from vtk script
         self.options['VTK_OUTPUT_DIR'] = os.path.join(self._case_dir, "vtk_outputs")
         if not os.path.isdir(self.options['VTK_OUTPUT_DIR']):
@@ -149,13 +178,128 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         '''
         Convert vtk_step to step and time in model
         ''' 
-        try:
-            time_between_graphical_output = float(self.idict['Postprocess']['Visualization']['Time between graphical output'])
-        except KeyError:
-            time_between_graphical_output = 1e8
-        _time = vtk_step * time_between_graphical_output
-        step = self.Statistics.GetStep(_time)
-        return _time, step
+        assert(len(self.all_graphical_snaps) > 0)
+        assert(len(self.all_graphical_timesteps) > 0)
+        # find step in all available steps
+        found = False
+        i = 0
+        for snap_shot in self.all_graphical_snaps:
+            if vtk_step == max(0, int(snap_shot) - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])):
+                found = True
+                step = int(self.all_graphical_timesteps[i])
+            i += 1
+        Utilities.my_assert(found, ValueError, "%s: vtk_step %d is not found" % (Utilities.func_name(), vtk_step))
+        time = self.Statistics.GetTime(step)
+        return time, step
+
+
+class PARALLEL_WRAPPER_FOR_VTK():
+    '''
+    a parallel wrapper for analyzing slab morphology
+    Attributes:
+        name(str): name of this plot
+        case_dir (str): case directory
+        module (a function): a function to use for plotting
+        last_pvtu_step (str): restart from this step, as there was previous results
+        if_rewrite (True or False): rewrite previous results if this is true
+        pvtu_steps (list of int): record the steps
+        outputs (list of str): outputs
+    '''
+    def __init__(self, name, module, **kwargs):
+        '''
+        Initiation
+        Inputs:
+            name(str): name of this plot
+            module (a function): a function to use for plotting
+            kwargs (dict)
+                last_pvtu_step
+                if_rewrite
+        '''
+        self.name = name
+        self.module = module
+        self.last_pvtu_step = kwargs.get('last_pvtu_step', -1)
+        self.if_rewrite = kwargs.get('if_rewrite', False)
+        self.pvtu_steps = []
+        self.outputs = []
+        pass
+
+    def configure(self, case_dir):
+        '''
+        configure
+        Inputs:
+            case_dir (str): case diretory to assign
+        '''
+        os.path.isdir(case_dir)
+        self.case_dir = case_dir
+    
+    def __call__(self, pvtu_step):
+        '''
+        call function
+        Inputs:
+            pvtu_step (int): the step to plot
+        '''
+        expect_result_file = os.path.join(self.case_dir, 'vtk_outputs', '%s_s%06d' % (self.name, pvtu_step))
+        if pvtu_step <= self.last_pvtu_step and not self.if_rewrite:
+            # skip existing steps
+            return 0
+        if os.path.isfile(expect_result_file) and not self.if_rewrite:
+            # load file content
+            print("%s: previous result exists(%s), load" % (Utilities.func_name(), expect_result_file))
+            with open(expect_result_file, 'r') as fin:
+                pvtu_step = int(fin.readline())
+                output = fin.readline()
+        else:    
+            if pvtu_step == 0:
+                # start new file with the 0th step
+                pvtu_step, output = self.module(self.case_dir, pvtu_step, new=True)
+            else:
+                pvtu_step, output = self.module(self.case_dir, pvtu_step)
+            with open(expect_result_file, 'w') as fout:
+                fout.write('%d\n' % pvtu_step)
+                fout.write(output)
+        print("%s: pvtu_step - %d, output - %s" % (Utilities.func_name(), pvtu_step, output))
+        self.pvtu_steps.append(pvtu_step) # append to data
+        self.outputs.append(output)
+        return 0
+    
+    def assemble(self):
+        '''
+        Returns:
+            pvtu_steps
+            outputs
+        '''
+        assert(len(self.pvtu_steps) == len(self.outputs))
+        length = len(self.pvtu_steps)
+        # bubble sort
+        for i in range(length):
+            for j in range(i+1, length):
+                if self.pvtu_steps[j] < self.pvtu_steps[i]:
+                    temp = self.pvtu_steps[i]
+                    self.pvtu_steps[i] = self.pvtu_steps[j]
+                    self.pvtu_steps[j] = temp
+                    temp = self.outputs[i]
+                    self.outputs[i] = self.outputs[j]
+                    self.outputs[j] = temp
+        return self.pvtu_steps, self.outputs
+    
+    def delete_temp_files(self, pvtu_steps):
+        '''
+        delete temp files
+        Inputs:
+            pvtu_steps(list of int): step to look for
+        '''
+        print('delete temp files')
+        for pvtu_step in pvtu_steps:
+            expect_result_file = os.path.join(self.case_dir, 'vtk_outputs', '%s_s%06d' % (self.name, pvtu_step))
+            if os.path.isfile(expect_result_file):
+                os.remove(expect_result_file)
+    
+    def clear(self):
+        '''
+        clear data
+        '''
+        self.pvtu_steps = []
+        self.outputs = []
 
 
 class PREPARE_RESULT_OPTIONS(CASE_OPTIONS):
@@ -169,12 +313,17 @@ class PREPARE_RESULT_OPTIONS(CASE_OPTIONS):
         """
         # call function from parent
         CASE_OPTIONS.Interpret(self)
-        step = kwargs.get('step', 0)
+        visual_step = kwargs.get('step', 0)
         # step & format for a visit output
-        self.options['NUMERICAL_STEP'] = "%06d" % step
-        self.options['GRAPHICAL_STEP'] =  "%06d" % (step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT']))
+        self.options['NUMERICAL_STEP'] = "%06d" % visual_step
+        self.options['GRAPHICAL_STEP'] =  "%06d" % (visual_step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT']))
         # time
-        time = self.Statistics.GetTime(step)
+        try:
+            time_between_graphical_output = float(self.idict['Postprocess']['Visualization']['Time between graphical output'])
+        except KeyError:
+            time_between_graphical_output = 1e8
+        time = visual_step * time_between_graphical_output
+        step = self.Statistics.GetStep(time)
         self.options['STEP_TIME_STAMP'] = "step %d, %.4e yrs" % (step, time)
 
  
@@ -259,20 +408,30 @@ def RunScripts(visit_script):
 def PrepareVTKOptions(case_dir, operation, **kwargs):
     '''
     prepare vtk options for vtk scripts
+    Inputs:
+        kwargs
+            output
+            vtk_step
+            include_step_in_filename
     '''
+    vtk_step = kwargs.get('vtk_step', 0)
+    generate_horiz = kwargs.get('generate_horiz', False)
+    include_step_in_filename = kwargs.get('include_step_in_filename', False)
     vtk_config_dir = os.path.join(ASPECT_LAB_DIR, 'vtk_scripts', "inputs")
     assert(os.path.isdir(vtk_config_dir))
     vtk_config_file = os.path.join(vtk_config_dir, "%s.input" % operation)
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
-    vtk_step = kwargs.get('vtk_step', 0)
-    Visit_Options.vtk_options(vtk_step=vtk_step)
+    Visit_Options.vtk_options(vtk_step=vtk_step, generate_horiz=generate_horiz)
     Visit_Options.read_contents(vtk_config_file)
     Visit_Options.substitute()
     try:
         ofile = kwargs['output']
     except KeyError:
-        ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], os.path.basename(vtk_config_file))
+        if include_step_in_filename:
+            ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], "%s_s%06d" % (os.path.basename(vtk_config_file), vtk_step))
+        else:
+            ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], os.path.basename(vtk_config_file))
     ofile_path = Visit_Options.save(ofile)
     print('%s: %s generated' % (Utilities.func_name(), ofile_path))
     # get time and step

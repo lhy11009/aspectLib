@@ -371,6 +371,9 @@ def ExportData(depth_average_path, output_dir, **kwargs):
     Inputs:
         kwargs:
             time_step - time_step to plot the figure, default is 0
+    Returns:
+        odata (ndarray): selected data for outputing
+        output_path (str): path of file generated
     '''
     assert(os.access(depth_average_path, os.R_OK))
     # read that
@@ -393,7 +396,7 @@ def ExportData(depth_average_path, output_dir, **kwargs):
     names = kwargs.get('names', ['depth', 'temperature', 'adiabatic_density'])
     output_path = os.path.join(output_dir, 'depth_average_output_s%d' % time_step)
     odata = DepthAverage.export(output_path, names, rows=[i for i in range(i0, i1)], include_size=True)
-    return odata
+    return odata, output_path
 
 
 

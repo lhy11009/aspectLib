@@ -153,14 +153,53 @@ Clearify the usage of prm:
 
 I use case.prm to create cases as well as analytical analysis, while using output/original.prm for post-process.
 
-### Interfaces to substitute words in a script
+### Interfaces to substitute words in a script (including a usage for visit)
 
 A CaseOptions class is defined. There, I stored information in a dictionary, then I use the values to substitute
 the keys in a script.
 
-### Plot results in "statistic" file
+#### Automize visit plotting
+
+Software like visit and paraview could be automized by using python scripts.
+While there could be the issue of the software only well support python2, this problem of using different 
+version of python could be bridged if I use raw python2 scripts with key word substitution and only worki
+on the values of these keys in python3.
+
+#### Automize vtk post-processing
+
+This follows similar logic as before with the exception of this being a cpp package.
+
+
+### Linear plots from fields in Aspect's outputs
+
+For this, I defined a LINEARPLOT class to read in the default file format in aspect.
+The format of the file looks like:
+	# 1: Time step number
+	# 2: Time (years)
+	# 3: Time step size (years)
+	0.0 0.0 0.0
+	...
+These also work as a standard interface to parse data from these files
+
+
+#### Plot results in "statistic" file
 
 (todo) Change the length of number label on axis, currently they are too long so parts are blocked.
+
+There are interfaces for "GetStep", "GetTime" as well
+
+#### Plot Newton solver results
+
+* Parse the outputs from the stdout file (bash_scripts/awk_states/parse_block_newton)
+* Plot the outputs
+
+There is option to plot a single step and plot a combined results by combine the steps along the x-axis.
+See the example in section 2 in Menno's thesis.
+
+#### Plot time run
+
+* Parse the outputs from the stdout file (bash_scripts/awk_states/parse_block_output)
+* Plot the outputs
 
 ### Combine figures
 
@@ -173,6 +212,8 @@ Some notes:
 
 ### Using the Image module to prepare results
 
+The task to handle here is combining results from visit, matplotlib and use the right frames that fit.
+
 I implement an IMAGE_OPT module in the "Utilities.py" script which takes a json file and combines results accordingly
 For detail, see the test "test_img_operation.py"
 
@@ -181,13 +222,26 @@ For this to work, I need to generate a tranperant frame in AI, and merge that on
 I also defined a PREPARE_RESULTS class in the file PlotCombine.py for this. This class would take a template (in this case a json file)
 and substitute the key words with values (e.g. The directory to saved images.)
 
+For an example usage, see:
+	/home/lochy/ASPECT_PROJECT/aspectLib/shilofue/TwoDSubduction0/PlotCase.py
+
+
 #### work flow of generating the frame
 
 * open the raw figure from visit in Adobe Illustrator.
 * pin and paint the frame, open a new file with it.
-* Lay a bigger while rectangle and crop out what's inside the frame
+* Lay a bigger while rectangle and crop out what's inside the frame.
 * Change background to transparent (view->show transperant grid)
 * Save using the "Export->Save for web" option, choose png24 as format.
+
+### Genearate animation
+
+* loop for steps and use the PIL module to prepare results
+* Use the imageio module to generate animation
+* There is option to generate animation for one case or for cases in a directory
+
+For example, see:
+	/home/lochy/ASPECT_PROJECT/aspectLib/shilofue/TwoDSubduction0/PlotCase.py
 
 
 ## work with prm

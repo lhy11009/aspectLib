@@ -23,11 +23,19 @@
 #   ROTATION_ANGLE
 # if peierls rheology is included
 #   INCLUDE_PEIERLS_RHEOLOGY
+# Geometry
+#   GEOMETRY
+# Upper mantle view for box geometry
+#   GLOBAL_UPPER_MANTLE_VIEW_BOX
 
+geometry = "GEOMETRY"
 
-
-global_trench_view = (-200000, 200000, 6.1e+06, 6.372e+06)
-global_upper_mantle_view = (-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06)
+if geometry == 'chunk':
+    global_trench_view = (-200000, 200000, 6.1e+06, 6.372e+06)
+    global_upper_mantle_view = (-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06)
+elif geometry == 'box':
+    global_trench_view = (3.98859e+06, 4.21503e+06, 2.77067e+06, 2.99403e+06)  # upper 100 km centered on trench
+    global_upper_mantle_view = GLOBAL_UPPER_MANTLE_VIEW_BOX
 
 
 class SLAB_SPH(VISIT_PLOT):
@@ -69,7 +77,8 @@ class SLAB_SPH(VISIT_PLOT):
             self.add_plot("Pseudocolor", "deform_mechanism")
         
         # set transformation
-        self.set_rotation_transform(ROTATION_ANGLE)
+        if geometry == 'chunk':
+            self.set_rotation_transform(ROTATION_ANGLE)
 
         # set thresholds
         threshold_idxs_tuple=tuple([self.idxs['spcrust'], self.idxs['spharz']])

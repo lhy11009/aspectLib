@@ -90,6 +90,20 @@ class STATISTICS_PLOT(LINEARPLOT):
         Utilities.my_assert(found, ValueError, "step %d is not a valid step" % step)
         return time
 
+    def GetLastStep(self):
+        '''
+        get step and time of the last time step
+        Return:
+            last step, model time of the last step
+        '''
+        # get data
+        # todo
+        col_t = self.header['Time']['col']
+        col_step = self.header['Time_step_number']['col']
+        times = self.data[:, col_t]
+        steps = self.data[:, col_step]
+        idx = np.argmax(steps)
+        return int(steps[idx]), times[idx]
 
 def PlotFigure(file_path, fig_path):
     '''

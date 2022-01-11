@@ -132,6 +132,7 @@ def ParseFromDealiiInput(fin):
                 # Fix the bug where a subsection emerges
                 # multiple times
                 inputs[key]
+                print('%s is already presented, going to update.' % key)
             except KeyError:
                 inputs[key] = ParseFromDealiiInput(fin)
             else:

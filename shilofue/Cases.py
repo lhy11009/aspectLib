@@ -65,6 +65,8 @@ class CASE_OPT(Utilities.JSON_OPT):
             ["Include fast first step"], 0, nick='if_fast_first_step')
         self.add_key("Additional files to include", list,\
             ["additional files"], [], nick='additional_files')
+        self.add_key("Root level from the project root", int,\
+         ["root level"], 1, nick="root_level")
         pass
     
     def check(self):

@@ -80,7 +80,7 @@ def AnalyzeResult(case_dir, **kwargs):
             if time > max_time:
                 break
             times.append(time)
-            temperatures = DepthAverage.ExportDataByTime(time, ['depth', 'temperature'])
+            temperatures, _= DepthAverage.ExportDataByTime(time, ['depth', 'temperature'])
             max_T = np.max(temperatures[:, 1])  # max temperature
             max_Ts.append(max_T)
             min_T = np.min(temperatures[:, 1])  # max temperature
