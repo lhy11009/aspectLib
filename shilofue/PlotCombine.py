@@ -219,6 +219,9 @@ class PLOT_COMBINE():
         get the size of new image
         Return:
             locations (list of 2 list): locations of subimages in the new combined image
+                This is where the upper-left corner of each figure is located. Index 0 in
+                the first dimension is along the horizontal direction and index 1 is along the
+                vertical direction.
             width: fixed width of a subimage
             _title (str or None) - title
         '''
@@ -257,6 +260,7 @@ class PLOT_COMBINE():
             locations[1].append(locations[1][j] + length)   # later one, add the previous location
         total_size.append(width*self.n_cases)
         total_size.append(locations[-1])
+        print("locations: ", locations) # debug
         return locations, width
         
     def draw_title(self, image, _title, if_include_case_names, w_locations):
@@ -311,7 +315,7 @@ class PLOT_COMBINE():
                 plot_path = os.path.join(self.cases[i], 'img', self.plots[i][j])
                 if os.path.isfile(plot_path):
                     image = Image.open(plot_path)
-                    image = image.resize((width, locations[1][i+1] - locations[1][i]))  # resize to fit the spot
+                    image = image.resize((width, locations[1][j+1] - locations[1][j]))  # resize to fit the spot
                 else:
                     image = Image.new('RGB', (width, 500), (250,250,250)) # append a blank one
                 new_image.paste(image, (locations[0][i], locations[1][j])) # paste image in place
