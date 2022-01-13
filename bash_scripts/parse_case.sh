@@ -169,8 +169,12 @@ parse_run_time_info_last_step_with_id(){
     [[ $? == 1 ]] && return 1
     [[ -d "${return_value}" ]] ||  { cecho ${BAD} "${FUNCNAME[0]}: work directory(${return_value}) doesn't exist"; exit 1; }
     local log_file="${return_value}/output/log.txt"
-    [[ -e "${log_file}" ]] || { cecho "${BAD}" "${FUNCNAME[0]}: log file (${log_file}) doesn't exist"; exit 1; }
-    parse_run_time_info_last_step "${log_file}"
+    if  [[ -e "${log_file}" ]]; then
+    	parse_run_time_info_last_step "${log_file}"
+    else
+	cecho "${WARNING}" "${FUNCNAME[0]}: log file (${log_file}) doesn't exist.\
+It's either this case just started or the file is lost."
+    fi  
     printf "\n"
     return 0
 }
