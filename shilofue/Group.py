@@ -66,7 +66,6 @@ class FEATURE_OPT(Utilities.JSON_OPT):
         self.add_key("Abbrevation in case name", list, ["abbreviating value options"], [None, None], nick='abbrev_value_options')
         self.add_key("If abbrevate case name by value defined in this featue", int, ["abbreviation by value"], 0, nick='is_abbrev_value')
         self.add_key("Abbrevation by a given string", list, ["abbreviating strings"], [], nick='abbrev_strings')
-        # todo
         self.add_key("if appending abbreviation (same length with values)", list, ["if abbreviating"], [], nick='if_append_abbrev')
 
     def check(self):
@@ -78,7 +77,6 @@ class FEATURE_OPT(Utilities.JSON_OPT):
             # number of strings equal number of values
             assert(len(self.values[5]) == len(self.values[2]))
         pass
-        # todo
         # check the values assigned for "if abbreviation"
         is_abbrev_value = self.values[4]
         assert(is_abbrev_value in [0, 1])
@@ -139,7 +137,6 @@ class GROUP_OPT(Utilities.JSON_OPT):
         self.add_key("Directory to output to", str, ["output directory"], ".", nick='output_dir')
         self.add_key("Bindings in feature", list, ["bindings"], [], nick='bindings')
         self.add_key("Base directory to import", str, ["base directory"], ".", nick='base_dir')
-        # todo
         self.add_features('Base Feature to set up for the group', ['base features'], FEATURE_OPT)
     
     def check(self):
@@ -149,7 +146,6 @@ class GROUP_OPT(Utilities.JSON_OPT):
                 for i in range(len(binding)):
                     assert(type(binding[i]) == int)
         # check base features only have 1 value
-        # todo
         base_features = self.values[6]
         for base_feature in base_features:
             assert(len(base_feature.get_values())==1)
@@ -170,7 +166,6 @@ class GROUP_OPT(Utilities.JSON_OPT):
         return Utilities.var_subs(self.values[3])
     
     def to_create_group(self):
-        # todo
         base_features = self.values[6]
         features = self.values[1]
         return base_features, features, Utilities.var_subs(self.values[5]),\
@@ -213,7 +208,6 @@ class GROUP():
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)  # make dir if not existing
         # handle base features, set up group-wise value of varibles
-        # todo
         options = self.base_options.copy()
         for base_feature in base_features:
             options = Utilities.write_dict_recursive(options,\
@@ -236,7 +230,6 @@ class GROUP():
                     values = feature.get_values()
                     options = Utilities.write_dict_recursive(options,\
                         feature.get_keys(), values[x_j])
-                    # todo
                     if feature.if_append_abbrev(x_j):
                         if feature.if_abbrev_value():
                             name_appendix = get_name_appendix(feature.get_abbrev_value_options(), values[x_j]) # appendix by value
