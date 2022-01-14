@@ -26,7 +26,7 @@ from shilofue.Cases import create_case_with_json
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
-from shutil import rmtree, copy
+from shutil import rmtree, copy, SameFileError
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -319,7 +319,12 @@ def CreateGroup(json_path, CASE, CASE_OPT):
                 is_update_existing = False
     else:
         os.mkdir(group_opt.get_output_dir())
-    copy(json_path, os.path.join(group_opt.get_output_dir(), "group.json"))
+    try:
+        copy(json_path, os.path.join(group_opt.get_output_dir(), "group.json"))
+    except SameFileError:
+        print("Copy: these are the same file (%s, %s), pass."\
+        % (json_path, os.path.join(group_opt.get_output_dir(), "group.json")))
+    
     group.create_group(*group_opt.to_create_group(), update=is_update_existing)
 
 
