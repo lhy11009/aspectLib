@@ -71,7 +71,7 @@ class FEATURE_OPT(Utilities.JSON_OPT):
 
     def check(self):
         assert(len(self.values[3]) == 2)  # abbreviation has 2 entries (name, scale)
-        if self.if_abbrev_value():
+        if self.if_abbrev_value() == 1:
             # contains a prefix and a scaling
             assert(len(self.values[3]) == 2)
         else:
@@ -113,7 +113,6 @@ class FEATURE_OPT(Utilities.JSON_OPT):
         return self.values[5]
     
     def if_append_abbrev(self, index):
-        # todo
         '''
         whether appending abbrevation to case name for entry i
         in the list of values
@@ -140,6 +139,8 @@ class GROUP_OPT(Utilities.JSON_OPT):
         self.add_key("Directory to output to", str, ["output directory"], ".", nick='output_dir')
         self.add_key("Bindings in feature", list, ["bindings"], [], nick='bindings')
         self.add_key("Base directory to import", str, ["base directory"], ".", nick='base_dir')
+        # todo
+        self.add_features('Base Feature to set up for the group', ['base features'], FEATURE_OPT)
     
     def check(self):
         if self.values[4] != []:
@@ -147,6 +148,11 @@ class GROUP_OPT(Utilities.JSON_OPT):
                 assert(len(binding) == len(self.values[1]))  # binding has length of features
                 for i in range(len(binding)):
                     assert(type(binding[i]) == int)
+        # check base features only have 1 value
+        # todo
+        base_features = self.values[6]
+        for base_feature in base_features:
+            assert(len(base_feature.get_values())==1)
 
     def get_base_json_path(self):
         return Utilities.var_subs(self.values[2])
@@ -164,7 +170,11 @@ class GROUP_OPT(Utilities.JSON_OPT):
         return Utilities.var_subs(self.values[3])
     
     def to_create_group(self):
-        return self.values[1], Utilities.var_subs(self.values[5]), Utilities.var_subs(self.values[3]), self.values[0], self.values[4]
+        # todo
+        base_features = self.values[6]
+        features = self.values[1]
+        return base_features, features, Utilities.var_subs(self.values[5]),\
+        Utilities.var_subs(self.values[3]), self.values[0], self.values[4]
 
 
 class GROUP():
@@ -189,7 +199,7 @@ class GROUP():
         with open(json_file, 'r') as fin:
             self.base_options = json.load(fin)
 
-    def create_group(self, features, base_dir, output_dir, base_name, bindings, **kwargs):
+    def create_group(self, base_features, features, base_dir, output_dir, base_name, bindings, **kwargs):
         '''
         create new group
         Inputs:
@@ -202,6 +212,14 @@ class GROUP():
         is_update = kwargs.get('update', False)
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)  # make dir if not existing
+        # handle base features, set up group-wise value of varibles
+        # todo
+        options = self.base_options.copy()
+        for base_feature in base_features:
+            options = Utilities.write_dict_recursive(options,\
+                    base_feature.get_keys(), base_feature.get_values()[0])
+        self.base_options = options
+        # handle features, varying the value of variables in cases
         for feature in features:
             sub_totals.append(total)
             sizes.append(len(feature.get_values()))
@@ -245,7 +263,6 @@ class GROUP():
                     values = feature.get_values()
                     options = Utilities.write_dict_recursive(options,\
                         feature.get_keys(), values[x_j])
-                    # todo
                     if feature.if_append_abbrev(x_j):
                         if feature.if_abbrev_value():
                             name_appendix = get_name_appendix(feature.get_abbrev_value_options(), values[x_j]) # appendix by value

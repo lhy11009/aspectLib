@@ -117,6 +117,48 @@ An example usage (TwoDSubduction)
 
 (todo) fix the change_plate_ages test, there is still a temperature discontinuity in the prescribing-temperature corner region.
 
+#### Explain the json file inputs:
+
+Below is an example of json file used for creating cases, one can always run this command to see the description for each entry.
+
+	Lib_TwoDSubduction0_Case -h
+
+Every option is assigned as key and value.
+Together they are related with either a variable in the prm file or a defined function to change multiple parameters at the same time.
+For example, the "Include fast first step" option would actually copy the prm file, change the option of "End time" to 0.0, solver scheme
+to "No advection, No stokes" and dump this back to a file called "case_f.prm".
+The goal of this approach is to reduce the process of model setup to what we would mental address the task.
+Say, when we think of changing the geometry, normally we have to vary a lot of entries in the prm file,
+e.g. the function you are using for your initial temperature field, entries in your world builder file.
+But with this, we reduce it back to just change the option of geometry from box to chunk.
+
+	{
+		"base directory": "${ASPECT_LAB_DIR}/files/TwoDSubduction/210103", 
+		"output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
+		"name": "peierls_test",
+		"Include fast first step": 1,
+		"geometry": "chunk",
+		"Potential temperature": 1573.0,
+		"boundary condition": {"model": "all free slip"},
+		"use world builder": 1, 
+		"world builder": 
+		{
+			"plate age method": "adjust box width",
+			"subducting plate": 
+			{
+				"age trench": 40e6, 
+				"sp rate": 0.05
+			},
+			"overiding plate": 
+			{
+				"age": 40e6, 
+				"transit": {"age": 20e6, "length": 700e3}
+			}
+		},
+		"Include peierls creep": 0,
+		"additional files": ["job_rome.sh", "job_high2.sh", "job_p-billen.sh"]
+	}
+
 
 ### Create new group
 
@@ -124,6 +166,121 @@ Here, the task is to create mutiple cases at a time and hold them in a single fo
 
 I made use of the previous script I used for create a single case (Cases.py), and write a new script Group.py.
 In this new scripts, I read in a json file with the configurations and write a bundle of json case-configuring files for interfaces defined in Cases.py.
+
+#### Explain the json file inputs:
+
+First, this json file is dependent on the previous json file in the section of "Create new case".
+
+Here is an example:
+	{
+	"base name": "eba_cdpt_cart", 
+	"base json": "${ASPECT_LAB_DIR}/files/TwoDSubduction/220109/case.json",
+	"base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220109",
+	"output directory": "${TwoDSubduction_DIR}/EBA_CDPT_cart1",
+	"base features":[
+		{
+		"name": "Geometry of the model",
+		"key": ["geometry"],
+		"unit": "",
+		"values": ["box"],
+		"abbreviating strings": [""]
+		}
+	],
+	"features":[
+		{
+		"name": "Age of the subducting plate",
+		"unit": "yr",
+		"key": ["world builder", "subducting plate", "age trench"],
+		"values": [40e6, 80e6],
+		"abbreviation by value": 1,
+		"abbreviating value options": ["SA", 1e-6]
+		},		
+		{
+		"name": "Age of the overiding plate",
+		"key": ["world builder", "overiding plate", "age"],
+		"unit": "yr",
+		"values": [20e6, 40e6],
+		"abbreviation by value": 1,
+		"abbreviating value options": ["OA", 1e-6]
+		},
+		{
+		"name": "coupling the eclogite phase to shear zone viscosity",
+		"key": ["coupling the eclogite phase to shear zone viscosity"],
+		"unit": "",
+		"values": [0, 1],
+		"abbreviating strings": ["", "CpEcl"],
+		"if abbreviating": [0, 1]
+		},
+		{
+		"name": "Width of the box",
+		"key": ["world builder", "box width before adjusting"],
+		"unit": "km",
+		"values": [6.783e6, 8.896e6],
+		"abbreviating strings": ["width61", "width80"],
+		"if abbreviating": [0, 1]
+		}
+	],
+	"bindings": [[0, 0, 0, 0], [1, 0, 0, 0], [1, 1, 0, 0], [1, 1, 1, 0], [1, 1, 0, 1]]
+	}
+
+
+Same as before, one could run with this command to get a full detail:
+	
+	Lib_TwoDSubduction0_Group -h
+
+Note that the main difference from the json file for a single case is we add in the option of 
+"base features" and "features" in this one.
+They are nested options as of options in the case of "Create new case".
+Both of these are lists to start with, so each entry in the list is a separate option.
+For example, the 2nd entry in the "features": 
+		
+		{
+		"name": "Age of the subducting plate",
+		"unit": "yr",
+		"key": ["world builder", "subducting plate", "age trench"],
+		"values": [40e6, 80e6],
+		"abbreviation by value": 1,
+		"abbreviating value options": ["SA", 1e-6]
+		},		
+
+Here, keys are a listed, so this is related to a series of nested keys in a json file for "Create new case".
+Note this part in the previous section:
+		
+		"world builder": 
+		{
+			"plate age method": "adjust box width",
+			"subducting plate": 
+			{
+				"age trench": 40e6, 
+				"sp rate": 0.05
+			},
+			"overiding plate": 
+			{
+				"age": 40e6, 
+				"transit": {"age": 20e6, "length": 700e3}
+			}
+		}
+
+"values" is also a list. This means we could assign different value to a variable,
+in this case, the age of the overiding plate, and we will create a new case for each of 
+these different values.
+
+Then I'll discuss how the abbreviation options work.
+To start with, it's no more than add a string in the case name, for example:
+
+	"abbreviating value options": ["SA", 1e-6]
+
+This means we will append a string of "SA" + "something" to our case name.
+While "something" is the "value" * 1e-6, in the case, 40e6 * 1e-6 = 40 and 80e6 * 1e-6 = 80, specifically.
+So you'll expect your case names to have "SA40" and "SA80" in them.
+
+For the "base feature", it's a special type of feature that we want to apply on the whole group to start with.
+That's why there need to be just one value in the list, and the abbreviating option is always like this:
+
+	"abbreviating strings": [""]
+
+Because we don't want anything to be appended to the case name in this special occasion.
+
 
 ## Cooperate with other models / analytic results / laws
 
