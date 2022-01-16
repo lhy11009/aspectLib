@@ -59,6 +59,9 @@ class PHASE_OPT(Utilities.JSON_OPT):
         length = len(drho)
         assert(length == len(xc))
         assert(length == len(cl))
+        if boundary == []:  # assign default values bd1 to bdn
+            for i in range(length):
+                boundary.append("bd%d" % (i+1))
         assert(length == len(boundary))
 
     

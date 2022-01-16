@@ -133,10 +133,11 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         # check the directory for HeFESTo
         o_dir = self.values[2]
         root_level = self.values[7]
-        HeFESTo_data_dir = self.values[self.start + 14]
-        HeFESTo_data_dir_pull_path = os.path.join(o_dir, ".." * (root_level - 1), HeFESTo_data_dir)
-        Utilities.my_assert(os.path.isdir(HeFESTo_data_dir_pull_path),\
-        FileNotFoundError, "%s is not a directory" % HeFESTo_data_dir_pull_path)
+        if phase_model == "HeFESTo":  # check the existence of Hefesto files
+            HeFESTo_data_dir = self.values[self.start + 14]
+            HeFESTo_data_dir_pull_path = os.path.join(o_dir, ".." * (root_level - 1), HeFESTo_data_dir)
+            Utilities.my_assert(os.path.isdir(HeFESTo_data_dir_pull_path),\
+            FileNotFoundError, "%s is not a directory" % HeFESTo_data_dir_pull_path)
 
     def to_configure_prm(self):
         if_wb = self.values[self.start + 0]
@@ -268,8 +269,7 @@ class CASE(CasesP.CASE):
             o_dict['Material model']['Visco Plastic TwoD']["Lookup table"]["Data directory"] = HeFESTo_data_dir
             pass
         elif phase_model == "CDPT":
-            o_dict['Material model']['Visco Plastic TwoD']["Use lookup table"] = 'false'
-            pass
+            o_dict['Material model']['Visco Plastic TwoD'].pop("Use lookup table", "Foo")
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
         if_ov_trans, ov_trans_age, ov_trans_length):
