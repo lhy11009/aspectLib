@@ -55,7 +55,8 @@ void SlabAnalysis::prepare_slab(const std::vector<std::string> names)
     iDelaunay2D->Update();
 }
 
-std::shared_ptr<std::vector<size_t>> find_points_at_radius(std::shared_ptr<std::vector<double>> rs, const double r, const unsigned n)
+std::shared_ptr<std::vector<size_t>> find_points_at_radius(std::shared_ptr<std::vector<double>> rs, const double r,
+                                                           const unsigned n)
 {
   // todo
   // found trench point
@@ -68,9 +69,6 @@ std::shared_ptr<std::vector<size_t>> find_points_at_radius(std::shared_ptr<std::
     I_deviation->push_back(id);
   }
   QuickSort(*r_deviation, *I_deviation, 0, rs->size()-1);
-  for (int i=0; i < n; i++){
-    I_points->push_back((*I_deviation)[i]);
-  }
   return I_points;
 }
 
@@ -82,6 +80,7 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_o
   auto rs = std::make_shared<std::vector<double>>();
   auto thetas = std::make_shared<std::vector<double>>();
   auto I = std::make_shared<std::vector<size_t>>();
+  std::cout << "Number of points: " << c_points->GetNumberOfPoints() << std::endl;  // debug
   for (vtkIdType id = 0; id < c_points->GetNumberOfPoints(); id++)
   {
     double *p = c_points -> GetPoint(id);
@@ -92,15 +91,27 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_o
     rs->push_back(r);
     thetas->push_back(theta);
     I->push_back(id);
-    // std::cout<< "id: " << id << ",r: " << r << ", theta: " << theta << std::endl;  // debug
+    //std::cout<< "id: " << id << ",r: " << r << ", theta: " << theta << std::endl;  // debug
   }
+  std::cout << "Begin Quick sort" << std::endl;
   QuickSort(*rs, *I, 0, c_points->GetNumberOfPoints()-1);  // reorder by r, index saved in I
+  std::cout << "End Quick sort" << std::endl;
   // found trench point
   double ro = 6371e3;
   double find1 = 5e3;
   double n_aver = 3;
   // todo
   auto Ip = find_points_at_radius(rs, ro-find1, n_aver);
+  //tod
+  /*
+  const double theta_ref = 0.63;
+  for (int i=0; i < Ip->size(); i++){
+    double temp = (*thetas)[(*Ip)[i]]- theta_ref;
+    if (abs(temp) < 0.1)
+    {
+      std::cout << i << ", " << ", " << temp << std::endl;  // debug
+    }
+  }*/
   // find_points_at_radius(double r)
   double sum = 0.0;
   for (int i=0; i < n_aver; i++)
@@ -216,7 +227,7 @@ int main(int argc, char* argv[])
   vtkSmartPointer<vtkPolyData> c_poly_data = slab_analysis.extract_contour("slab", 0.99, target_dir + "/" + "contour_slab_" + pvtu_step + ".txt"); //apply contour
   SlabOutputs slab_outputs;
   analyze_slab(c_poly_data, slab_outputs); // analyze slab morphology
-  analyze_wedge_temperature100(slab_analysis, slab_outputs, target_dir + "/" + "wedge_T100_" + pvtu_step + ".txt"); // output tempertature
+  // analyze_wedge_temperature100(slab_analysis, slab_outputs, target_dir + "/" + "wedge_T100_" + pvtu_step + ".txt"); // output tempertature
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
 }
