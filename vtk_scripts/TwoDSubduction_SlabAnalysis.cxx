@@ -229,7 +229,7 @@ int main(int argc, char* argv[])
   if (options.size() > 2)
     theta_ref_trench = std::stod(options[2]);
   analyze_slab(c_poly_data, slab_outputs, theta_ref_trench); // analyze slab morphology
-  // analyze_wedge_temperature100(slab_analysis, slab_outputs, target_dir + "/" + "wedge_T100_" + pvtu_step + ".txt"); // output tempertature
+  analyze_wedge_temperature100(slab_analysis, slab_outputs, target_dir + "/" + "wedge_T100_" + pvtu_step + ".txt"); // output tempertature
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
 }
