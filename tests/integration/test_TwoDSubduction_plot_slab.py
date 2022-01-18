@@ -26,6 +26,7 @@ import filecmp  # for compare file contents
 # import numpy as np
 from shilofue.TwoDSubduction0.PlotSlab import *  # import test module
 from shilofue.PlotVisit import RunVTKScripts, PrepareVTKOptions
+from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 # from shilofue.Utilities import 
 # from matplotlib import pyplot as plt
 # from shutil import rmtree  # for remove directories
@@ -48,7 +49,7 @@ def test_vtk_TwoDSubduction_SlabAnalysis():
     wedge_T_file_out_std = os.path.join(case_dir, 'wedge_T100_00001_std.txt')
     if os.path.isfile(wedge_T_file_out):
         os.remove(wedge_T_file_out)  # remove older file
-    vtk_option_path, _, _ = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis', vtk_step=0, output=option_path)
+    vtk_option_path, _, _ = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis', vtk_step=0, output=option_path)
     _stdout = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
     outputs = slab_morph(_stdout)
     # compare trench & slab depth output

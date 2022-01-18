@@ -27,7 +27,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
 from shilofue.Plot import LINEARPLOT
-from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, VISIT_OPTIONS, PARALLEL_WRAPPER_FOR_VTK
+from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
+from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 from joblib import Parallel, delayed
 import multiprocessing
 
@@ -206,7 +207,7 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
             new: remove old output file
     '''
     print("pvtu_step: %s\n" % str(pvtu_step))
-    vtk_option_path, _time, step = PrepareVTKOptions(case_dir, 'TwoDSubduction_SlabAnalysis',\
+    vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis',\
     vtk_step=pvtu_step, include_step_in_filename=True, generate_horiz=True)
     _stdout = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
     slab_outputs = slab_morph(_stdout)

@@ -405,10 +405,11 @@ def RunScripts(visit_script):
     os.system("echo \"exit()\" | eval \"visit -nowin -cli -s %s\"" % visit_script)
 
 
-def PrepareVTKOptions(case_dir, operation, **kwargs):
+def PrepareVTKOptions(VISIT_OPTIONS, case_dir, operation, **kwargs):
     '''
     prepare vtk options for vtk scripts
     Inputs:
+        VISIT_OPTIONS: class for the options of visit
         kwargs
             output
             vtk_step
@@ -513,7 +514,7 @@ def main():
         pass
     
     elif _commend == 'vtk_options':
-        vtk_option_path, _, _ = PrepareVTKOptions(arg.inputs, arg.operation, step=arg.step)
+        vtk_option_path, _, _ = PrepareVTKOptions(VISIT_OPTIONS, arg.inputs, arg.operation, step=arg.step)
         RunVTKScripts(arg.operation, vtk_option_path)
     
     elif _commend == 'run':

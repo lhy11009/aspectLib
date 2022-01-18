@@ -201,7 +201,7 @@ int main(int argc, char* argv[])
               << std::endl;
     return EXIT_FAILURE;
   }
-  // 1. PVTU_FILE_PATH
+  // 1. PVTU_FILE
   std::string filename = options[0]; // get dir
   size_t found=option_file.find_last_of("/\\");
   std::string target_dir = option_file.substr(0,found);
@@ -209,7 +209,7 @@ int main(int argc, char* argv[])
   size_t found1 = filename.find_last_of("-");
   std::string pvtu_step = filename.substr(found1+1, found - found1-1);
   std::cout << "pvtu_step: " << pvtu_step << std::endl;
-  // 2. AVG_FILE_PATH
+  // 2. VTK_HORIZ_FILE
   std::string avg_filename = options[1];
   SlabAnalysis slab_analysis;
   slab_analysis.readfile(filename);
