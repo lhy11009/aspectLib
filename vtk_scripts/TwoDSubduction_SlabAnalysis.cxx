@@ -18,7 +18,6 @@ struct SlabOutputs
 {
     double trench_theta; // trench position
     double slab_depth;  // slab depth
-    // todo
     double theta100; // angle where the slab is 100 km depth
     double dip100;
     void set_moprh(double trench_theta, double slab_depth);
@@ -58,29 +57,32 @@ void SlabAnalysis::prepare_slab(const std::vector<std::string> names)
 std::shared_ptr<std::vector<size_t>> find_points_at_radius(std::shared_ptr<std::vector<double>> rs, const double r,
                                                            const unsigned n)
 {
-  // todo
   // found trench point
   auto r_deviation = std::make_shared<std::vector<double>>();
   auto I_deviation = std::make_shared<std::vector<size_t>>();
-  auto I_points = std::make_shared<std::vector<size_t>>();
   for (size_t id = 0; id < rs->size(); id++)
   {
     r_deviation->push_back(abs((*rs)[id] - r));
     I_deviation->push_back(id);
   }
   QuickSort(*r_deviation, *I_deviation, 0, rs->size()-1);
-  return I_points;
+  return I_deviation;
 }
 
-void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_outputs)
+void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_outputs, const double theta_ref_trench)
 {
+  // parameters we use here
+  double ro = 6371e3;
+  double depth_find_trench_point = 5e3; // parameters to find trench point
+  const int n_average_for_trench_point = 3;
+  double depth_find_100km = 100e3; // parameters to find slab surface at 100km depth
+  const int n_average_for_100_km = 10;
   // take a contour output and analyze the slab morphology
   vtkSmartPointer<vtkPoints> c_points = c_poly_data->GetPoints();
   // intiate pointers
   auto rs = std::make_shared<std::vector<double>>();
   auto thetas = std::make_shared<std::vector<double>>();
   auto I = std::make_shared<std::vector<size_t>>();
-  std::cout << "Number of points: " << c_points->GetNumberOfPoints() << std::endl;  // debug
   for (vtkIdType id = 0; id < c_points->GetNumberOfPoints(); id++)
   {
     double *p = c_points -> GetPoint(id);
@@ -93,49 +95,43 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_o
     I->push_back(id);
     //std::cout<< "id: " << id << ",r: " << r << ", theta: " << theta << std::endl;  // debug
   }
-  std::cout << "Begin Quick sort" << std::endl;
   QuickSort(*rs, *I, 0, c_points->GetNumberOfPoints()-1);  // reorder by r, index saved in I
-  std::cout << "End Quick sort" << std::endl;
   // found trench point
-  double ro = 6371e3;
-  double find1 = 5e3;
-  double n_aver = 3;
-  // todo
-  auto Ip = find_points_at_radius(rs, ro-find1, n_aver);
-  //tod
-  /*
-  const double theta_ref = 0.63;
+  auto Ip = find_points_at_radius(rs, ro-depth_find_trench_point, n_average_for_trench_point);
+  double sum = 0.0;
+  int found = 0;
   for (int i=0; i < Ip->size(); i++){
-    double temp = (*thetas)[(*Ip)[i]]- theta_ref;
+    double temp = (*thetas)[(*Ip)[i]]- theta_ref_trench;
     if (abs(temp) < 0.1)
     {
-      std::cout << i << ", " << ", " << temp << std::endl;  // debug
+      //std::cout << i << ", " << ", " << temp << std::endl;  // debug
+      sum += (*thetas)[(*Ip)[i]];
+      found++;
     }
-  }*/
-  // find_points_at_radius(double r)
-  double sum = 0.0;
-  for (int i=0; i < n_aver; i++)
-  {
-    sum += (*thetas)[(*Ip)[i]];
+    if (found == n_average_for_trench_point)
+      break;
   }
-  double trench_theta = sum / n_aver;
+  if (found < n_average_for_trench_point)
+  {
+    std::cerr << "Analyze_slab: not enough points found for trench point." << std::endl; // error message
+    exit(1);
+  }
+  double trench_theta = sum / n_average_for_trench_point;
   std::cout << "Trench theta: " << trench_theta << std::endl;
   // find slab depth
   double slab_depth = ro - (*rs)[(*I)[0]];
   std::cout << "Slab depth: " << slab_depth << std::endl;
   // find points at 100e3 depth
-  double find2 = 100e3;
-  n_aver = 10;
-  Ip = find_points_at_radius(rs, ro-find2, n_aver);
+  Ip = find_points_at_radius(rs, ro-depth_find_100km, n_average_for_100_km);
   double theta100 = (*thetas)[(*Ip)[0]];
-  for (unsigned i=0; i < n_aver; i++){
+  for (int i=0; i < n_average_for_100_km; i++){
     // get the biggest value for a point on the surface
     if ((*thetas)[(*Ip)[i]] > theta100){
       theta100 = (*thetas)[(*Ip)[i]];
     }
   }
   slab_outputs.theta100 = theta100;
-  slab_outputs.dip100 = atan(ro*(theta100 - trench_theta)/find2);
+  slab_outputs.dip100 = atan(ro*(theta100 - trench_theta)/depth_find_100km);
   std::cout << "100km theta: " << theta100 << std::endl;
   std::cout << "100km dip: " << slab_outputs.dip100 << std::endl;
   slab_outputs.set_moprh(trench_theta, slab_depth);
@@ -226,7 +222,13 @@ int main(int argc, char* argv[])
   slab_analysis.integrate_cells();
   vtkSmartPointer<vtkPolyData> c_poly_data = slab_analysis.extract_contour("slab", 0.99, target_dir + "/" + "contour_slab_" + pvtu_step + ".txt"); //apply contour
   SlabOutputs slab_outputs;
-  analyze_slab(c_poly_data, slab_outputs); // analyze slab morphology
+  // 3. THETA_REF_TRENCH
+  // if there is entry (more than 2 in the file), assign it to theta_ref_trench
+  // otherwise, assign a default value
+  double theta_ref_trench = 0.63;
+  if (options.size() > 2)
+    theta_ref_trench = std::stod(options[2]);
+  analyze_slab(c_poly_data, slab_outputs, theta_ref_trench); // analyze slab morphology
   // analyze_wedge_temperature100(slab_analysis, slab_outputs, target_dir + "/" + "wedge_T100_" + pvtu_step + ".txt"); // output tempertature
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
