@@ -289,7 +289,8 @@ class CASE(CasesP.CASE):
             self.wb_dict["cross section"] = [[0, 0], [180.0, 0.0]]
         elif geometry == 'box':
             self.wb_dict["coordinate system"] = {"model": "cartesian"}
-            self.wb_dict["cross section"] = [[0, 0], [1e7, 0.0]]
+            # todo
+            self.wb_dict["cross section"] = [[0, 0], [2e7, 0.0]]
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
         # plates
@@ -299,7 +300,8 @@ class CASE(CasesP.CASE):
             sp_rate, ov_ag, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry) # plates
         elif geometry == 'box':
-            Xmax = 7e6  # lateral extent of the box
+            # todo
+            Xmax = 1e7  # lateral extent of the box
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry) # plates
