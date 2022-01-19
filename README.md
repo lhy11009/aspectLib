@@ -326,6 +326,27 @@ on the values of these keys in python3.
 
 This follows similar logic as before with the exception of this being a cpp package.
 
+The package is depending of the vtk package (version > 9.0.1), when compiling this package, one need to provide
+the path to the vtk package.
+
+	cmake -DVTK_DIR:PATH=/home/lochy/VTK-9.0.1/build ..
+
+the modules in the package could be built separately, e.g
+
+	make TwoDSubduction_SlabAnalysis
+
+To run this module, one need also to provide an input file with parameters.
+This file should have contents like:
+
+	(contents of TwoDSubduction_SlabAnalysis.input_s000154)
+	/home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT1/eba_cdpt_SA80.0_OA40.0/output/solution/solution-00166.pvtu
+	/home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT1/eba_cdpt_SA80.0_OA40.0/temp_output/depth_average_output_s1334
+	0.6278449223041909
+
+Run with:
+
+	./TwoDSubduction_SlabAnalysis TwoDSubduction_SlabAnalysis.input_s000154
+
 
 ### Linear plots from fields in Aspect's outputs
 
