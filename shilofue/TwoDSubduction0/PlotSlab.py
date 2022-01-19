@@ -233,6 +233,7 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     SlabPlot = SLABPLOT('slab')
     slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
     if_rewrite = kwargs.get('rewrite', 0)
+    # Read previous result
     if os.access(slab_morph_file, os.R_OK) and if_rewrite == 0:
         # read previous results if they exist
         SlabPlot.ReadHeader(slab_morph_file)
@@ -241,10 +242,14 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
         last_pvtu_step = int(SlabPlot.data[-1, col_pvtu_step])
     else:
         last_pvtu_step = -1
-    # get slab morphology
+    # Initiation Wrapper class for parallel computation
     ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', vtk_and_slab_morph, last_pvtu_step=last_pvtu_step, if_rewrite=if_rewrite)
     ParallelWrapper.configure(case_dir)  # assign case directory
+    # Remove previous file
     if if_rewrite:
+        if os.path.isfile(slab_morph_file):
+            print("%s: Delete old slab_morph.txt file." % Utilities.func_name())
+            os.remove(slab_morph_file)  # delete slab morph file
         ParallelWrapper.delete_temp_files(available_pvtu_steps)  # delete intermediate file if rewrite
     num_cores = multiprocessing.cpu_count()
     Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
