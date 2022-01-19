@@ -85,7 +85,7 @@ class CASE_OPT(CasesP.CASE_OPT):
          ["world builder", "plate age method"], 'by values', nick="plate_age_method")
         self.add_key("Include peierls creep", int, ['include peierls creep'], 0, nick='if_peierls')
         self.add_key("Coupling the eclogite phase to shear zone viscosity",\
-         int, ['coupling the eclogite phase to shear zone viscosity'], 0, nick='if_couple_eclogite_viscosity')
+         int, ["shear zone", 'coupling the eclogite phase to shear zone viscosity'], 0, nick='if_couple_eclogite_viscosity')
         self.add_key("Width of the Box before adjusting for the age of the trench.\
 This is used with the option \"adjust box width\" for configuring plate age at the trench.\
 This value is the width of box for a default age (i.e. 80Myr), while the width of box for a\
@@ -95,6 +95,8 @@ different age will be adjusted.",\
          ["phase transition model"], 'CDPT', nick="phase_model")
         self.add_key("Root directory for lookup tables", str,\
          ["HeFESTo model", "data directory"], '.', nick="HeFESTo_data_dir")
+        self.add_key("Cutoff depth for the shear zone rheology",\
+          float, ["shear zone", 'cutoff depth'], 100e3, nick='sz_cutoff_depth')
         pass
     
     def check(self):
@@ -159,9 +161,11 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         HeFESTo_data_dir = self.values[self.start + 14]
         root_level = self.values[7]
         HeFESTo_data_dir_relative_path = os.path.join("../"*root_level, HeFESTo_data_dir)
+        sz_cutoff_depth = self.values[self.start+15]
+        print("sz_cutoff_depth: ", sz_cutoff_depth)  # debug
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
-        HeFESTo_data_dir_relative_path
+        HeFESTo_data_dir_relative_path, sz_cutoff_depth
 
     def to_configure_wb(self):
         '''
@@ -196,7 +200,7 @@ class CASE(CasesP.CASE):
     '''
     def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T,\
     sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
-    HeFESTo_data_dir):
+    HeFESTo_data_dir, sz_cutoff_depth):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
@@ -262,6 +266,11 @@ class CASE(CasesP.CASE):
             o_dict['Material model']['Visco Plastic TwoD']["Decoupling eclogite viscosity"] = 'false'
         else:
             o_dict['Material model']['Visco Plastic TwoD']["Decoupling eclogite viscosity"] = 'true'
+            o_dict['Material model']['Visco Plastic TwoD']["Eclogite decoupled viscosity"] =\
+                {
+                    "Decoupled depth": str(sz_cutoff_depth),
+                    "Decoupled depth width": '10e3'
+                }
         self.idict = o_dict
         # phase model
         if phase_model == "HeFESTo":
