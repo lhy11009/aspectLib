@@ -171,6 +171,18 @@ class LINEARPLOT():
         for i in range(self.data.shape[1]):
             _data_list.append(self.data[:, i])
         return _data_list
+    
+    def HasData(self):
+        '''
+        Return true if there is data
+        Returns:
+            True: there is data
+            False: there is no data
+        '''
+        if (self.data == []):
+            return False
+        else:
+            return True
 
     def PlotCombine(self, _data_list, _fileout, **kwargs):
         '''

@@ -234,14 +234,15 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
     if_rewrite = kwargs.get('rewrite', 0)
     # Read previous result
+    last_pvtu_step = -1
     if os.access(slab_morph_file, os.R_OK) and if_rewrite == 0:
         # read previous results if they exist
+        # todo
         SlabPlot.ReadHeader(slab_morph_file)
         SlabPlot.ReadData(slab_morph_file)
-        col_pvtu_step = SlabPlot.header['pvtu_step']['col']
-        last_pvtu_step = int(SlabPlot.data[-1, col_pvtu_step])
-    else:
-        last_pvtu_step = -1
+        if SlabPlot.HasData():
+            col_pvtu_step = SlabPlot.header['pvtu_step']['col']
+            last_pvtu_step = int(SlabPlot.data[-1, col_pvtu_step])
     # Initiation Wrapper class for parallel computation
     ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', vtk_and_slab_morph, last_pvtu_step=last_pvtu_step, if_rewrite=if_rewrite)
     ParallelWrapper.configure(case_dir)  # assign case directory

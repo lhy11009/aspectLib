@@ -29,6 +29,7 @@ from shilofue.ParsePrm import ReadPrmFile
 from shilofue.PlotVisit import RunScripts
 import shilofue.PlotCombine as PlotCombine
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS, PREPARE_RESULT_OPTIONS
+from shilofue.TwoDSubduction0.PlotSlab import vtk_and_slab_morph_case, SLABPLOT
 import shilofue.PlotCase as PlotCase
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
@@ -50,7 +51,7 @@ Examples of usage: \n\
 \n\
   - default usage: plot case running results, -t option deals with a time range, default is a whole range\n\
 \n\
-        Lib_TwoDSubduction0_PlotCase plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20\
+        Lib_TwoDSubduction0_PlotCase plot_case -i  ~/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT1/eba_cdpt_SA80.0_OA40.0\
  -t 0.0 -t1 0.5e6\n\
 \n\
   - plot cases in a directory (loop), same options as before:\n\
@@ -66,7 +67,15 @@ Examples of usage: \n\
         Lib_TwoDSubduction0_PlotCase animate_case -i ~/ASPECT_PROJECT/TwoDSubduction/test_peierls1/peierls\n\
 \n\
   - generate animation for cases in a directory: \n\
-        Lib_TwoDSubduction0_PlotCase animate_case_in_dir -i `pwd`\
+        Lib_TwoDSubduction0_PlotCase animate_case_in_dir -i `pwd`\n\
+\n\
+  - generate slab_morph.txt: \n\
+    (what this does is looping throw all visualizing steps, so it takes time)\n\
+        Lib_TwoDSubduction0_PlotCase morph_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 \n\
+\n\
+  - plot trench movement: \n\
+    (note you have to have a slab_morph.txt generated) \n\
+        Lib_TwoDSubduction0_PlotCase plot_morph -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 \n\
         ")
 
 
@@ -269,6 +278,10 @@ def main():
     parser.add_argument('-s', '--step', type=int,
                         default=0,
                         help='step')
+    parser.add_argument('-r', '--rewrite', type=int,
+                        default=0,
+                        help='If rewrite previous result')
+    
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -277,10 +290,16 @@ def main():
     arg = parser.parse_args(_options)
 
     # commands
+    # rearrange the time_range entry
+    if arg.time == None or arg.time1 == None:
+        time_range = None
+    else:
+        assert(type(arg.time) == float and type(arg.time1) == float)
+        time_range = [arg.time, arg.time1]
     if _commend == 'plot_case':
-        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, [arg.time, arg.time1])
+        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range)
     elif _commend == 'plot_case_in_dir':
-        PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, [arg.time, arg.time1])
+        PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range)
         pass
     elif _commend == 'prepare_result_step':
         Plotter = PLOTTER(PREPARE_RESULT_OPTIONS)
@@ -294,6 +313,18 @@ def main():
     elif _commend == 'animate_case_in_dir':
         Plotter = PLOTTER(PREPARE_RESULT_OPTIONS)
         PlotCase.AnimateCombinedDir(Plotter.PlotPrepareResultStep, arg.inputs)
+    elif _commend == 'morph_case':
+        # slab_morphology, input is the case name
+        vtk_and_slab_morph_case(arg.inputs, rewrite=arg.rewrite)
+    elif _commend == 'morph_case_in_dir':
+        # slab_morphology for cases in directory, input is the case name
+        PlotCase.PlotCaseCombinedDir([vtk_and_slab_morph_case], arg.inputs, rewrite=arg.rewrite)
+    elif _commend == 'plot_morph':
+        # plot slab morphology
+        SlabPlot = SLABPLOT('slab')
+        prm_file = os.path.join(arg.inputs, 'output', 'original.prm')
+        SlabPlot.ReadPrm(prm_file)
+        SlabPlot.PlotMorph(arg.inputs)
     elif (_commend in ['-h', '--help']):
         # example:
         Usage()

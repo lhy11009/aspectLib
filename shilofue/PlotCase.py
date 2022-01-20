@@ -88,10 +88,10 @@ def PlotCaseRun(case_path, **kwargs):
     if not os.path.isdir(os.path.dirname(fig_path)):
         os.mkdir(os.path.dirname(fig_path))
     # time range
-    try:
-        time_range = kwargs['time_range']
+    time_range = kwargs.get('time_range', None)
+    if time_range is not None:
         fig_output_path, step_range = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True, time_range=time_range)
-    except KeyError:
+    else:
         fig_output_path = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True)
         step_range = None
 
@@ -110,35 +110,36 @@ def PlotCaseRun(case_path, **kwargs):
     return 0
 
 
-def PlotCaseCombined(modules, inputs, time_range):
+def PlotCaseCombined(modules, inputs, **kwargs):
     '''
     combine several modules in plotting
     inputs:
         modules (list of function)
         inputs (str): path to a case
-        time_range ([None, None] or [double, double]): range of time to plot
+        **kwargs:
+            time_range ([None, None] or [double, double]): range of time to plot
     '''
     assert(type(modules) == list)
-    if type(time_range) == list and\
-        type(time_range[0]) == float and\
-            type(time_range[1]) == float:
-        # There is a meaningful time range
-        for module in modules:
-            module(inputs, time_range=time_range)
-    else:
-        # There is not meaningful time range, plot the whole series
-        for module in modules:
-            module(inputs)
-    pass
+    # check time_range
+    time_range = kwargs.get('time_range', None)
+    if time_range is not None:
+        # Check there is a meaningful time range
+        assert(type(time_range) == list and\
+         type(time_range[0]) == float and\
+         type(time_range[1]) == float)
+    # call functions to plot
+    for module in modules:
+        module(inputs, **kwargs)
 
 
-def PlotCaseCombinedDir(modules, dir, time_range):
+def PlotCaseCombinedDir(modules, dir, **kwargs):
     '''
     combine several modules in plotting
     inputs:
         modules (list of function)
         dir (str): path to a directory
-        time_range ([None, None] or [double, double]): range of time to plot
+        **kwargs:
+            time_range ([None, None] or [double, double]): range of time to plot
     '''
     assert(os.path.isdir(dir))
     for subdir, dirs, _ in os.walk(dir):
@@ -147,7 +148,7 @@ def PlotCaseCombinedDir(modules, dir, time_range):
             case_prm = os.path.join(_path, 'case.prm')
             if os.path.isfile(case_prm):
                 print("\nFind case %s" % _path)
-                PlotCaseCombined(modules, _path, time_range)
+                PlotCaseCombined(modules, _path, **kwargs)
 
 
 def AnimateCaseResults(PrepareS, case_path, **kwargs):
