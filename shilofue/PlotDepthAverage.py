@@ -292,7 +292,7 @@ def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
         else:
             i1 = DepthAverage.time_step_indexes[time_step + 1][0] * DepthAverage.time_step_length
     except IndexError:
-        print("PlotDaFigure: File may not contain any depth average output, abort")
+        print("PlotDaFigure: File (%s) may not contain any depth average output, abort. " % depth_average_path)
         return
     data = DepthAverage.data[i0:i1, :]
     # get depth
@@ -391,7 +391,7 @@ def ExportData(depth_average_path, output_dir, **kwargs):
         else:
             i1 = DepthAverage.time_step_indexes[time_step + 1][0] * DepthAverage.time_step_length
     except IndexError:
-        print("PlotDaFigure: File may not contain any depth average output, abort")
+        print("PlotDaFigure: File (%s) may not contain any depth average output, abort" % depth_average_path)
         return
     names = kwargs.get('names', ['depth', 'temperature', 'adiabatic_density'])
     output_path = os.path.join(output_dir, 'depth_average_output_s%d' % time_step)

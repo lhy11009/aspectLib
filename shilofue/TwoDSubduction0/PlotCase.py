@@ -76,6 +76,9 @@ Examples of usage: \n\
   - plot trench movement: \n\
     (note you have to have a slab_morph.txt generated) \n\
         Lib_TwoDSubduction0_PlotCase plot_morph -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 \n\
+\n\
+  - generate slab_morph.txt for cases in a directory: \n\
+    Lib_TwoDSubduction0_PlotCase morph_case_in_dir -i ~/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT1 \n\
         ")
 
 
