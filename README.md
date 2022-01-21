@@ -432,6 +432,14 @@ For example, see:
 
 (todo) add solution.00000.*.vtu to the file list
 
+## Schedule
+
+I have a class SCHEDULER in Scheduler.py to schedule task to run later.
+This would put commands to run into a file and save that file(e.g. sync data, plot, generate animation).
+I could then choose what I want to schedule based on the project I am working on.
+See an example with:
+	Lib_TwoDSubduction -h
+
 # Projects - TwoDSubduction
 
 ## Cases

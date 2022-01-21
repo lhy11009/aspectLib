@@ -14,17 +14,32 @@ from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 import shilofue.Rheology as Rheology
 from numpy import linalg as LA
 from matplotlib import pyplot as plt
-from shilofue.Utilities import my_assert, ggr2cart2, cart2sph2, Make2dArray, UNITCONVERT
+
+from shilofue.Schedule import ScheduleTaskCase
 
 
 # global varibles
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
-
+PROJECT_DIR = os.environ['TwoDSubduction_DIR']
+# import utilities in subdirectiory
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+from Utilities import my_assert, ggr2cart2, cart2sph2, Make2dArray, UNITCONVERT
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
 project = "TwoDSubduction"
+
+def Usage():
+    print("\
+(One liner description\n\
+\n\
+Examples of usage: \n\
+\n\
+  - generate scheduler files for a single case: \n\
+\n\
+        Lib_TwoDSubduction schedule_case_pp -i EBA_CDPT1/eba_cdpt_SA80.0_OA40.0 \
+        ")
 
 
 class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
@@ -294,56 +309,86 @@ class MY_PARSE_OPERATIONS(Parse.PARSE_OPERATIONS):
 
 
 def PlotTestResults(source_dir, **kwargs):
-        # initialize
-        _case_img_dir = kwargs.get('output_dir', './test_results')
-        if not os.path.isdir(_case_img_dir):
-            os.mkdir(_case_img_dir)
-        _file_type = kwargs.get('type', 'pdf')
-        # convert unit 
-        UnitConvert = UNITCONVERT()
+    # initialize
+    _case_img_dir = kwargs.get('output_dir', './test_results')
+    if not os.path.isdir(_case_img_dir):
+        os.mkdir(_case_img_dir)
+    _file_type = kwargs.get('type', 'pdf')
+    # convert unit 
+    UnitConvert = UNITCONVERT()
 
-        # case TwoDSubduction_pyrolite_density_1_0: density depth-average plot
-        _case_output_dir = os.path.join(source_dir, 'output-TwoDSubduction_pyrolite_density_1_0')
-        assert(os.path.isdir(_case_output_dir))
-        # read data
-        DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert)
-        _depth_average_file = os.path.join(_case_output_dir, 'depth_average.txt')
-        assert(os.access(_depth_average_file, os.R_OK))
-        data_list = DepthAverage.ReadDataStep(_depth_average_file, datatype=["depth", "adiabatic_density", "viscosity"])
-        # plot
-        fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-        axs[0].plot(data_list[0]/1e3, data_list[1], '-b', label='density')
-        axs[0].grid()
-        axs[0].set_ylabel('Density [kg/m3]')
-        axs[0].set_xlabel('Depth [km]')
-        axs[0].set_ylim((3100, 4800))
-        axs[0].legend()
-        # data from Chust 17
-        Chust17_data = np.array([
-          [0.37078107742533817, 3.1425201813692216], 
-          [0.950936590564412, 3.2249689538700497],
-          [4.289074088639609, 3.3645200063366243],
-          [13.733855181574159, 3.6325618236181016],
-          [13.913762104113376, 3.7473406677161245],
-          [15.29053749408711, 3.7902418219342437],
-          [18.542044934634184, 3.850878430998938],
-          [19.224893623385242, 3.908204043696113],
-          [22.7711869758023, 3.9795712587613234],
-          [23.26083512704819, 4.008218112771951],
-          [23.325863060256637, 4.227045194967481],
-          [29.223242999526967, 4.430894804301371],
-          [54.81555663135366, 4.7545978736862855]
-        ])
-        axs[1].plot(Chust17_data[:, 0], Chust17_data[:,1]*1000, '-k', label='Chust17_data')
-        axs[1].set_xlabel('Pressure [GPa]')
-        axs[1].set_ylim((3100, 4800))
-        axs[1].grid()
-        fig.tight_layout()
-        # save
-        _time = 0.0
-        _ofile_route = os.path.join(_case_img_dir, 'Pyrolite_density_1_0.%s' % _file_type)
-        plt.savefig(_ofile_route)
-        print('Plot has been generated: ', _ofile_route)  # screen output
+    # case TwoDSubduction_pyrolite_density_1_0: density depth-average plot
+    _case_output_dir = os.path.join(source_dir, 'output-TwoDSubduction_pyrolite_density_1_0')
+    assert(os.path.isdir(_case_output_dir))
+    # read data
+    DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert)
+    _depth_average_file = os.path.join(_case_output_dir, 'depth_average.txt')
+    assert(os.access(_depth_average_file, os.R_OK))
+    data_list = DepthAverage.ReadDataStep(_depth_average_file, datatype=["depth", "adiabatic_density", "viscosity"])
+    # plot
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    axs[0].plot(data_list[0]/1e3, data_list[1], '-b', label='density')
+    axs[0].grid()
+    axs[0].set_ylabel('Density [kg/m3]')
+    axs[0].set_xlabel('Depth [km]')
+    axs[0].set_ylim((3100, 4800))
+    axs[0].legend()
+    # data from Chust 17
+    Chust17_data = np.array([
+    [0.37078107742533817, 3.1425201813692216], 
+    [0.950936590564412, 3.2249689538700497],
+    [4.289074088639609, 3.3645200063366243],
+    [13.733855181574159, 3.6325618236181016],
+    [13.913762104113376, 3.7473406677161245],
+    [15.29053749408711, 3.7902418219342437],
+    [18.542044934634184, 3.850878430998938],
+    [19.224893623385242, 3.908204043696113],
+    [22.7711869758023, 3.9795712587613234],
+    [23.26083512704819, 4.008218112771951],
+    [23.325863060256637, 4.227045194967481],
+    [29.223242999526967, 4.430894804301371],
+    [54.81555663135366, 4.7545978736862855]
+    ])
+    axs[1].plot(Chust17_data[:, 0], Chust17_data[:,1]*1000, '-k', label='Chust17_data')
+    axs[1].set_xlabel('Pressure [GPa]')
+    axs[1].set_ylim((3100, 4800))
+    axs[1].grid()
+    fig.tight_layout()
+    # save
+    _time = 0.0
+    _ofile_route = os.path.join(_case_img_dir, 'Pyrolite_density_1_0.%s' % _file_type)
+    plt.savefig(_ofile_route)
+    print('Plot has been generated: ', _ofile_route)  # screen output
+
+
+def SchedulePPCase(case):
+    '''
+    Schedule post-procession tasks for a single case
+    Inputs:
+        case(str): case path relative to $TwoDSuduction_DIR
+    '''
+    case_dir = os.path.join(PROJECT_DIR, case)
+    assert(os.path.isdir(case_dir))
+    local_tasks = []
+    local_tasks.append("Lib_rsync_case peloton TwoDSubduction %s" % case)  # sync data with server
+    local_tasks.append("Lib_TwoDSubduction0_PlotCase plot_case -i %s" % case_dir)  # plot case results
+    local_tasks.append("Lib_TwoDSubduction0_PlotCase morph_case -i %s" % case_dir)  # plot slab morphology
+    ScheduleTaskCase(case_dir, local_tasks) # add tasks to scheduler and generate scripts
+
+
+def SchedulePPGroup(group):
+    '''
+    Schedule post-procession tasks for a group of cases
+    Inputs:
+        group(str): group path relative to $TwoDSuduction_DIR
+    '''
+    group_dir = os.path.join(PROJECT_DIR, group)
+    assert(os.path.isdir(group_dir))
+    local_tasks = []
+    local_tasks.append("Lib_rsync_case peloton TwoDSubduction %s" % group)  # sync data with server
+    local_tasks.append("Lib_TwoDSubduction0_PlotCase plot_case_in_dir -i %s" % group_dir)  # plot case results
+    local_tasks.append("Lib_TwoDSubduction0_PlotCase morph_case_in_dir -i %s" % group_dir)  # plot slab morphology
+    ScheduleTaskCase(group_dir, local_tasks) # add tasks to scheduler and generate scripts
 
 
 def main():
@@ -367,9 +412,9 @@ def main():
     parser.add_argument('-o', '--output_dir', type=str,
                         default='../TwoDSubduction/',
                         help='Directory for output')
-    parser.add_argument('-i', '--input_dir', type=str,
-                        default=shilofue_DIR,
-                        help='A directory that contains the input')
+    parser.add_argument('-i', '--inputs', type=str,
+                        default='foo',
+                        help='inputs')
     parser.add_argument('-s', '--step', type=int,
                         default=0,
                         help='timestep')
@@ -384,18 +429,23 @@ def main():
     arg = parser.parse_args(_options)
 
     # execute commend
-    if _commend == 'foo':
+    if (_commend in ['-h', '--help']):
+        # example:
+        Usage()
+    elif _commend == 'foo':
         pass
-    
     elif _commend == 'plot_test_results':
         # plot the result of tests
         # example:
         # python -m shilofue.TwoDSubduction plot_test_results -i 
         #  /home/lochy/softwares/aspect/build_TwoDSubduction/tests/ -o $TwoDSubduction_DIR/test_results
-        source_dir = arg.input_dir
+        source_dir = arg.inputs
         # todo
         PlotTestResults(source_dir, output_dir=arg.output_dir)
-    
+    elif _commend == 'schedule_case_pp':
+        SchedulePPCase(arg.inputs)
+    elif _commend == 'schedule_group_pp':
+        SchedulePPGroup(arg.inputs)
     else:
         raise ValueError('Commend %s is not available.' % _commend)
 
