@@ -184,9 +184,12 @@ class PLOTTER():
             Prepare_Result.read_contents(pr_script)
             Prepare_Result.substitute()
             ofile_path = Prepare_Result.save(ofile, relative=True)  # save json file
+            print("PrepareResultStep: json file generated %s" % ofile_path)
         else:
             # skip this step
             ofile_path = ofile
+            assert(os.path.isfile(ofile_path))
+            print("PrepareResultStep: use previous json file %s" % ofile_path)
         with open(ofile_path, 'r') as fin:
             contents = json.load(fin)
         file_to_expect = contents['figures'][-1]["save path"]
