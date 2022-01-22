@@ -6,7 +6,7 @@ I store all my cases in a structured file systems and wrote my scripts in a hier
 
 ## Structured file systems
 
-## Hierachical layout of packages
+### Hierachical layout of packages
 
 On the first order, there are scripts below 'python_scripts(shilofue)' that should be applicable for all the models I run.
 
@@ -17,6 +17,12 @@ In the scripts, I define "parental" classes and class functions in the first ord
 A good example could be seen in the script of (todo).py
 
 (todo) use route like '.'
+
+### Archived files under the "files" folder
+
+This is the folder where I put all the acrhived files.
+
+* "Project" folder : include all python scripts to initiate a new project with.
 
 
 # Topics
