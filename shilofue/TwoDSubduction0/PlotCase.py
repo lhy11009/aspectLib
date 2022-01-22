@@ -33,6 +33,7 @@ from shilofue.TwoDSubduction0.PlotSlab import vtk_and_slab_morph_case, SLABPLOT
 import shilofue.PlotCase as PlotCase
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
+ 
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -93,6 +94,7 @@ def PlotCaseRun(case_path, **kwargs):
     Returns:
         -
     '''
+    print("PlotCaseRun in TwoDSubduction0: operating")
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
 
@@ -117,111 +119,18 @@ def PlotCaseRun(case_path, **kwargs):
     print("Visualizing using visit")
     RunScripts(ofile_path)  # run scripts
 
-class PLOTTER():
+class PLOTTER(PlotCase.PLOTTER):
     '''
     A class for preparing results
     '''
-    def __init__(self, module, **kwargs):
+    def __init__(self, module, PlotCaseRuns, **kwargs):
         '''
         Initiation
         module (class) - class to use for generating results at each step
         kwargs(dict):
 
         '''
-        default_chunk = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "figure_step_template.json")
-        default_box = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "figure_step_template_box.json")
-        self.module = module
-        self.template_for_chunk = kwargs.get('template_for_chunk', default_chunk)
-        self.template_for_box = kwargs.get('template_for_box', default_box)
-        pass
-
-    def GenerateJson(self, case_path, step):
-        '''
-        Interpret the required json file for plotting
-        Inputs:
-            case_path(str): path to the case
-            step(int): step in computation
-        '''
-        # Generate json file
-        odir = os.path.join(case_path, 'json_files')
-        ofile = os.path.join(odir, 'figure_step.json')
-        Prepare_Result = self.module(case_path)
-        Prepare_Result.Interpret(step=step)
-        # script to use
-        if Prepare_Result.get_geometry() == "chunk":
-            pr_script = self.template_for_chunk
-        elif Prepare_Result.get_geometry() == "box":
-            pr_script = self.template_for_box
-        assert(os.path.isfile(pr_script))
-        Prepare_Result.read_contents(pr_script)
-        Prepare_Result.substitute()
-        ofile_path = Prepare_Result.save(ofile, relative=True)
-        return ofile_path
-    
-    def PrepareResultStep(self, case_path, step, **kwargs):
-        '''
-        Prepare results
-        Inputs:
-            case_path(str): path to the case
-            step(int): step in computation
-            kwargs(dict):
-                update: update result if the final result is presented
-        '''
-        update = kwargs.get('update', True)
-        generate_json = kwargs.get('generate_json', True)
-        # Generate json file for combining result
-        odir = os.path.join(case_path, 'json_files')
-        ofile = os.path.join(odir, 'figure_step.json')
-        if generate_json:
-            Prepare_Result = self.module(case_path)
-            Prepare_Result.Interpret(step=step)
-            # script to use
-            if Prepare_Result.get_geometry() == "chunk":
-                pr_script = self.template_for_chunk
-            elif Prepare_Result.get_geometry() == "box":
-                pr_script = self.template_for_box
-            assert(os.path.isfile(pr_script))
-            Prepare_Result.read_contents(pr_script)
-            Prepare_Result.substitute()
-            ofile_path = Prepare_Result.save(ofile, relative=True)  # save json file
-            print("PrepareResultStep: json file generated %s" % ofile_path)
-        else:
-            # skip this step
-            ofile_path = ofile
-            assert(os.path.isfile(ofile_path))
-            print("PrepareResultStep: use previous json file %s" % ofile_path)
-        with open(ofile_path, 'r') as fin:
-            contents = json.load(fin)
-        file_to_expect = contents['figures'][-1]["save path"]
-        if update or not os.path.isfile(file_to_expect): 
-            PlotCombine.PrepareResults(ofile_path)  # call function with the generated json file
-        else:
-            print("%s: result at step %d is found (%s), skip" % (Utilities.func_name(), step, file_to_expect))
-
-    def PlotPrepareResultStep(self, case_path, step, **kwargs):
-        '''
-        First plot and then prepare results
-        Inputs:
-            case_path(str): path to the case
-            step(int): step in computation
-            kwargs(dict):
-                update: update result if the final result is presented
-        Returns:
-            file_to_expect(str): file to generate, this is the file at the bottom of the list
-        '''
-        update = kwargs.get('update', True)  # if update on results
-        ofile_path = self.GenerateJson(case_path, step) # generate json file first
-        with open(ofile_path, 'r') as fin:
-            contents = json.load(fin)
-        file_to_expect = contents['figures'][-1]["save path"]  # find the file we expect
-        if update or not os.path.isfile(file_to_expect): 
-            # plot results, here step means visualization step
-            PlotCaseRun(case_path, step=step)
-            # combine results, as the json file is generated, skip here.
-            self.PrepareResultStep(case_path, step, update=update, generate_json=False)
-        else:
-            print("%s: result at step %d is found (%s), skip" % (Utilities.func_name(), step, file_to_expect))
-        return file_to_expect
+        PlotCase.PLOTTER.__init__(self, module, PlotCaseRuns)   
 
 
 def PrepareResultStep(case_path, step):
@@ -260,6 +169,19 @@ def PlotPrepareResultStep(case_path, step):
     PrepareResultStep(case_path, step)
 
 
+def PrScriptToUse(case_path, template_for_chunk, template_for_box):
+    '''
+    Return model geometry
+    Inputs:
+    '''
+    Prepare_Result = PREPARE_RESULT_OPTIONS(case_path)
+    if Prepare_Result.get_geometry() == "chunk":
+        pr_script = template_for_chunk
+    elif Prepare_Result.get_geometry() == "box":
+        pr_script = template_for_box
+    return pr_script
+
+
 def main():
     '''
     main function of this module
@@ -295,6 +217,10 @@ def main():
         pass
     arg = parser.parse_args(_options)
 
+    default_chunk = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "figure_step_template.json")
+    default_box = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "figure_step_template_box.json")
+
+
     # commands
     # rearrange the time_range entry
     if arg.time == None or arg.time1 == None:
@@ -308,17 +234,21 @@ def main():
         PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range)
         pass
     elif _commend == 'prepare_result_step':
-        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS)
-        Plotter.PrepareResultStep(arg.inputs, arg.step)
+        pr_script = PrScriptToUse(arg.inputs, default_chunk, default_box)
+        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, [PlotCase.PlotCaseRun, PlotCaseRun])
+        Plotter.PrepareResultStep(arg.inputs, pr_script, arg.step)
     elif _commend == 'plot_prepare_result_step':
-        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS)
-        Plotter.PlotPrepareResultStep(arg.inputs, arg.step)
+        pr_script = PrScriptToUse(arg.inputs, default_chunk, default_box)
+        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, [PlotCase.PlotCaseRun, PlotCaseRun])
+        Plotter.PlotPrepareResultStep(arg.inputs, pr_script, arg.step)
     elif _commend == 'animate_case':
-        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS)
-        PlotCase.AnimateCaseResults(Plotter.PlotPrepareResultStep, arg.inputs)
+        pr_script = PrScriptToUse(arg.inputs, default_chunk, default_box)
+        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, [PlotCase.PlotCaseRun, PlotCaseRun])
+        PlotCase.AnimateCaseResults(Plotter.PlotPrepareResultStep, arg.inputs, pr_script)
     elif _commend == 'animate_case_in_dir':
-        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS)
-        PlotCase.AnimateCombinedDir(Plotter.PlotPrepareResultStep, arg.inputs)
+        pr_script = PrScriptToUse(arg.inputs, default_chunk, default_box)
+        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, [PlotCase.PlotCaseRun, PlotCaseRun])
+        PlotCase.AnimateCombinedDir(Plotter.PlotPrepareResultStep, arg.inputs, pr_script)
     elif _commend == 'morph_case':
         # slab_morphology, input is the case name
         vtk_and_slab_morph_case(arg.inputs, rewrite=arg.rewrite)

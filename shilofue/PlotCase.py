@@ -19,7 +19,7 @@ descriptions
 """
 import numpy as np
 import sys, os, argparse, re
-# import json, re
+import json
 # import pathlib
 # import subprocess
 import numpy as np
@@ -29,6 +29,7 @@ from shilofue.ParsePrm import ReadPrmFile
 import shilofue.PlotVisit as PlotVisit
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
+import shilofue.PlotCombine as PlotCombine
 import imageio
 
 # directory to the aspect Lab
@@ -53,6 +54,102 @@ Examples of usage: \n\
         ")
 
 
+class PLOTTER():
+    '''
+    A class for preparing results
+    '''
+    def __init__(self, module, PlotCaseRuns, **kwargs):
+        '''
+        Initiation
+        module (class) - class to use for generating results at each step
+        PlotCaseRuns (list of functions) - a list of functions for generating result at a given step.
+        kwargs(dict):
+        '''
+        self.module = module
+        self.PlotCaseRuns = PlotCaseRuns
+        pass
+
+    def GenerateJson(self, case_path, pr_script, step):
+        '''
+        Interpret the required json file for plotting
+        Inputs:
+            case_path(str): path to the case
+            step(int): step in computation
+        '''
+        # Generate json file
+        odir = os.path.join(case_path, 'json_files')
+        ofile = os.path.join(odir, 'figure_step.json')
+        Prepare_Result = self.module(case_path)
+        Prepare_Result.Interpret(step=step)
+        assert(os.path.isfile(pr_script)) # check script to use
+        Prepare_Result.read_contents(pr_script)
+        Prepare_Result.substitute()
+        ofile_path = Prepare_Result.save(ofile, relative=True)
+        return ofile_path
+    
+    def PrepareResultStep(self, case_path, pr_script, step, **kwargs):
+        '''
+        Prepare results
+        Inputs:
+            case_path(str): path to the case
+            step(int): step in computation
+            kwargs(dict):
+                update: update result if the final result is presented
+        '''
+        update = kwargs.get('update', True)
+        generate_json = kwargs.get('generate_json', True)
+        # Generate json file for combining result
+        odir = os.path.join(case_path, 'json_files')
+        ofile = os.path.join(odir, 'figure_step.json')
+        if generate_json:
+            Prepare_Result = self.module(case_path)
+            Prepare_Result.Interpret(step=step)
+            assert(os.path.isfile(pr_script)) # check script to use
+            Prepare_Result.read_contents(pr_script)
+            Prepare_Result.substitute()
+            ofile_path = Prepare_Result.save(ofile, relative=True)  # save json file
+            print("PrepareResultStep: json file generated %s" % ofile_path)
+        else:
+            # skip this step
+            ofile_path = ofile
+            assert(os.path.isfile(ofile_path))
+            print("PrepareResultStep: use previous json file %s" % ofile_path)
+        with open(ofile_path, 'r') as fin:
+            contents = json.load(fin)
+        file_to_expect = contents['figures'][-1]["save path"]
+        if update or not os.path.isfile(file_to_expect): 
+            PlotCombine.PrepareResults(ofile_path)  # call function with the generated json file
+        else:
+            print("%s: result at step %d is found (%s), skip" % (Utilities.func_name(), step, file_to_expect))
+
+    def PlotPrepareResultStep(self, case_path, pr_script, step, **kwargs):
+        '''
+        First plot and then prepare results
+        Inputs:
+            case_path(str): path to the case
+            step(int): step in computation
+            kwargs(dict):
+                update: update result if the final result is presented
+        Returns:
+            file_to_expect(str): file to generate, this is the file at the bottom of the list
+        '''
+        update = kwargs.get('update', True)  # if update on results
+        ofile_path = self.GenerateJson(case_path, pr_script, step) # generate json file first
+        with open(ofile_path, 'r') as fin:
+            contents = json.load(fin)
+        file_to_expect = contents['figures'][-1]["save path"]  # find the file we expect
+        if update or not os.path.isfile(file_to_expect): 
+            # plot results, here step means visualization step
+            for PlotCaseRun0 in self.PlotCaseRuns:
+                # we can take multiple functions from different sources
+                PlotCaseRun0(case_path, step=step)
+            # combine results, as the json file is generated, skip here.
+            self.PrepareResultStep(case_path, step, pr_script, update=update, generate_json=False)
+        else:
+            print("%s: result at step %d is found (%s), skip" % (Utilities.func_name(), step, file_to_expect))
+        return file_to_expect
+
+
 def PlotCaseRun(case_path, **kwargs):
     '''
     Plot case run result
@@ -63,6 +160,7 @@ def PlotCaseRun(case_path, **kwargs):
     Returns:
         -
     '''
+    print("PlotCaseRun: operating")
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
     if not os.path.isfile(prm_path):
@@ -151,7 +249,7 @@ def PlotCaseCombinedDir(modules, dir, **kwargs):
                 PlotCaseCombined(modules, _path, **kwargs)
 
 
-def AnimateCaseResults(PrepareS, case_path, **kwargs):
+def AnimateCaseResults(PrepareS, case_path, pr_script, **kwargs):
     '''
     create animation
     Inputs:
@@ -177,7 +275,7 @@ def AnimateCaseResults(PrepareS, case_path, **kwargs):
     filenames = []
     for step in steps:
         # prepare results, if the figure is already generated, skip
-        filename = PrepareS(case_path, step, update=False)
+        filename = PrepareS(case_path, pr_script, step, update=False)
         filenames.append(filename)
     o_dir = os.path.dirname(filenames[-1])  # just use this directory as output
     o_path = os.path.join(o_dir, "%s.gif" % name)
@@ -189,7 +287,7 @@ def AnimateCaseResults(PrepareS, case_path, **kwargs):
     pass
 
 
-def AnimateCombinedDir(PrepareS, dir, **kwargs):
+def AnimateCombinedDir(PrepareS, dir, pr_script, **kwargs):
     '''
     combine animation for cases in a directory
     inputs:
@@ -210,9 +308,9 @@ def AnimateCombinedDir(PrepareS, dir, **kwargs):
                 try:
                     step_range = kwargs['step_range']
                 except KeyError:
-                    AnimateCaseResults(PrepareS, _path, name=name)
+                    AnimateCaseResults(PrepareS, _path, pr_script, name=name)
                 else:
-                    AnimateCaseResults(PrepareS, _path, step_range=step_range, name=name)
+                    AnimateCaseResults(PrepareS, _path, pr_script, step_range=step_range, name=name)
 
 
 
