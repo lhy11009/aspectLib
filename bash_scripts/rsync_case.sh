@@ -115,20 +115,27 @@ main(){
     ###
     if [[ "$1" = "-h" ]]; then
         usage
-    elif [[ "$1" = "peloton" && "$2" = "TwoDSubduction" ]]; then
+    elif [[ "$1" = "peloton" ]]; then
         ##
         # tranfer data to & from peloton
         # Innputs:
         # Terninal Outputs
         ##
-        shift; shift
+        shift;
+        project="$1" 
+        shift;
         case_dir="$1"; shift
         parse_options $@
-        local_dir=${TwoDSubduction_DIR}
-        peloton_dir=$(awk '{if ($2 ~ /TwoDSubduction_DIR/){split($2, array, "="); gsub("\"", "", array[2]) ;print array[2]}}' "${ASPECT_LAB_DIR}/env/enable_peloton.sh")
+        local query="${project}_DIR"
+        local_dir=${!query}
+        [[ -n $local_dir ]] || { cecho "${BAD}" "Query of local_dir failed"; exit 1; }
+        echo "local_dir: ${local_dir}"
+        peloton_dir=`awk '{if ($2 ~ /'"${project}_DIR"'/){split($2, array, "="); gsub("\"", "", array[2]) ;print array[2]}}' "${ASPECT_LAB_DIR}/env/enable_peloton.sh"`
+        [[ -n $peloton_dir ]] || { cecho "${BAD}" "Query of peloton_dir failed"; exit 1; }
+        echo "peloton_dir: ${peloton_dir}"  # debug
         local peloton_addr=$(eval "awk '{ if(\$1 == \"peloton\") print \$2;}' $SERVER_LIST")
         rsync_server "${case_dir}" "${local_dir}" "${peloton_dir}" "${peloton_addr}"
-    elif [[ "$1" = "stampede2" && "$2" = "TwoDSubduction" ]]; then
+    elif [[ "$1" = "stampede2" ]]; then
         ##
         # tranfer data to & from stampede2
         # Innputs:
@@ -138,7 +145,7 @@ main(){
         case_dir="$1"; shift
         parse_options $@
         local_dir=${TwoDSubduction_DIR}
-        stampede2_dir=$(awk '{if ($2 ~ /TwoDSubduction_DIR/){split($2, array, "="); gsub("\"", "", array[2]) ;print array[2]}}' "${ASPECT_LAB_DIR}/env/enable_stampede2.sh")
+        stampede2_dir=`awk '{if ($2 ~ /'"${project}_DIR"'/){split($2, array, "="); gsub("\"", "", array[2]) ;print array[2]}}' "${ASPECT_LAB_DIR}/env/enable_stampede2.sh"`
         local stampede2_addr=$(eval "awk '{ if(\$1 == \"stampede2\") print \$2;}' $SERVER_LIST")
         rsync_server "${case_dir}" "${local_dir}" "${stampede2_dir}" "${stampede2_addr}"
     elif [[ "$1" = "ucd" && "$2" = "TwoDSubduction" ]]; then
