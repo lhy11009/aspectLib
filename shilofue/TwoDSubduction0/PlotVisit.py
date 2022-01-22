@@ -18,16 +18,10 @@ descriptions
 """
 import numpy as np
 import sys, os, argparse
-import json, re
 # import pathlib
-import subprocess
 import numpy as np
-# from matplotlib import cm
-from matplotlib import pyplot as plt
-import shilofue.Plot as Plot
 import shilofue.ParsePrm as ParsePrm
-import shilofue.PlotVisit as PlotVisit
-from shilofue.CaseOptions import CASE_OPTIONS
+import shilofue.PlotVisit as PlotVisit, PrepareVTKOptions, RunVTKScripts, RunScripts
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -158,8 +152,7 @@ class PREPARE_RESULT_OPTIONS(PlotVisit.PREPARE_RESULT_OPTIONS):
         kwargs: options
         """
         # call function from parent
-        step = kwargs.get('step', 0)
-        PlotVisit.PREPARE_RESULT_OPTIONS.Interpret(self, step=step)
+        PlotVisit.PREPARE_RESULT_OPTIONS.Interpret(self, **kwargs)
 
 
 def main():
