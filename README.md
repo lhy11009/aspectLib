@@ -495,3 +495,9 @@ I use the vtk package in c++ to anaylyze trench motion here:
 * a, convert results into inputs for the vtk script
 * b, run the vtk script and loop for steps. Combine results into a new file
 * c, plot the results in this file.
+
+## Archived Files
+
+### Phase transitions configuration
+
+* files/TwoDSubduction/phases_1_0.json - the CDPT model I use.

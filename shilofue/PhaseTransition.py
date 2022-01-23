@@ -45,6 +45,9 @@ class PHASE_OPT(Utilities.JSON_OPT):
         self.add_key("Name of this composition", str, ["name"], 'pyrolite', nick='name')
         self.add_key("Clapeyron slop", list, ["clapeyron slope"], [], nick='cl')
         self.add_key("Name of boundaries", list, ["boundary"], [], nick='boundary')
+        self.add_key("Depth", list, ["depth"], [], nick="depth")
+        self.add_key("Width", list, ["width"], [], nick="width")
+        self.add_key("Temperature", list, ["temperature"], [], nick="temperature")
 
     def check(self):
         '''
@@ -56,6 +59,9 @@ class PHASE_OPT(Utilities.JSON_OPT):
         xc = self.values[2]
         cl = self.values[4]
         boundary = self.values[5]
+        depth = self.values[6]
+        width = self.values[7]
+        temperature = self.values[8]
         length = len(drho)
         assert(length == len(xc))
         assert(length == len(cl))
@@ -63,8 +69,10 @@ class PHASE_OPT(Utilities.JSON_OPT):
             for i in range(length):
                 boundary.append("bd%d" % (i+1))
         assert(length == len(boundary))
+        assert(length == len(depth))
+        assert(length == len(width))
+        assert(length == len(temperature))
 
-    
     def get_name(self):
         '''
         get name
@@ -76,6 +84,18 @@ class PHASE_OPT(Utilities.JSON_OPT):
     def get_boundary_names(self):
         return self.values[5]
     
+    def get_depth(self):
+        return self.values[6]
+
+    def get_width(self):
+        return self.values[7]
+    
+    def get_temperature(self):
+        return self.values[8]
+    
+    def get_clapeyron_slope(self):
+        return self.values[4]
+
     def to_get_reference_density(self):
         '''
         todo
@@ -136,23 +156,53 @@ class CDPT_OPT(Utilities.JSON_OPT):
         return self.values[0]
 
 
-def ParsePhaseInput(phase_opt):
+def ParsePhaseInput(phase_opt, entry="density"):
     '''
     parse input of phases to a aspect input form
+    Inputs:
+        entry (str): one in ["density", ], indicating what type of output we want
     
     '''
     output = ""
     # number of transition
-    # todo
     total = phase_opt.total()
-    rho = Get_reference_density(*phase_opt.to_get_reference_density())
-    # generate output
-    output += "%.1f" % rho[0]
-    for i in range(1, total+1):
-        output += "|%.1f" % rho[i]
-
+    if entry == "density":
+        rho = Get_reference_density(*phase_opt.to_get_reference_density())
+        # generate output
+        output += "%.1f" % rho[0]
+        for i in range(1, total+1):
+            output += "|%.1f" % rho[i]  
+    elif entry == "depth":
+        depth = phase_opt.get_depth()
+        # generate output
+        output += "%.1f" % depth[0]
+        for i in range(1, total):
+            output += "|%.1f" % depth[i]  
+        pass
+    elif entry == "width":
+        width = phase_opt.get_width()
+        # generate output
+        output += "%.1f" % width[0]
+        for i in range(1, total):
+            output += "|%.1f" % width[i]  
+        pass
+    elif entry == "temperature":
+        temperature = phase_opt.get_temperature()
+        # generate output
+        output += "%.1f" % temperature[0]
+        for i in range(1, total):
+            output += "|%.1f" % temperature[i]  
+        pass
+    elif entry == "clapeyron slope":
+        cl = phase_opt.get_clapeyron_slope()
+        # generate output
+        output += "%.1f" % cl[0]
+        for i in range(1, total):
+            output += "|%.1f" % cl[i]  
+        pass
     return output
-        
+
+
 def ParsePhaseTransitionFile(inputs):
     '''
     Parse the inputs of phase transition to output in aspect
@@ -165,7 +215,9 @@ def ParsePhaseTransitionFile(inputs):
     if type(inputs) == list:
         # read dict
         # get the outputs
-        outputs = "density = "
+        outputs = {}
+        density_outputs = ""
+        # density output
         is_first = True
         for phase_opt in inputs:
             name = phase_opt.get_name()
@@ -174,8 +226,57 @@ def ParsePhaseTransitionFile(inputs):
             if is_first:
                 is_first = False
             else:
-                outputs += ', '
-            outputs += "%s: %s" % (name, output)
+                density_outputs += ', '
+            density_outputs += "%s: %s" % (name, output)
+        outputs["Densities"] = density_outputs
+        # depth
+        is_first = True
+        depth_outputs = ""
+        for phase_opt in inputs:
+            name = phase_opt.get_name()
+            output = ParsePhaseInput(phase_opt, "depth")
+            if is_first:
+                is_first = False
+            else:
+                depth_outputs += ', '
+            depth_outputs += "%s: %s" % (name, output)
+        outputs["Phase transition depths"] = depth_outputs 
+        # width    
+        is_first = True 
+        width_outputs = ""
+        for phase_opt in inputs:
+            name = phase_opt.get_name()
+            output = ParsePhaseInput(phase_opt, 'width')
+            if is_first:
+                is_first = False
+            else:
+                width_outputs += ', '
+            width_outputs += "%s: %s" % (name, output)
+        outputs["Phase transition widths"] = width_outputs 
+        # temperature
+        is_first = True
+        temperature_outputs = ""
+        for phase_opt in inputs:
+            name = phase_opt.get_name()
+            output = ParsePhaseInput(phase_opt, 'temperature')
+            if is_first:
+                is_first = False
+            else:
+                temperature_outputs += ', '
+            temperature_outputs += "%s: %s" % (name, output)
+        outputs["Phase transition temperatures"] = temperature_outputs
+        # clapeyron slope
+        is_first = True
+        cl_outputs = ""
+        for phase_opt in inputs:
+            name = phase_opt.get_name()
+            output = ParsePhaseInput(phase_opt, 'clapeyron slope')
+            if is_first:
+                is_first = False
+            else:
+                cl_outputs += ', '
+            cl_outputs += "%s: %s" % (name, output)
+        outputs["Phase transition Clapeyron slopes"] = cl_outputs
     elif type(inputs) == str:
         # read file
         Utilities.my_assert(os.access(inputs, os.R_OK), FileExistsError, "Json file doesn't exist.")
