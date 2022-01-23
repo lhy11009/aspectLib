@@ -290,6 +290,13 @@ Because we don't want anything to be appended to the case name in this special o
 
 ## Cooperate with other models / analytic results / laws
 
+### Cooperate with CDPT phase transition models
+
+Script: Phase Transition.py
+
+* print phase-transition outputs
+* print entropy changes on phase transitions
+
 ### Cooperate with Hefesto
 
 I wrote a python script "PostHefesto.py" 
@@ -364,15 +371,7 @@ The format of the file looks like:
 	0.0 0.0 0.0
 	...
 These also work as a standard interface to parse data from these files
-
-
-#### Plot results in "statistic" file
-
-(todo) Change the length of number label on axis, currently they are too long so parts are blocked.
-
-There are interfaces for "GetStep", "GetTime" as well
-
-#### Plot Newton solver results
+shilofue/PhaseTransition.py
 
 * Parse the outputs from the stdout file (bash_scripts/awk_states/parse_block_newton)
 * Plot the outputs
