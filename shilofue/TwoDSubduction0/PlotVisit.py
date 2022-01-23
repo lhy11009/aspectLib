@@ -21,7 +21,7 @@ import sys, os, argparse
 # import pathlib
 import numpy as np
 import shilofue.ParsePrm as ParsePrm
-import shilofue.PlotVisit as PlotVisit, PrepareVTKOptions, RunVTKScripts, RunScripts
+import shilofue.PlotVisit as PlotVisit
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -215,11 +215,11 @@ def main():
         pass
     
     elif _commend == 'vtk_options':
-        vtk_option_path, _, _ = PrepareVTKOptions(VISIT_OPTIONS, arg.inputs, arg.operation, step=arg.step)
-        RunVTKScripts(arg.operation, vtk_option_path)
+        vtk_option_path, _, _ = PlotVisit.PrepareVTKOptions(VISIT_OPTIONS, arg.inputs, arg.operation, step=arg.step)
+        PlotVisit.RunVTKScripts(arg.operation, vtk_option_path)
     
     elif _commend == 'run':
-        RunScripts(arg.inputs)
+        PlotVisit.RunScripts(arg.inputs)
 
     else:
         # no such option, give an error message
