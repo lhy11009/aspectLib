@@ -208,43 +208,6 @@ def Get_reference_density(rho0, drho, xc):
         rho_p[i+1:] += drho[i] * xc[i]
     return rho_p
 
-def Effective_density_change_on_660():
-    '''
-    Compute effect_density_change
-    Inputs:
-        inputs
-    '''
-    pass
-    
-
-def Get_effective_density_change_on_660(phase_opt):
-    '''
-    Derive effective density change on 660 for latent heat computation
-    Inputs:
-        phase_opt (PHASE_OPT): options of phase transitions
-    Returns:
-        drho_660_eff (float): effective density change on the 660
-    '''
-    # todo
-    lh_660 = 0.0
-    name = phase_opt.get_name()
-    phase_dict = phase_opt.get_dict()
-    for i_dx in range(len(phase_dict['drho'])):
-        boundary = phase_dict['boundary'][i_dx]
-        if re.match('660', boudnary):
-            lh_660 += Get_latent_heat_contribution(phase_dict, i_dx)
-    rho_p = Get_reference_density(*phase_opt.to_get_reference_density())
-    # get the index of ringwoodite phase
-    i660_rd = 0
-    for i in len(phase_dict['boundary']):
-        if phase_dict['boundary'] == "660_ol":
-            i660_rd = i + 1
-            break
-    rho_660 = rho_p[i660_rd] + rho_p[i660_rd+1]
-    cl_660 = phase_dict['claperon slope'][i660_rd-1]
-    drho_660_eff = lh_660 * rho_660^2.0 / cl_660
-    return drho_660_eff
-
 
 def Get_entropy_change(rho0, drho, xc, cl):
     '''
@@ -291,7 +254,7 @@ Examples of usage: \n\
 \n\
     - parse composition dependent phase transition inputs:\n\
 \n\
-        python -m shilofue.Parse phase_input -i ./files/TwoDSubduction/phases_1_0.json\n\
+        python -m shilofue.PhaseTransition phase_input -i ./files/TwoDSubduction/phases_1_0.json\n\
 \n\
     - show the entropy changes on phase transitions\n\
 \n\
@@ -343,13 +306,6 @@ def main():
         outputs = ParsePhaseTransitionFile(arg.inputs)
         # print the output
         print(outputs)
-    elif _commend == "effective_660":
-        # todo
-        cdpt_opt = CDPT_OPT()
-        cdpt_opt.read_json(arg.inputs)
-        phase_opt = cdpt_opt.get_compositions()[0]
-        drho_660_eff = Get_effective_density_change_on_660(phase_opt)
-        print("Effective density jump on 660 for latent heat computation is %s" % drho_660_eff)
     elif _commend == "show_entropy_changes":
         # todo
         Show_entropy_changes(arg.inputs)
