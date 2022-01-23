@@ -1,0 +1,45 @@
+{
+    "_comments": ["This is the input of compositional phases, taken from table 1 of Arredondo& Billen 2017"],
+    "compositions":
+    [
+        {
+            "_comments": ["Pyrolite composition: 55% olivine, 40% pyroxene, 5% garnet",
+                        "These entries are listed by depth"],
+            "name": "background",
+            "rho0": 3300.0,
+            "drho": [171.60, 86.790, 221.10, 298.90, 184.80, 208.04, 386.10],
+            "depth": [410e3, 520e3, 560e3, 670e3, 670e3, 670e3, 670e3],
+            "temperature": [1662.0, 1662.0, 1662.0, 1662.0, 1662.0, 1662.0, 1662.0],
+            "width": [5e3, 5e3, 5e3, 10e3, 5e3, 5e3, 5e3],
+            "xc": [0.55, 0.55, 0.05, 0.55, 0.4, 0.4, 0.4],
+            "clapeyron slope": [4e6, 4.1e6, 4e6, -2e6, 4e6, -3.1e6, 1.3e6],
+            "boundary": ["410_ol", "520_ol", "560_gt", "660_ol", "660_gt_il", "660_il_brg", "660_gt_brg"]
+        },
+        {
+            "_comments": ["Harzburgite composition: 80% olivine, 20% pyroxene"],
+            "name": "spharz",
+            "rho0": 3235.0,
+            "drho": [171.60, 86.790, 221.10, 298.90, 184.80, 208.04, 386.10],
+            "depth": [410e3, 520e3, 560e3, 670e3, 670e3, 670e3, 670e3],
+            "temperature": [1662.0, 1662.0, 1662.0, 1662.0, 1662.0, 1662.0, 1662.0],
+            "width": [5e3, 5e3, 5e3, 10e3, 5e3, 5e3, 5e3],
+            "xc": [0.8, 0.8, 0.0, 0.8, 0.20, 0.20, 0.20],
+            "clapeyron slope": [4e6, 4.1e6, 4e6, -2e6, 4e6, -3.1e6, 1.3e6],
+            "boundary": ["410_ol", "520_ol", "560_gt", "660_ol", "660_gt_il", "660_il_brg", "660_gt_brg"]
+        },
+        {
+            "_comments": ["basalt composition: total garnet in MTZ in this paper",
+                        "the 0.33, 0.67 numbers are picked up to mimic a whole mineralogy"],
+            "name": "spcrust",
+            "rho0": 3000.0,
+            "drho": [540.0, 221.10, 386.10],
+            "depth": [80e3, 665e3, 720e3],
+            "temperature": [1173.0, 1662.0, 1662.0],
+            "width": [5e3, 5e3, 5e3],
+            "xc": [1.0, 0.33, 0.67],
+            "clapeyron slope": [0.0, 4e6, 1.3e6],
+            "boundary": ["ec", "660_gt_CaPv", "720_gt_brg"]
+        }
+    ],
+    "effective 660 for latent heat": 1
+}

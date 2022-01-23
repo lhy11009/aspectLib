@@ -58,7 +58,6 @@ class CASE_OPT(CasesP.CASE_OPT):
         '''
         CasesP.CASE_OPT.__init__(self)
         self.start = self.number_of_keys()
-        self.add_key("If use world builder", int, ['use world builder'], 0, nick='if_wb')
         self.add_key("Age of the subducting plate at trench", float,\
             ['world builder', 'subducting plate','age trench'], 80e6, nick='sp_age_trench')
         self.add_key("Spreading rate of the subducting plate", float,\
@@ -109,26 +108,26 @@ different age will be adjusted.",\
         "%s: The geometry for TwoDSubduction cases must be \"chunk\" or \"box\"" \
         % Utilities.func_name())
         if self.values[3] == 'box':
-            Utilities.my_assert(self.values[self.start + 0] == 1, ValueError,\
+            Utilities.my_assert(self.values[9] == 1, ValueError,\
             "%s: When using the box geometry, world builder must be used for initial conditions" \
             % Utilities.func_name())  # use box geometry, wb is mandatory
         pass
         # check the setting for adjust box width
-        plate_age_method = self.values[self.start + 9] 
+        plate_age_method = self.values[self.start + 8] 
         if plate_age_method == 'adjust box width':
-            box_width = self.values[self.start + 7]
-            if box_width != self.defaults[self.start + 7]:
+            box_width = self.values[self.start + 6]
+            if box_width != self.defaults[self.start + 6]:
                 warnings.warn("By using \"adjust box width\" method for subduction plate age\
                 box width will be automatically adjusted. Thus the given\
                 value is not taken.")
-            box_width_pre_adjust = self.values[self.start+12]
-            sp_age_trench_default = self.defaults[self.start+1]  # default value for age at trench
-            sp_rate_default = self.defaults[self.start+2]  # default value for spreading rate
+            box_width_pre_adjust = self.values[self.start+11]
+            sp_age_trench_default = self.defaults[self.start]  # default value for age at trench
+            sp_rate_default = self.defaults[self.start+1]  # default value for spreading rate
             Utilities.my_assert(box_width_pre_adjust > sp_age_trench_default * sp_rate_default, ValueError,\
             "For the \"adjust box width\" method to work, the box width before adjusting needs to be wider\
 than the multiplication of the default values of \"sp rate\" and \"age trench\"")
         # check the method to use for phase transition
-        phase_model = self.values[self.start + 13]
+        phase_model = self.values[self.start + 12]
         Utilities.my_assert( phase_model in ["CDPT", "HeFESTo"], ValueError,\
         "%s: Models to use for phases must by CDPT or HeFESTo" \
         % Utilities.func_name())
@@ -136,32 +135,32 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         o_dir = self.values[2]
         root_level = self.values[7]
         if phase_model == "HeFESTo":  # check the existence of Hefesto files
-            HeFESTo_data_dir = self.values[self.start + 14]
+            HeFESTo_data_dir = self.values[self.start + 13]
             HeFESTo_data_dir_pull_path = os.path.join(o_dir, ".." * (root_level - 1), HeFESTo_data_dir)
             Utilities.my_assert(os.path.isdir(HeFESTo_data_dir_pull_path),\
             FileNotFoundError, "%s is not a directory" % HeFESTo_data_dir_pull_path)
 
     def to_configure_prm(self):
-        if_wb = self.values[self.start + 0]
-        type_of_bd = self.values[self.start + 6]
-        sp_rate = self.values[self.start + 2]
-        ov_age = self.values[self.start + 3]
+        if_wb = self.values[9]
+        type_of_bd = self.values[self.start + 5]
+        sp_rate = self.values[self.start + 1]
+        ov_age = self.values[self.start + 2]
         potential_T = self.values[4]
-        box_width = self.values[self.start + 7]
+        box_width = self.values[self.start + 6]
         geometry = self.values[3]
-        prescribe_T_method = self.values[self.start + 8]
-        plate_age_method = self.values[self.start + 9] 
+        prescribe_T_method = self.values[self.start + 7]
+        plate_age_method = self.values[self.start + 8] 
         if plate_age_method == 'adjust box width':
             box_width = re_write_geometry_while_assigning_plate_age(
             *self.to_re_write_geometry_pa()
             ) # adjust box width
-        if_peierls = self.values[self.start + 10]
-        if_couple_eclogite_viscosity = self.values[self.start + 11]
-        phase_model = self.values[self.start + 13]
-        HeFESTo_data_dir = self.values[self.start + 14]
+        if_peierls = self.values[self.start + 9]
+        if_couple_eclogite_viscosity = self.values[self.start + 10]
+        phase_model = self.values[self.start + 12]
+        HeFESTo_data_dir = self.values[self.start + 13]
         root_level = self.values[7]
         HeFESTo_data_dir_relative_path = os.path.join("../"*root_level, HeFESTo_data_dir)
-        sz_cutoff_depth = self.values[self.start+15]
+        sz_cutoff_depth = self.values[self.start+14]
         print("sz_cutoff_depth: ", sz_cutoff_depth)  # debug
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -171,26 +170,26 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         '''
         Interface to configure_wb
         '''
-        if_wb = self.values[self.start + 0]
+        if_wb = self.values[9]
         geometry = self.values[3]
         potential_T = self.values[4]
-        sp_age_trench = self.values[self.start + 1]
-        sp_rate = self.values[self.start + 2]
-        ov_age = self.values[self.start + 3]
-        ov_trans_age = self.values[self.start + 4]
-        ov_trans_length = self.values[self.start + 5]
-        if self.values[self.start + 4] < 0.0:
+        sp_age_trench = self.values[self.start]
+        sp_rate = self.values[self.start + 1]
+        ov_age = self.values[self.start + 2]
+        ov_trans_age = self.values[self.start + 3]
+        ov_trans_length = self.values[self.start + 4]
+        if self.values[self.start + 3] < 0.0:
             if_ov_trans = False
         else:
             if_ov_trans = True
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
             if_ov_trans, ov_trans_age, ov_trans_length
     
-
     def to_re_write_geometry_pa(self):
-        box_width_pre_adjust = self.values[self.start+12]
-        return box_width_pre_adjust, self.defaults[self.start+1],\
-        self.values[self.start+1], self.values[self.start+2]
+        box_width_pre_adjust = self.values[self.start+11]
+        return box_width_pre_adjust, self.defaults[self.start],\
+        self.values[self.start], self.values[self.start+1]
+            
 
 
 class CASE(CasesP.CASE):

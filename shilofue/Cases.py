@@ -67,6 +67,7 @@ class CASE_OPT(Utilities.JSON_OPT):
             ["additional files"], [], nick='additional_files')
         self.add_key("Root level from the project root", int,\
          ["root level"], 1, nick="root_level")
+        self.add_key("If use world builder", int, ['use world builder'], 0, nick='if_wb')
         pass
     
     def check(self):
@@ -124,6 +125,13 @@ class CASE_OPT(Utilities.JSON_OPT):
         '''
         return self.values[5]
         pass
+
+    def if_use_world_builder(self):
+        '''
+        if we use world builder
+        '''
+        if_wb = self.values[9]
+        return  if_wb
 
 
 class CASE():

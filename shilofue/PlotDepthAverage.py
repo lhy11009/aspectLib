@@ -371,10 +371,13 @@ def ExportData(depth_average_path, output_dir, **kwargs):
     Inputs:
         kwargs:
             time_step - time_step to plot the figure, default is 0
+            fix_time_step - fix time step if it's beyong the limit, default is False.
     Returns:
         odata (ndarray): selected data for outputing
         output_path (str): path of file generated
     '''
+    time_step = kwargs.get('time_step', 0)
+    fix_time_step = kwargs.get('fix_time_step', False)
     assert(os.access(depth_average_path, os.R_OK))
     # read that
     DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
@@ -382,10 +385,11 @@ def ExportData(depth_average_path, output_dir, **kwargs):
     DepthAverage.ReadData(depth_average_path)
     # manage data
     DepthAverage.SplitTimeStep()
-    time_step = kwargs.get('time_step', 0)
+    if fix_time_step and time_step > len(DepthAverage.time_step_times) - 1:
+        time_step = len(DepthAverage.time_step_times) - 1
     try:
         i0 = DepthAverage.time_step_indexes[time_step][-1] * DepthAverage.time_step_length
-        if time_step == len(DepthAverage.time_step_times) - 1:
+        if time_step >= len(DepthAverage.time_step_times) - 1:
             # this is the last step
             i1 = DepthAverage.data.shape[0]
         else:

@@ -156,13 +156,13 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         vtk_step = int(kwargs.get('vtk_step', 0))
         # houriz_avg file
         if generate_horiz_file:
-            _, time_step = self.get_time_and_step(vtk_step)
+            _time, time_step = self.get_time_and_step(vtk_step)
             depth_average_path = os.path.join(self.options["DATA_OUTPUT_DIR"], 'depth_average.txt')
             assert(os.path.isfile(depth_average_path))
             output_dir = os.path.join(self._case_dir, 'temp_output')
             if not os.path.isdir(output_dir): # check this exists
                 os.mkdir(output_dir)
-            _, ha_output_file = ExportData(depth_average_path, output_dir, time_step=time_step)
+            _, ha_output_file = ExportData(depth_average_path, output_dir, time_step=time_step, fix_time_step=True)
             self.options['VTK_HORIZ_FILE'] = ha_output_file
         else:
             self.options['VTK_HORIZ_FILE'] = os.path.join(ASPECT_LAB_DIR, 'output', 'depth_average_output')

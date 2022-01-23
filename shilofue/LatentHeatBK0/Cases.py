@@ -27,6 +27,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
+from shilofue.PhaseTransition import ParsePhaseTransitionFile
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -52,16 +53,28 @@ class CASE_OPT(CasesP.CASE_OPT):
         '''
         CasesP.CASE_OPT.__init__(self)
         self.start = self.number_of_keys()
-        # self.add_key("foo", int, ['foo'], 0, nick='if_wb')
+        # self.add_key("foo", int, ['phase transition model'], 0, nick='if_wb')
+        self.add_key("Model to use for mantle phase transitions", str,\
+         ["phase transition model"], 'CDPT', nick="phase_model")
+        self.add_key("Json file to use for mantle phase transitions", str,\
+         ["phase transition", "json file"], 'foo.json', nick="phase_json_path")
     
     def check(self):
+        phase_model = self.values[self.start]
+        phase_json_path = Utilities.var_subs(self.values[self.start+1])
+        if phase_model == "CDPT":
+            assert(os.path.isfile(phase_json_path))
+        else:
+            raise ValueError("check: value for phase model is not valid.")
         pass
 
     def to_configure_prm(self):
         '''
         Interface to configure_prm
         '''
-        pass
+        phase_model = self.values[self.start]
+        phase_json_path = Utilities.var_subs(self.values[self.start+1])
+        return phase_model, phase_json_path        
 
     def to_configure_wb(self):
         '''
@@ -75,10 +88,18 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self):
+    def configure_prm(self, phase_model, phase_json_path):
         '''
         Configure prm file
+        Inputs:
+            phase_model (str): model to use for phase transition
+            phase_json_path (str): path of file for CDPT model.
         '''
+        o_dict = self.idict.copy()
+        if phase_model == "CDPT":
+            outputs = ParsePhaseTransitionFile(phase_json_path) 
+        o_dict['Material model']['Visco Plastic TwoD'] = {**o_dict['Material model']['Visco Plastic TwoD'], **outputs}
+        self.idict = o_dict
         pass
 
     def configure_wb(self):
@@ -97,8 +118,7 @@ Examples of usage: \n\
 \n\
   - create case with json file: \n\
 \n\
-        Lib_Foo_Cases create_with_json -j \
-        foo.json \n\
+        Lib_LatentHeatBK0_Cases create_with_json -j foo.json \n\
 \n\
   - options defined in the json file:\n\
         %s\n\
