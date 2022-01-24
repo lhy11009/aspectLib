@@ -108,7 +108,7 @@ class SCHEDULER():
         
 
 
-def ScheduleTaskCase(case_dir, new_task_local):
+def ScheduleTask(case_dir, new_task_local):
     '''
     Schedule post-processing for a single case
     Inputs:

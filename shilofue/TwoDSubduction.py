@@ -15,7 +15,7 @@ import shilofue.Rheology as Rheology
 from numpy import linalg as LA
 from matplotlib import pyplot as plt
 
-from shilofue.Schedule import ScheduleTaskCase
+from shilofue.Schedule import ScheduleTask
 
 
 # global varibles
@@ -373,7 +373,7 @@ def SchedulePPCase(case):
     local_tasks.append("Lib_rsync_case peloton TwoDSubduction %s" % case)  # sync data with server
     local_tasks.append("Lib_TwoDSubduction0_PlotCase plot_case -i %s" % case_dir)  # plot case results
     local_tasks.append("Lib_TwoDSubduction0_PlotCase morph_case -i %s" % case_dir)  # plot slab morphology
-    ScheduleTaskCase(case_dir, local_tasks) # add tasks to scheduler and generate scripts
+    ScheduleTask(case_dir, local_tasks) # add tasks to scheduler and generate scripts
 
 
 def SchedulePPGroup(group):
@@ -388,7 +388,7 @@ def SchedulePPGroup(group):
     local_tasks.append("Lib_rsync_case peloton TwoDSubduction %s" % group)  # sync data with server
     local_tasks.append("Lib_TwoDSubduction0_PlotCase plot_case_in_dir -i %s" % group_dir)  # plot case results
     local_tasks.append("Lib_TwoDSubduction0_PlotCase morph_case_in_dir -i %s" % group_dir)  # plot slab morphology
-    ScheduleTaskCase(group_dir, local_tasks) # add tasks to scheduler and generate scripts
+    ScheduleTask(group_dir, local_tasks) # add tasks to scheduler and generate scripts
 
 
 def main():
