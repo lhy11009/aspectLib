@@ -98,7 +98,7 @@ class CASE(CasesP.CASE):
         o_dict = self.idict.copy()
         if phase_model == "CDPT":
             outputs = ParsePhaseTransitionFile(phase_json_path) 
-        o_dict['Material model']['Visco Plastic TwoD'] = {**o_dict['Material model']['Visco Plastic TwoD'], **outputs}
+        o_dict['Material model']['Visco Plastic'] = {**o_dict['Material model']['Visco Plastic'], **outputs}
         self.idict = o_dict
         pass
 

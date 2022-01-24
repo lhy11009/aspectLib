@@ -84,7 +84,8 @@ class CASE_OPT(Utilities.JSON_OPT):
         Interface to init
         '''
         inputs = os.path.join(self.values[1], 'case.prm')
-        return self.values[0], inputs
+        if_wb = self.values[8]
+        return self.values[0], inputs, if_wb
 
     def wb_inputs_path(self):
         '''
@@ -130,8 +131,8 @@ class CASE_OPT(Utilities.JSON_OPT):
         '''
         if we use world builder
         '''
-        if_wb = self.values[9]
-        return  if_wb
+        if_wb = self.values[8]
+        return  (if_wb==1)
 
 
 class CASE():
@@ -148,18 +149,21 @@ class CASE():
             an array of extra files of this case
     '''
     # future: add interface for extra
-    def __init__(self, case_name, inputs, **kwargs):
+    def __init__(self, case_name, inputs, if_wb, **kwargs):
         '''
         initiate from a dictionary
         Inputs:
             idict(dict):
                 dictionary import from a base file
+            if_wb(True or False):
+                if use world builder
             kwargs:
                 wb_inputs(dict or str):
                     inputs from a world builder file
         '''
         self.case_name = case_name
         self.extra_files = []
+        self.wb_dict = {}
         if type(inputs)==dict:
             # direct read if dict is given
             print("    Read inputs from a dictionary")
@@ -173,19 +177,20 @@ class CASE():
         else:
             raise TypeError("Inputs must be a dictionary or a string")
         # read world builder
-        wb_inputs = kwargs.get('wb_inputs', {})
-        if type(wb_inputs) == dict:
-            # direct read if dict is given
-            print("    Read world builder options from a dictionary")
-            self.wb_dict = deepcopy(wb_inputs)
-        elif type(wb_inputs)==str:
-            # read from file if file path is given. This has the virtual that the new dict is indepent of the previous one.
-            print("    Read world builder options from %s" % Utilities.var_subs(wb_inputs))
-            with open(Utilities.var_subs(wb_inputs), 'r') as fin:
-                self.wb_dict = json.load(fin)
-            pass
-        else:
-            raise TypeError("CASE:%s: wb_inputs must be a dictionary or a string" % Utilities.func_name())
+        if if_wb:
+            wb_inputs = kwargs.get('wb_inputs', {})
+            if type(wb_inputs) == dict:
+                # direct read if dict is given
+                print("    Read world builder options from a dictionary")
+                self.wb_dict = deepcopy(wb_inputs)
+            elif type(wb_inputs)==str:
+                # read from file if file path is given. This has the virtual that the new dict is indepent of the previous one.
+                print("    Read world builder options from %s" % Utilities.var_subs(wb_inputs))
+                with open(Utilities.var_subs(wb_inputs), 'r') as fin:
+                    self.wb_dict = json.load(fin)
+                pass
+            else:
+                raise TypeError("CASE:%s: wb_inputs must be a dictionary or a string" % Utilities.func_name())
     
     def create(self, _root, **kwargs):
         '''
@@ -290,7 +295,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     # Manage case files
     Case = CASE(*Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())
     Case.configure_prm(*Case_Opt.to_configure_prm())
-    Case.configure_wb(*Case_Opt.to_configure_wb())
+    if Case_Opt.if_use_world_builder():
+        Case.configure_wb(*Case_Opt.to_configure_wb())
     for _path in Case_Opt.get_additional_files():
         Case.add_extra_file(_path)
     # create new case

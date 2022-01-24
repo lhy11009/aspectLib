@@ -72,8 +72,8 @@ end
 
 
 subsection Material model
-  set Model name = latent heat
-  subsection Latent heat
+  set Model name = visco plastic
+  subsection Visco Plastic
 
     # The change of density across the phase transition. Together with the
     # Clapeyron slope, this is what determines the entropy change.
