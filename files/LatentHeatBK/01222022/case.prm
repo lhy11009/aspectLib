@@ -1,134 +1,94 @@
-############### Global parameters
-# We use a 2d setup. Since it takes some time for
-# the model to reach a steady state we set the
-# end time to approximately 15 billion years.
-
 set Dimension = 2
-
-set Start time                             = 0
-set End time                               = 10e9
+set Start time = 0
+set End time = 10e9
 set Use years in output instead of seconds = true
-
-set Output directory                       = output
-
+set Output directory = output
+set Adiabatic surface temperature = 1573.0
 
 subsection Geometry model
-  set Model name = box
-  subsection Box
-    set X extent = 1000000
-    set Y extent = 1000000
-    set X repetitions = 100
-    set Y repetitions = 100
-  end
+    set Model name = box
+    subsection Box
+        set X extent = 1000000
+        set Y extent = 1000000
+        set X repetitions = 100
+        set Y repetitions = 100
+    end
 end
 
 
 subsection Gravity model
-  set Model name = vertical
-  subsection Vertical
-    set Magnitude = 10.0
-  end
+    set Model name = vertical
+    subsection Vertical
+        set Magnitude = 10.0
+    end
 end
 
 
 subsection Heating model
-  # As we only want to look at the effects of latent heating, we disable all
-  # the other heating terms.
-  set List of model names =  latent heat
+    set List of model names = adiabatic heating, latent heat
 end
 
 
-############### Boundary conditions
-# We only fix the temperature at the upper boundary, the other boundaries
-# are isolating.
 subsection Boundary temperature model
-  set Fixed temperature boundary indicators = top
-  set List of model names = box
-
-  subsection Box
-    set Top temperature = 1000
-  end
+    set Fixed temperature boundary indicators = top
+    set List of model names = box
+    subsection Box
+        set Top temperature = 1573
+    end
 end
 
-# To guarantuee a steady downward flow, we fix the velocity
-# at the top and bottom, and set it to free slip on the sides.
 subsection Boundary velocity model
-  set Prescribed velocity boundary indicators = bottom:function, top:function
-  set Tangential velocity boundary indicators = left, right
-
-  subsection Function
-    set Function expression = 0; -6.7601e-4
-    set Variable names      = x,y
-  end
+    set Prescribed velocity boundary indicators = bottom:function, top:function
+    set Tangential velocity boundary indicators = left, right
+    subsection Function
+        set Function expression = 0; -6.7601e-4
+        set Variable names = x,y
+    end
 end
 
 subsection Initial temperature model
-  set Model name = function
-  subsection Function
-    set Function expression = 1.0e3
-    set Variable names      = x,y
-  end
+    set List of model names = adiabatic  
 end
 
-
 subsection Material model
-  set Model name = visco plastic
-  subsection Visco Plastic
-
-    # The change of density across the phase transition. Together with the
-    # Clapeyron slope, this is what determines the entropy change.
-
-    # We set the width of the phase transition to 5 km. You may want to
-    # change this parameter to see how latent heating depends on the width
-    # of the phase transition.
-    set Phase transition widths                        = 5000
-
-    set Reference density                              = 3400
-    set Reference specific heat                        = 1000
-  end
+    set Model name = visco plastic
+    subsection Visco Plastic
+        set Phase transition widths = background: 5000.0|5000.0|5000.0|10000.0|5000.0|5000.0|5000.0
+        set Densities = background: 3300.0|3394.4|3442.1|3453.2|3617.6|3691.5|3774.7|3929.1
+        set Phase transition depths = background: 410000.0|520000.0|560000.0|670000.0|670000.0|670000.0|670000.0
+        set Phase transition temperatures = background: 1662.0|1662.0|1662.0|1662.0|1662.0|1662.0|1662.0
+        set Phase transition Clapeyron slopes = background: 4000000.0|4100000.0|4000000.0|-2000000.0|4000000.0|-3100000.0|1300000.0
+    end
 end
 
 
 subsection Mesh refinement
-  set Initial adaptive refinement        = 0
-  set Initial global refinement          = 0
-  set Time steps between mesh refinement = 0
+    set Initial adaptive refinement = 0
+    set Initial global refinement = 0
+    set Time steps between mesh refinement = 0
 end
 
 
 subsection Discretization
-  subsection Stabilization parameters
-    # The exponent $\alpha$ in the entropy viscosity stabilization. Units:
-    # None.
-    set alpha = 2
-
-    # The $\beta$ factor in the artificial viscosity stabilization. An
-    # appropriate value for 2d is 0.052 and 0.078 for 3d. Units: None.
-    set beta  = 0.078
-
-    # The $c_R$ factor in the entropy viscosity stabilization. Units: None.
-    set cR    = 0.5   # default: 0.11
-  end
+    subsection Stabilization parameters
+        set alpha = 2
+        set beta = 0.078
+        set cR = 0.5
+    end
 end
 
 
 subsection Postprocess
-  set List of postprocessors =  visualization, temperature statistics, depth average
-
-  subsection Visualization
-    set Number of grouped files       = 0
-    set Output format                 = vtu
-    # We are only interested in the last timestep (when the system hast reached
-    # a steady state). For following the development of the system or checking
-    # if the solution already reached steady state, this parameter can be set
-    # to a smaller value.
-    set Time between graphical output = 1e8
-    set List of output variables      = density
-  end
-  
-  subsection Depth average
-    set Number of zones = 50
-    set Output format = txt
-    set Time between graphical output = 1e6
-  end
+    set List of postprocessors = visualization, temperature statistics, depth average
+    subsection Visualization
+        set Number of grouped files = 0
+        set Output format = vtu
+        set Time between graphical output = 1e8
+        set List of output variables = density
+    end
+    subsection Depth average
+        set Number of zones = 50
+        set Output format = txt
+        set Time between graphical output = 1e6
+    end
 end

@@ -58,12 +58,16 @@ class CASE_OPT(CasesP.CASE_OPT):
          ["phase transition model"], 'CDPT', nick="phase_model")
         self.add_key("Json file to use for mantle phase transitions", str,\
          ["phase transition", "json file"], 'foo.json', nick="phase_json_path")
-    
+        self.add_key("Material model to use", str,\
+         ["material model"], 'visco plastic', nick="material_model")
+
     def check(self):
         phase_model = self.values[self.start]
         phase_json_path = Utilities.var_subs(self.values[self.start+1])
+        material_model = self.values[self.start + 2]
         if phase_model == "CDPT":
             assert(os.path.isfile(phase_json_path))
+            assert(material_model in ["visco plastic", "visco plastic twod"])
         else:
             raise ValueError("check: value for phase model is not valid.")
         pass
@@ -74,7 +78,8 @@ class CASE_OPT(CasesP.CASE_OPT):
         '''
         phase_model = self.values[self.start]
         phase_json_path = Utilities.var_subs(self.values[self.start+1])
-        return phase_model, phase_json_path        
+        material_model = self.values[self.start + 2]
+        return phase_model, phase_json_path, material_model    
 
     def to_configure_wb(self):
         '''
@@ -88,7 +93,7 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self, phase_model, phase_json_path):
+    def configure_prm(self, phase_model, phase_json_path, material_model):
         '''
         Configure prm file
         Inputs:
@@ -96,9 +101,24 @@ class CASE(CasesP.CASE):
             phase_json_path (str): path of file for CDPT model.
         '''
         o_dict = self.idict.copy()
+        # modify material model
         if phase_model == "CDPT":
-            outputs = ParsePhaseTransitionFile(phase_json_path) 
-        o_dict['Material model']['Visco Plastic'] = {**o_dict['Material model']['Visco Plastic'], **outputs}
+            outputs = ParsePhaseTransitionFile(phase_json_path)
+        o_dict['Material model']['Model name'] = material_model  # material model to use
+        for key, value in o_dict['Material model'].items():
+            if type(value) == dict:
+                o_dict['Material model'].pop(key)
+                o_dict['Material model'][material_model.title()] = value   
+        o_dict['Material model'][material_model.title()] = {**o_dict['Material model'][material_model.title()], **outputs}  # prepare entries
+        # manage shared library
+        if material_model == "visco plastic twod":
+            try:
+                shared_lib_entry = o_dict["Additional shared libraries"]
+            except KeyError:
+                shared_lib_entry = "$ASPECT_SOURCE_DIR/build_master_TwoD/visco_plastic_TwoD/libvisco_plastic_TwoD.so"
+            else:
+                shared_lib_entry += ", $ASPECT_SOURCE_DIR/build_master_TwoD/visco_plastic_TwoD/libvisco_plastic_TwoD.so"
+            o_dict["Additional shared libraries"] = shared_lib_entry
         self.idict = o_dict
         pass
 

@@ -490,7 +490,6 @@ def DumpToJson(filein, fileout):
         json.dump(i_dict, fout, indent=2)
 
 
-
 def main():
     '''
     main function of this module
