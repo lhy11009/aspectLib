@@ -160,8 +160,10 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             depth_average_path = os.path.join(self.options["DATA_OUTPUT_DIR"], 'depth_average.txt')
             assert(os.path.isfile(depth_average_path))
             output_dir = os.path.join(self._case_dir, 'temp_output')
-            if not os.path.isdir(output_dir): # check this exists
+            try:  # This works better in parallel
                 os.mkdir(output_dir)
+            except FileExistsError:
+                pass
             _, ha_output_file = ExportData(depth_average_path, output_dir, time_step=time_step, fix_time_step=True)
             self.options['VTK_HORIZ_FILE'] = ha_output_file
         else:
