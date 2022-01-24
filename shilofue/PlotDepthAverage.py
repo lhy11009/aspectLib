@@ -386,10 +386,10 @@ def ExportData(depth_average_path, output_dir, **kwargs):
     # manage data
     DepthAverage.SplitTimeStep()
     if fix_time_step and time_step > len(DepthAverage.time_step_times) - 1:
-        time_step = len(DepthAverage.time_step_times) - 1
+        time_step = len(DepthAverage.time_step_times) - 2
     try:
         i0 = DepthAverage.time_step_indexes[time_step][-1] * DepthAverage.time_step_length
-        if time_step >= len(DepthAverage.time_step_times) - 1:
+        if time_step == len(DepthAverage.time_step_times) - 1:
             # this is the last step
             i1 = DepthAverage.data.shape[0]
         else:

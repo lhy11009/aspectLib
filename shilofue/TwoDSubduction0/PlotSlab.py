@@ -253,10 +253,10 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
             os.remove(slab_morph_file)  # delete slab morph file
         ParallelWrapper.delete_temp_files(available_pvtu_steps)  # delete intermediate file if rewrite
     num_cores = multiprocessing.cpu_count()
-    for pvtu_step in available_pvtu_steps:
-        ParallelWrapper(pvtu_step)  # debug
-    # Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
-    # for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
+    # for pvtu_step in available_pvtu_steps:
+    #    ParallelWrapper(pvtu_step)  # debug
+    Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
+    for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
     ParallelWrapper.clear()
     for pvtu_step in available_pvtu_steps:  # then run in on cpu to assemble these results
         ParallelWrapper(pvtu_step)
