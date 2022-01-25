@@ -179,7 +179,7 @@ class LINEARPLOT():
             True: there is data
             False: there is no data
         '''
-        if (self.data == []):
+        if (self.data.size == 0):
             return False
         else:
             return True
