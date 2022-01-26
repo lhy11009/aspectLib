@@ -191,7 +191,7 @@ class VISIT_PLOT():
         '''
         plot temperature
         '''
-	limits = kwargs.get('limit', None)
+	    limits = kwargs.get('limit', None)
         # set up temperature
         self.set_pseudo_color('T', color_table='magma', limits=limits)
         SetActivePlots((self.idxs['T']))

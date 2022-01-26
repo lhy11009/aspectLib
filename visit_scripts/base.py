@@ -49,8 +49,8 @@ class VISIT_PLOT():
         self.idxs[var] = self.all_idxs
         self.all_idxs += 1
         
-    def draw_all(self):	
-	# draw plots
+    def draw_all(self):    
+    # draw plots
         all_idxs_tuple = tuple([i for i in range(self.all_idxs)])
         SetActivePlots(all_idxs_tuple)
         DrawPlots()
@@ -202,6 +202,19 @@ class VISIT_PLOT():
         HideActivePlots()
         # save plot 
         self.save_window('temperature')
+        HideActivePlots()
+
+    def plot_density_base(self, **kwargs):
+        '''
+        plot density
+        '''
+        limits = kwargs.get('limit', None)
+        # set up density
+        self.set_pseudo_color('density', color_table='magma', limits=limits)
+        SetActivePlots((self.idxs['density']))
+        HideActivePlots()
+        # save plot 
+        self.save_window('density')
         HideActivePlots()
 
         
