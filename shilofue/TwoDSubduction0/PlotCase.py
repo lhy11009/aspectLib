@@ -215,15 +215,15 @@ def main():
         PlotCase.AnimateCombinedDir(Plotter.PlotPrepareResultStep, arg.inputs, pr_script)
     elif _commend == 'morph_case':
         # slab_morphology, input is the case name
-        vtk_and_slab_morph_case(arg.inputs, rewrite=arg.rewrite)
+        SlabPlot = SLABPLOT('slab')
+        PlotCase.PlotCaseCombined([vtk_and_slab_morph_case, SlabPlot.PlotMorph], arg.inputs, rewrite=arg.rewrite)
     elif _commend == 'morph_case_in_dir':
         # slab_morphology for cases in directory, input is the case name
-        PlotCase.PlotCaseCombinedDir([vtk_and_slab_morph_case], arg.inputs, rewrite=arg.rewrite)
+        SlabPlot = SLABPLOT('slab')
+        PlotCase.PlotCaseCombinedDir([vtk_and_slab_morph_case, SlabPlot.PlotMorph], arg.inputs, rewrite=arg.rewrite)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
-        prm_file = os.path.join(arg.inputs, 'output', 'original.prm')
-        SlabPlot.ReadPrm(prm_file)
         SlabPlot.PlotMorph(arg.inputs)
     elif (_commend in ['-h', '--help']):
         # example:

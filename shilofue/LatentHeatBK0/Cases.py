@@ -105,11 +105,16 @@ class CASE(CasesP.CASE):
         if phase_model == "CDPT":
             outputs = ParsePhaseTransitionFile(phase_json_path)
         o_dict['Material model']['Model name'] = material_model  # material model to use
+        # subsection setup
+        if material_model == "visco plastic twod":
+            material_model_subsection = "Visco Plastic TwoD"
+        else:
+            material_model_subsection = material_model.title()
         for key, value in o_dict['Material model'].items():
             if type(value) == dict:
                 o_dict['Material model'].pop(key)
-                o_dict['Material model'][material_model.title()] = value   
-        o_dict['Material model'][material_model.title()] = {**o_dict['Material model'][material_model.title()], **outputs}  # prepare entries
+                o_dict['Material model'][material_model_subsection] = value   
+        o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries
         # manage shared library
         if material_model == "visco plastic twod":
             try:

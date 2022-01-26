@@ -108,7 +108,7 @@ different age will be adjusted.",\
         "%s: The geometry for TwoDSubduction cases must be \"chunk\" or \"box\"" \
         % Utilities.func_name())
         if self.values[3] == 'box':
-            Utilities.my_assert(self.values[9] == 1, ValueError,\
+            Utilities.my_assert(self.values[8] == 1, ValueError,\
             "%s: When using the box geometry, world builder must be used for initial conditions" \
             % Utilities.func_name())  # use box geometry, wb is mandatory
         pass
@@ -141,7 +141,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             FileNotFoundError, "%s is not a directory" % HeFESTo_data_dir_pull_path)
 
     def to_configure_prm(self):
-        if_wb = self.values[9]
+        if_wb = self.values[8]
         type_of_bd = self.values[self.start + 5]
         sp_rate = self.values[self.start + 1]
         ov_age = self.values[self.start + 2]
@@ -170,7 +170,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         '''
         Interface to configure_wb
         '''
-        if_wb = self.values[9]
+        if_wb = self.values[8]
         geometry = self.values[3]
         potential_T = self.values[4]
         sp_age_trench = self.values[self.start]

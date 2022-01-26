@@ -313,8 +313,8 @@ def Get_reference_density(rho0, drho, xc):
 def Get_entropy_change(rho0, drho, xc, cl):
     '''
     Get entropy changes on individual phases
-    phase_dict:
-        phase_dict(dict): dictionary of a single phase transition
+    Equation used here:
+        dS = - gamma * drho / rho^2.0
     Returns:
         lh_contribution (float): contribution to total latent heat
     '''
@@ -325,6 +325,27 @@ def Get_entropy_change(rho0, drho, xc, cl):
         rho = (rho_p[i_dx] + rho_p[i_dx+1]) / 2.0
         lh.append( -1.0 * cl[i_dx] * drho[i_dx] *xc[i_dx] / rho**2.0)
     return lh
+
+
+def Get_temperature_change(rho0, drho, xc, cl, **kwargs):
+    '''
+    Get entropy changes on individual phases
+    Equation used here:
+        dS = - gamma * drho / rho^2.0
+        dT / T0 = 1 / (1 + Ds / cp)
+    kwargs (dict):
+        cp - heat capacity
+    Returns:
+        dT: factors of temperature variation from latent heat
+    '''
+    # todo
+    cp = kwargs.get("cp", 1250.0)
+    dS = Get_entropy_change(rho0, drho, xc, cl)
+    dT = []
+    for i in range(len(dS)):
+        dT.append(1.0/(1.0+dS[i]/cp))
+    return dT
+        
 
 
 def Show_entropy_changes(file_path):
@@ -340,10 +361,16 @@ def Show_entropy_changes(file_path):
     compositions = cdpt_opt.get_compositions()
     for i in range(len(compositions)):
         phase_opt = compositions[i]
-        lh = Get_entropy_change(*phase_opt.to_get_latent_heat_contribution())
+        dS = Get_entropy_change(*phase_opt.to_get_latent_heat_contribution())
         print("Composition: ", phase_opt.get_name())
+        print("Entropy changes [J/(Kg*K)]")
         print(phase_opt.get_boundary_names())  # screen output
-        print(lh)
+        print(dS)
+        dT = Get_temperature_change(*phase_opt.to_get_latent_heat_contribution())
+        print("Factors of temperature change (T2/T0)")
+        print(phase_opt.get_boundary_names())  # screen output
+        print(dT)
+        print('\n')
 
 
 def Usage():
@@ -408,7 +435,6 @@ def main():
         # print the output
         print(outputs)
     elif _commend == "show_entropy_changes":
-        # todo
         Show_entropy_changes(arg.inputs)
     else:
         # no such option, give an error message

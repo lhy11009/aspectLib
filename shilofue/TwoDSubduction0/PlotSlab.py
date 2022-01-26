@@ -106,7 +106,13 @@ class SLABPLOT(LINEARPLOT):
         return depthes, Ts
         
     
-    def PlotMorph(self, case_dir):
+    def PlotMorph(self, case_dir, **kwargs):
+        '''
+        Inputs:
+            case_dir (str): directory of case
+        kwargs(dict):
+            defined but not used
+        '''
         # path
         img_dir = os.path.join(case_dir, 'img')
         if not os.path.isdir(img_dir):
@@ -114,13 +120,20 @@ class SLABPLOT(LINEARPLOT):
         morph_dir = os.path.join(img_dir, 'morphology')
         if not os.path.isdir(morph_dir):
             os.mkdir(morph_dir)
+        # read inputs
+        prm_file = os.path.join(case_dir, 'output', 'original.prm')
+        assert(os.access(prm_file, os.R_OK))
+        self.ReadPrm(prm_file)
         # read parameters
         Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
-        # read dat/home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT1/eba_cdpt_SA80.0_OA40.0/temp_output/slab_contour_s00005.pnga
+        # read data
         slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
         assert(os.path.isfile(slab_morph_file))
         self.ReadHeader(slab_morph_file)
         self.ReadData(slab_morph_file)
+        if not self.HasData():
+            print("PlotMorph: file %s doesn't contain data" % slab_morph_file)
+            return 1
         col_pvtu_step = self.header['pvtu_step']['col']
         col_pvtu_time = self.header['time']['col']
         col_pvtu_trench = self.header['trench']['col']
@@ -269,12 +282,14 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     if not os.path.isfile(output_file):
         with open(output_file, 'w') as fout:
             fout.write(file_header)
-        print('Create output: %s' % output_file)
+            for output in outputs:
+                fout.write("%s" % output)
+        print('Created output: %s' % output_file)
     else:
-        print('Update output: %s' % output_file)
         with open(output_file, 'a') as fout:
             for output in outputs:
                 fout.write("%s" % output)
+        print('Updated output: %s' % output_file)
 
 
 def plot_morph_contour_step(case_dir, step):
@@ -343,8 +358,6 @@ def main():
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
-        prm_file = os.path.join(arg.inputs, 'output', 'original.prm')
-        SlabPlot.ReadPrm(prm_file)
         SlabPlot.PlotMorph(arg.inputs)
 
     else:
