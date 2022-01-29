@@ -51,7 +51,7 @@ def test_wb_setup():
     # test 0, chunk geometry and use transit ov plate
     json_file = os.path.join(source_wb_dir, 'configure.json')
     assert(os.access(json_file, os.R_OK))
-    Case = CASE('wb_setup', prm_file, wb_inputs=wb_file)
+    Case = CASE('wb_setup', prm_file, True, wb_inputs=wb_file)
     Case_Opt = CASE_OPT()
     Case_Opt.read_json(json_file)
     Case_Opt.check()
@@ -74,7 +74,7 @@ def test_wb_setup():
     # test 1, chunk geometry and doesn't use transit ov plate
     json_file = os.path.join(source_wb_dir, 'configure_1.json')
     assert(os.access(json_file, os.R_OK))
-    Case = CASE('wb_setup_1', prm_file, wb_inputs=wb_file)
+    Case = CASE('wb_setup_1', prm_file, True, wb_inputs=wb_file)
     Case_Opt = CASE_OPT()
     Case_Opt.read_json(json_file)
     Case_Opt.check()
@@ -96,7 +96,7 @@ def test_wb_setup():
     # test 2, box geometry and doesn't use transit ov plate
     json_file = os.path.join(source_wb_dir, 'configure_2.json')
     assert(os.access(json_file, os.R_OK))
-    Case = CASE('wb_setup_2', prm_file, wb_inputs=wb_file)
+    Case = CASE('wb_setup_2', prm_file, True, wb_inputs=wb_file)
     Case_Opt = CASE_OPT()
     Case_Opt.read_json(json_file)
     Case_Opt.check()

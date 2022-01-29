@@ -212,7 +212,7 @@ subsection Material model
             set Max pressure width for eclogite transition = 1.5e9
         end
         subsection Eclogite decoupled viscosity
-            set Decoupled depth = 100e3
+            set Decoupled depth = 100000.0
             set Decoupled depth width = 10e3
         end
         set Include Peierls creep = false
