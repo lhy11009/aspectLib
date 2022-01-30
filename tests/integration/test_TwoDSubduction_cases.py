@@ -170,13 +170,13 @@ def test_adjust_box():
     if os.path.isdir(output_dir):
         rmtree(output_dir)
     create_case_with_json(json_path, CASE, CASE_OPT)
-    # assert(os.path.isdir(output_dir))  # check case generation
-    # prm_std_path = os.path.join(source_case_dir, 'case_1_std.prm')
-    # wb_std_path = os.path.join(source_case_dir, 'case_1_std.wb')
-    # prm_path = os.path.join(output_dir, 'case.prm')
-    # wb_path = os.path.join(output_dir, 'case.wb')
-    # assert(filecmp.cmp(prm_path, prm_std_path))
-    # assert(filecmp.cmp(wb_path, wb_std_path))  
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
+    wb_std_path = os.path.join(source_case_dir, 'case_0_std.wb')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    wb_path = os.path.join(output_dir, 'case.wb')
+    assert(filecmp.cmp(prm_path, prm_std_path))
+    assert(filecmp.cmp(wb_path, wb_std_path))  
 
     
 # to check for error message
