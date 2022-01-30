@@ -96,6 +96,8 @@ different age will be adjusted.",\
          ["HeFESTo model", "data directory"], '.', nick="HeFESTo_data_dir")
         self.add_key("Cutoff depth for the shear zone rheology",\
           float, ["shear zone", 'cutoff depth'], 100e3, nick='sz_cutoff_depth')
+        self.add_key("Adjust the refinement of mesh with the size of the box", int,\
+          ["world builder", "adjust mesh with box width"], 0, nick='adjust_mesh_with_width')   
         pass
     
     def check(self):
@@ -161,10 +163,10 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         root_level = self.values[7]
         HeFESTo_data_dir_relative_path = os.path.join("../"*root_level, HeFESTo_data_dir)
         sz_cutoff_depth = self.values[self.start+14]
-        print("sz_cutoff_depth: ", sz_cutoff_depth)  # debug
+        adjust_mesh_with_width = self.values[self.start+15]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
-        HeFESTo_data_dir_relative_path, sz_cutoff_depth
+        HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width
 
     def to_configure_wb(self):
         '''
@@ -182,15 +184,29 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             if_ov_trans = False
         else:
             if_ov_trans = True
+        is_box_wider = self.is_box_wider()
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
-            if_ov_trans, ov_trans_age, ov_trans_length
+            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider
     
     def to_re_write_geometry_pa(self):
         box_width_pre_adjust = self.values[self.start+11]
         return box_width_pre_adjust, self.defaults[self.start],\
         self.values[self.start], self.values[self.start+1]
+    
+    def is_box_wider(self):
+        '''
+        Return whether we should use a box wider than 90 degree in longtitude
+        Return:
+            True or False
+        '''
+        box_width = re_write_geometry_while_assigning_plate_age(
+            *self.to_re_write_geometry_pa()
+            ) # adjust box width
+        if box_width > 1e7:
+            return True
+        else:
+            return False
             
-
 
 class CASE(CasesP.CASE):
     '''
@@ -199,7 +215,7 @@ class CASE(CasesP.CASE):
     '''
     def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T,\
     sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
-    HeFESTo_data_dir, sz_cutoff_depth):
+    HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
@@ -211,9 +227,9 @@ class CASE(CasesP.CASE):
         # geometry model
         if geometry == 'chunk':
             max_phi = box_width / Ro * 180.0 / np.pi  # extent in term of phi
-            o_dict["Geometry model"] = prm_geometry_sph(max_phi)
+            o_dict["Geometry model"] = prm_geometry_sph(max_phi, adjust_mesh_with_width=adjust_mesh_with_width)
         elif geometry == 'box':
-            o_dict["Geometry model"] = prm_geometry_cart(box_width)
+            o_dict["Geometry model"] = prm_geometry_cart(box_width, adjust_mesh_with_width=adjust_mesh_with_width)
         # refinement
         if geometry == 'chunk':
             o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph()
@@ -280,7 +296,7 @@ class CASE(CasesP.CASE):
             o_dict['Material model']['Visco Plastic TwoD'].pop("Use lookup table", "Foo")
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
-        if_ov_trans, ov_trans_age, ov_trans_length):
+        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider):
         '''
         Configure world builder file
         Inputs:
@@ -294,22 +310,34 @@ class CASE(CasesP.CASE):
         # geometry
         if geometry == 'chunk':
             self.wb_dict["coordinate system"] = {"model": "spherical", "depth method": "begin segment"}
-            self.wb_dict["cross section"] = [[0, 0], [180.0, 0.0]]
+            if is_box_wider:
+                self.wb_dict["cross section"] = [[0, 0], [360.0, 0.0]]
+            else:
+                self.wb_dict["cross section"] = [[0, 0], [180.0, 0.0]]
         elif geometry == 'box':
             self.wb_dict["coordinate system"] = {"model": "cartesian"}
             # todo
-            self.wb_dict["cross section"] = [[0, 0], [2e7, 0.0]]
+            if is_box_wider:
+                self.wb_dict["cross section"] = [[0, 0], [1e7, 0.0]]
+            else:
+                self.wb_dict["cross section"] = [[0, 0], [2e7, 0.0]]
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
         # plates
         if geometry == 'chunk':
+            if is_box_wider:
+                max_sph = 360.0
+            else:
+                max_sph = 180.0
             Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
-            ov_trans_length=ov_trans_length, geometry=geometry) # plates
+            ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph) # plates
         elif geometry == 'box':
-            # todo
-            Xmax = 1e7  # lateral extent of the box
+            if is_box_wider:
+                Xmax = 2e7
+            else:
+                Xmax = 1e7  # lateral extent of the box
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry) # plates
@@ -323,11 +351,11 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     '''
     Ro = kwargs.get('Ro', 6371e3)
     Xmax = kwargs.get('Xmax', 7e6)
+    max_sph = kwargs.get("max_sph", 180.0)
     geometry = kwargs.get('geometry', 'chunk')
     o_dict = wb_dict.copy()
     trench_sph = (sp_age_trench * sp_rate / Ro) * 180.0 / np.pi
     trench_cart = sp_age_trench * sp_rate
-    max_sph = 180.0  # maximum angle assigned to limit the extent of features.
     max_cart = 2 * Xmax
     side_angle = 5.0  # side angle to creat features in the 3rd dimension
     side_dist = 1e3
@@ -419,10 +447,17 @@ def wb_configure_transit_ov_plates(i_feature, trench, ov_age,\
     return o_feature, ov
 
 
-def prm_geometry_sph(max_phi):
+def prm_geometry_sph(max_phi, **kwargs):
     '''
     reset geometry for chunk geometry
     '''
+    adjust_mesh_with_width = kwargs.get("adjust_mesh_with_width")
+    inner_radius = 3.481e6
+    outer_radius = 6.371e6
+    if adjust_mesh_with_width:
+        longitude_repetitions = int(outer_radius * max_phi / 180.0 * np.pi / (outer_radius - inner_radius))
+    else:
+        longitude_repetitions = 2
     o_dict = {
         "Model name": "chunk",
         "Chunk": {
@@ -430,7 +465,7 @@ def prm_geometry_sph(max_phi):
             "Chunk outer radius": "6.371e6",\
             "Chunk maximum longitude": "%.4e" % max_phi,\
             "Chunk minimum longitude": "0.0",\
-            "Longitude repetitions": "2"
+            "Longitude repetitions": "%d" % longitude_repetitions
         }
     }
     return o_dict
@@ -494,16 +529,23 @@ def prm_boundary_temperature_cart():
     return o_dict
 
 
-def prm_geometry_cart(box_width):
+def prm_geometry_cart(box_width, **kwargs):
     '''
     reset geometry for box geometry
     '''
+    adjust_mesh_with_width = kwargs.get("adjust_mesh_with_width")
+    inner_radius = 3.481e6
+    outer_radius = 6.371e6
+    if adjust_mesh_with_width:
+        x_repetitions = int(box_width / (outer_radius - inner_radius))
+    else:
+        x_repetitions = 2
     o_dict = {
         "Model name": "box",
         "Box": {
             "X extent": "%.4e" % box_width,
             "Y extent": "2.8900e6",
-            "X repetitions": "2"
+            "X repetitions": "%d" % x_repetitions
         }
     }
     return o_dict
