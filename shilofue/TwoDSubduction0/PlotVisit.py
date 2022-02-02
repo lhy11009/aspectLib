@@ -40,14 +40,14 @@ Examples of usage: \n\
 \n\
   - translate script: \n\
 \n\
-        Lib_PlotVisit visit_options -i $TwoDSubduction_DIR/latent_heat_issue/cookbook_latent-heat -sr temperature.py\n\
+        python -m shilofue.TwoDSubduction0.PlotVisit visit_options -i $TwoDSubduction_DIR/latent_heat_issue/cookbook_latent-heat -sr temperature.py\n\
             -sr: the relative path under the visit_script folder\n\
 \n\
   - run script: \n\
-        Lib_PlotVisit run -i $TwoDSubduction_DIR/non_linear34/eba_low_tol_newton_shift_CFL0.8/visit_scripts/slab.py\n\
+        python -m shilofue.TwoDSubduction0.PlotVisit run -i $TwoDSubduction_DIR/non_linear34/eba_low_tol_newton_shift_CFL0.8/visit_scripts/slab.py\n\
 \n\
   - run vtk scripts: \n\
-        Lib_PlotVisit vtk_options -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8_lh -p TwoDSubduction_MOW -s 25\n\
+        python -m shilofue.TwoDSubduction0.PlotVisit vtk_options -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8_lh -p TwoDSubduction_MOW -s 25\n\
             -p operations, available operations are: \n\
                 TwoDSubduction_MOW: pull out tentative MOW from temperature: \n\
                 TwoDSubduction_SlabAnalysis: analyze slab morphology: \n\
@@ -139,6 +139,19 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
                 # rotate to center on the slab
                 feature_sp = self.wb_dict['features'][index]
                 theta_ref_trench = feature_sp["coordinates"][2][0] / 180.0 * np.pi
+        elif self.options['GEOMETRY'] == 'box':
+            try:
+                index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
+            except KeyError:
+                # either there is no wb file found, or the feature 'Subducting plate' is not defined
+                # for the box geometry, this is the x distance of the trench
+                theta_ref_trench = 4000000.0
+            else:
+                # rotate to center on the slab
+                feature_sp = self.wb_dict['features'][index]
+                theta_ref_trench = feature_sp["coordinates"][2][0]        
+        else:
+            raise ValueError("Value of geometry must be either \"chunk\" or \"box\"")
         self.options['THETA_REF_TRENCH'] = theta_ref_trench
 
 

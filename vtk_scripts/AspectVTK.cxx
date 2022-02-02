@@ -446,6 +446,10 @@ void AspectVtk::mow_from_blocking(const double blocking_T, const double blocking
     iDelaunay2D->Update();
     return;
 }
+
+void AspectVtk::set_geometry(const std::string geometry){
+    this->geometry = geometry;
+}
     
 void AspectVtk::output(const vtkSmartPointer<vtkPolyData> opolydata, const std::string filename){
     std::cout << "Output data" << std::endl;

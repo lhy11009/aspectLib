@@ -69,7 +69,7 @@ std::shared_ptr<std::vector<size_t>> find_points_at_radius(std::shared_ptr<std::
   return I_deviation;
 }
 
-void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_outputs, const double theta_ref_trench)
+void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_outputs, const double theta_ref_trench, const std::string geometry="chunk")
 {
   // parameters we use here
   double ro = 6371e3;
@@ -90,8 +90,16 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_o
     double y = p[1];
     double r = sqrt(x*x + y*y);
     double theta = acos(x/r);
-    rs->push_back(r);
-    thetas->push_back(theta);
+    if (geometry == "chunk"){
+      rs->push_back(r);
+      thetas->push_back(theta);
+    }
+    else if (geometry == "box"){
+      rs->push_back(y);
+      thetas->push_back(x);
+    }
+    else
+      throw std::runtime_error("Geometry must be either \"box\" or \"chunk\"");
     I->push_back(id);
     //std::cout<< "id: " << id << ",r: " << r << ", theta: " << theta << std::endl;  // debug
   }
@@ -131,7 +139,10 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_o
     }
   }
   slab_outputs.theta100 = theta100;
-  slab_outputs.dip100 = atan(ro*(theta100 - trench_theta)/depth_find_100km);
+  if (geometry == "chunk")
+    slab_outputs.dip100 = atan(ro*(theta100 - trench_theta)/depth_find_100km);
+  else if (geometry == "box")
+    slab_outputs.dip100 = atan((theta100 - trench_theta)/depth_find_100km);
   std::cout << "100km theta: " << theta100 << std::endl;
   std::cout << "100km dip: " << slab_outputs.dip100 << std::endl;
   slab_outputs.set_moprh(trench_theta, slab_depth);
@@ -211,7 +222,15 @@ int main(int argc, char* argv[])
   std::cout << "pvtu_step: " << pvtu_step << std::endl;
   // 2. VTK_HORIZ_FILE
   std::string avg_filename = options[1];
+  // 4. geometry
+  std::string geometry;
+  if (options.size() > 3)
+    geometry = options[3];
+  else
+    geometry = "chunk";
+  // Initialiation & read option & data
   SlabAnalysis slab_analysis;
+  slab_analysis.set_geometry(geometry);
   slab_analysis.readfile(filename);
   slab_analysis.read_horiz_avg(avg_filename);
   slab_analysis.input_poly_data();
@@ -228,7 +247,7 @@ int main(int argc, char* argv[])
   double theta_ref_trench = 0.63;
   if (options.size() > 2)
     theta_ref_trench = std::stod(options[2]);
-  analyze_slab(c_poly_data, slab_outputs, theta_ref_trench); // analyze slab morphology
+  analyze_slab(c_poly_data, slab_outputs, theta_ref_trench, geometry); // analyze slab morphology
   analyze_wedge_temperature100(slab_analysis, slab_outputs, target_dir + "/" + "wedge_T100_" + pvtu_step + ".txt"); // output tempertature
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;

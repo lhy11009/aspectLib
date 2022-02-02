@@ -308,7 +308,7 @@ def plot_morph_contour_step(case_dir, step):
     ax.set_ylabel('Y')
     temp_dir = os.path.join(case_dir, 'temp_output')
     if not os.path.isdir(temp_dir):
-        os.path.mkdir(temp_dir)
+        os.mkdir(temp_dir)
     file_out = os.path.join(temp_dir, "slab_contour_s%05d.png" % step)
     plt.show()
     

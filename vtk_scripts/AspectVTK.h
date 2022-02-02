@@ -103,6 +103,9 @@ class AspectVtk
         std::vector<double> horiz_densities;
         // todo parameter
         Prm prm;
+        // geometry
+        std::string geometry;
+        void set_geometry(const std::string geometry);
 };
 
 void read_options(const std::string &option_filename, std::vector<std::string> &options);
