@@ -33,7 +33,7 @@ from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 
 test_dir = ".test"
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'TwoDSubduction', 'test_plot_slab')
-case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'cases', 'test_vtk')
+
 
 if not os.path.isdir(test_dir):
     # check we have the directory to store test result
@@ -44,6 +44,7 @@ def test_vtk_TwoDSubduction_SlabAnalysis():
     test the TwoDSubduction_SlabAnalysis module of vtk
     assert that we get the right value for trench position and slab depth
     '''
+    case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'cases', 'test_vtk')
     option_path = os.path.join(test_dir, 'TwoDSubduction_SlabAnalysis.input')
     wedge_T_file_out = os.path.join(test_dir, 'wedge_T100_00001.txt')
     wedge_T_file_out_std = os.path.join(case_dir, 'wedge_T100_00001_std.txt')
@@ -61,6 +62,30 @@ def test_vtk_TwoDSubduction_SlabAnalysis():
     assert(os.path.isfile(wedge_T_file_out))
     assert(filecmp.cmp(wedge_T_file_out, wedge_T_file_out_std))
 
+
+def test_vtk_TwoDSubduction_SlabAnalysis_Cart():
+    '''
+    test the TwoDSubduction_SlabAnalysis module of vtk in cartesian geometry
+    assert that we get the right value for trench position and slab depth
+    '''
+    test_dir1 = os.path.join(test_dir, 'test_TwoDSubduction_vtk_cart')
+    case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'cases', 'test_TwoDSubduction_vtk_cart')
+    option_path = os.path.join(test_dir1, 'TwoDSubduction_SlabAnalysis.input')
+    wedge_T_file_out = os.path.join(test_dir1, 'wedge_T100_00001.txt')
+    wedge_T_file_out_std = os.path.join(case_dir, 'wedge_T100_00001_std.txt')
+    if os.path.isfile(wedge_T_file_out):
+        os.remove(wedge_T_file_out)  # remove older file
+    vtk_option_path, _, _ = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis', vtk_step=0, output=option_path)
+    _stdout = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
+    outputs = slab_morph(_stdout)
+    # compare trench & slab depth output
+    trench_theta_std = 4.00983e+06
+    slab_depth_std = 203429
+    assert(abs(outputs['trench_theta']-trench_theta_std)/trench_theta_std < 1e-6)
+    assert(abs(outputs['slab_depth']-slab_depth_std)/slab_depth_std < 1e-6)
+    # compare wedge temperature output
+    assert(os.path.isfile(wedge_T_file_out))
+    assert(filecmp.cmp(wedge_T_file_out, wedge_T_file_out_std))
     
 # notes
     

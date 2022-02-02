@@ -73,6 +73,7 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_o
 {
   // parameters we use here
   double ro = 6371e3;
+  double yo = 2890e3;
   double depth_find_trench_point = 5e3; // parameters to find trench point
   const int n_average_for_trench_point = 3;
   double depth_find_100km = 100e3; // parameters to find slab surface at 100km depth
@@ -109,8 +110,8 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_o
   double sum = 0.0;
   int found = 0;
   for (int i=0; i < Ip->size(); i++){
-    double temp = (*thetas)[(*Ip)[i]]- theta_ref_trench;
-    if (abs(temp) < 0.1)
+    double temp = ((*thetas)[(*Ip)[i]]- theta_ref_trench) / theta_ref_trench;
+    if (abs(temp) < 0.2) // prevent selecting points from the far end of the domain
     {
       //std::cout << i << ", " << ", " << temp << std::endl;  // debug
       sum += (*thetas)[(*Ip)[i]];
@@ -127,10 +128,17 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_o
   double trench_theta = sum / n_average_for_trench_point;
   std::cout << "Trench theta: " << trench_theta << std::endl;
   // find slab depth
-  double slab_depth = ro - (*rs)[(*I)[0]];
+  double slab_depth;
+  if (geometry == "chunk"){
+    slab_depth = ro - (*rs)[(*I)[0]];
+    Ip = find_points_at_radius(rs, ro-depth_find_100km, n_average_for_100_km);
+  }
+  else if (geometry == "box"){
+    slab_depth = yo - (*rs)[(*I)[0]];
+    Ip = find_points_at_radius(rs, yo-depth_find_100km, n_average_for_100_km);
+  }
   std::cout << "Slab depth: " << slab_depth << std::endl;
   // find points at 100e3 depth
-  Ip = find_points_at_radius(rs, ro-depth_find_100km, n_average_for_100_km);
   double theta100 = (*thetas)[(*Ip)[0]];
   for (int i=0; i < n_average_for_100_km; i++){
     // get the biggest value for a point on the surface
@@ -149,19 +157,27 @@ void analyze_slab(vtkSmartPointer<vtkPolyData> c_poly_data, SlabOutputs & slab_o
 }
 
 
-void analyze_wedge_temperature100(SlabAnalysis & slab_analysis, SlabOutputs & slab_outputs, const std::string filename)
+void analyze_wedge_temperature100(SlabAnalysis & slab_analysis, SlabOutputs & slab_outputs, const std::string filename, const std::string geometry="chunk")
 {
   // wedge temperature above where the slab is 100 km deep
   vtkNew<vtkPoints> gridPoints;
   double Ro = 6371e3;
+  double yo= 2890e3;
   double depth = 120e3;  // this is set > 100 so as to check for slab compositions
   unsigned num = 120;
+  double val_theta, val_r, val_x, val_y;
   for (unsigned i = 0; i < num; i++){
     // a vertical line
-    double val_theta = slab_outputs.theta100;
-    double val_r = Ro - i * 1.0 / num * (depth);
-    double val_x = val_r * cos(val_theta);
-    double val_y = val_r * sin(val_theta);
+    if (geometry == "chunk"){
+      val_theta = slab_outputs.theta100;
+      val_r = Ro - i * 1.0 / num * (depth);
+      val_x = val_r * cos(val_theta);
+      val_y = val_r * sin(val_theta);
+    }
+    else if (geometry == "box"){
+      val_x = slab_outputs.theta100;
+      val_y = yo - i * 1.0 / num * (depth);
+    }
     gridPoints->InsertNextPoint(val_x, val_y, 0);
   }
   vtkSmartPointer<vtkPolyData> iPolyData = slab_analysis.interpolate_grid(gridPoints);
@@ -248,7 +264,7 @@ int main(int argc, char* argv[])
   if (options.size() > 2)
     theta_ref_trench = std::stod(options[2]);
   analyze_slab(c_poly_data, slab_outputs, theta_ref_trench, geometry); // analyze slab morphology
-  analyze_wedge_temperature100(slab_analysis, slab_outputs, target_dir + "/" + "wedge_T100_" + pvtu_step + ".txt"); // output tempertature
+  analyze_wedge_temperature100(slab_analysis, slab_outputs, target_dir + "/" + "wedge_T100_" + pvtu_step + ".txt", geometry); // output tempertature
   //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
 }

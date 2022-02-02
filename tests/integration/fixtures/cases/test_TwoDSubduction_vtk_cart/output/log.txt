@@ -1,0 +1,57 @@
+-----------------------------------------------------------------------------
+-- This is ASPECT, the Advanced Solver for Problems in Earth's ConvecTion.
+--     . version 2.4.0-pre (master_TwoD, 298394d6e)
+--     . using deal.II 9.3.1
+--     .       with 32 bit indices and vectorization level 1 (128 bits)
+--     . using Trilinos 12.18.1
+--     . using p4est 2.2.0
+--     . running in OPTIMIZED mode
+--     . running with 1 MPI process
+-----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+-- For information on how to cite ASPECT, see:
+--   https://aspect.geodynamics.org/citing.html?ver=2.4.0-pre&GWB=1&dg=1&sha=298394d6e&src=code
+-----------------------------------------------------------------------------
+Number of active cells: 2,048 (on 6 levels)
+Number of degrees of freedom: 101,028 (16,770+2,145+8,385+18,432+18,432+18,432+18,432)
+
+   Postprocessing:
+     Writing graphical output: output_low_r/solution/solution-00000
+     RMS, max velocity:        0 m/year, 0 m/year
+     Temperature min/avg/max:  273 K, 2281 K, 3500 K
+     Writing depth average:    output_low_r/depth_average
+
+Number of active cells: 3,584 (on 7 levels)
+Number of degrees of freedom: 176,988 (29,474+3,753+14,737+32,256+32,256+32,256+32,256)
+
+*** Timestep 0:  t=0 years, dt=0 years
+
+   Postprocessing:
+     Writing graphical output: output_low_r/solution/solution-00001
+     RMS, max velocity:        0 m/year, 0 m/year
+     Temperature min/avg/max:  273 K, 2281 K, 3500 K
+     Writing depth average:    output_low_r/depth_average
+
+Termination requested by criterion: end time
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      7.75s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Initialization                  |         1 |     0.225s |       2.9% |
+| Postprocessing                  |         2 |      4.96s |        64% |
+| Refine mesh structure, part 1   |         1 |     0.669s |       8.6% |
+| Refine mesh structure, part 2   |         1 |    0.0347s |      0.45% |
+| Setup dof systems               |         2 |    0.0632s |      0.82% |
+| Setup initial conditions        |         2 |       1.5s |        19% |
+| Setup matrices                  |         1 |     0.238s |       3.1% |
++---------------------------------+-----------+------------+------------+
+
+-- Total wallclock time elapsed including restarts:8s
+-----------------------------------------------------------------------------
+-- For information on how to cite ASPECT, see:
+--   https://aspect.geodynamics.org/citing.html?ver=2.4.0-pre&GWB=1&dg=1&sha=298394d6e&src=code
+-----------------------------------------------------------------------------
