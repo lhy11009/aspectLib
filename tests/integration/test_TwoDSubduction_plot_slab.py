@@ -87,6 +87,7 @@ def test_vtk_TwoDSubduction_SlabAnalysis_Cart():
     assert(os.path.isfile(wedge_T_file_out))
     assert(filecmp.cmp(wedge_T_file_out, wedge_T_file_out_std))
     
+    
 # notes
     
 # to check for error message
