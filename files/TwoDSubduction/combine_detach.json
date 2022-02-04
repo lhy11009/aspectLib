@@ -1,0 +1,18 @@
+{
+    "Name": "slab_detach_potential_temperature",
+	"case_root": "${TwoDSubduction_DIR}",
+	"cases": ["EBA_CDPT/eba_cdpt_SA80.0_OA20.0", "wb_sd_issue/wb_sph_cdd50_substract_T_op20ma"
+    ],
+	"plots": ["run_time.png", "Statistic.png", "um_temperature000005.png", "um_viscosity_snap000005.png",
+        "um_temperature000009.png", "um_viscosity_snap000009.png",
+        "um_temperature000010.png", "um_viscosity_snap000010.png",
+        "um_temperature000016.png", "um_viscosity_snap000016.png"
+    ],
+	"same_for_all" : 1,
+    "output directory": "${TwoDSubduction_DIR}/EBA_CDPT",
+    "Include title": 1,
+    "Title": {
+        "Title": "Detachment of the slab (continue)"
+    },
+    "anchor": 2
+}
