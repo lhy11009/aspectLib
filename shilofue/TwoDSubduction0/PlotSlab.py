@@ -52,7 +52,9 @@ Examples of usage: \n\
 \n\
   - generate slab_morph.txt: \n\
     (what this does is looping throw all visualizing steps, so it takes time)\n\
+    the -r option rewrite previous slab_morph.txt, otherwise new results will be appended to that previous file\n\
     python -m shilofue.TwoDSubduction0.PlotSlab morph_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 \n\
+    -r 1 \n\
 \n\
     Options: \n\
         -r: 0(default), 1 - rewrite previous slab_morph.txt\n\
@@ -238,9 +240,12 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
             rewrite: if rewrite previous results
     '''
     # get all available snapshots
+    # the interval is choosen so there is no high frequency noises
+    time_interval_for_slab_morphology = 0.5e6
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
-    available_pvtu_snapshots = Utilities.string2list(Visit_Options.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'])
+    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+    available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
     available_pvtu_steps = [i - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) for i in available_pvtu_snapshots]
     # get where previous session ends
     SlabPlot = SLABPLOT('slab')
@@ -268,6 +273,7 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     num_cores = multiprocessing.cpu_count()
     # for pvtu_step in available_pvtu_steps:
     #    ParallelWrapper(pvtu_step)  # debug
+    # loop for all the steps to plot
     Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
     for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
     ParallelWrapper.clear()
