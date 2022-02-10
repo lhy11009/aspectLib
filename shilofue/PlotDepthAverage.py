@@ -52,7 +52,7 @@ Examples of usage: \n\
 \n\
   - plot figure: \n\
 \n\
-        python -m shilofue.PlotDepthAverage plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear30/eba_re_mesh \
+        python -m shilofue.PlotDepthAverage plot_case -i ~/ASPECT_PROJECT/LatentHeatBK/LatentHeat3/lh_test -t 1e9 \
 \n\
   - export data: \n\
 \n\
@@ -168,7 +168,7 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
         else:
             i1 = self.time_step_indexes[time_step + 1][0] * self.time_step_length
         odata = self.export("", names, rows=[i for i in range(i0, i1)], include_size=True, data_only=True)
-        return odata
+        return odata, self.time_step_times[time_step]
 
 
     def ReadHeader(self, _filename):
@@ -276,45 +276,31 @@ def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
         kwargs:
             time_step - time_step to plot the figure, default is 0
     '''
+    time = kwargs.get('time', 0.0)
     assert(os.access(depth_average_path, os.R_OK))
     # read that
     DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
     DepthAverage.ReadHeader(depth_average_path)
     DepthAverage.ReadData(depth_average_path)
+    
     # manage data
     DepthAverage.SplitTimeStep()
-    time_step = kwargs.get('time_step', 0)
-    try:
-        i0 = DepthAverage.time_step_indexes[time_step][-1] * DepthAverage.time_step_length
-        if time_step == len(DepthAverage.time_step_times) - 1:
-            # this is the last step
-            i1 = DepthAverage.data.shape[0]
-        else:
-            i1 = DepthAverage.time_step_indexes[time_step + 1][0] * DepthAverage.time_step_length
-    except IndexError:
-        print("PlotDaFigure: File (%s) may not contain any depth average output, abort. " % depth_average_path)
-        return
-    data = DepthAverage.data[i0:i1, :]
+    names = ['depth', 'adiabatic_pressure', 'temperature', 'adiabatic_temperature', 'viscosity', 'vertical_heat_flux', 'vertical_mass_flux']
+    data, exact_time = DepthAverage.ExportDataByTime(time, names)
+
     # get depth
-    col_depth = DepthAverage.header['depth']['col']
-    depths = data[:, col_depth]
+    depths = data[:, 0]
     # get pressure
-    col_P = DepthAverage.header['adiabatic_pressure']['col']
-    pressures = data[:, col_P]
+    pressures = data[:, 1]
     # get temperature
-    col_T = DepthAverage.header['temperature']['col']
-    temperatures = data[:, col_T]
-    col_Tad = DepthAverage.header['adiabatic_temperature']['col']
-    adiabat = data[:, col_Tad]
+    temperatures = data[:, 2]
+    adiabat = data[:, 3]
     # get viscosity
-    col_eta = DepthAverage.header['viscosity']['col']
-    eta = data[:, col_eta]
+    eta = data[:, 4]
     # heat_flux
-    col_hf = DepthAverage.header['vertical_heat_flux']['col']
-    hf = data[:, col_hf]
+    hf = data[:, 5]
     # heat_flux
-    col_mf = DepthAverage.header['vertical_mass_flux']['col']
-    mf = data[:, col_mf]
+    mf = data[:, 6]
 
     # plot
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
@@ -352,6 +338,8 @@ def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
     axs[1, 1].grid()
     axs[1, 1].set_ylabel('Depth [km]') 
     axs[1, 1].set_xlabel('Mass Flux [kg / m2 / yr]') 
+    # title
+    fig.suptitle("Time = %.4e" % exact_time)
     # layout:w
     fig.tight_layout()
     # check directory
@@ -360,7 +348,7 @@ def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
         os.mkdir(fig_dir)
     fig_path_base0 = fig_path_base.rpartition('.')[0]
     fig_path_type = fig_path_base.rpartition('.')[2]
-    fig_path = "%s.%s" % (fig_path_base0, fig_path_type)
+    fig_path = "%s_t%.4e.%s" % (fig_path_base0, exact_time, fig_path_type)
     plt.savefig(fig_path)
     print("New figure: %s" % fig_path)
 
@@ -421,7 +409,7 @@ def main():
     parser.add_argument('-o', '--outputs', type=str,
                         default='./DepthAverage.png',
                         help='output file(png)')
-    parser.add_argument('-t', '--time', type=str,
+    parser.add_argument('-t', '--time', type=float,
                         default=0.0,
                         help='model time(s or yr)')
     parser.add_argument('-s', '--step', type=int,
@@ -463,7 +451,7 @@ def main():
     if _commend == 'plot_case':
         depth_average_path = os.path.join(arg.inputs, 'output', 'depth_average.txt')
         fig_path_base = os.path.join(arg.inputs, 'img', 'DepthAverage.png')
-        PlotDaFigure(depth_average_path, fig_path_base)
+        PlotDaFigure(depth_average_path, fig_path_base, time=arg.time)
     
     if _commend == 'export_case':
         depth_average_path = os.path.join(arg.inputs, 'output', 'depth_average.txt')

@@ -500,3 +500,8 @@ I use the vtk package in c++ to anaylyze trench motion here:
 ### Phase transitions configuration
 
 * files/TwoDSubduction/phases_1_0.json - the CDPT model I use.
+
+## a small sub-project - testing the overshoot of temperature in the latent heat bench mark
+
+This is a sub-project I named "LatentHeatBK" where I tested the overshooting of temperature.
+As of Feb 2022, I have assembled the "Cases.py", where I could change the mesh resolution, velocity, as well as which phase transition model to use.

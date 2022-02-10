@@ -60,13 +60,19 @@ class CASE_OPT(CasesP.CASE_OPT):
          ["phase transition", "json file"], 'foo.json', nick="phase_json_path")
         self.add_key("Material model to use", str,\
          ["material model"], 'visco plastic', nick="material_model")
+        self.add_key("Vertical velocity", float,\
+         ["vertical velocity"], -6.7601e-4, nick="vy")
+        self.add_key("Resolution", int,\
+         ["resolution"], 100, nick="resolution")
+        
 
     def check(self):
         phase_model = self.values[self.start]
         phase_json_path = Utilities.var_subs(self.values[self.start+1])
         material_model = self.values[self.start + 2]
         if phase_model == "CDPT":
-            assert(os.path.isfile(phase_json_path))
+            if not os.path.isfile(phase_json_path):
+                raise FileExistsError("%s doesn't exist" % phase_json_path)
             assert(material_model in ["visco plastic", "visco plastic twod"])
         else:
             raise ValueError("check: value for phase model is not valid.")
@@ -79,7 +85,9 @@ class CASE_OPT(CasesP.CASE_OPT):
         phase_model = self.values[self.start]
         phase_json_path = Utilities.var_subs(self.values[self.start+1])
         material_model = self.values[self.start + 2]
-        return phase_model, phase_json_path, material_model    
+        vy = self.values[self.start+3]
+        resolution = self.values[self.start+4]
+        return phase_model, phase_json_path, material_model, vy, resolution
 
     def to_configure_wb(self):
         '''
@@ -93,7 +101,7 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self, phase_model, phase_json_path, material_model):
+    def configure_prm(self, phase_model, phase_json_path, material_model, vy, resolution):
         '''
         Configure prm file
         Inputs:
@@ -101,6 +109,11 @@ class CASE(CasesP.CASE):
             phase_json_path (str): path of file for CDPT model.
         '''
         o_dict = self.idict.copy()
+        # resolution
+        o_dict['Geometry model']['Box']['X repetitions'] = str(resolution)
+        o_dict['Geometry model']['Box']['Y repetitions'] = str(resolution)
+        # vertical velocity
+        o_dict['Boundary velocity model']['Function']['Function expression'] = "0; %.4e" % vy
         # modify material model
         if phase_model == "CDPT":
             outputs = ParsePhaseTransitionFile(phase_json_path)
