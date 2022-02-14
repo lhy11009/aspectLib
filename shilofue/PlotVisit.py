@@ -28,6 +28,7 @@ import shilofue.Plot as Plot
 import shilofue.ParsePrm as ParsePrm
 from shilofue.CaseOptions import CASE_OPTIONS
 from shilofue.PlotDepthAverage import ExportData
+import warnings
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -127,7 +128,10 @@ class VISIT_OPTIONS(CASE_OPTIONS):
                 if step == max(0, graphical_snaps[i] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])):
                     found = True
                     self.options['TIME_STEPS'].append(time_steps[i])
-            Utilities.my_assert(found, ValueError, "%s: step %d is not found" % (Utilities.func_name(), step))
+            # todo
+            if not found:
+                warnings.warn("%s: step %d is not found" % (Utilities.func_name(), step))
+            # Utilities.my_assert(found, ValueError, "%s: step %d is not found" % (Utilities.func_name(), step))
 
     def visit_options(self, extra_options):
         '''

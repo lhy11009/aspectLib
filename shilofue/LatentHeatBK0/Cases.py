@@ -87,7 +87,8 @@ class CASE_OPT(CasesP.CASE_OPT):
         material_model = self.values[self.start + 2]
         vy = self.values[self.start+3]
         resolution = self.values[self.start+4]
-        return phase_model, phase_json_path, material_model, vy, resolution
+        potential_T = self.values[4]
+        return phase_model, phase_json_path, material_model, vy, resolution, potential_T
 
     def to_configure_wb(self):
         '''
@@ -101,12 +102,13 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self, phase_model, phase_json_path, material_model, vy, resolution):
+    def configure_prm(self, phase_model, phase_json_path, material_model, vy, resolution, potential_T):
         '''
         Configure prm file
         Inputs:
             phase_model (str): model to use for phase transition
             phase_json_path (str): path of file for CDPT model.
+            potential_T (float): potential temperature
         '''
         o_dict = self.idict.copy()
         # resolution
@@ -114,6 +116,9 @@ class CASE(CasesP.CASE):
         o_dict['Geometry model']['Box']['Y repetitions'] = str(resolution)
         # vertical velocity
         o_dict['Boundary velocity model']['Function']['Function expression'] = "0; %.4e" % vy
+        # Adiabatic surface temperature
+        o_dict["Adiabatic surface temperature"] = str(potential_T)
+        o_dict["Boundary temperature model"]["Box"]["Top temperature"] = str(potential_T)
         # modify material model
         if phase_model == "CDPT":
             outputs = ParsePhaseTransitionFile(phase_json_path)

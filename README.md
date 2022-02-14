@@ -173,6 +173,16 @@ Here, the task is to create mutiple cases at a time and hold them in a single fo
 I made use of the previous script I used for create a single case (Cases.py), and write a new script Group.py.
 In this new scripts, I read in a json file with the configurations and write a bundle of json case-configuring files for interfaces defined in Cases.py.
 
+#### workflow
+
+1. test new feature with a "case.json".
+   1. implement this option in the Cases.py script
+   2. put option into the case.json file
+2. Generate a group of cases
+   1. save the previous "case.json", as well as the ".prm" file, ".wb" file to a separate folder under "files" (name with date)
+   2. edit a group.json, manage both "base features" and "features". The first one is universal settings for the whole group, while the second one create differences among cases.
+   3. run with "Lib_foo_group create_group ...", make sure you manage the pop-up options correctly (whether to delete, whether to update.)
+
 #### Explain the json file inputs:
 
 First, this json file is dependent on the previous json file in the section of "Create new case".
