@@ -1,4 +1,6 @@
 # to use this first: # > conda activate pygmt import os import pygmt from pathlib import Path
+# Note this script could be run with pygmt 0.4.1
+
 import os
 import pygmt
 from pathlib import Path
@@ -34,7 +36,9 @@ for i in range(len(loc)):
         grdfile = str(path)
         print(grdfile)
     # grdfile = os.path.join(slab2dir, loc[i] + '_slab2_dep.grd')
+    # plot, if the cptfile (below) shoots error, use the Buda color scheme instead "on top"
     # fig.grdimage(grid=grdfile, nan_transparent="gray", cmap='buda')
+    # note: in Magali's original notebook, there is a "Q" option, which should be the same as the "nan_transparent" command, but that doesn't work for me.
     fig.grdimage(grid=grdfile, nan_transparent="gray", cmap=cptfile)
 # fig.colorbar(cmap=cptfile,position="JMR",box=False,frame=["x+lDepth", "y+lkm"])
 fig.savefig('map_topo_slabs.png')
