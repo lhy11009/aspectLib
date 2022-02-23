@@ -1114,8 +1114,8 @@ def GetLowerMantleRheology(upper_mantle_creep_method, jump, T, P, **kwargs):
      - P: pressure at 660km
     """
     # extra inputs
-    strategy = Config(kwargs, 'strategy', 'A')
-    V1 = Config(kwargs, 'V1', upper_mantle_creep_method['V'])
+    strategy = kwargs.get('strategy', 'A')
+    V1 = kwargs.get('V1', upper_mantle_creep_method['V'])
     # read upper mantle values
     A = upper_mantle_creep_method['A']
     m = upper_mantle_creep_method['m']
