@@ -85,11 +85,18 @@ class SLABPLOT(LINEARPLOT):
         plt.savefig(fileout)
         print("plot slab surface: ", fileout)
     
-    def ReadWedgeT(self, case_dir, min_pvtu_step, max_pvtu_step):
+    def ReadWedgeT(self, case_dir, min_pvtu_step, max_pvtu_step, **kwargs):
+        # todo
+        time_interval_for_slab_morphology = 0.5e6  # hard in
         i = 0
         initial_adaptive_refinement = int(self.prm['Mesh refinement']['Initial adaptive refinement'])
         Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
-        for pvtu_step in range(min_pvtu_step + initial_adaptive_refinement, max_pvtu_step + initial_adaptive_refinement + 1):
+        Visit_Options = VISIT_OPTIONS(case_dir)
+        Visit_Options.Interpret()
+        # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+        available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+        # for pvtu_step in range(min_pvtu_step + initial_adaptive_refinement, max_pvtu_step + initial_adaptive_refinement + 1):
+        for pvtu_step in available_pvtu_snapshots:
             file_in_path = os.path.join(case_dir, 'vtk_outputs', 'wedge_T100_%05d.txt' % pvtu_step)
             Utilities.my_assert(os.access(file_in_path, os.R_OK), FileExistsError, "File %s doesn\'t exist" % file_in_path)
             self.wedge_T_reader.ReadHeader(file_in_path)
@@ -102,7 +109,8 @@ class SLABPLOT(LINEARPLOT):
             if i == 0: 
                 rs = (xs**2.0 + ys**2.0)**0.5
                 depthes = Ro - rs # compute depth
-                Ts = np.zeros((depthes.size, max_pvtu_step - min_pvtu_step + 1))
+                # Ts = np.zeros((depthes.size, max_pvtu_step - min_pvtu_step + 1))
+                Ts = np.zeros((depthes.size, len(available_pvtu_snapshots)))
             Ts[:, i] = self.wedge_T_reader.data[:, col_T]
             i += 1
         return depthes, Ts
@@ -255,7 +263,6 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
     last_pvtu_step = -1
     if os.access(slab_morph_file, os.R_OK) and if_rewrite == 0:
         # read previous results if they exist
-        # todo
         SlabPlot.ReadHeader(slab_morph_file)
         SlabPlot.ReadData(slab_morph_file)
         if SlabPlot.HasData():
@@ -271,11 +278,11 @@ def vtk_and_slab_morph_case(case_dir, **kwargs):
             os.remove(slab_morph_file)  # delete slab morph file
         ParallelWrapper.delete_temp_files(available_pvtu_steps)  # delete intermediate file if rewrite
     num_cores = multiprocessing.cpu_count()
-    # for pvtu_step in available_pvtu_steps:
-    #    ParallelWrapper(pvtu_step)  # debug
+    for pvtu_step in available_pvtu_steps:
+        ParallelWrapper(pvtu_step)  # debug
     # loop for all the steps to plot
-    Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
-    for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
+    # Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
+    # for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
     ParallelWrapper.clear()
     for pvtu_step in available_pvtu_steps:  # then run in on cpu to assemble these results
         ParallelWrapper(pvtu_step)
