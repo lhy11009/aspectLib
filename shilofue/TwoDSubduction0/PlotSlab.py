@@ -86,11 +86,16 @@ class SLABPLOT(LINEARPLOT):
         print("plot slab surface: ", fileout)
     
     def ReadWedgeT(self, case_dir, min_pvtu_step, max_pvtu_step, **kwargs):
-        # todo
         time_interval_for_slab_morphology = 0.5e6  # hard in
         i = 0
         initial_adaptive_refinement = int(self.prm['Mesh refinement']['Initial adaptive refinement'])
-        Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        geometry = self.prm['Geometry model']['Model name']
+        if geometry == 'chunk':
+            Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        elif geometry == 'box':
+            Do = float(self.prm['Geometry model']['Box']['Y extent'])
+        else:
+            raise ValueError('Invalid geometry')
         Visit_Options = VISIT_OPTIONS(case_dir)
         Visit_Options.Interpret()
         # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
@@ -108,7 +113,12 @@ class SLABPLOT(LINEARPLOT):
             ys = self.wedge_T_reader.data[:, col_y]
             if i == 0: 
                 rs = (xs**2.0 + ys**2.0)**0.5
-                depthes = Ro - rs # compute depth
+                if geometry == 'chunk':
+                    depthes = Ro - rs # compute depth
+                elif geometry == 'box':
+                    depthes = Do - rs # compute depth
+                else:
+                    raise ValueError('Invalid geometry')
                 # Ts = np.zeros((depthes.size, max_pvtu_step - min_pvtu_step + 1))
                 Ts = np.zeros((depthes.size, len(available_pvtu_snapshots)))
             Ts[:, i] = self.wedge_T_reader.data[:, col_T]
@@ -135,7 +145,11 @@ class SLABPLOT(LINEARPLOT):
         assert(os.access(prm_file, os.R_OK))
         self.ReadPrm(prm_file)
         # read parameters
-        Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        geometry = self.prm['Geometry model']['Model name']
+        if geometry == 'chunk':
+            Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        else:
+            Ro = -1.0  # in this way, wrong is wrong
         # read data
         slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
         assert(os.path.isfile(slab_morph_file))
@@ -151,7 +165,12 @@ class SLABPLOT(LINEARPLOT):
         pvtu_steps = self.data[:, col_pvtu_step]
         times = self.data[:, col_pvtu_time]
         trenches = self.data[:, col_pvtu_trench]
-        trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
+        if geometry == "chunk":
+            trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
+        elif geometry == 'box':
+            trenches_migration_length = trenches - trenches[0]
+        else:
+            raise ValueError('Invalid geometry')
         slab_depthes = self.data[:, col_pvtu_slab_depth]
         trench_velocities = np.gradient(trenches_migration_length, times)
         sink_velocities = np.gradient(slab_depthes, times)
