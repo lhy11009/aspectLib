@@ -1,14 +1,12 @@
 ## update
 
 * show a status NA even if the return string from slurm is ' ' or CG
-
-## copy case to a project
-
-* copy case, especially test cases into this project, write some scripts that take the name of project and the case to fix the rest.
+(not needed now because the update is not being used)
 
 ## debug option
 
 * add debug option to print all command used
+start by define a flag "debug" and passing that into every functions.
 
 
 # fix path
@@ -19,20 +17,7 @@ traking branch with project name
 
 ## script path
 
-run script under any foldernon_linear1MaULV3.000e+01testMLT5.000e-02MV1.000e+24NST5.000e-05
-so that we can create a group with assigned parameter groups instead of looping each parameters
-
-## separate the configuration of projects
-
-change to the python script, use simplest interfaces as possible
-
-prm files to use
-
-json files to use
-
-source code directory "build_${project_name}"
-
-# layout of doc
+run script under any folder (using relative path)
 
 ## statistic plot
 
@@ -40,20 +25,6 @@ source code directory "build_${project_name}"
 * set x axis as time
 * attach a line of step/time and a 'step' axis in addition to the y-axis
 * attach a plot of dofs
-
-# layout of pages
-
-* a single file for a case
-
-## content of page
-
-* sequece of pictures, sort them before attached
-* an option for including addtional files for case and group
-* Insert the comment in the .json file to page
-
-## add configuration
-
-add configuration of server, git account
 
 
 # writing the installation part
@@ -64,9 +35,9 @@ add configuration of server, git account
 
 ## fix all environmental varibles
 
-## solution for mac
-
 # fix color of multiple lines automatically
+(and use this to combine plots from multiple cases)
+Within the linear plots, add flags to export data instead of plotting the figure (maybe need to rewrite them in class).
 
 # fix test folder structure for python
 
@@ -211,4 +182,7 @@ Put every type of plot into one key. e.g. "visit": {}, "newton_solver": {}
 
 * set default value when use them
 
+## Schedule.py
+
+combine schedules into a single file (bash script)
 

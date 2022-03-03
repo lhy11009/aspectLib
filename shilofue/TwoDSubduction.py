@@ -39,6 +39,10 @@ Examples of usage: \n\
   - generate scheduler files for a single case: \n\
 \n\
         Lib_TwoDSubduction schedule_case_pp -i EBA_CDPT1/eba_cdpt_SA80.0_OA40.0 \
+\n\
+  - generate scheduler files for a group of cases: \n\
+\n\
+        Lib_TwoDSubduction schedule_group_pp -i EBA_CDPT1 \
         ")
 
 
