@@ -20,5 +20,5 @@
 			"transit": {"age": 20e6, "length": 700e3}
 		}
 	},
-	"additional files": ["job_rome.sh", "job_high2.sh"]
+	"additional files": ["job_rome.sh", "job_high2.sh", "job_p-billen.sh"]
 }

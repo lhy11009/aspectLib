@@ -216,6 +216,19 @@ class VISIT_PLOT():
         # save plot 
         self.save_window('density')
         HideActivePlots()
+    
+    def plot_viscosity_base(self, **kwargs):
+        '''
+        plot viscosity
+        '''
+        limits = kwargs.get('limit', None)
+        # set up viscosity
+        self.set_pseudo_color('viscosity', color_table="SCM_roma", invert_color=False, log=True, limits=limits)
+        SetActivePlots((self.idxs['viscosity']))
+        HideActivePlots()
+        # save plot 
+        self.save_window('viscosity')
+        HideActivePlots()
 
         
     def save_window(self, filename, **kwargs):

@@ -28,14 +28,15 @@ class TEMPERATURE_PLOT(VISIT_PLOT):
             plot_types(list)
             vars_(list): variables to plot
         """
-        plot_types = ["Pseudocolor", "Pseudocolor"]
-        vars_ = ["T", "density"]
+        plot_types = ["Pseudocolor", "Pseudocolor", "Pseudocolor"]
+        vars_ = ["T", "density", "viscosity"]
         return plot_types, vars_
 
     def plot_time_snap(self):
         # plot option for this class
         self.plot_temperature_base() # temperature
         self.plot_density_base() # density
+        self.plot_viscosity_base()  # viscosity
 
 def main():
     Temperature_Plot = TEMPERATURE_PLOT("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
