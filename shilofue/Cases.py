@@ -68,6 +68,7 @@ class CASE_OPT(Utilities.JSON_OPT):
         self.add_key("Root level from the project root", int,\
          ["root level"], 1, nick="root_level")
         self.add_key("If use world builder", int, ['use world builder'], 0, nick='if_wb')
+        self.add_key("Type of the case", str, ["type"], '', nick='_type')
         pass
     
     def check(self):
@@ -75,15 +76,20 @@ class CASE_OPT(Utilities.JSON_OPT):
         check to see if these values make sense
         '''
         # output and input dirs
-        os.path.isdir(self.values[1])
-        os.path.isdir(self.values[2])
+        assert(os.path.isdir(self.values[1]))
+        assert(os.path.isdir(self.values[2]))
         pass
 
     def to_init(self):
         '''
         Interface to init
         '''
-        inputs = os.path.join(self.values[1], 'case.prm')
+        _type = self.values[9]
+        if _type == '':
+            base_name = 'case.prm'
+        else:
+            base_name = 'case_%s.prm' % _type
+        inputs = os.path.join(self.values[1], base_name)
         if_wb = self.values[8]
         return self.values[0], inputs, if_wb
 

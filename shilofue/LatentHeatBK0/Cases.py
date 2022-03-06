@@ -55,7 +55,7 @@ class CASE_OPT(CasesP.CASE_OPT):
         self.start = self.number_of_keys()
         # self.add_key("foo", int, ['phase transition model'], 0, nick='if_wb')
         self.add_key("Model to use for mantle phase transitions", str,\
-         ["phase transition model"], 'CDPT', nick="phase_model")
+         ["phase transition model"], 'default', nick="phase_model")
         self.add_key("Json file to use for mantle phase transitions", str,\
          ["phase transition", "json file"], 'foo.json', nick="phase_json_path")
         self.add_key("Material model to use", str,\
@@ -70,7 +70,9 @@ class CASE_OPT(CasesP.CASE_OPT):
         phase_model = self.values[self.start]
         phase_json_path = Utilities.var_subs(self.values[self.start+1])
         material_model = self.values[self.start + 2]
-        if phase_model == "CDPT":
+        if phase_model == "default":
+            pass
+        elif phase_model == "CDPT":
             if not os.path.isfile(phase_json_path):
                 raise FileExistsError("%s doesn't exist" % phase_json_path)
             assert(material_model in ["visco plastic", "visco plastic twod"])
@@ -88,7 +90,8 @@ class CASE_OPT(CasesP.CASE_OPT):
         vy = self.values[self.start+3]
         resolution = self.values[self.start+4]
         potential_T = self.values[4]
-        return phase_model, phase_json_path, material_model, vy, resolution, potential_T
+        _type = self.values[9] 
+        return _type, phase_model, phase_json_path, material_model, vy, resolution, potential_T
 
     def to_configure_wb(self):
         '''
@@ -102,7 +105,7 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self, phase_model, phase_json_path, material_model, vy, resolution, potential_T):
+    def configure_prm(self, _type, phase_model, phase_json_path, material_model, vy, resolution, potential_T):
         '''
         Configure prm file
         Inputs:
@@ -115,23 +118,29 @@ class CASE(CasesP.CASE):
         o_dict['Geometry model']['Box']['X repetitions'] = str(resolution)
         o_dict['Geometry model']['Box']['Y repetitions'] = str(resolution)
         # vertical velocity
-        o_dict['Boundary velocity model']['Function']['Function expression'] = "0; %.4e" % vy
+        if _type == 'layered':
+            o_dict['Boundary velocity model']['Function']['Function expression'] = "0; %.4e" % vy
         # Adiabatic surface temperature
         o_dict["Adiabatic surface temperature"] = str(potential_T)
         o_dict["Boundary temperature model"]["Box"]["Top temperature"] = str(potential_T)
-        # modify material model
+        # modify material model, first parse from the phase transition model,
+        # then merge it into the material model of the prm file.
         if phase_model == "CDPT":
             outputs = ParsePhaseTransitionFile(phase_json_path)
+            print(outputs) # debug
+        else:
+            outputs = {}
         o_dict['Material model']['Model name'] = material_model  # material model to use
         # subsection setup
         if material_model == "visco plastic twod":
             material_model_subsection = "Visco Plastic TwoD"
         else:
-            material_model_subsection = material_model.title()
+            material_model_subsection = material_model.title()  # ?
         for key, value in o_dict['Material model'].items():
             if type(value) == dict:
                 o_dict['Material model'].pop(key)
-                o_dict['Material model'][material_model_subsection] = value   
+                o_dict['Material model'][material_model_subsection] = value
+        # todo  
         o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries
         # manage shared library
         if material_model == "visco plastic twod":
