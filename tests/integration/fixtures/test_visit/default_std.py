@@ -241,9 +241,16 @@ class VISIT_PLOT():
         OpenDatabase(self.filein)
 
 # vts file:
-#   /home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/cases/test_visit/output/solution.visit
+#   /home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/cases/test_visit_default/output/solution.visit
 # directory for images:
 #   .test/img
+# initial adaptive refinement level:
+#   0
+# all available snapshots for graphical output
+#   [0]
+# steps to plot
+#   [0]
+
 class TEMPERATURE_PLOT(VISIT_PLOT):
     # a class for plotting temperature
     def __init__(self, filein, **kwargs):
@@ -263,16 +270,27 @@ class TEMPERATURE_PLOT(VISIT_PLOT):
             plot_types(list)
             vars_(list): variables to plot
         """
-        plot_types = ["Pseudocolor"]
-        vars_ = ["T"]
-	return plot_types, vars_
+        plot_types = ["Pseudocolor", "Pseudocolor", "Pseudocolor"]
+        vars_ = ["T", "density", "viscosity"]
+        return plot_types, vars_
 
     def plot_time_snap(self):
         # plot option for this class
-        self.plot_temperature_base()
+        self.plot_temperature_base() # temperature
 
 def main():
-    Temperature_Plot = TEMPERATURE_PLOT("/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/cases/test_visit/output/solution.visit", output_dir=".test/img")
-    Temperature_Plot(0)
+    Temperature_Plot = TEMPERATURE_PLOT("/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/cases/test_visit_default/output/solution.visit", output_dir=".test/img")
+    steps = [0]
+    if type(steps) == list:
+        for step in steps:
+            # check that snapshot is valid
+            snapshots = 0+step
+            if snapshots in [0]:
+                Temperature_Plot(0+step)
+            else:
+                print "step %s is not valid. There is no output" % step
+    else:
+        print "step: " + str(steps) + " is not a list. There is no output"
+    # Temperature_Plot(0)
 
 main()

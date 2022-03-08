@@ -45,8 +45,8 @@ class VISIT_PLOT():
         self.idxs[var] = self.all_idxs
         self.all_idxs += 1
         
-    def draw_all(self):	
-	# draw plots
+    def draw_all(self):    
+    # draw plots
         all_idxs_tuple = tuple([i for i in range(self.all_idxs)])
         SetActivePlots(all_idxs_tuple)
         DrawPlots()
@@ -191,7 +191,7 @@ class VISIT_PLOT():
         '''
         plot temperature
         '''
-	    limits = kwargs.get('limit', None)
+        limits = kwargs.get('limit', None)
         # set up temperature
         self.set_pseudo_color('T', color_table='magma', limits=limits)
         SetActivePlots((self.idxs['T']))

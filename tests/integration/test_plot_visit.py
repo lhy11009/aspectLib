@@ -84,6 +84,32 @@ def test_visit_options():
     assert(filecmp.cmp(ofile_path, ofile_std))
 
 
+def test_visit_options_default(): 
+    # check visit_options (interpret script from standard ones)
+    case_dir = os.path.join(test_cases_dir, 'test_visit_default')
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    # call function
+    Visit_Options.Interpret()
+    ofile = os.path.join(test_dir, 'default.py')
+    visit_script = os.path.join(source_dir, 'default.py')
+    visit_script_base = os.path.join(source_dir, 'base.py')
+    Visit_Options.read_contents(visit_script_base, visit_script)
+    # make a new directory
+    img_dir = os.path.join(test_dir, 'img')
+    if os.path.isdir(img_dir):
+        rmtree(img_dir)
+    os.mkdir(img_dir)
+    Visit_Options.options["IMG_OUTPUT_DIR"] = img_dir
+    Visit_Options.substitute()
+    ofile_path = Visit_Options.save(ofile)
+    # assert file generated
+    assert(os.path.isfile(ofile_path))
+    # assert file is identical with standard
+    ofile_std = os.path.join(source_dir, 'default_std.py')
+    assert(os.path.isfile(ofile_std))
+    assert(filecmp.cmp(ofile_path, ofile_std))
+
+
 def test_prepare_result():
     # check the script to test
     pr_script = os.path.join(source_dir, 'test_prepare_result.json')

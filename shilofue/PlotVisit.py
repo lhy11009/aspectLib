@@ -383,7 +383,7 @@ def GetSnapsSteps(case_dir, type_='graphical'):
     try:
         initial_snap = int(idict['Mesh refinement']['Initial adaptive refinement'])
     except KeyError:
-        initial_snap = 6
+        initial_snap = 0
 
     # end snap
     snaps = [0]
