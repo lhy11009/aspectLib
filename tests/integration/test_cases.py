@@ -62,7 +62,7 @@ def test_create_case():
     '''
     prm_path = os.path.join(source_dir, 'case.prm')
     extra_path = os.path.join(source_dir, 'particle.dat')
-    test_case = CASE('foo', prm_path)
+    test_case = CASE('foo', prm_path, False)
     case_output_dir = os.path.join(test_dir, 'foo')
     if os.path.isdir(case_output_dir):
         rmtree(case_output_dir)

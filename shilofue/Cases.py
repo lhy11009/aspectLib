@@ -76,8 +76,10 @@ class CASE_OPT(Utilities.JSON_OPT):
         check to see if these values make sense
         '''
         # output and input dirs
-        assert(os.path.isdir(self.values[1]))
-        assert(os.path.isdir(self.values[2]))
+        base_dir = Utilities.var_subs(self.values[1])
+        o_dir = Utilities.var_subs(self.values[2])
+        Utilities.my_assert(os.path.isdir(base_dir), FileNotFoundError, "No such directory: %s" % base_dir)
+        Utilities.my_assert(os.path.isdir(o_dir), FileNotFoundError, "No such directory: %s" % o_dir)
         pass
 
     def to_init(self):

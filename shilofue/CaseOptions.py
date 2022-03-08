@@ -127,7 +127,7 @@ class CASE_OPTIONS(Utilities.CODESUB):
             os.mkdir(self._img_dir)
         self.options["IMG_OUTPUT_DIR"] = self._img_dir
         # initial adaptive refinement
-        self.options['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '6')
+        self.options['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '0')
         # geometry
         self.options['GEOMETRY'] = self.idict['Geometry model']['Model name']
         pass

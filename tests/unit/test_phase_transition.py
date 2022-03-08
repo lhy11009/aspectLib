@@ -43,7 +43,10 @@ def test_parse_phase_input():
         "rho0" : 3300.0,\
         "drho" : [520.0, 250.0, 670.0, 840.0, 560.0, 597.0, 1170.0],\
         "xc" : [0.55, 0.55, 0.05, 0.55, 0.4, 0.4, 0.4],\
-        "clapeyron slope" : [1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6]
+        "clapeyron slope" : [1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6],\
+        "depth": [410e3, 520e3, 560e3, 670e3, 670e3, 670e3, 670e3],\
+        "width": [5e3, 5e3, 5e3, 10e3, 5e3, 5e3, 5e3],\
+        "temperature": [1662.0, 1662.0, 1662.0, 1662.0, 1662.0, 1662.0, 1662.0]
     }
     phase_opt = PHASE_OPT()
     phase_opt.import_options(Inputs)
