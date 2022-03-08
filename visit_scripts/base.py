@@ -113,7 +113,36 @@ class VISIT_PLOT():
         View2DAtts.windowValid = 1
         SetView2D(View2DAtts)
         # End spontaneous state
-    
+
+    def set_view_attrs_3d(self, view_normal, view_up):
+        '''
+        set view (camera) in 3d
+        '''
+        # assertion
+        assert(len(view_normal) == 3)
+        assert(len(view_up) == 3)
+        # Begin spontaneous state
+        View3DAtts = View3DAttributes()
+        View3DAtts.viewNormal = view_normal
+        View3DAtts.focus = (3.3915e+06, 50000, 1.445e+06)
+        View3DAtts.viewUp = view_up
+        View3DAtts.viewAngle = 30
+        View3DAtts.parallelScale = 3.68684e+06
+        View3DAtts.nearPlane = -7.37368e+06
+        View3DAtts.farPlane = 7.37368e+06
+        View3DAtts.imagePan = (0, 0)
+        View3DAtts.imageZoom = 1
+        View3DAtts.perspective = 1
+        View3DAtts.eyeAngle = 2
+        View3DAtts.centerOfRotationSet = 0
+        View3DAtts.centerOfRotation = (3.3915e+06, 50000, 1.445e+06)
+        View3DAtts.axis3DScaleFlag = 0
+        View3DAtts.axis3DScales = (1, 1, 1)
+        View3DAtts.shear = (0, 0, 1)
+        View3DAtts.windowValid = 1
+        SetView3D(View3DAtts)
+        # End spontaneous state
+            
     def set_rotation_transform(self, rot_deg):
         '''
         set the rotation
