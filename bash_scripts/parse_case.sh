@@ -418,13 +418,15 @@ check_time_restart_case(){
     if [[ -e ${log_file} && -e ${restart_file} ]]; then 
         local outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_log_last_step" "${log_file}")
         local time=$(sed -E "s/^[^ ]*(\t|\ )*//g" <<< "${outputs}")
-        if [[ $(eval "awk 'BEGIN{print ("${time}"<"${time_plan}")?1:0}'") ]]; then
+        if [[ $(eval "awk 'BEGIN{print ("${time}"<"${time_plan}")?1:0}'") -eq 1 ]]; then
 	    outputs=$(awk -f "${ASPECT_LAB_DIR}/bash_scripts/awk_states/parse_snapshot" "${log_file}")
             IFS=$'\n'; local entries=(${outputs})
     	    IFS=' '; local return_value=(${entries[*]: -1})  # get the last line and split with ' '
 	    [[ ${#return_value[*]} == 3 ]] || { cecho "${BAD}" "${FUNCNAME[0]}: entries from parsing snap shots mismatch, it's most likely there is old restart file in the folder, clean those up before proceed"; exit 1; }
             printf "Going to restart $1 at step ${return_value[0]} time ${return_value[1]}\n"
             restart_case "$1" "$3"
+	else
+	    printf "End time reached for $1 at ${time} (end time = ${time_plan})\n"
         fi
     else
         echo "${FUNCNAME[0]}: no snapshots to restart from, going to run from the start"

@@ -95,14 +95,24 @@ determine wheter a case is running (R), stopped (S), terminated (T) or having is
 * E: This case has run to an end.
 * I: This case may run into an issue
 
-#### Restart a previous case (to be tested)
+#### Restart a previous case
 
 script: 
 	bash_scripts/parse_case.sh
+	(dependence) awk_states/parse_log_last_step: parse output at the last time step
+        (dependence) awk_states/parse_snapshot: parse information of the last snapshot saved
 
 Operations:
 * a. restart a case if it doesn't reach the end time I set here (e.g. due to a maintainance of the server).
-* b. loop in a directory and restart cases where "End time" is not reached (todo)
+* b. loop in a directory and restart cases where "End time" is not reached
+
+Note:
+
+If I want run a case to 60e6, I'll use 59e6 here.
+
+Example:
+
+	Lib_parse_case check_time_restart `pwd` 59e6 high2
 
 
 ## Prepare cases
