@@ -36,15 +36,15 @@ if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
 
-def test_parse_phase_input():
+def test_parse_pt_from_json():
     '''
-    test pares_phase_input
+    test ParsePTfromJson
     Asserts:
         the output string is the same with the standard one
     '''
     file_path = os.path.join(source_dir, 'phases.json')
     assert(os.access(file_path, os.R_OK))
-    outputs = ParsePhaseTransitionFile(file_path)
+    outputs = ParsePTfromJson(file_path)
     assert(outputs["Densities"]==\
     "background: 3300.0|3394.4|3442.1|3453.2|3617.6|3691.5|3774.7|3929.1, spharz: 3235.0|3372.3|3441.7|3441.7|3680.8|3717.8|3759.4|3836.6, spcrust: 3000.0|3540.0|3613.0|3871.7"\
     )

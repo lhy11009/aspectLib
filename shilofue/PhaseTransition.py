@@ -151,7 +151,7 @@ class CDPT_OPT(Utilities.JSON_OPT):
     
     def get_compositions(self):
         '''
-        An interface to the ParsePhaseTransitionFile
+        An interface to the ParsePTfromJson
         '''
         return self.values[0]
 
@@ -203,13 +203,15 @@ def ParsePhaseInput(phase_opt, entry="density"):
     return output
 
 
-def ParsePhaseTransitionFile(inputs):
+def ParsePTfromJson(inputs):
     '''
-    Parse the inputs of phase transition to output in aspect
+    Parse the inputs of phase transition from a json file to output in aspect
     Inputs:
-        inputs (dict): dictionary of phase transitions
+        inputs (list): a list of phase transitions (phase_opt objects)
+                or
+                (str): path to a json file
     Returns:
-        outputs (str): string for a aspect prm file
+        outputs (dict): a dictionary for a aspect prm file
     '''
     outputs = "" 
     if type(inputs) == list:
@@ -282,7 +284,7 @@ def ParsePhaseTransitionFile(inputs):
         Utilities.my_assert(os.access(inputs, os.R_OK), FileExistsError, "Json file doesn't exist.")
         cdpt_opt = CDPT_OPT()
         cdpt_opt.read_json(inputs)
-        outputs = ParsePhaseTransitionFile(cdpt_opt.get_compositions())
+        outputs = ParsePTfromJson(cdpt_opt.get_compositions())
     else:
         # error
         raise TypeError("type of inputs must be list or str, not %s" % type(inputs))
@@ -431,7 +433,7 @@ def main():
         Usage()
     elif _commend == 'phase_input':
         # example:
-        outputs = ParsePhaseTransitionFile(arg.inputs)
+        outputs = ParsePTfromJson(arg.inputs)
         # print the output
         print(outputs)
     elif _commend == "show_entropy_changes":

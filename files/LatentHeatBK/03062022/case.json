@@ -10,7 +10,7 @@
   "material model": "visco plastic twod",
   "phase transition model": "CDPT",
   "phase transition": {
-    "json file": "${ASPECT_LAB_DIR}/files/CDPT/Billen2018pyrolite.json"
+    "json file": "${ASPECT_LAB_DIR}/files/CDPT/Billen2018pyrolite_sinking_block.json"
   },
   "additional files": [
     "job_rome.sh",

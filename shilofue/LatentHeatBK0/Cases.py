@@ -27,7 +27,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
-from shilofue.PhaseTransition import ParsePhaseTransitionFile
+from shilofue.PhaseTransition import ParsePTfromJson
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -126,7 +126,7 @@ class CASE(CasesP.CASE):
         # modify material model, first parse from the phase transition model,
         # then merge it into the material model of the prm file.
         if phase_model == "CDPT":
-            outputs = ParsePhaseTransitionFile(phase_json_path)
+            outputs = ParsePTfromJson(phase_json_path)
             print(outputs) # debug
         else:
             outputs = {}
@@ -135,7 +135,7 @@ class CASE(CasesP.CASE):
         if material_model == "visco plastic twod":
             material_model_subsection = "Visco Plastic TwoD"
         else:
-            material_model_subsection = material_model.title()  # ?
+            material_model_subsection = material_model.title()  # convert the first letter to capital
         for key, value in o_dict['Material model'].items():
             if type(value) == dict:
                 o_dict['Material model'].pop(key)
