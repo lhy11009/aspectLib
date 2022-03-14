@@ -140,7 +140,6 @@ class CASE(CasesP.CASE):
             if type(value) == dict:
                 o_dict['Material model'].pop(key)
                 o_dict['Material model'][material_model_subsection] = value
-        # todo  
         o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries
         # manage shared library
         if material_model == "visco plastic twod":

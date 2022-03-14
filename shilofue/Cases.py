@@ -142,6 +142,14 @@ class CASE_OPT(Utilities.JSON_OPT):
         if_wb = self.values[8]
         return  (if_wb==1)
 
+    def fix_base_dir(self, base_dir):
+        '''
+        fix base dir with a new value
+        todo
+        '''
+        assert(os.path.isdir(base_dir))
+        self.values[1] = base_dir
+
 
 class CASE():
     '''
@@ -281,6 +289,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
         case_dir: return case directory
     '''
     print("%s: Creating case" % Utilities.func_name())
+    is_update = kwargs.get('update', True)
+    fix_base_dir = kwargs.get('fix_base_dir', None)
     Case_Opt = CASE_OPT()
     if type(json_opt) == str:
         assert(os.access(json_opt, os.R_OK))
@@ -290,14 +300,16 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     else:
         raise TypeError("Type of json_opt must by str or dict")
     Case_Opt.check()
+    if fix_base_dir is not None:
+        Case_Opt.fix_base_dir(fix_base_dir)  # fix base dir, useful when creating a group of case from a folder
     # check if the case already exists. If so, only update if it is explicitly 
     # required
-    is_update = kwargs.get('update', True)
     case_dir_to_check = os.path.join(Case_Opt.o_dir(), Case_Opt.case_name())
     if os.path.isdir(case_dir_to_check):
         if is_update:
             print("Case %s already exists, updating" % case_dir_to_check)
         else:
+            print("base dir: ", Case_Opt.values[1])  # debug
             print("Case %s already exists, aborting" % case_dir_to_check)
             return case_dir_to_check
     # Manage case files

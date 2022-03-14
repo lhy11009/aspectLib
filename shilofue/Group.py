@@ -238,7 +238,7 @@ class GROUP():
                         options['name'] += ('_' + name_appendix)
                 options["output directory"] = output_dir
                 # call function to create the case
-                case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT, update=is_update)
+                case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT, update=is_update, fix_base_dir=base_dir)
                 json_path = os.path.join(case_dir, "case.json")
                 with open(json_path, 'w') as fout:
                     json.dump(options, fout, indent=2)

@@ -1,5 +1,5 @@
 {
-  "base directory": "${ASPECT_LAB_DIR}/files/LatentHeatBK/02092022",
+  "base directory": "",
   "output directory": "/home/lochy/ASPECT_PROJECT/LatentHeatBK/LatentHeat3",
   "name": "lh_test",
   "Include fast first step": 1,
