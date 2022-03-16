@@ -97,7 +97,10 @@ different age will be adjusted.",\
         self.add_key("Cutoff depth for the shear zone rheology",\
           float, ["shear zone", 'cutoff depth'], 100e3, nick='sz_cutoff_depth')
         self.add_key("Adjust the refinement of mesh with the size of the box", int,\
-          ["world builder", "adjust mesh with box width"], 0, nick='adjust_mesh_with_width')   
+          ["world builder", "adjust mesh with box width"], 0, nick='adjust_mesh_with_width') 
+        # todo  
+        self.add_key("Thickness of the shear zone", float, ["shear zone", 'thickness'], 7.5e3, nick='Dsz')
+        self.add_key("Refinement scheme", str, ["refinement scheme"], "2d", nick='rf_scheme')
         pass
     
     def check(self):
@@ -141,6 +144,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             HeFESTo_data_dir_pull_path = os.path.join(o_dir, ".." * (root_level - 1), HeFESTo_data_dir)
             Utilities.my_assert(os.path.isdir(HeFESTo_data_dir_pull_path),\
             FileNotFoundError, "%s is not a directory" % HeFESTo_data_dir_pull_path)
+        # assert scheme to use for refinement, todo
+        rf_scheme = self.values[self.start + 17]
+        assert(rf_scheme in ['2d', '3d course'])
 
     def to_configure_prm(self):
         if_wb = self.values[8]
@@ -164,9 +170,11 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         HeFESTo_data_dir_relative_path = os.path.join("../"*root_level, HeFESTo_data_dir)
         sz_cutoff_depth = self.values[self.start+14]
         adjust_mesh_with_width = self.values[self.start+15]
+        # todo
+        rf_scheme = self.values[self.start + 17]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
-        HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width
+        HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme
 
     def to_configure_wb(self):
         '''
@@ -185,8 +193,10 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         else:
             if_ov_trans = True
         is_box_wider = self.is_box_wider()
+        # todo
+        Dsz = self.values[self.start + 16]
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
-            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider
+            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz
     
     def to_re_write_geometry_pa(self):
         box_width_pre_adjust = self.values[self.start+11]
@@ -215,7 +225,7 @@ class CASE(CasesP.CASE):
     '''
     def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T,\
     sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
-    HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width):
+    HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
@@ -235,6 +245,9 @@ class CASE(CasesP.CASE):
             o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph()
         elif geometry == 'box':
             o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart()
+        # adjust refinement with different schemes, todo
+            if rf_scheme == "3d_course":
+                pass
         # boundary temperature model
         if geometry == 'chunk':
             o_dict['Boundary temperature model'] = prm_boundary_temperature_sph()
@@ -296,7 +309,7 @@ class CASE(CasesP.CASE):
             o_dict['Material model']['Visco Plastic TwoD'].pop("Use lookup table", "Foo")
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
-        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider):
+        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz):
         '''
         Configure world builder file
         Inputs:
@@ -316,7 +329,6 @@ class CASE(CasesP.CASE):
                 self.wb_dict["cross section"] = [[0, 0], [180.0, 0.0]]
         elif geometry == 'box':
             self.wb_dict["coordinate system"] = {"model": "cartesian"}
-            # todo
             if is_box_wider:
                 self.wb_dict["cross section"] = [[0, 0], [1e7, 0.0]]
             else:
@@ -330,9 +342,10 @@ class CASE(CasesP.CASE):
             else:
                 max_sph = 180.0
             Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
+            # todo
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
-            sp_rate, ov_ag, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
-            ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph) # plates
+            sp_rate, ov_ag,Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+            ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz) # plates, todo
         elif geometry == 'box':
             if is_box_wider:
                 Xmax = 2e7
@@ -340,7 +353,7 @@ class CASE(CasesP.CASE):
                 Xmax = 1e7  # lateral extent of the box
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
-            ov_trans_length=ov_trans_length, geometry=geometry) # plates
+            ov_trans_length=ov_trans_length, geometry=geometry, sz_thickness=Dsz) # plates
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
 
@@ -353,6 +366,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     Xmax = kwargs.get('Xmax', 7e6)
     max_sph = kwargs.get("max_sph", 180.0)
     geometry = kwargs.get('geometry', 'chunk')
+    Dsz = kwargs.get("sz_thickness", None)  # todo
     o_dict = wb_dict.copy()
     trench_sph = (sp_age_trench * sp_rate / Ro) * 180.0 / np.pi
     trench_cart = sp_age_trench * sp_rate

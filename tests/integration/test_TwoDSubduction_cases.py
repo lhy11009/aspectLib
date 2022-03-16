@@ -160,6 +160,7 @@ def test_create_cases():
     assert(filecmp.cmp(prm_path, prm_std_path))
     assert(filecmp.cmp(wb_path, wb_std_path))
 
+
 def test_adjust_box():
     '''
     Adjust the width of the box
@@ -169,7 +170,7 @@ def test_adjust_box():
     output_dir = os.path.join(test_dir,'adjust_box0')
     if os.path.isdir(output_dir):
         rmtree(output_dir)
-    create_case_with_json(json_path, CASE, CASE_OPT)
+    create_case_with_json(json_path, CASE, CASE_OPT)  # create case
     assert(os.path.isdir(output_dir))  # check case generation
     prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
     wb_std_path = os.path.join(source_case_dir, 'case_0_std.wb')
@@ -177,6 +178,26 @@ def test_adjust_box():
     wb_path = os.path.join(output_dir, 'case.wb')
     assert(filecmp.cmp(prm_path, prm_std_path))
     assert(filecmp.cmp(wb_path, wb_std_path))  
+
+
+def test_3d_course_resolution():
+    '''
+    Adjust the width of the box
+    '''
+    # todo
+    source_case_dir = os.path.join(source_dir, "3d_course_resolution")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'3d_course_resolution0')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)  # create case
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
+    wb_std_path = os.path.join(source_case_dir, 'case_0_std.wb')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    wb_path = os.path.join(output_dir, 'case.wb')
+    # assert(filecmp.cmp(prm_path, prm_std_path))
+    # assert(filecmp.cmp(wb_path, wb_std_path))  
 
     
 # to check for error message
