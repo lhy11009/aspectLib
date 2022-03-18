@@ -180,14 +180,14 @@ def test_adjust_box():
     assert(filecmp.cmp(wb_path, wb_std_path))  
 
 
-def test_3d_course_resolution():
+def test_3d_coarse_resolution():
     '''
     Adjust the width of the box
     '''
-    # todo
-    source_case_dir = os.path.join(source_dir, "3d_course_resolution")
+    # todo_3d_coarse
+    source_case_dir = os.path.join(source_dir, "3d_coarse_resolution")
     json_path = os.path.join(source_case_dir, 'case0.json')
-    output_dir = os.path.join(test_dir,'3d_course_resolution0')
+    output_dir = os.path.join(test_dir,'3d_coarse_resolution0')
     if os.path.isdir(output_dir):
         rmtree(output_dir)
     create_case_with_json(json_path, CASE, CASE_OPT)  # create case

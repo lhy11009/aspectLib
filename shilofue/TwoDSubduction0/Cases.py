@@ -98,7 +98,7 @@ different age will be adjusted.",\
           float, ["shear zone", 'cutoff depth'], 100e3, nick='sz_cutoff_depth')
         self.add_key("Adjust the refinement of mesh with the size of the box", int,\
           ["world builder", "adjust mesh with box width"], 0, nick='adjust_mesh_with_width') 
-        # todo  
+        # todo_3d_coarse  
         self.add_key("Thickness of the shear zone", float, ["shear zone", 'thickness'], 7.5e3, nick='Dsz')
         self.add_key("Refinement scheme", str, ["refinement scheme"], "2d", nick='rf_scheme')
         pass
@@ -144,9 +144,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             HeFESTo_data_dir_pull_path = os.path.join(o_dir, ".." * (root_level - 1), HeFESTo_data_dir)
             Utilities.my_assert(os.path.isdir(HeFESTo_data_dir_pull_path),\
             FileNotFoundError, "%s is not a directory" % HeFESTo_data_dir_pull_path)
-        # assert scheme to use for refinement, todo
+        # assert scheme to use for refinement, todo_3d_coarse
         rf_scheme = self.values[self.start + 17]
-        assert(rf_scheme in ['2d', '3d course'])
+        assert(rf_scheme in ['2d', '3d coarse'])
 
     def to_configure_prm(self):
         if_wb = self.values[8]
@@ -170,7 +170,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         HeFESTo_data_dir_relative_path = os.path.join("../"*root_level, HeFESTo_data_dir)
         sz_cutoff_depth = self.values[self.start+14]
         adjust_mesh_with_width = self.values[self.start+15]
-        # todo
+        # todo_3d_coarse
         rf_scheme = self.values[self.start + 17]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -193,7 +193,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         else:
             if_ov_trans = True
         is_box_wider = self.is_box_wider()
-        # todo
+        # todo_3d_coarse
         Dsz = self.values[self.start + 16]
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
             if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz
@@ -245,8 +245,8 @@ class CASE(CasesP.CASE):
             o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph()
         elif geometry == 'box':
             o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart()
-        # adjust refinement with different schemes, todo
-            if rf_scheme == "3d_course":
+        # adjust refinement with different schemes, todo_3d_coarse
+            if rf_scheme == "3d_coarse":
                 pass
         # boundary temperature model
         if geometry == 'chunk':
@@ -342,10 +342,10 @@ class CASE(CasesP.CASE):
             else:
                 max_sph = 180.0
             Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
-            # todo
+            # todo_3d_coarse
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag,Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
-            ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz) # plates, todo
+            ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz)
         elif geometry == 'box':
             if is_box_wider:
                 Xmax = 2e7
@@ -366,7 +366,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     Xmax = kwargs.get('Xmax', 7e6)
     max_sph = kwargs.get("max_sph", 180.0)
     geometry = kwargs.get('geometry', 'chunk')
-    Dsz = kwargs.get("sz_thickness", None)  # todo
+    Dsz = kwargs.get("sz_thickness", None)  # todo_3d_course
     o_dict = wb_dict.copy()
     trench_sph = (sp_age_trench * sp_rate / Ro) * 180.0 / np.pi
     trench_cart = sp_age_trench * sp_rate
