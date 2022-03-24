@@ -62,7 +62,7 @@ def test_wb_setup():
     assert(len(wb_dict['features']) == 5)  # this has 5 features
     i0 = ParsePrm.FindWBFeatures(wb_dict,'Overiding plate 1')  # transit plate
     assert(wb_dict['features'][i0]['coordinates'] == \
-        [[35.972864236749224, 5.0], [35.972864236749224, -5.0],\
+        [[35.972864236749224, -5.0], [35.972864236749224, 5.0],\
             [41.368793872261605, 5.0], [41.368793872261605, -5.0]]) # position
     # create new case
     Case.create(test_dir)
