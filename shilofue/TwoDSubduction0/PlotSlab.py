@@ -63,6 +63,13 @@ Examples of usage: \n\
     (note you have to have a slab_morph.txt generated) \n\
     python -m shilofue.TwoDSubduction0.PlotSlab plot_morph -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 \n\
 \n\
+  - plot slab surface: \n\
+    (note you need both slab_surface.txt and contour_slab.txt) \n\
+    python -m shilofue.TwoDSubduction0.PlotSlab plot_slab_surface -i .test/vtk_TwoD1 -s 1 -o foo.png\n\
+\n\
+  - Plot slab envelopts (with internal points and the compositional contour): \n\
+      python -m shilofue.TwoDSubduction0.PlotSlab plot_slab_envelops -i\n\
+      /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0/vtk_outputs -s 45 -o foo.png\n\
         ")
 
 class SLABPLOT(LINEARPLOT):
@@ -77,13 +84,6 @@ class SLABPLOT(LINEARPLOT):
         LINEARPLOT.__init__(self, _name)
         self.wedge_T_reader = LINEARPLOT('wedge_T')
 
-    def PlotSlabSurface(self, fileout):
-        fig, ax = plt.subplots()
-        ax.plot(self.rs * np.cos(self.thetas), self.rs * np.sin(self.thetas), label='slab surface')
-        ax.set_xlabel('X (m)')
-        ax.set_ylabel('Y (m)')
-        plt.savefig(fileout)
-        print("plot slab surface: ", fileout)
     
     def ReadWedgeT(self, case_dir, min_pvtu_step, max_pvtu_step, **kwargs):
         time_interval_for_slab_morphology = 0.5e6  # hard in
@@ -239,6 +239,17 @@ def slab_morph(inputs):
     return outputs
 
 
+def slab_buoyancy(inputs):
+    '''
+    Plot slab morphology
+    Inputs:
+        inputs (str): the outputs from another executable (slab analysis)
+    '''
+    outputs = {}
+    outputs['total_buoyancy'] = float(Utilities.re_read_variable_from_string(inputs, 'total buoyancy', ':'))
+    return outputs
+
+
 def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
     '''
     run vtk and read in slab morph
@@ -342,9 +353,122 @@ def plot_morph_contour_step(case_dir, step):
     if not os.path.isdir(temp_dir):
         os.mkdir(temp_dir)
     file_out = os.path.join(temp_dir, "slab_contour_s%05d.png" % step)
-    plt.savefig(file_out)
-    print("Plot contour: %s" % file_out)  # screen output
-    # plt.show()
+    # plt.savefig(file_out)
+    # print("Plot contour: %s" % file_out)  # screen output
+    plt.show()
+
+
+def plot_slab_surface(dirin, fileout, pvtu_step, **kwargs):
+    '''
+    Plot slab surface profile
+    Inputs:
+        filein (str): path to input
+        fileout (str): path to output
+        kwargs (dict):
+            include_internal: plot internal points as well
+    '''
+    is_include_internal = kwargs.get('include_internal', False)
+    file_in_path = os.path.join(dirin, 'contour_slab_%05d.txt' % (pvtu_step))
+    assert(os.path.isfile(file_in_path))
+    ## load data: contour
+    data = np.loadtxt(file_in_path)
+    fig, ax = plt.subplots()
+    ax.plot(data[:, 0], data[:, 1], 'b.')
+    ax.set_xlim([0, 6371e3])
+    ax.set_ylim([0, 6371e3])
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    # load data: surface points
+    file_in_path = os.path.join(dirin, 'slab_surface_%05d.txt' % (pvtu_step))
+    assert(os.path.isfile(file_in_path))
+    data = np.loadtxt(file_in_path)  # read data
+    xs = data[:, 0]
+    ys = data[:, 1]
+    ax.plot(xs, ys, 'r*', label='slab surface')
+    # load data: internal points
+    if is_include_internal:
+        file_in_path = os.path.join(dirin, 'slab_internal_%05d.txt' % (pvtu_step))
+        assert(os.path.isfile(file_in_path))
+        data = np.loadtxt(file_in_path)  # read data
+        xs = data[:, 0]
+        ys = data[:, 1]
+        ax.plot(xs, ys, 'g.', label='slab internal')
+    plt.show()
+    # plt.savefig(fileout)
+    # print("plot slab surface: ", fileout)
+
+
+def plot_slab_envelops(dirin, fileout, pvtu_step, **kwargs):
+    '''
+    Plot slab surface profile
+    Inputs:
+        filein (str): path to input
+        fileout (str): path to output
+        kwargs (dict):
+            include_internal: plot internal points as well
+    '''
+    is_include_internal = kwargs.get('include_internal', False)
+    fig, ax = plt.subplots()
+    
+    file_in_path = os.path.join(dirin, 'contour_slab_%05d.txt' % (pvtu_step))
+    assert(os.path.isfile(file_in_path))
+    ## load data: contour
+    data = np.loadtxt(file_in_path)
+    fig, ax = plt.subplots()
+    ax.plot(data[:, 0], data[:, 1], 'b.', label="Compositional contour")
+    ax.set_xlim([0, 6371e3])
+    ax.set_ylim([0, 6371e3])
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ## load data: left envelop
+    file_in_path = os.path.join(dirin, 'slab_envelop_left_%05d.txt' % (pvtu_step))
+    assert(os.path.isfile(file_in_path))
+    data = np.loadtxt(file_in_path)
+    ax.plot(data[:, 0], data[:, 1], 'c-', label="left envelop")
+    ## load data: right envelop
+    file_in_path = os.path.join(dirin, 'slab_envelop_right_%05d.txt' % (pvtu_step))
+    assert(os.path.isfile(file_in_path))
+    data = np.loadtxt(file_in_path)
+    ax.plot(data[:, 0], data[:, 1], 'r-', label="right envelop")
+    # load data: internal points
+    if is_include_internal:
+        file_in_path = os.path.join(dirin, 'slab_internal_%05d.txt' % (pvtu_step))
+        assert(os.path.isfile(file_in_path))
+        data = np.loadtxt(file_in_path)  # read data
+        xs = data[:, 0]
+        ys = data[:, 1]
+        ax.plot(xs, ys, 'g.', label='slab internal')
+    ax.legend()
+    plt.show()
+    # plt.savefig(fileout)
+    # print("plot slab surface: ", fileout)
+
+
+def plot_slab_forces(dirin, fileout, pvtu_step, **kwargs):
+    '''
+    Plot slab surface profile
+    Inputs:
+        filein (str): path to input
+        fileout (str): path to output
+        kwargs (dict):
+    '''
+    file_in_path = os.path.join(dirin, 'slab_forces_%05d.txt' % (pvtu_step))
+    assert(os.path.isfile(file_in_path))
+    ## load data: forces
+    data = np.loadtxt(file_in_path)
+    depths = data[:, 0]
+    depth_interval = data[1, 0] - data[0, 0]
+    buoyancies = data[:, 1]
+    buoyancie_gradients = buoyancies / depth_interval
+    v_zeros = np.zeros(data.shape[0])
+    fig, ax = plt.subplots()
+    ax.plot(buoyancie_gradients, depths, 'b', label='Buoyancy (N/m2)')
+    ax.plot(v_zeros, depths, 'k--')
+    ax.invert_yaxis()
+    ax.set_xlabel('Force (N/m2)')
+    ax.set_ylabel('Depth (m)')
+    plt.savefig(fileout)
+    print("plot_slab_forces: ", fileout)
     
 
 def main():
@@ -362,12 +486,18 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='Some inputs')
+    parser.add_argument('-o', '--outputs', type=str,
+                        default='',
+                        help='Some outputs')
     parser.add_argument('-s', '--step', type=int,
                         default=0,
                         help='Timestep')
     parser.add_argument('-r', '--rewrite', type=int,
                         default=0,
                         help='If rewrite previous result')
+    parser.add_argument('-b', '--bool', type=int,
+                        default=0,
+                        help='a bool value')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -393,7 +523,18 @@ def main():
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
         SlabPlot.PlotMorph(arg.inputs)
-
+    elif _commend == 'plot_slab_surface': 
+        # plot slab surface
+        plot_slab_surface(arg.inputs, arg.outputs, arg.step)
+    elif _commend == 'plot_slab_surface_and_internal': 
+        # plot slab surface
+        plot_slab_surface(arg.inputs, arg.outputs, arg.step, include_internal=True)
+    elif _commend == 'plot_slab_forces': 
+        # plot slab surface
+        plot_slab_forces(arg.inputs, arg.outputs, arg.step)
+    elif _commend == 'plot_slab_envelops': 
+        # plot slab envelops
+        plot_slab_envelops(arg.inputs, arg.outputs, arg.step, include_internal=True)
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)

@@ -134,69 +134,6 @@ void AspectVtk::triangulate_grid()
 }
 
 
-void AspectVtk::integrate_cells()
-{
-    std::cout << "Integrate on cells" << std::endl;
-    const double grav_acc = prm.grav_acc;  // value for gravity acceleration
-    const double Ro = prm.Ro;
-    const double slab_depth = prm.slab_depth;
-    vtkSmartPointer <vtkPolyData> tpolydata = iDelaunay2D->GetOutput();// polydata after trangulation
-    std::cout << "\tcell type: " << tpolydata->GetCell(0)->GetCellType()
-        << ", number of cells: " << tpolydata->GetNumberOfCells() << std::endl;  // check cell type
-    // const double rin = 2890e3;  // rin
-    auto slab = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("slab")); // array for spcrust
-    auto density_data = dynamic_cast<vtkFloatArray*>(tpolydata->GetPointData()->GetArray("density")); // array for density
-    double total_area = 0.0;
-    double total_slab_area = 0.0;
-    double total_gravity = 0.0;
-    double total_buoyancy = 0.0;
-    for (vtkIdType i = 0; i < tpolydata->GetNumberOfCells(); i++)
-    {
-        vtkCell* cell = tpolydata->GetCell(i);  // cell in this polydata
-        vtkIdList* idList = cell->GetPointIds();
-        // point and area
-        double p0[3], p1[3], p2[3];
-        cell->GetPoints()->GetPoint(0, p0);
-        cell->GetPoints()->GetPoint(1, p1);
-        cell->GetPoints()->GetPoint(2, p2);
-        double r0 = sqrt(p0[0] * p0[0] + p0[1] * p0[1]);
-        double r1 = sqrt(p1[0] * p1[0] + p1[1] * p1[1]);
-        double r2 = sqrt(p2[0] * p2[0] + p2[1] * p2[1]);
-        double area = vtkTriangle::TriangleArea(p0, p1, p2);
-        // read from horiz_avg
-        const double horiz_density0 = get_from_horiz(Ro - r0, "density", true);
-        const double horiz_density1 = get_from_horiz(Ro - r1, "density", true);
-        const double horiz_density2 = get_from_horiz(Ro - r2, "density", true);
-        // subducting slab
-        double slab0 = slab->GetTuple1(idList->GetId(0));
-        double slab1 = slab->GetTuple1(idList->GetId(1));
-        double slab2 = slab->GetTuple1(idList->GetId(2));
-        // density
-        double density0 = density_data->GetTuple1(idList->GetId(0));
-        double density1 = density_data->GetTuple1(idList->GetId(1));
-        double density2 = density_data->GetTuple1(idList->GetId(2));
-        // average value, future: volume from trangulation
-        double slab_avg = (slab0 + slab1 + slab2) / 3.0;
-        double density_avg = (density0 + density1 + density2) / 3.0;
-        double horiz_density_avg = (horiz_density0 + horiz_density1 + horiz_density2) / 3.0;
-        // areas on composition
-        double slab_area = area * slab_avg;
-        double gravity = density_avg * grav_acc * slab_area;
-        double buoyancy = -(density_avg - horiz_density_avg) * grav_acc * slab_area;
-        // add up
-        total_area += area;
-        total_slab_area += slab_area;
-        if (Ro - r0 > slab_depth)
-            total_gravity += gravity;
-        if (Ro - r0 > slab_depth)
-            total_buoyancy += buoyancy;
-    }
-    std::cout << "\t total area (m^2): " << total_area << ", total slab area (m^2): " << total_slab_area
-        << ", total gravity (N/m): " << total_gravity
-        << ", total buoyancy (N/m):" << total_buoyancy <<std::endl;
-}
-        
-
 vtkSmartPointer<vtkPolyData> AspectVtk::extract_contour(const std::string field_name, const double contour_value, const std::string filename)
 {
     std::cout << "Filter contour" << std::endl;
@@ -298,7 +235,7 @@ vtkSmartPointer<vtkPolyData> AspectVtk::interpolate_grid(vtkSmartPointer<vtkPoin
 void AspectVtk::write_ascii(vtkSmartPointer<vtkPolyData> polyData, std::vector<std::string>& fields, const std::string filename)
 {
     // todo
-    std::cout << "Write ascii data file" << std::endl;
+    std::cout << "AspectVtk::write_ascii" << std::endl;
     // output header
     std::string header = "# 1: x (m)\n# 2: y (m)";
     unsigned i = 3;
@@ -323,9 +260,9 @@ void AspectVtk::write_ascii(vtkSmartPointer<vtkPolyData> polyData, std::vector<s
     // write file
     std::ofstream fout(filename, std::ofstream::out);
     if (fout){
-        fout << header << std::endl << output << std::endl;
+        fout << header << std::endl << output;
     }
-    std::cout << "Write ascii data file: " << filename << std::endl;
+    std::cout << "\tWrite ascii data file: " << filename << std::endl;
 }
 
 void AspectVtk::read_horiz_avg(const std::string &filename)

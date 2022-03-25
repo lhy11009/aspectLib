@@ -156,7 +156,7 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         options of vtk scripts
         '''
         generate_horiz_file = kwargs.get('generate_horiz', False)
-        operation = kwargs.get('operation', 'slab')
+        operation = kwargs.get('operation', 'default')
         vtk_step = int(kwargs.get('vtk_step', 0))
         # houriz_avg file
         if generate_horiz_file:
@@ -179,6 +179,8 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         # file to read in vtk
         Utilities.my_assert((vtk_step >= 0 and vtk_step <= self.last_step), ValueError, "vtk_step needs to be within the range of [%d, %d]" % (0, self.last_step))  # check the range of steps
         self.options['PVTU_FILE'] = os.path.join(self._output_dir, "solution", "solution-%05d.pvtu" % (vtk_step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])))
+        # type of operation
+        self.options['OPERATION'] = operation
 
     def get_time_and_step(self, vtk_step):
         '''
@@ -411,25 +413,26 @@ def RunScripts(visit_script):
     os.system("echo \"exit()\" | eval \"visit -nowin -cli -s %s\"" % visit_script)
 
 
-def PrepareVTKOptions(VISIT_OPTIONS, case_dir, operation, **kwargs):
+def PrepareVTKOptions(VISIT_OPTIONS, case_dir, type, **kwargs):
     '''
     prepare vtk options for vtk scripts
     Inputs:
         VISIT_OPTIONS: class for the options of visit
-        kwargs
+        kwargs:
             output
             vtk_step
             include_step_in_filename
     '''
     vtk_step = kwargs.get('vtk_step', 0)
     generate_horiz = kwargs.get('generate_horiz', False)
+    operation = kwargs.get('operation', 'default')
     include_step_in_filename = kwargs.get('include_step_in_filename', False)
     vtk_config_dir = os.path.join(ASPECT_LAB_DIR, 'vtk_scripts', "inputs")
     assert(os.path.isdir(vtk_config_dir))
-    vtk_config_file = os.path.join(vtk_config_dir, "%s.input" % operation)
+    vtk_config_file = os.path.join(vtk_config_dir, "%s.input" % type)
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
-    Visit_Options.vtk_options(vtk_step=vtk_step, generate_horiz=generate_horiz)
+    Visit_Options.vtk_options(vtk_step=vtk_step, generate_horiz=generate_horiz, operation=operation)
     Visit_Options.read_contents(vtk_config_file)
     Visit_Options.substitute()
     try:

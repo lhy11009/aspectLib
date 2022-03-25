@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <cassert>
 #include <vtkDataSet.h>
 #include <vtkDataSetMapper.h>
 #include <vtkNamedColors.h>

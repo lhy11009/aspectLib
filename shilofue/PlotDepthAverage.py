@@ -285,7 +285,7 @@ def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
     
     # manage data
     DepthAverage.SplitTimeStep()
-    names = ['depth', 'adiabatic_pressure', 'temperature', 'adiabatic_temperature', 'viscosity', 'vertical_heat_flux', 'vertical_mass_flux']
+    names = ['depth', 'adiabatic_pressure', 'temperature', 'adiabatic_temperature', 'viscosity', 'vertical_heat_flux', 'vertical_mass_flux', 'adiabatic_density']
     data, exact_time = DepthAverage.ExportDataByTime(time, names)
 
     # get depth
@@ -301,9 +301,11 @@ def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
     hf = data[:, 5]
     # heat_flux
     mf = data[:, 6]
+    # density
+    densities = data[:, 7]
 
     # plot
-    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+    fig, axs = plt.subplots(3, 2, figsize=(10, 10))
     color = 'tab:blue'
     axs[0, 0].plot(pressures/1e9, depths/1e3, color=color, label='pressure')
     axs[0, 0].invert_yaxis()
@@ -338,6 +340,12 @@ def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
     axs[1, 1].grid()
     axs[1, 1].set_ylabel('Depth [km]') 
     axs[1, 1].set_xlabel('Mass Flux [kg / m2 / yr]') 
+    # fifth: density
+    axs[2, 0].plot(densities, depths/1e3, color='b', label='adiabatic density')
+    axs[2, 0].invert_yaxis()
+    axs[2, 0].grid()
+    axs[2, 0].set_ylabel('Depth [km]') 
+    axs[2, 0].set_xlabel('Density [kg / m3]') 
     # title
     fig.suptitle("Time = %.4e" % exact_time)
     # layout:w
