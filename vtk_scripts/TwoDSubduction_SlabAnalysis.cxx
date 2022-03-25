@@ -253,13 +253,16 @@ int main(int argc, char* argv[])
   slab_analysis.triangulate_grid();
   //slab_analysis.density_diff();
   //slab_analysis.mow_from_blocking(973.0, 12.5e9);  // 725 + 273 from Quinteros
-  slab_analysis.prepare_slab({"spcrust", "spharz"});
+  slab_analysis.prepare_slab({"spcrust", "spharz"}); // here we create a new field called "slab" from adding "spcrust" and "spharz".
   slab_analysis.integrate_cells();
+  /* Here, the extract_contour function extract the contour of "slab" based on the second value give and output it to the path with the
+  third value given.
+  */
   vtkSmartPointer<vtkPolyData> c_poly_data = slab_analysis.extract_contour("slab", 0.99, target_dir + "/" + "contour_slab_" + pvtu_step + ".txt"); //apply contour
   SlabOutputs slab_outputs;
-  // 3. THETA_REF_TRENCH
-  // if there is entry (more than 2 in the file), assign it to theta_ref_trench
-  // otherwise, assign a default value
+  /* 3. THETA_REF_TRENCH
+   if there is entry (more than 2 in the file), assign it to theta_ref_trench
+   otherwise, assign a default value*/
   double theta_ref_trench = 0.63;
   if (options.size() > 2)
     theta_ref_trench = std::stod(options[2]);
