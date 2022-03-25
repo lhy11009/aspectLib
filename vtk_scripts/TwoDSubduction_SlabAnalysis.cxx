@@ -231,7 +231,7 @@ int main(int argc, char* argv[])
   // 1. PVTU_FILE
   std::string filename = options[0]; // get dir
   size_t found=option_file.find_last_of("/\\");
-  std::string target_dir = option_file.substr(0,found);
+  std::string target_dir = option_file.substr(0,found);  // upper lever route, in this way, one need to provide the full path here.
   found=filename.find_last_of("."); // get step
   size_t found1 = filename.find_last_of("-");
   std::string pvtu_step = filename.substr(found1+1, found - found1-1);
