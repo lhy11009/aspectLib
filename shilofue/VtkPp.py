@@ -59,7 +59,6 @@ class VTKP():
         '''
         Initiation
         '''
-        reader = vtk.vtkXMLPUnstructuredGridReader()
         self.i_poly_data = vtk.vtkPolyData()
         pass
 
@@ -69,8 +68,12 @@ class VTKP():
         Inputs:
             filein (str): path to a input file
         '''
-        filein = "./solution/solution-00002.pvtu"
         assert(os.path.isfile(filein))
+        file_extension = filein.split('.')[-1]
+        if file_extension == 'pvtu':
+            self.reader = vtk.vtkXMLPUnstructuredGridReader()
+        else:
+            raise TypeError("%s: Wrong type of file" % Utilities.func_name())
         self.reader.SetFileName(filein)
         self.reader.Update()
     
@@ -82,7 +85,7 @@ class VTKP():
         '''
         assert(type(field_names) == list and len(field_names) > 0)
         grid = self.reader.GetOutput()
-        data_set = self.eader.GetOutputAsDataSet()
+        data_set = self.reader.GetOutputAsDataSet()
         points = grid.GetPoints()
         cells = grid.GetCells()
         point_data = data_set.GetPointData()
@@ -113,15 +116,18 @@ def ExportContour(poly_data, field_name, contour_value, **kwargs):
     # prepare poly data for contour
     c_poly_data = vtk.vtkPolyData()
     c_vtk_point_data = poly_data.GetPointData()  # vtkPointData
-    c_poly_data.SetPoints(poly_data.GetPoints())
-    c_poly_data.GetPointData().SetScalars(c_vtk_point_data.GetArray(field_name))
+    c_poly_data.SetPoints(poly_data.GetPoints())  # import points and polys
+    c_poly_data.SetPolys(poly_data.GetPolys())
+    vtk_data_array = c_vtk_point_data.GetArray(field_name)
+    assert(vtk_data_array != None)
+    c_poly_data.GetPointData().SetScalars(vtk_data_array)
     # draw contour 
     contour_filter.SetInputData(c_poly_data)
     contour_filter.Update()
     contour_filter.GenerateValues(1, contour_value, contour_value)  # Extract just one contour
     contour_filter.Update()
     # write output if a path is provided
-    if (os.access(fileout, os.R_OK)):
+    if fileout != None:
         file_extension = fileout.split('.')[-1]
         if file_extension == 'txt':
             writer = vtk.vtkSimplePointsWriter()
@@ -135,26 +141,29 @@ def ExportContour(poly_data, field_name, contour_value, **kwargs):
     return contour_filter.GetOutput()
 
 
-def ExportPolyData(poly_data, fileout):
+def ExportPolyData(poly_data, fileout, **kwargs):
     '''
     Export poly data to vtp file
     '''
-    assert(os.access(fileout, os.R_OK))
+    indent = kwargs.get('indent', 0)
     # output
     file_extension = fileout.split('.')[-1]
     if file_extension == 'vtp':
         writer = vtk.vtkXMLPolyDataWriter()
+        writer.SetFileName(fileout)
+        writer.SetInputData(poly_data)
+        # writer.SetFileTypeToBinary()  # try this later to see if this works
+        writer.Update()
+        writer.Write()
+    elif file_extension == 'txt':
+        raise TypeError("%s: option for txt file is not implemented" % Utilities.func_name())
+        # ExportPolyDataAscii(poly_data, fileout)
     else:
         raise TypeError("%s: Wrong type of file" % Utilities.func_name())
-    writer.SetFileName(fileout)
-    writer.SetInputData(poly_data)
-    # writer.SetFileTypeToBinary()  # try this later to see if this works
-    writer.Update()
-    writer.Write()
-    print("%s: Write file %s" % (Utilities.func_name(), fileout))
+    print(' '*indent + "%s: Write file %s" % (Utilities.func_name(), fileout))
 
 
-def ExportPolyDataAscii(poly_data, fileout, field_names):
+def ExportPolyDataAscii(poly_data, field_names, file_out):
     '''
     Export Poly data to a ascii file
     '''
@@ -164,48 +173,58 @@ def ExportPolyDataAscii(poly_data, fileout, field_names):
     point_data_export = []  # point data
     for field_name in field_names:
         header += "\n# %d" % i + ": " + field_name
-        point_data_export.append(vtk_to_numpy(\
-            poly_data.GetPointData().GetArray(field_name)
-            ))
+        vtk_data_array = poly_data.GetPointData().GetArray(field_name)
+        Utilities.my_assert(vtk_data_array != None, KeyError,\
+            "Failed to get field %s from vtk point data" % field_name)
+        point_data_export.append(vtk_to_numpy(vtk_data_array))
         i += 1
+    header += '\n'
     # output data
     output= ""
     for i in range(poly_data.GetNumberOfPoints()):
         if i > 0:
             output += "\n"  # append new line for new point
         xs = poly_data.GetPoint(i)
-        output += xs[0] + "\t" + xs[1]
+        output += "%.4e" % xs[0] + "\t" + "%.4e" % xs[1]
         j = 0
         for field_name in field_names:
             val = point_data_export[j][i]; 
-            output += "\t" + val
+            output += "\t" + "%.4e" % val
             j += 1
     # write file
-    with open(fileout, 'w') as fout:
+    with open(file_out, 'w') as fout:
         fout.write(header)
         fout.write(output)
-    print("\tWrite ascii data file: %s" % fileout)
+    print("\tWrite ascii data file: %s" % file_out)
 
 
-def InterpolateGrid(poly_data, grid_data, **kwargs):
+def InterpolateGrid(poly_data, points, **kwargs):
     '''
     Inputs:
         poly_data (vtkPolyData): input data set
-        grid_data (vtkGrid): grid to interpolate to
+        points (np array): grid to interpolate to
     Return:
         poly data on the new grid
     Output:
     '''
     fileout = kwargs.get('fileout', None)
-    print("%s Perform interpolation onto the new grid" % Utilities.func_name())
+    assert(points.ndim == 2)  # points is a 2d array
+    print("%s: Perform interpolation onto the new grid" % Utilities.func_name())
+    grid_points = vtk.vtkPoints()
+    for i in range(points.shape[0]):
+        x = points[i][0]
+        y = points[i][1]
+        grid_points.InsertNextPoint(x, y, 0)  # this is always x, y, z
+    grid_data = vtk.vtkPolyData()
+    grid_data.SetPoints(grid_points)
     probeFilter = vtk.vtkProbeFilter()
     probeFilter.SetSourceData(poly_data)  # use the polydata
     probeFilter.SetInputData(grid_data) # Interpolate 'Source' at these points
     probeFilter.Update()
     # export to file output if a valid file is provided
-    if (os.access(fileout, os.R_OK)):
-        print("%s: export data" % Utilities.func_name())
-        ExportPolyData(probeFilter.GetOutput(), fileout)
+    if fileout != None:
+        print("\t%s: export data" % Utilities.func_name())
+        ExportPolyData(probeFilter.GetOutput(), fileout, indent=4)
     return probeFilter.GetOutput()
 
 
