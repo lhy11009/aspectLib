@@ -31,6 +31,7 @@
 #include <vtkSimplePointsWriter.h>
 #include <vtkTriangle.h>
 #include <vtkCellData.h>
+#include <vtkGeometryFilter.h>
 #include "AspectVTK.h"
 
 
@@ -111,6 +112,27 @@ void AspectVtk::input_poly_data()
             iPolyData->GetPointData()->AddArray(vtk_point_data->GetArray(p->c_str()));
     }
     iPolyData->GetPointData()->Update();
+    // print information
+    auto nl = iPolyData->GetNumberOfLines();
+    auto np = iPolyData->GetNumberOfPoints();  
+    auto npi = iPolyData->GetNumberOfPieces(); 
+    auto nv = iPolyData->GetNumberOfVerts();  //debug
+    std::cout << "PolyData info:" << std::endl
+        << "number of lines: " << nl << ", "
+        << "number of points: " << np << ", "
+        << "number of pieces: " << npi << ", "
+        << "number of verts: " << nv << std::endl;
+}
+
+
+void AspectVtk::input_poly_data1()
+{
+    std::cout << "Input poly data: " << std::endl;
+    // set value of the private member
+    auto geometryFilter = vtkSmartPointer<vtkGeometryFilter>::New();
+    geometryFilter->SetInputConnection(reader->GetOutputPort());
+    geometryFilter->Update();
+    iPolyData = geometryFilter->GetOutput();
     // print information
     auto nl = iPolyData->GetNumberOfLines();
     auto np = iPolyData->GetNumberOfPoints();  

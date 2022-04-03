@@ -69,6 +69,7 @@ class AspectVtk
         void read_horiz_avg(const std::string &filename);
         // get poly data from reader
         void input_poly_data();
+        void input_poly_data1();  // new method, trying to read in the structure
         // Triangulate the grid points
         void triangulate_grid();
         // Extract contour

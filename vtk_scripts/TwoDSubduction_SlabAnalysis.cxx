@@ -748,7 +748,7 @@ int main(int argc, char* argv[])
   slab_analysis.readfile(filename);
   slab_analysis.read_horiz_avg(avg_filename);
   slab_analysis.input_poly_data();
-  slab_analysis.triangulate_grid();
+  slab_analysis.triangulate_grid();  # implementation
   //slab_analysis.density_diff();
   //slab_analysis.mow_from_blocking(973.0, 12.5e9);  // 725 + 273 from Quinteros
   slab_analysis.prepare_slab({"spcrust", "spharz"}); // here we create a new field called "slab" from adding "spcrust" and "spharz".

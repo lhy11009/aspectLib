@@ -31,14 +31,14 @@ int main(int argc, char* argv[])
   // todo
   AspectVtk aspect_vtk;
   aspect_vtk.readfile(filename);
-  aspect_vtk.input_poly_data();
-  aspect_vtk.triangulate_grid();
+  aspect_vtk.input_poly_data1();
+  // aspect_vtk.triangulate_grid();
   //aspect_vtk.density_diff();
-  aspect_vtk.mow_from_blocking(998.0, 12.5e9);  // 725 + 273 from Quinteros
+  // aspect_vtk.mow_from_blocking(998.0, 12.5e9);  // 725 + 273 from Quinteros
   //aspect_vtk.prepare_slab({"spcrust", "spharz"});
   //aspect_vtk.output(aspect_vtk.iDelaunay2D->Get, output_dir + '/' + "output.vtp");
   //aspect_vtk.integrate_cells();
   //aspect_vtk.extract_contour("contour.txt");
-  //aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
+  aspect_vtk.interpolate_uniform_grid("uniform2D.vtp");  // intepolation
   return EXIT_SUCCESS;
 }

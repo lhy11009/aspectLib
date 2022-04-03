@@ -18,6 +18,7 @@ find_package(VTK COMPONENTS
   vtkFiltersCore
   vtkFiltersGeneral
   vtkFiltersModeling
+  vtkFiltersGeometry
   QUIET
 )
 
