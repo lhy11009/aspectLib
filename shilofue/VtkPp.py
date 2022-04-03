@@ -161,8 +161,12 @@ def ExportPolyDataAscii(poly_data, fileout, field_names):
     print("%s: operating" % Utilities.func_name())
     header = "# 1: x (m)\n# 2: y (m)"
     i = 3
+    point_data_export = []  # point data
     for field_name in field_names:
         header += "\n# %d" % i + ": " + field_name
+        point_data_export.append(vtk_to_numpy(\
+            poly_data.GetPointData().GetArray(field_name)
+            ))
         i += 1
     # output data
     output= ""
@@ -171,9 +175,11 @@ def ExportPolyDataAscii(poly_data, fileout, field_names):
             output += "\n"  # append new line for new point
         xs = poly_data.GetPoint(i)
         output += xs[0] + "\t" + xs[1]
+        j = 0
         for field_name in field_names:
-            val = poly_data.GetPointData().GetArray(field_name).GetTuple1(i); 
+            val = point_data_export[j][i]; 
             output += "\t" + val
+            j += 1
     # write file
     with open(fileout, 'w') as fout:
         fout.write(header)
