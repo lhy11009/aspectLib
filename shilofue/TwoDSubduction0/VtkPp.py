@@ -26,6 +26,7 @@ import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 import shilofue.VtkPp as VtkPp
+from vtk.util.numpy_support import vtk_to_numpy
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -51,9 +52,49 @@ Examples of usage: \n\
 class VTKP(VtkPp.VTKP):
     '''
     Class inherited from a parental class
+    Attributes:
+        slab_cells: cell id of internal points in the slab
     '''
     def __init__(self):
         VtkPp.VTKP.__init__(self)
+        self.slab_cells = []
+        self.surface_cells = []
+
+    def PrepareSlab(self, slab_field_names, **kwargs):
+        '''
+        prepare slab composition
+        '''
+        point_data = self.i_poly_data.GetPointData()
+        slab_threshold = kwargs.get('slab_threshold', 0.2)
+        points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
+        # slab composition field
+        for field_name in slab_field_names:
+            if is_first:
+                slab_field = vtk_to_numpy(point_data.GetArray(field_name))
+                is_first = False
+            else:
+                slab_field += vtk_to_numpy(point_data.GetArray(field_name))
+        Ts = self.i_poly_data.GetPointData().GetArray("T")  # temperature field
+        # add cells by composition
+        for i in range(self.i_poly_data.GetNumberOfCells()):
+            cell = self.i_poly_data.GetCell(i)
+            id_list = cell.GetPointIds()  # list of point ids in this cell
+            x = 0.0
+            y = 0.0
+            slab = 0.0
+            count = 0
+            for id in id_list:
+                p = points[id]
+                x += p[0]
+                y += p[1]
+                slab += slab_field[id]
+                count += 1
+            x /= count
+            y /= count
+            r = (x * x + y * y)**0.5
+            if slab > slab_threshold:
+                self.slab_cells.append(i)
+        print(self.slab_cells)  # debug
 
 
 def main():
