@@ -60,6 +60,8 @@ class VTKP():
         Initiation
         '''
         self.i_poly_data = vtk.vtkPolyData()
+        self.include_cell_center = False
+        self.c_poly_data = vtk.vtkPolyData()
         pass
 
     def ReadFile(self, filein):
@@ -77,12 +79,15 @@ class VTKP():
         self.reader.SetFileName(filein)
         self.reader.Update()
     
-    def ConstructPolyData(self, field_names):
+    def ConstructPolyData(self, field_names, **kwargs):
         '''
         construct poly data
         Inputs:
             field_names (list of field names)
+            kwargs:
+                include_cell_center - include_cell_center in the poly_data
         '''
+        include_cell_center = kwargs.get('include_cell_center', False)
         assert(type(field_names) == list and len(field_names) > 0)
         grid = self.reader.GetOutput()
         data_set = self.reader.GetOutputAsDataSet()
@@ -99,6 +104,16 @@ class VTKP():
                 is_first = False
             else:
                 self.i_poly_data.GetPointData().AddArray(point_data.GetArray(field_name))  # put T into cell data
+        if include_cell_center:
+            centers = vtk.vtkCellCenters()  # test the utilities of centers
+            centers.SetInputData(self.i_poly_data)
+            centers.Update()
+            probeFilter = vtk.vtkProbeFilter()
+            probeFilter.SetSourceData(self.i_poly_data)  # use the polydata
+            probeFilter.SetInputData(centers.GetOutput()) # Interpolate 'Source' at these points
+            probeFilter.Update()
+            self.c_poly_data = probeFilter.GetOutput()  # poly data at the center of the point
+            self.include_cell_center = True
 
 
 def ExportContour(poly_data, field_name, contour_value, **kwargs):

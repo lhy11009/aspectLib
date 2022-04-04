@@ -23,6 +23,7 @@ import sys, os, argparse
 # import pathlib
 # import subprocess
 import numpy as np
+import vtk
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 import shilofue.VtkPp as VtkPp
@@ -64,37 +65,40 @@ class VTKP(VtkPp.VTKP):
         '''
         prepare slab composition
         '''
-        point_data = self.i_poly_data.GetPointData()
+        assert(self.include_cell_center)
         slab_threshold = kwargs.get('slab_threshold', 0.2)
         points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
+        centers = vtk_to_numpy(self.c_poly_data.GetPoints().GetData())
+        point_data = self.i_poly_data.GetPointData()
+        cell_point_data = self.c_poly_data.GetPointData()
         # slab composition field
+        is_first = True
         for field_name in slab_field_names:
             if is_first:
-                slab_field = vtk_to_numpy(point_data.GetArray(field_name))
+                slab_field = vtk_to_numpy(cell_point_data.GetArray(field_name))
                 is_first = False
             else:
-                slab_field += vtk_to_numpy(point_data.GetArray(field_name))
+                slab_field += vtk_to_numpy(cell_point_data.GetArray(field_name))
         Ts = self.i_poly_data.GetPointData().GetArray("T")  # temperature field
         # add cells by composition
         for i in range(self.i_poly_data.GetNumberOfCells()):
             cell = self.i_poly_data.GetCell(i)
             id_list = cell.GetPointIds()  # list of point ids in this cell
-            x = 0.0
-            y = 0.0
-            slab = 0.0
-            count = 0
-            for id in id_list:
-                p = points[id]
-                x += p[0]
-                y += p[1]
-                slab += slab_field[id]
-                count += 1
-            x /= count
-            y /= count
-            r = (x * x + y * y)**0.5
+            x = centers[i][0]
+            y = centers[i][1]
+            slab = slab_field[i]
             if slab > slab_threshold:
                 self.slab_cells.append(i)
         print(self.slab_cells)  # debug
+    
+    def ExportSlabInternal(self):
+        '''
+        export slab internal points
+        '''
+        cell_source = vtk.vtkExtractCells()
+        cell_source.SetInputSource(self.i_poly_data)
+        # cell_source.SetCellList(self.slab_cells)  # todo
+
 
 
 def main():
