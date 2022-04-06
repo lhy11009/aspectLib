@@ -25,6 +25,7 @@ import sys, os, argparse
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 import vtk
+import scipy.interpolate
 from vtk.util.numpy_support import vtk_to_numpy
 
 # directory to the aspect Lab
@@ -47,6 +48,40 @@ Examples of usage: \n\
         python -m \
         ")
 
+
+class VERTICAL_PROFILE():
+    '''
+    A vertical profile
+    Attributes:
+        rs - vertical coordinates
+        n - points in the profile
+        field_funcs (dict) - functions in the profile
+        uniform - is the grid uniform
+    '''
+    def __init__(self, rs, field_names, field_datas, uniform=False):
+        '''
+        Initiation
+        '''
+        self.rs = rs
+        self.n = rs.size
+        self.uniform = uniform
+        self.field_funcs = {}
+        for i in range(len(field_names)):
+            field_name = field_names[i]
+            field_data = field_datas[i]
+            field_func = scipy.interpolate.interp1d(rs, field_data, assume_sorted=True)
+            self.field_funcs[field_name] = field_func
+        pass
+
+    def GetFunction(self, field_name):
+        '''
+        field_name(str): name of the field
+        return
+            function of the matched field
+        '''
+        return self.field_funcs[field_name]
+
+
 class VTKP():
     '''
     Class for vtk post-process utilities
@@ -55,13 +90,18 @@ class VTKP():
         i_poly_data (vtkPolydata): input data
     '''
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         '''
         Initiation
+        Inputs:
+            kwargs:
+                dim - dimension
         '''
         self.i_poly_data = vtk.vtkPolyData()
         self.include_cell_center = False
         self.c_poly_data = vtk.vtkPolyData()
+        self.cell_sizes = None
+        self.dim = kwargs.get('dim', 2)
         pass
 
     def ReadFile(self, filein):
@@ -114,6 +154,52 @@ class VTKP():
             probeFilter.Update()
             self.c_poly_data = probeFilter.GetOutput()  # poly data at the center of the point
             self.include_cell_center = True
+            # cell sizes
+            cell_size_filter = vtk.vtkCellSizeFilter()
+            cell_size_filter.SetInputDataObject(grid)
+            cell_size_filter.Update()
+            cz_cell_data = cell_size_filter.GetOutputDataObject(0).GetCellData()
+            if self.dim == 2:
+                self.cell_sizes = vtk_to_numpy(cz_cell_data.GetArray('Area'))
+            else:
+                raise ValueError("Not implemented")
+
+    def VerticalProfile2D(self, x0_range, x1, n, **kwargs):
+        '''
+        Get vertical profile by looking at one vertical line
+        Inputs:
+            x0_range: range of the first coordinate (x or r)
+            x1: second coordinate (y or theta)
+            n (int): number of point in the profile
+            kwargs (dict):
+                geometry: spherical or cartesian
+        '''
+        geometry = kwargs.get('geometry', 'spherical')
+        assert(len(x0_range) == 2)
+        points = np.zeros((n, 2))
+        x0s = np.linspace(x0_range[0], x0_range[1], n)
+        x1s = np.ones(n) * x1
+        if geometry == 'spherical':
+            xs = x0s * np.cos(x1s)
+            ys = x0s * np.sin(x1s)
+        elif geometry == 'cartesian':
+            ys = x0s
+            xs = x1s
+        else:
+            raise ValueError('Wrong option for geometry')
+        points[:, 0] = xs
+        points[:, 1] = ys
+        v_poly_data = InterpolateGrid(self.i_poly_data, points)
+        point_data = v_poly_data.GetPointData()
+        fields = []
+        field_names = []
+        for i in range(point_data.GetNumberOfArrays()):
+            field_name = point_data.GetArrayName(i)
+            field = vtk_to_numpy(point_data.GetArray(field_name))
+            field_names.append(field_name)
+            fields.append(field)
+        v_profile = VERTICAL_PROFILE(x0s, field_names, fields, uniform=True)
+        return v_profile
 
 
 def ExportContour(poly_data, field_name, contour_value, **kwargs):
@@ -241,6 +327,23 @@ def InterpolateGrid(poly_data, points, **kwargs):
         print("\t%s: export data" % Utilities.func_name())
         ExportPolyData(probeFilter.GetOutput(), fileout, indent=4)
     return probeFilter.GetOutput()
+
+
+def NpIntToIdList(numpy_int_array):
+    '''
+    Convert numpy in array to vtk id list
+    Inputs:
+        numpy_int_array - 1d numpy int array
+    '''
+    id_list = vtk.vtkIdList()
+    if type(numpy_int_array) == list:
+        for i in range(len(numpy_int_array)):
+            id_list.InsertNextId(numpy_int_array[i])
+    else:
+        assert(numpy_int_array.ndim == 1)  # 1d array
+        for i in range(numpy_int_array.size):
+            id_list.InsertNextId(numpy_int_array[i])
+    return id_list
 
 
 def main():

@@ -27,7 +27,7 @@ import vtk
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 import shilofue.VtkPp as VtkPp
-from vtk.util.numpy_support import vtk_to_numpy
+from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -60,6 +60,9 @@ class VTKP(VtkPp.VTKP):
         VtkPp.VTKP.__init__(self)
         self.slab_cells = []
         self.surface_cells = []
+        self.slab_depth = None
+        self.slab_depth_limit = 50e3  # depth limit to slab
+        self.Ro = 6371e3
 
     def PrepareSlab(self, slab_field_names, **kwargs):
         '''
@@ -81,23 +84,68 @@ class VTKP(VtkPp.VTKP):
                 slab_field += vtk_to_numpy(cell_point_data.GetArray(field_name))
         Ts = self.i_poly_data.GetPointData().GetArray("T")  # temperature field
         # add cells by composition
+        min_r = self.Ro
         for i in range(self.i_poly_data.GetNumberOfCells()):
             cell = self.i_poly_data.GetCell(i)
             id_list = cell.GetPointIds()  # list of point ids in this cell
             x = centers[i][0]
             y = centers[i][1]
+            r = (x*x + y*y)**0.5
             slab = slab_field[i]
-            if slab > slab_threshold:
+            if slab > slab_threshold and (self.Ro - r) > self.slab_depth_limit:
                 self.slab_cells.append(i)
-        print(self.slab_cells)  # debug
+                if r < min_r:
+                    min_r = r
+        self.slab_depth = self.Ro - min_r
     
     def ExportSlabInternal(self):
         '''
         export slab internal points
         '''
         cell_source = vtk.vtkExtractCells()
-        cell_source.SetInputSource(self.i_poly_data)
-        # cell_source.SetCellList(self.slab_cells)  # todo
+        cell_source.SetInputData(self.i_poly_data)
+        cell_source.SetCellList(VtkPp.NpIntToIdList(self.slab_cells))  # todo
+        cell_source.Update()
+        slab_cell_grid = cell_source.GetOutput()
+        return slab_cell_grid
+
+    def SlabBuoyancy(self, v_profile, depth_increment):
+        '''
+        slab buoyancy
+        v_profile: vertical profile containing the reference profile
+        rs : radius segments for computing buoyancy
+        '''
+        grav_acc = 10.0
+        assert(self.include_cell_center)
+        assert(len(self.slab_cells) > 0)
+        n_depth = int(np.ceil(self.slab_depth / depth_increment))
+        buoyancies = np.zeros(n_depth)
+        depths = []  # construct depth array
+        for i in range(n_depth):
+            depth = (i + 0.5) * depth_increment
+            depths.append(depth)
+        depths = np.array(depths)
+        centers = vtk_to_numpy(self.c_poly_data.GetPoints().GetData())  # note these are data mapped to cell center
+        density_data = vtk_to_numpy(self.c_poly_data.GetPointData().GetArray('density'))
+        density_ref_func = v_profile.GetFunction('density')
+        total_buoyancy = 0.0
+        for i in self.slab_cells:
+            x = centers[i][0]
+            y = centers[i][1]
+            r = (x*x + y*y)**0.5
+            i_r = int(np.floor((self.Ro - r) / depth_increment))
+            density = density_data[i]
+            density_ref = density_ref_func(r)
+            cell_size = self.cell_sizes[i]  # temp
+            buoyancy = grav_acc * (density - density_ref) * cell_size
+            buoyancies[i_r] += buoyancy
+            total_buoyancy += buoyancy
+        b_profile = np.zeros((n_depth, 2))
+        b_profile[:, 0] = depths
+        b_profile[:, 1] = buoyancies
+        return total_buoyancy, b_profile
+
+
 
 
 
