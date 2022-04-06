@@ -146,8 +146,42 @@ class VTKP(VtkPp.VTKP):
         return total_buoyancy, b_profile
 
 
+def SlabAnalysis(case_dir):
+    '''
+    todo
+    '''
+    # assert something 
+    output_path = os.path.join(case_dir, "vtk_outputs")
+    if not os.path.isdir(output_path):
+        os.mkdir(output_path)
 
+    filein = os.path.join(case_dir, "output", "solution", "solution-00002.pvtu")
 
+    assert(os.path.isfile(filein))
+    VtkP = VTKP()
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density', 'spcrust', 'spharz']
+    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.PrepareSlab(['spcrust', 'spharz'])
+    # test 1 output slab grid
+    fileout = os.path.join(output_path, 'slab.vtu')
+    fileout_std = os.path.join(case_dir, 'slab_std.vtu')
+    slab_grid = VtkP.ExportSlabInternal()
+    writer = vtk.vtkXMLUnstructuredGridWriter()
+    writer.SetInputData(slab_grid)
+    writer.SetFileName(fileout)
+    writer.Update()
+    writer.Write()
+    assert(os.path.isfile(fileout))  # assert file existence
+    assert(filecmp.cmp(fileout_std, fileout))  # compare file extent
+    # test 2, slab buoyancy
+    r0_range = [6371e3 - 2890e3, 6371e3]
+    x1 = 0.01 
+    n = 100
+    v_profile = VtkP.VerticalProfile2D(r0_range, x1, n)
+    total_buoyancy, b_profile = VtkP.SlabBuoyancy(v_profile, 5e3)
+    assert(abs(total_buoyancy - 5394703810473.24)/5394703810473.24 < 1e-8)
+    assert((b_profile[11, 1]-1.09996017e+12)/1.09996017e+12 < 1e-8)
 
 def main():
     '''
