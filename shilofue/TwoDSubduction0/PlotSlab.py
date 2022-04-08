@@ -444,33 +444,6 @@ def plot_slab_envelops(dirin, fileout, pvtu_step, **kwargs):
     # print("plot slab surface: ", fileout)
 
 
-def plot_slab_forces(dirin, fileout, pvtu_step, **kwargs):
-    '''
-    Plot slab surface profile
-    Inputs:
-        filein (str): path to input
-        fileout (str): path to output
-        kwargs (dict):
-    '''
-    file_in_path = os.path.join(dirin, 'slab_forces_%05d.txt' % (pvtu_step))
-    assert(os.path.isfile(file_in_path))
-    ## load data: forces
-    data = np.loadtxt(file_in_path)
-    depths = data[:, 0]
-    depth_interval = data[1, 0] - data[0, 0]
-    buoyancies = data[:, 1]
-    buoyancie_gradients = buoyancies / depth_interval
-    v_zeros = np.zeros(data.shape[0])
-    fig, ax = plt.subplots()
-    ax.plot(buoyancie_gradients, depths, 'b', label='Buoyancy (N/m2)')
-    ax.plot(v_zeros, depths, 'k--')
-    ax.invert_yaxis()
-    ax.set_xlabel('Force (N/m2)')
-    ax.set_ylabel('Depth (m)')
-    plt.savefig(fileout)
-    print("plot_slab_forces: ", fileout)
-    
-
 def main():
     '''
     main function of this module
@@ -529,9 +502,6 @@ def main():
     elif _commend == 'plot_slab_surface_and_internal': 
         # plot slab surface
         plot_slab_surface(arg.inputs, arg.outputs, arg.step, include_internal=True)
-    elif _commend == 'plot_slab_forces': 
-        # plot slab surface
-        plot_slab_forces(arg.inputs, arg.outputs, arg.step)
     elif _commend == 'plot_slab_envelops': 
         # plot slab envelops
         plot_slab_envelops(arg.inputs, arg.outputs, arg.step, include_internal=True)
