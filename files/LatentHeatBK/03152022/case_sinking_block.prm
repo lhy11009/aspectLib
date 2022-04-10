@@ -1,0 +1,129 @@
+set Dimension = 2
+set Start time = 0
+set End time = 10e9
+set Use years in output instead of seconds = true
+set Output directory = output
+set Adiabatic surface temperature = 1573.0
+set Maximum time step = 1000000.0
+
+subsection Geometry model
+    set Model name = box
+    subsection Box
+        set X extent = 1000000
+        set Y extent = 1000000
+        set X repetitions = 200
+        set Y repetitions = 200
+    end
+end
+
+
+subsection Gravity model
+    set Model name = vertical
+    subsection Vertical
+        set Magnitude = 10.0
+    end
+end
+
+
+subsection Heating model
+    set List of model names = adiabatic heating, latent heat
+end
+
+subsection Boundary temperature model
+    set Fixed temperature boundary indicators = top
+    set List of model names = box
+    subsection Box
+        set Top temperature = 1573
+    end
+end
+
+
+subsection Boundary velocity model
+    set Tangential velocity boundary indicators = 0, 1, 2, 3
+end
+
+
+subsection Initial temperature model
+    set List of model names = adiabatic, function
+    set List of model operators = add
+    subsection Function
+        set Coordinate system = cartesian
+        set Variable names = x, y
+        set Function constants = X0=1e+06, Y0=1e+06, D0 = 150e3, W0 = 100e3
+        set Function expression = ((abs(Y0 - y - D0) < W0/2.0) && (abs(x - X0/2.0) < W0/2.0)) ? -500.0: 0.0 
+    end
+end
+
+
+subsection Compositional fields
+    set Number of fields = 1
+    set Names of fields = block
+    set Compositional field methods = field
+end
+
+
+subsection Initial composition model
+    set List of model names = function
+    subsection Function
+        set Coordinate system = cartesian
+        set Variable names = x, y
+        set Function constants = X0=1e+06, Y0=1e+06, D0 = 150e3, W0 = 100e3
+        set Function expression = ((abs(Y0 - y - D0) < W0/2.0) && (abs(x - X0/2.0) < W0/2.0)) ? 1.0: 0.0 
+    end
+end
+
+
+subsection Material model
+    set Model name = visco plastic twod
+    subsection Visco Plastic TwoD
+        set Phase transition widths = background: 5000.0|5000.0|5000.0|10000.0|5000.0|5000.0|5000.0, block: 5000.0|5000.0|5000.0|10000.0|5000.0|5000.0|5000.0
+        set Densities = background: 3300.0|3394.4|3442.1|3453.2|3617.6|3691.5|3774.7|3929.1, block: 3300.0|3394.4|3442.1|3453.2|3617.6|3691.5|3774.7|3929.1
+        set Phase transition depths = background: 410000.0|520000.0|560000.0|670000.0|670000.0|670000.0|670000.0, block: 410000.0|520000.0|560000.0|670000.0|670000.0|670000.0|670000.0
+        set Phase transition temperatures = background: 1662.0|1662.0|1662.0|1662.0|1662.0|1662.0|1662.0, block: 1662.0|1662.0|1662.0|1662.0|1662.0|1662.0|1662.0
+        set Phase transition Clapeyron slopes = background: 4000000.0|4100000.0|4000000.0|-2000000.0|4000000.0|-3100000.0|1300000.0, block: 4000000.0|4100000.0|4000000.0|-2000000.0|4000000.0|-3100000.0|1300000.0
+        set Viscous flow law = diffusion
+        set Prefactors for diffusion creep = background: 0.5e-20, block: 0.5e-24
+        set Grain size exponents for diffusion creep = 0.0
+        set Activation energies for diffusion creep = 0.0
+        set Activation volumes for diffusion creep = 0.0
+        set Thermal expansivities = 3.1e-5
+    end
+end
+
+
+subsection Mesh refinement
+    set Initial adaptive refinement = 0
+    set Initial global refinement = 0
+    set Time steps between mesh refinement = 0
+end
+
+
+subsection Discretization
+    set Composition polynomial degree = 2
+    set Stokes velocity polynomial degree = 2
+    set Temperature polynomial degree = 2
+    set Use discontinuous composition discretization = true
+    subsection Stabilization parameters
+        set Use limiter for discontinuous composition solution = true
+        set Global composition maximum = 1
+        set Global composition minimum = 0
+    end
+end
+
+
+subsection Postprocess
+    set List of postprocessors = visualization, temperature statistics, depth average, velocity statistics
+    subsection Visualization
+        set Number of grouped files = 0
+        set Output format = vtu
+        set Time between graphical output = 1e6
+        set List of output variables = density, viscosity
+    end
+    subsection Depth average
+        set Number of zones = 50
+        set Output format = txt
+        set Time between graphical output = 1e6
+    end
+end
+
+set Additional shared libraries = $ASPECT_SOURCE_DIR/build_master_TwoD/visco_plastic_TwoD/libvisco_plastic_TwoD.so, $ASPECT_SOURCE_DIR/build_master_TwoD/visco_plastic_TwoD/libvisco_plastic_TwoD.so, $ASPECT_SOURCE_DIR/build_master_TwoD/visco_plastic_TwoD/libvisco_plastic_TwoD.so

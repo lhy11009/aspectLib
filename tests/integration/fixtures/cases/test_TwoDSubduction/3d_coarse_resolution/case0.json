@@ -1,0 +1,30 @@
+{
+  "base directory": "${ASPECT_LAB_DIR}/tests/integration/fixtures/cases/test_TwoDSubduction/3d_coarse_resolution",
+  "output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
+  "name": "3d_coarse_resolution0",
+  "Include fast first step": 1,
+  "geometry": "chunk",
+  "Potential temperature": 1573.0,
+  "boundary condition": {
+    "model": "all free slip"
+  },
+  "use world builder": 1,
+  "world builder": {
+    "plate age method": "adjust box width",
+    "box width before adjusting": 2.0017e7,
+    "adjust mesh with box width": 1,
+    "subducting plate": {
+      "age trench": 80000000.0,
+      "sp rate": 0.05
+    },
+    "overiding plate": {
+      "age": 40000000.0,
+      "transit": {
+        "age": 20000000.0,
+        "length": 700000.0
+      }
+    }
+  },
+  "Include peierls creep": 0,
+  "coupling the eclogite phase to shear zone viscosity": 0
+}
