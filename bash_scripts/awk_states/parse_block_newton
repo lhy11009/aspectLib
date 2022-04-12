@@ -13,13 +13,13 @@ BEGIN {
 }
 
 {
-  if(lastLine ~ /*** Timestep/ && $0 ~ /Solving Stokes system/) {
+  if(lastLine ~ /\*\*\* Timestep/ && $0 ~ /Solving Stokes system/) {
     # stoke iteration
     split($4, array, "+")
     stokes_iteration_cheap = array[1]
     stokes_iteration_expensive = array[2]
   }
-  else if(lastLine ~ /*** Timestep/ && $0 ~ /Relative nonlinear residual/) {
+  else if(lastLine ~ /\*\*\* Timestep/ && $0 ~ /Relative nonlinear residual/) {
     len = length($10)
     nonlinear_iteration = substr($10, 0, len-1)
     len = length($11)
@@ -39,7 +39,7 @@ BEGIN {
 
     printf "%s %10s %10s %15s %15s %15s %15s\n", timeStep, stokes_iteration_cheap, stokes_iteration_expensive, nonlinear_iteration, residual, norm_rhs, scaling_factor
   }
-  else if ($0 ~ /*** Timestep/) {
+  else if ($0 ~ /\*\*\* Timestep/) {
     lastLine = $0
     len = length($3)
     timeStep = substr($3, 0, len-1)

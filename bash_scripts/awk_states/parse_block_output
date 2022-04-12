@@ -12,12 +12,12 @@ BEGIN {
 }
 
 {
-  if(lastLine ~ /*** Timestep/ && $0 ~ /^\| Total wallclock/) {
+  if(lastLine ~ /\*\*\* Timestep/ && $0 ~ /^\| Total wallclock/) {
     len = length($9)
     wallClock = substr($9, 0, len-1)
     printf "%s %12s %10s\n", timeStep, time, wallClock
   }
-  else if ($0 ~ /*** Timestep/) {
+  else if ($0 ~ /\*\*\* Timestep/) {
     lastLine = $0
     len = length($3)
     timeStep = substr($3, 0, len-1)

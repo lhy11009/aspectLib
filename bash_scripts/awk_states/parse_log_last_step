@@ -13,7 +13,7 @@ BEGIN {
 }
 
 {
-  if ($0 ~ /*** Timestep/) {
+  if ($0 ~ /\*\*\* Timestep/) {
     len = length($3)
     timeStep = substr($3, 0, len-1)
     time = substr($4, 3)
