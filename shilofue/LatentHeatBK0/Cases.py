@@ -127,7 +127,7 @@ class CASE(CasesP.CASE):
         # then merge it into the material model of the prm file.
         if phase_model == "CDPT":
             outputs = ParsePTfromJson(phase_json_path)
-            print(outputs) # debug
+            # todo, check that we have the same composition with the prm file
         else:
             outputs = {}
         o_dict['Material model']['Model name'] = material_model  # material model to use
@@ -136,7 +136,9 @@ class CASE(CasesP.CASE):
             material_model_subsection = "Visco Plastic TwoD"
         else:
             material_model_subsection = material_model.title()  # convert the first letter to capital
-        for key, value in o_dict['Material model'].items():
+        for key in list(o_dict['Material model']):
+        # for key, value in o_dict['Material model'].items():
+            value = o_dict['Material model'][key]
             if type(value) == dict:
                 o_dict['Material model'].pop(key)
                 o_dict['Material model'][material_model_subsection] = value

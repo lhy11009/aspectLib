@@ -1,6 +1,6 @@
 set Dimension = 2
 set Start time = 0
-set End time = 10e9
+set End time = 1e8
 set Use years in output instead of seconds = true
 set Output directory = output
 set Adiabatic surface temperature = 1573.0
@@ -92,7 +92,7 @@ subsection Postprocess
     subsection Visualization
         set Number of grouped files = 0
         set Output format = vtu
-        set Time between graphical output = 1e6
+        set Time between graphical output = 1e7
         set List of output variables = density, viscosity
     end
     subsection Depth average
