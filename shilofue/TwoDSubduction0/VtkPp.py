@@ -30,6 +30,7 @@ import shilofue.VtkPp as VtkPp
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 from numpy import linalg as LA 
+from matplotlib import gridspec 
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -249,18 +250,22 @@ def PlotSlabForces(filein, fileout, **kwargs):
     ## load data: forces
     data = np.loadtxt(filein)
     depths = data[:, 0]
-    depth_interval = data[1, 0] - data[0, 0]
     buoyancies = data[:, 1]
     total_buoyancy = LA.norm(buoyancies, 1)  # total buoyancy
-    buoyancie_gradients = buoyancies / depth_interval
+    buoyancie_gradients = data[:, 2]
+    differiential_pressure = data[:, 3]
+    differiential_pressure_v = data[:, 4]
     v_zeros = np.zeros(data.shape[0])
     fig, ax = plt.subplots()
-    ax.plot(buoyancie_gradients, depths/1e3, 'b', label='Buoyancy (N/m2)')
+    ax.plot(buoyancie_gradients, depths/1e3, 'b', label='Buoyancy gradients (N/m2)')
+    ax.plot(differiential_pressure, depths/1e3, 'c', label='Pressure differences (N/m2)')
+    ax.plot(differiential_pressure_v, depths/1e3, 'r', label='Vertical pressure differences (N/m2)')
     ax.plot(v_zeros, depths/1e3, 'k--')
     ax.invert_yaxis()
     ax.set_title('Total buoyancy: %.4e N/m2' % total_buoyancy)
     ax.set_xlabel('Force (N/m2)')
     ax.set_ylabel('Depth (km)')
+    ax.legend()
     plt.savefig(fileout)
     print("PlotSlabForces: plot figure", fileout)
 
@@ -308,18 +313,29 @@ def SlabAnalysis(case_dir, vtu_step, o_file, **kwargs):
     n = 100
     v_profile = VtkP.VerticalProfile2D(r0_range, x1, n)
     total_buoyancy, b_profile = VtkP.SlabBuoyancy(v_profile, 5e3)
-    header = "# depth (m)\n# buoyancy (N/m)\n"
-    with open(o_file, 'w') as fout:
-        fout.write(header)  # output header
-    with open(o_file, 'a') as fout:
-        np.savetxt(fout, b_profile, fmt="%20.8e")  # output data
-    print("%s: write file %s" % (Utilities.func_name(), o_file))
+    depths_o = b_profile[:, 0]  # use these depths to generate outputs
+    buoyancies = b_profile[:, 1]
+    buoyancy_gradients = buoyancies / (depths_o[1] - depths_o[0])  # gradient of buoyancy
     # pressure 
     slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
     fileout = os.path.join(output_path, 'slab_pressures0_%05d.txt' % (vtu_step))
-    SlabPressures(VtkP, slab_envelop0, fileout=fileout, indent=4)
+    depths0, thetas0, ps0= SlabPressures(VtkP, slab_envelop0, fileout=fileout, indent=4)
+    ps0_o = np.interp(depths_o, depths0, ps0[:, 0])
+    thetas_o = np.interp(depths_o, depths0, thetas0)
     fileout = os.path.join(output_path, 'slab_pressures1_%05d.txt' % (vtu_step))
-    SlabPressures(VtkP, slab_envelop1, fileout=fileout, indent=4)
+    depths1, _, ps1 = SlabPressures(VtkP, slab_envelop1, fileout=fileout, indent=4)
+    ps1_o = np.interp(depths_o, depths1, ps1[:, 0])
+    ps_o = ps0_o - ps1_o  # this has to be minus: sides of pressure are differnent on top or below.
+    pvs_o = ps_o * np.cos(thetas_o)
+    outputs = np.concatenate((b_profile, buoyancy_gradients.reshape((-1, 1)),\
+    ps_o.reshape((-1, 1)), pvs_o.reshape((-1, 1))), axis=1)
+    # output data
+    header = "# 1: depth (m)\n# 2: buoyancy (N/m)\n# 3: buoyancy gradient (Pa)\n# 4: differiential pressure (Pa)\n# 5: vertical differiential pressure"
+    with open(o_file, 'w') as fout:
+        fout.write(header)  # output header
+    with open(o_file, 'a') as fout:
+        np.savetxt(fout, outputs, fmt="%20.8e")  # output data
+    print("%s: write file %s" % (Utilities.func_name(), o_file))
 
 
 def SlabPressures(VtkP, slab_envelop, **kwargs):
@@ -386,6 +402,7 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
         with open(fileout, 'a') as fout: 
             np.savetxt(fout, data_env0_out, fmt='%.4e\t')
         print("%s%s: write output %s" % (' '*indent, Utilities.func_name(), fileout))
+    return depths, thetas[:, 0], ps  # return depths and pressures
     
 
 
