@@ -29,6 +29,7 @@ from matplotlib import pyplot as plt
 import shilofue.VtkPp as VtkPp
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
+from numpy import linalg as LA 
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -236,7 +237,7 @@ class VTKP(VtkPp.VTKP):
         return total_buoyancy, b_profile
 
 
-def plot_slab_forces(filein, fileout, **kwargs):
+def PlotSlabForces(filein, fileout, **kwargs):
     '''
     Plot slab surface profile
     Inputs:
@@ -250,16 +251,18 @@ def plot_slab_forces(filein, fileout, **kwargs):
     depths = data[:, 0]
     depth_interval = data[1, 0] - data[0, 0]
     buoyancies = data[:, 1]
+    total_buoyancy = LA.norm(buoyancies, 1)  # total buoyancy
     buoyancie_gradients = buoyancies / depth_interval
     v_zeros = np.zeros(data.shape[0])
     fig, ax = plt.subplots()
     ax.plot(buoyancie_gradients, depths/1e3, 'b', label='Buoyancy (N/m2)')
     ax.plot(v_zeros, depths/1e3, 'k--')
     ax.invert_yaxis()
+    ax.set_title('Total buoyancy: %.4e N/m2' % total_buoyancy)
     ax.set_xlabel('Force (N/m2)')
     ax.set_ylabel('Depth (km)')
     plt.savefig(fileout)
-    print("plot_slab_forces: plot figure", fileout)
+    print("PlotSlabForces: plot figure", fileout)
 
 
 def SlabAnalysis(case_dir, vtu_step, o_file, **kwargs):
@@ -279,7 +282,7 @@ def SlabAnalysis(case_dir, vtu_step, o_file, **kwargs):
     assert(os.path.isfile(filein))
     VtkP = VTKP()
     VtkP.ReadFile(filein)
-    field_names = ['T', 'density', 'spcrust', 'spharz']
+    field_names = ['T', 'p', 'density', 'spcrust', 'spharz']
     VtkP.ConstructPolyData(field_names, include_cell_center=True)
     VtkP.PrepareSlab(['spcrust', 'spharz'])
     # output slab profile
@@ -300,6 +303,7 @@ def SlabAnalysis(case_dir, vtu_step, o_file, **kwargs):
         print("\t%s: write file %s" % (Utilities.func_name(), o_slab_in))
     # buoyancy
     r0_range = [6371e3 - 2890e3, 6371e3]
+    Ro = 6371e3
     x1 = 0.01 
     n = 100
     v_profile = VtkP.VerticalProfile2D(r0_range, x1, n)
@@ -310,6 +314,79 @@ def SlabAnalysis(case_dir, vtu_step, o_file, **kwargs):
     with open(o_file, 'a') as fout:
         np.savetxt(fout, b_profile, fmt="%20.8e")  # output data
     print("%s: write file %s" % (Utilities.func_name(), o_file))
+    # pressure 
+    slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
+    fileout = os.path.join(output_path, 'slab_pressures0_%05d.txt' % (vtu_step))
+    SlabPressures(VtkP, slab_envelop0, fileout=fileout, indent=4)
+    fileout = os.path.join(output_path, 'slab_pressures1_%05d.txt' % (vtu_step))
+    SlabPressures(VtkP, slab_envelop1, fileout=fileout, indent=4)
+
+
+def SlabPressures(VtkP, slab_envelop, **kwargs):
+    '''
+    extract slab pressures
+    Inputs:
+        VtkP: VTKP class
+        slab_envelop: slab envelop coordinates (x and y)
+    '''
+    # pressure gradient
+    Ro = 6371e3
+    fileout = kwargs.get('fileout', None)  # debug
+    indent = kwargs.get('indent', 0)
+    slab_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, slab_envelop)
+    temp_vtk_array = slab_env_polydata.GetPointData().GetArray('p')
+    env_ps  = vtk_to_numpy(temp_vtk_array)
+    temp_vtk_array = slab_env_polydata.GetPointData().GetArray('p')
+    # env1_ps = vtk_to_numpy(temp_vtk_array.GetData())
+    depths = np.zeros(slab_envelop.shape[0]) # data on envelop0
+    ps = np.zeros((slab_envelop.shape[0], 3)) # pressure, horizontal & vertical components
+    thetas = np.zeros((slab_envelop.shape[0], 1))
+    is_first = True
+    for i in range(0, slab_envelop.shape[0]):
+        x = slab_envelop[i, 0]
+        y = slab_envelop[i, 1]
+        depth = Ro - (x * x + y * y)**0.5  # depth of this point
+        p = env_ps[i]  # pressure of this point
+        depths[i] = depth
+        dx = 0.0  # coordinate differences
+        dy = 0.0
+        if is_first:
+            xnext = slab_envelop[i+1, 0]  # coordinates of this and the last point
+            ynext = slab_envelop[i+1, 1]
+            dx = xnext - x
+            dy = ynext - y
+            is_first = False
+        else: 
+            xlast = slab_envelop[i-1, 0]  # coordinates of this and the last point
+            ylast = slab_envelop[i-1, 1]
+            dx = x - xlast
+            dy = y - ylast
+        theta = np.arctan2(dx, dy)
+        thetas[i, 0] = theta
+        p_v = p * np.cos(theta)
+        p_h = p * np.sin(theta)
+        ps[i, 0] = p
+        ps[i, 1] = p_h
+        ps[i, 2] = p_v
+    temp = np.concatenate((slab_envelop, thetas), axis=1)
+    data_env0 = np.concatenate((temp, ps), axis=1)  # assemble all the data
+    c_out = data_env0.shape[1]
+    start = np.ceil(depths[0]/1e3) * 1e3
+    end = np.floor(depths[-1]/1e3) * 1e3
+    n_out = int((end-start) / 1e3)
+    data_env0_out = np.zeros((n_out, c_out+1))
+    depths_out = np.arange(start, end, 1e3)
+    data_env0_out[:, 0] = depths_out
+    for j in range(c_out):
+        data_env0_out[:, j+1] = np.interp(depths_out, depths, data_env0[:, j]) # interpolate to regular grid
+    if fileout != None:
+        header = "# 1: depth (m)\n# 2: x (m)\n# 3: y (m)\n# 4: theta_v \n# 5: p (Pa)\n# 6: p_h (Pa) \n# 7: p_v (Pa)\n"
+        with open(fileout, 'w') as fout:
+            fout.write(header)
+        with open(fileout, 'a') as fout: 
+            np.savetxt(fout, data_env0_out, fmt='%.4e\t')
+        print("%s%s: write output %s" % (' '*indent, Utilities.func_name(), fileout))
+    
 
 
 def PlotSlabCase(case_dir, step, **kwargs):
@@ -337,7 +414,7 @@ def PlotSlabCase(case_dir, step, **kwargs):
     if not os.path.isdir(img_dir):
         os.mkdir(img_dir)
     fig_ofile = os.path.join(img_dir, "slab_forces_%05d.png" % vtu_step)
-    plot_slab_forces(ofile, fig_ofile)
+    PlotSlabForces(ofile, fig_ofile)
 
 
 def PlotSlabShape(in_dir, vtu_step):
@@ -408,7 +485,7 @@ def main():
         SlabAnalysis(arg.inputs, vtu_step, ofile)
     elif _commend == 'plot_slab_forces':
         # plot slab forces
-        plot_slab_forces(arg.inputs, arg.outputs)
+        PlotSlabForces(arg.inputs, arg.outputs)
     elif _commend == "plot_slab_case_step":
         PlotSlabCase(arg.inputs, arg.step, output_slab=True)
     elif _commend == "plot_slab_shape":
