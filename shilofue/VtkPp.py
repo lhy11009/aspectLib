@@ -189,7 +189,7 @@ class VTKP():
             raise ValueError('Wrong option for geometry')
         points[:, 0] = xs
         points[:, 1] = ys
-        v_poly_data = InterpolateGrid(self.i_poly_data, points)
+        v_poly_data = InterpolateGrid(self.i_poly_data, points, quiet=True)
         point_data = v_poly_data.GetPointData()
         fields = []
         field_names = []
@@ -308,9 +308,11 @@ def InterpolateGrid(poly_data, points, **kwargs):
         poly data on the new grid
     Output:
     '''
+    quiet = kwargs.get('quiet', False)
     fileout = kwargs.get('fileout', None)
     assert(points.ndim == 2)  # points is a 2d array
-    print("%s: Perform interpolation onto the new grid" % Utilities.func_name())
+    if not quiet:
+        print("%s: Perform interpolation onto the new grid" % Utilities.func_name())
     grid_points = vtk.vtkPoints()
     for i in range(points.shape[0]):
         x = points[i][0]

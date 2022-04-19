@@ -74,6 +74,7 @@ Examples of usage: \n\
 
 class SLABPLOT(LINEARPLOT):
     '''
+    deprecated
     Plot slab morphology
     Inputs:
         -
@@ -252,6 +253,7 @@ def slab_buoyancy(inputs):
 
 def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
     '''
+    deprecated
     run vtk and read in slab morph
     Inputs:
         case_dir (str): case directory
@@ -261,7 +263,7 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
     '''
     print("pvtu_step: %s\n" % str(pvtu_step))
     vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis',\
-    vtk_step=pvtu_step, include_step_in_filename=True, generate_horiz=True)
+    vtu_step=pvtu_step, include_step_in_filename=True, generate_horiz=True)
     _stdout = RunVTKScripts('TwoDSubduction_SlabAnalysis', vtk_option_path)
     slab_outputs = slab_morph(_stdout)
     # output string
@@ -272,6 +274,7 @@ def vtk_and_slab_morph(case_dir, pvtu_step, **kwargs):
 
 def vtk_and_slab_morph_case(case_dir, **kwargs):
     '''
+    deprecated
     run vtk and get outputs for every snapshots
     Inputs:
         kwargs:
@@ -402,7 +405,7 @@ def plot_slab_envelops(dirin, fileout, pvtu_step, **kwargs):
     '''
     Plot slab surface profile
     Inputs:
-        filein (str): path to input
+        dirin (str): path to input
         fileout (str): path to output
         kwargs (dict):
             include_internal: plot internal points as well
@@ -504,6 +507,7 @@ def main():
         plot_slab_surface(arg.inputs, arg.outputs, arg.step, include_internal=True)
     elif _commend == 'plot_slab_envelops': 
         # plot slab envelops
+        # deprecated
         plot_slab_envelops(arg.inputs, arg.outputs, arg.step, include_internal=True)
     else:
         # no such option, give an error message

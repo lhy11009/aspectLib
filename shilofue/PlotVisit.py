@@ -157,10 +157,10 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         '''
         generate_horiz_file = kwargs.get('generate_horiz', False)
         operation = kwargs.get('operation', 'default')
-        vtk_step = int(kwargs.get('vtk_step', 0))
+        vtu_step = int(kwargs.get('vtu_step', 0))
         # houriz_avg file
         if generate_horiz_file:
-            _time, time_step = self.get_time_and_step(vtk_step)
+            _time, time_step = self.get_time_and_step(vtu_step)
             depth_average_path = os.path.join(self.options["DATA_OUTPUT_DIR"], 'depth_average.txt')
             assert(os.path.isfile(depth_average_path))
             output_dir = os.path.join(self._case_dir, 'temp_output')
@@ -177,14 +177,14 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         if not os.path.isdir(self.options['VTK_OUTPUT_DIR']):
             os.mkdir(self.options['VTK_OUTPUT_DIR'])
         # file to read in vtk
-        Utilities.my_assert((vtk_step >= 0 and vtk_step <= self.last_step), ValueError, "vtk_step needs to be within the range of [%d, %d]" % (0, self.last_step))  # check the range of steps
-        self.options['PVTU_FILE'] = os.path.join(self._output_dir, "solution", "solution-%05d.pvtu" % (vtk_step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])))
+        Utilities.my_assert((vtu_step >= 0 and vtu_step <= self.last_step), ValueError, "vtu_step needs to be within the range of [%d, %d]" % (0, self.last_step))  # check the range of steps
+        self.options['PVTU_FILE'] = os.path.join(self._output_dir, "solution", "solution-%05d.pvtu" % (vtu_step + int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])))
         # type of operation
         self.options['OPERATION'] = operation
 
-    def get_time_and_step(self, vtk_step):
+    def get_time_and_step(self, vtu_step):
         '''
-        Convert vtk_step to step and time in model
+        Convert vtu_step to step and time in model
         ''' 
         assert(len(self.all_graphical_snaps) > 0)
         assert(len(self.all_graphical_timesteps) > 0)
@@ -192,11 +192,11 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         found = False
         i = 0
         for snap_shot in self.all_graphical_snaps:
-            if vtk_step == max(0, int(snap_shot) - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])):
+            if vtu_step == max(0, int(snap_shot) - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])):
                 found = True
                 step = int(self.all_graphical_timesteps[i])
             i += 1
-        Utilities.my_assert(found, ValueError, "%s: vtk_step %d is not found" % (Utilities.func_name(), vtk_step))
+        Utilities.my_assert(found, ValueError, "%s: vtu_step %d is not found" % (Utilities.func_name(), vtu_step))
         time = self.Statistics.GetTime(step)
         return time, step
 
@@ -420,10 +420,10 @@ def PrepareVTKOptions(VISIT_OPTIONS, case_dir, type, **kwargs):
         VISIT_OPTIONS: class for the options of visit
         kwargs:
             output
-            vtk_step
+            vtu_step
             include_step_in_filename
     '''
-    vtk_step = kwargs.get('vtk_step', 0)
+    vtu_step = kwargs.get('vtu_step', 0)
     generate_horiz = kwargs.get('generate_horiz', False)
     operation = kwargs.get('operation', 'default')
     include_step_in_filename = kwargs.get('include_step_in_filename', False)
@@ -432,20 +432,20 @@ def PrepareVTKOptions(VISIT_OPTIONS, case_dir, type, **kwargs):
     vtk_config_file = os.path.join(vtk_config_dir, "%s.input" % type)
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
-    Visit_Options.vtk_options(vtk_step=vtk_step, generate_horiz=generate_horiz, operation=operation)
+    Visit_Options.vtk_options(vtu_step=vtu_step, generate_horiz=generate_horiz, operation=operation)
     Visit_Options.read_contents(vtk_config_file)
     Visit_Options.substitute()
     try:
         ofile = kwargs['output']
     except KeyError:
         if include_step_in_filename:
-            ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], "%s_s%06d" % (os.path.basename(vtk_config_file), vtk_step))
+            ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], "%s_s%06d" % (os.path.basename(vtk_config_file), vtu_step))
         else:
             ofile = os.path.join(Visit_Options.options['VTK_OUTPUT_DIR'], os.path.basename(vtk_config_file))
     ofile_path = Visit_Options.save(ofile)
     print('%s: %s generated' % (Utilities.func_name(), ofile_path))
     # get time and step
-    _time, step = Visit_Options.get_time_and_step(vtk_step)
+    _time, step = Visit_Options.get_time_and_step(vtu_step)
     return ofile_path, _time, step
 
 
