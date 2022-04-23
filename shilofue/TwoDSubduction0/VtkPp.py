@@ -353,7 +353,7 @@ def PlotSlabForces(filein, fileout, **kwargs):
     ax.set_xlabel('Pressure (Pa)')
     ax.set_ylabel('Depth (km)')
     ax.legend()
-    #
+    # figure 3: buoyancy and vertical pressure differences: difined otherwise
     ax = fig.add_subplot(gs[0, 2]) 
     ax.plot(buoyancie_gradients, depths/1e3, 'b', label='Buoyancy gradients (N/m2)')
     ax.plot(differiential_pressure_v_1, depths/1e3, '--', color=mcolors.CSS4_COLORS['lightcoral'], label='Vertical pressure differences 1 (N/m2)')
@@ -362,16 +362,26 @@ def PlotSlabForces(filein, fileout, **kwargs):
     ax.set_title('Buoyancy (total %.4e N/m2) and sigma_v1' % total_buoyancy)
     ax.set_xlabel('Pressure (Pa)')
     ax.set_ylabel('Depth (km)')
-
-    # figure 3: field of compensation
+    # figure 4: field of compensation
     ax = fig.add_subplot(gs[1, 0]) 
     ax.plot(compensation, depths/1e3, 'k')
     ax.invert_yaxis()
     ax.set_xlim([-10, 10])
     ax.set_xlabel('Compensation')
+    # figure 5: buoyancy and vertical pressure differences - with a 500 km limit
+    mask = depths < 500e3
+    ax = fig.add_subplot(gs[1, 1]) 
+    ax.plot(buoyancie_gradients[mask], depths[mask]/1e3, 'b', label='Buoyancy gradients (N/m2)')
+    ax.plot(differiential_pressure_v[mask], depths[mask]/1e3, 'r--', label='Vertical pressure differences (N/m2)')
+    ax.plot(v_zeros[mask], depths[mask]/1e3, 'k--')
+    ax.set_ylim([0, 500]) # set y limit
+    ax.invert_yaxis()
+    ax.set_title('Buoyancy (total %.4e N/m2) and sigma_v0' % total_buoyancy)
+    ax.set_xlabel('Pressure (Pa)')
+    ax.set_ylabel('Depth (km)')
+    ax.legend()
     plt.savefig(fileout)
     print("PlotSlabForces: plot figure", fileout)
-
 
 def SlabMorphology(case_dir, vtu_step, **kwargs):
     '''
@@ -467,9 +477,9 @@ def SlabAnalysis(case_dir, vtu_step, o_file, **kwargs):
     compensation.reshape((-1, 1))), axis=1)
     # output data
     header = "# 1: depth (m)\n# 2: buoyancy (N/m)\n\
-    # 3: buoyancy gradient (Pa)\n# 4: pressure upper (Pa) \n# 5: pressure lower (Pa)\n\
-    # 6: differiential pressure (Pa)\n# 7: vertical differiential pressure\n\
-    # 8: vertical differiential pressure 1\n # 9: compensation"
+# 3: buoyancy gradient (Pa)\n# 4: pressure upper (Pa) \n# 5: pressure lower (Pa)\n\
+# 6: differiential pressure (Pa)\n# 7: vertical differiential pressure\n\
+# 8: vertical differiential pressure 1\n# 9: compensation\n"
     with open(o_file, 'w') as fout:
         fout.write(header)  # output header
     with open(o_file, 'a') as fout:

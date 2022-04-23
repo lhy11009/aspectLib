@@ -71,17 +71,15 @@ def test_prepare_slab():
     assert(os.path.isfile(fileout))  # assert file existence
     assert(filecmp.cmp(fileout_std, fileout))  # compare file extent
     slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord() # envelop
-    # assert(abs(slab_envelop0[0, 0] - 5039516.875)/5039516.875 < 1e-8)
-    # assert(abs(slab_envelop0[0, 1] - 3804825.625)/3804825.625< 1e-8)
-    # assert(abs(slab_envelop1[0, 0] - 5086593.875)/5086593.875 < 1e-8)
-    # assert(abs(slab_envelop1[0, 1] - 3741656.1875)/3741656.1875 < 1e-8)
+    assert(abs(slab_envelop0[0, 0] - 5086593.875)/5086593.875 < 1e-8)
+    assert(abs(slab_envelop0[6, 1] - 3723199.125)/3723199.125< 1e-8)
     # test 2, slab buoyancy
     r0_range = [6371e3 - 2890e3, 6371e3]
     x1 = 0.01 
     n = 100
     v_profile = VtkP.VerticalProfile2D(r0_range, x1, n)
     total_buoyancy, b_profile = VtkP.SlabBuoyancy(v_profile, 5e3)
-    assert(abs(total_buoyancy - 5394703810473.24)/5394703810473.24 < 1e-8)
+    assert(abs(total_buoyancy + 5394703810473.24)/5394703810473.24 < 1e-8)
     assert((b_profile[11, 1]-1.09996017e+12)/1.09996017e+12 < 1e-8)
 
 
