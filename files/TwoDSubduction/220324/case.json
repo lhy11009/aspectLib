@@ -1,7 +1,7 @@
 {
-  "base directory": "${ASPECT_LAB_DIR}/tests/integration/fixtures/cases/test_TwoDSubduction/adjust_box_width",
-  "output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
-  "name": "adjust_box0",
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220324",
+  "output directory": "/home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT_peierls",
+  "name": "eba_cdpt_SA80.0_OA40.0",
   "Include fast first step": 1,
   "geometry": "chunk",
   "Potential temperature": 1573.0,
@@ -11,7 +11,7 @@
   "use world builder": 1,
   "world builder": {
     "plate age method": "adjust box width",
-    "box width before adjusting": 2.0017e7,
+    "box width before adjusting": 15570000.0,
     "adjust mesh with box width": 1,
     "subducting plate": {
       "age trench": 80000000.0,
@@ -25,7 +25,16 @@
       }
     }
   },
-  "Include peierls creep": 0,
-  "coupling the eclogite phase to shear zone viscosity": 0,
-  "additional files": ["job_rome.sh", "job_high2.sh", "job_p-billen.sh"]
+  "include peierls creep": 0,
+  "Peierls creep": {
+    "Scheme": "MK10"
+  },
+  "shear zone": {
+    "coupling the eclogite phase to shear zone viscosity": 1
+  },
+  "additional files": [
+    "job_rome.sh",
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ]
 }

@@ -145,7 +145,12 @@ def test_create_cases():
     wb_path = os.path.join(output_dir, 'case.wb')
     assert(filecmp.cmp(prm_path, prm_std_path))
     assert(filecmp.cmp(wb_path, wb_std_path))
-    # test 3: test using the peierls rheology
+
+
+def test_peierls_rheology():
+    '''
+    # test using the peierls rheology
+    '''
     source_case_dir = os.path.join(source_dir, "peierls_rheology")
     json_path = os.path.join(source_case_dir, 'case0.json')
     output_dir = os.path.join(test_dir,'peierls0')

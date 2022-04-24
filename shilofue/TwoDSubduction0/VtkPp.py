@@ -346,6 +346,7 @@ def PlotSlabForces(filein, fileout, **kwargs):
     # figure 2: buoyancy and vertical pressure differences
     ax = fig.add_subplot(gs[0, 1]) 
     ax.plot(buoyancie_gradients, depths/1e3, 'b', label='Buoyancy gradients (N/m2)')
+    ax.plot(differiential_pressure, depths/1e3, 'm--', label='Pressure differences (N/m2)')
     ax.plot(differiential_pressure_v, depths/1e3, 'r--', label='Vertical pressure differences (N/m2)')
     ax.plot(v_zeros, depths/1e3, 'k--')
     ax.invert_yaxis()
@@ -372,6 +373,7 @@ def PlotSlabForces(filein, fileout, **kwargs):
     mask = depths < 500e3
     ax = fig.add_subplot(gs[1, 1]) 
     ax.plot(buoyancie_gradients[mask], depths[mask]/1e3, 'b', label='Buoyancy gradients (N/m2)')
+    ax.plot(differiential_pressure[mask], depths[mask]/1e3, 'm--', label='Pressure differences (N/m2)')
     ax.plot(differiential_pressure_v[mask], depths[mask]/1e3, 'r--', label='Vertical pressure differences (N/m2)')
     ax.plot(v_zeros[mask], depths[mask]/1e3, 'k--')
     ax.set_ylim([0, 500]) # set y limit

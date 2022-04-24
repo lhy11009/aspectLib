@@ -518,35 +518,65 @@ def pressure_from_lithostatic(z,Tad,p):
         ax.set_ylabel('Depth (km)')
     return P
 
+
+def GetPeierlsApproxVist(flv):
+    '''
+    export Peierls rheology for approximation
+    '''
+    mpa = 1e6  # MPa to Pa
+    Peierls={}
+    if flv == "MK10":
+        Peierls['q'] = 1.0
+        Peierls['p'] = 0.5
+        n = 2.0
+        Peierls['n'] =  n
+        Peierls['sigp0'] = 5.9e9					# Pa (+/- 0.2e9 Pa)
+        Peierls['A'] = 1.4e-7/np.power(mpa,n) 	# s^-1 Pa^-2
+        Peierls['E'] = 320e3  					# J/mol (+/-50e3 J/mol)
+    else:
+        raise ValueError("flv must by \'MK10\'")
+    return Peierls 
+
+
+def GetPeierlsStressPDependence(flv):
+    '''
+    export P dependence for the peierls creep
+    '''
+    G0 = 77.4*1e9 # GPa  
+    Gp = 1.61 # GPa/GPa 
+    return G0, Gp
+
+
+
 # Peierls creep flow law 
 # flv: flow law version
-# MK10: for Mei and Kohlstedt, 2010	 (gam = 0.17)
+# MK10: for Mei and Kohlstedt, 2010     (gam = 0.17)
 # gam: fitting parameter = sig_ref/sigp
 #
 def peierls_approx_visc(flv,gam,P,T,edot):
 
-	mpa = 1e6  # MPa to Pa
+    mpa = 1e6  # MPa to Pa
 
-	if flv == "MK10":
-		# Mei et al., JGR 2010
-		q = 1.0
-		p = 0.5
-		n = 2.0
-		sigp0 = 5.9e9					# Pa (+/- 0.2e9 Pa)
-		A = 1.4e-7/np.power(mpa,n) 	# s^-1 Pa^-2
-		E = 320e3  					# J/mol (+/-50e3 J/mol)
-	
-	# Pressure dependence of Peierls stress
-	# From Kawazoe et al. PEPI 2009 and parameters from Liu et al., GRL 2005 
-	G0 = 77.4*1e9 # GPa  
-	Gp = 1.61 # GPa/GPa 
-	sigp = sigp0*(1 + (Gp/G0)*P)
-	
-	s = (E/(R*T))*p*q*((1-gam**p)**(q-1))*(gam**p)
-	x = 1/(s+n)
-	visc = (0.5*gam*sigp*edot**(x-1))/( ((A*(gam*sigp)**n)**x)*np.exp( -(E*(1-gam**p)**q)/(R*T*(s+n)) ) )
-	
-	return visc
+    if flv == "MK10":
+        # Mei et al., JGR 2010
+        q = 1.0
+        p = 0.5
+        n = 2.0
+        sigp0 = 5.9e9					# Pa (+/- 0.2e9 Pa)
+        A = 1.4e-7/np.power(mpa,n) 	# s^-1 Pa^-2
+        E = 320e3  					# J/mol (+/-50e3 J/mol)
+    
+    # Pressure dependence of Peierls stress
+    # From Kawazoe et al. PEPI 2009 and parameters from Liu et al., GRL 2005 
+    G0 = 77.4*1e9 # GPa  
+    Gp = 1.61 # GPa/GPa 
+    sigp = sigp0*(1 + (Gp/G0)*P)
+    
+    s = (E/(R*T))*p*q*((1-gam**p)**(q-1))*(gam**p)
+    x = 1/(s+n)
+    visc = (0.5*gam*sigp*edot**(x-1))/( ((A*(gam*sigp)**n)**x)*np.exp( -(E*(1-gam**p)**q)/(R*T*(s+n)) ) )
+    
+    return visc
 
     
 def main():

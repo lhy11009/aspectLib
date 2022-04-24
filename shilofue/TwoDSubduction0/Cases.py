@@ -33,6 +33,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
+import shilofue.flow_law_functions as flf
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -100,6 +101,8 @@ different age will be adjusted.",\
           ["world builder", "adjust mesh with box width"], 0, nick='adjust_mesh_with_width') 
         self.add_key("Thickness of the shear zone / crust", float, ["shear zone", 'thickness'], 7.5e3, nick='Dsz')
         self.add_key("Refinement scheme", str, ["refinement scheme"], "2d", nick='rf_scheme')
+        self.add_key("Peierls creep scheme", str, ['Peierls creep', 'Scheme'], "MK10", nick='peierls_scheme')  # todo
+
         pass
     
     def check(self):
@@ -146,6 +149,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         # assert scheme to use for refinement
         rf_scheme = self.values[self.start + 17]
         assert(rf_scheme in ['2d', '3d coarse'])
+        # assert scheme of peierls creep to use
+        peierls_scheme = self.values[self.start + 18]
+        assert(peierls_scheme in ['MK10', "MK10p"])
 
     def to_configure_prm(self):
         if_wb = self.values[8]
@@ -170,9 +176,11 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         sz_cutoff_depth = self.values[self.start+14]
         adjust_mesh_with_width = self.values[self.start+15]
         rf_scheme = self.values[self.start + 17]
+        peierls_scheme = self.values[self.start + 18]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
-        HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme
+        HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
+        peierls_scheme
 
     def to_configure_wb(self):
         '''
@@ -222,7 +230,7 @@ class CASE(CasesP.CASE):
     '''
     def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T,\
     sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
-    HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme):
+    HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
@@ -284,6 +292,36 @@ class CASE(CasesP.CASE):
             except KeyError as e:
                 raise KeyError('The options use Peierls rheology by there are missing parameters in the prm file') from e
             o_dict['Material model']['Visco Plastic TwoD']['Include Peierls creep'] = 'true'
+            if peierls_scheme in ["MK10", "MK10p"]: 
+                Peierls = flf.GetPeierlsApproxVist('MK10')
+                o_dict['Material model']['Visco Plastic TwoD']['Peierls glide parameters p'] = str(Peierls['p'])
+                o_dict['Material model']['Visco Plastic TwoD']['Peierls glide parameters q'] = str(Peierls['q'])
+                o_dict['Material model']['Visco Plastic TwoD']['Stress exponents for Peierls creep'] = str(Peierls['n'])
+                o_dict['Material model']['Visco Plastic TwoD']['Peierls stresses'] = '%.4e' % Peierls['sigp0']
+                o_dict['Material model']['Visco Plastic TwoD']['Activation energies for Peierls creep'] = '%.4e' % Peierls['E']
+                o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for Peierls creep'] = '0.0'
+                A = Peierls['A']
+                if phase_model == "CDPT":
+                    # note that this part contains the different choices of phases
+                    # in order to set up for the lower mantle compositions
+                    # a future implementation could indicate in the phases which are lower mantle compositions
+                    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for Peierls creep'] = \
+                    "background: %.4e|%.4e|%.4e|%.4e|1e-31|1e-31|1e-31|1e-31,\
+spcrust: %.4e|%.4e|1e-31|1e-31,\
+spharz: %.4e|%.4e|%.4e|%.4e|1e-31|1e-31|1e-31|1e-31,\
+opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
+                else:
+                    pass  # not implemented
+                if peierls_scheme == "MK10p":
+                    # add p dependence in the peierls stress
+                    G0, Gp = flf.GetPeierlsStressPDependence()
+                    o_dict['Material model']['Visco Plastic TwoD']['Peierls shear modulus'] = "%.4e" % G0
+                    o_dict['Material model']['Visco Plastic TwoD']['Peierls shear modulus derivative'] =  "%.4e" % Gp
+                else:
+                    # no p dependence, note: sigp = sigp0*(1 + (Gp/G0)*P1), here we want to set Gp = 0
+                    o_dict['Material model']['Visco Plastic TwoD']['Peierls shear modulus derivative'] = "0.0"
+                    pass
+                # todo
         else:
             o_dict['Material model']['Visco Plastic TwoD']['Include Peierls creep'] = 'false'
         # Couple eclogite viscosity

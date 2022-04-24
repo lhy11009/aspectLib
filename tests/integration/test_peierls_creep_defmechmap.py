@@ -34,6 +34,17 @@ import shilofue.flow_law_functions as flf
 test_dir = ".test"
 # source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_plot_run_time')
 
+def test_get_peierls():
+    '''
+    test the interface for exporting peierls creep
+    '''
+    Peierls = flf.GetPeierlsApproxVist('MK10')
+    assert(abs(Peierls['q'] - 1.0) < 1e-6)
+    assert(abs((Peierls['sigp0'] - 5900000000.0)/5900000000.0) < 1e-6)
+    assert(abs((Peierls['A'] - 1.4e-19)/1.4e-19) < 1e-6)
+    # print(Peierls)  # print what's there
+
+
 def test_plot_peierls():
     # Unit conversions
     mpa = 1e6  # MPa to Pa
