@@ -45,6 +45,48 @@ def test_get_peierls():
     # print(Peierls)  # print what's there
 
 
+def test_peierls_visc():
+    '''
+    test peierls_visc function
+    assert:
+        values of strain rate
+    '''
+    # test 1
+    P = 0.0
+    T = 1050.0
+    sigma = 3e9
+    etap, edotp = flf.peierls_visc('MK10',P,T, sigma)
+    assert(abs((edotp - 3.408743e-05)/3.408743e-05) < 1e-6)
+    # test 2
+    P = 0.0
+    T = 1400.0
+    sigma = 2.35e9
+    etap, edotp = flf.peierls_visc('MK10',P,T, sigma)
+    assert(abs((edotp - 3.0468359e-05)/3.0468359e-05) < 1e-6)
+
+
+def test_peierls_visc_from_edot():
+    '''
+    test peierls_visc_from_edot function
+    assert:
+        values of viscosity and n (number of iteration)
+    '''
+    # test 1
+    P = 0.0
+    T = 1050.0
+    edot = 3.408743e-05
+    etap, sigma, diff, n = flf.peierls_visc_from_edot('MK10',P,T, edot)
+    assert(abs((etap - 4.480804e+13)/4.480804e+13) < 1e-5)
+    assert(n == 7)
+    # test 2
+    P = 0.0
+    T = 1400.0
+    edot = 3.0468359e-05
+    etap, sigma, diff, n = flf.peierls_visc_from_edot('MK10',P,T, edot)
+    assert(abs((etap - 4.069405e+13)/4.069405e+13) < 1e-5)
+    assert(n == 11)
+
+
 def test_plot_peierls():
     # Unit conversions
     mpa = 1e6  # MPa to Pa
@@ -123,7 +165,6 @@ def test_plot_peierls():
     	
     # Peierls Creep
     etap = flf.peierls_approx_visc('MK10',0.17,P,T,edot)
-    #etap1 = flf.peierls_approx_visc('MK10',0.17,P1,T1,edot)
     
     
     # Composite viscosity

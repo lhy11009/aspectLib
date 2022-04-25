@@ -141,7 +141,7 @@ Below is an example of json file used for creating cases, one can always run thi
 
 Every option is assigned as key and value.
 Together they are related with either a variable in the prm file or a defined function to change multiple parameters at the same time.
-For example, the "Include fast first step" option would actually copy the prm file, change the option of "End time" to 0.0, solver scheme
+For example, the "include fast first step" option would actually copy the prm file, change the option of "End time" to 0.0, solver scheme
 to "No advection, No stokes" and dump this back to a file called "case_f.prm".
 The goal of this approach is to reduce the process of model setup to what we would mental address the task.
 Say, when we think of changing the geometry, normally we have to vary a lot of entries in the prm file,
@@ -152,9 +152,9 @@ But with this, we reduce it back to just change the option of geometry from box 
 		"base directory": "${ASPECT_LAB_DIR}/files/TwoDSubduction/210103", 
 		"output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
 		"name": "peierls_test",
-		"Include fast first step": 1,
+		"include fast first step": 1,
 		"geometry": "chunk",
-		"Potential temperature": 1573.0,
+		"potential temperature": 1573.0,
 		"boundary condition": {"model": "all free slip"},
 		"use world builder": 1, 
 		"world builder": 

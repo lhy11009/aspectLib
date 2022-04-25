@@ -2,7 +2,7 @@
 	"base directory": "${ASPECT_LAB_DIR}/files/TwoDSubduction/211201", 
 	"output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
 	"name": "change_plate_ages_1",
-	"Include fast first step": 1,
+	"include fast first step": 1,
 	"geometry": "chunk",
 	"boundary condition": {"model": "all free slip"},
 	"use world builder": 1, 

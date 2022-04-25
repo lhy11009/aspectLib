@@ -2,9 +2,9 @@
   "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220109",
   "output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
   "name": "peierls0",
-  "Include fast first step": 1,
+  "include fast first step": 1,
   "geometry": "chunk",
-  "Potential temperature": 1573.0,
+  "potential temperature": 1573.0,
   "boundary condition": {
     "model": "all free slip"
   },

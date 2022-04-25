@@ -2,7 +2,7 @@
     "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/211201",
     "output directory": "${ASPECT_LAB_DIR}/.test/test_group",
     "name": "foo",
-    "Include fast first step": 1,
+    "include fast first step": 1,
     "geometry": "box",
     "boundary condition": {
         "model": "all free slip"

@@ -2,9 +2,9 @@
 	"base directory": "${ASPECT_LAB_DIR}/files/TwoDSubduction/210103", 
 	"output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
 	"name": "peierls_test",
-	"Include fast first step": 1,
+	"include fast first step": 1,
 	"geometry": "chunk",
-	"Potential temperature": 1573.0,
+	"potential temperature": 1573.0,
 	"boundary condition": {"model": "all free slip"},
 	"use world builder": 1, 
 	"world builder": 

@@ -2,7 +2,7 @@
     "base directory": "${ASPECT_LAB_DIR}/files/LatentHeatBK/01222022",
     "output directory": "/home/lochy/ASPECT_PROJECT/LatentHeatBK",
     "name": "test_case",
-    "Include fast first step": 1,
+    "include fast first step": 1,
     "max time step": 1e6,
     "material model": "visco plastic twod",
     "phase transition model": "CDPT",

@@ -59,10 +59,10 @@ class CASE_OPT(Utilities.JSON_OPT):
         self.add_key("Base directory (inputs)", str, ["base directory"], ".", nick='base_dir')
         self.add_key("Output directory", str, ["output directory"], ".", nick='o_dir')
         self.add_key("Geometry", str, ["geometry"], "chunk", nick='geometry')
-        self.add_key("Potential temperature of the mantle", float,\
-            ["Potential temperature"], 1673.0, nick='potential_T')
-        self.add_key("Include fast first step", int,\
-            ["Include fast first step"], 0, nick='if_fast_first_step')
+        self.add_key("potential temperature of the mantle", float,\
+            ["potential temperature"], 1673.0, nick='potential_T')
+        self.add_key("include fast first step", int,\
+            ["include fast first step"], 0, nick='if_fast_first_step')
         self.add_key("Additional files to include", list,\
             ["additional files"], [], nick='additional_files')
         self.add_key("Root level from the project root", int,\

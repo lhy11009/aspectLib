@@ -533,6 +533,14 @@ def GetPeierlsApproxVist(flv):
         Peierls['sigp0'] = 5.9e9					# Pa (+/- 0.2e9 Pa)
         Peierls['A'] = 1.4e-7/np.power(mpa,n) 	# s^-1 Pa^-2
         Peierls['E'] = 320e3  					# J/mol (+/-50e3 J/mol)
+    elif flv == "Idrissi16":
+        Peierls['q'] = 2.0
+        Peierls['p'] = 0.5
+        n = 0.0
+        Peierls['n'] =  n
+        Peierls['sigp0'] = 3.8e9					# Pa (+/- 0.7e9 Pa)
+        Peierls['A'] = 1e6 	# s^-1, note unit of A is related to n (here n = 0.0)
+        Peierls['E'] = 566e3  					# J/mol (+/-74e3 J/mol)
     else:
         raise ValueError("flv must by \'MK10\'")
     return Peierls 
@@ -547,13 +555,70 @@ def GetPeierlsStressPDependence(flv):
     return G0, Gp
 
 
+def peierls_visc(flv, P, T,sigma):
+    '''
+    Peierls creep flow law 
+    flv: flow law version
+    P: pressure
+    T: temperature
+    sigma: differential stress
+    '''
+    mpa = 1e6  # MPa to Pa
+    if flv == "MK10":
+        # Mei et al., JGR 2010
+        q = 1.0
+        p = 0.5
+        n = 2.0
+        sigp0 = 5.9e9					# Pa (+/- 0.2e9 Pa)
+        A = 1.4e-7/np.power(mpa,n) 	# s^-1 Pa^-2
+        E = 320e3  					# J/mol (+/-50e3 J/mol)
+        V = 0.0
+    expo = np.exp(-(E + P*V) / (R*T) * (1 - (sigma/sigp0)**p)**q)
+    edot = A * expo * sigma ** n
+    eta = sigma / (2 * edot)
+    return eta, edot
 
-# Peierls creep flow law 
-# flv: flow law version
-# MK10: for Mei and Kohlstedt, 2010     (gam = 0.17)
-# gam: fitting parameter = sig_ref/sigp
-#
+
+def peierls_visc_from_edot(flv, P, T, edotp0, limit=0.1):
+    '''
+    Get value of peierls creep from strain rate
+    flv: flow law version
+        MK10: for Mei and Kohlstedt, 2010     (gam = 0.17)
+    P: pressure
+    T: temperature
+    edotp0: strain rate
+    limit: limit of error
+    '''
+    diff = 1e6  # a big initial value
+    sigma_l = 1e-5
+    sigma_u = 1e12
+    is_first = True
+    n = 0
+    while (abs(diff) > limit):
+        if is_first:
+            is_first = False
+        else:
+            # update the value of sigma
+            if diff > 0.0:
+                sigma_u = sigma
+            else:
+                sigma_l = sigma
+        exponential = (np.log(sigma_u) + np.log(sigma_l)) / 2.0
+        sigma = np.exp(exponential)
+        etap, edotp = peierls_visc(flv, P, T, sigma)
+        diff = np.log(edotp / edotp0)
+        n += 1
+    return etap, sigma, diff, n
+
+
+
 def peierls_approx_visc(flv,gam,P,T,edot):
+    '''
+    Peierls creep flow law 
+    flv: flow law version
+    MK10: for Mei and Kohlstedt, 2010     (gam = 0.17)
+    gam: fitting parameter = sig_ref/sigp
+    '''
 
     mpa = 1e6  # MPa to Pa
 

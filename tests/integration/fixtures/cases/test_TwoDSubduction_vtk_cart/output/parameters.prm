@@ -3095,7 +3095,8 @@ subsection Heating model
     # The specific rate of heating due to radioactive decay (or other bulk
     # sources you may want to describe). This parameter corresponds to the
     # variable $H$ in the temperature equation stated in the manual, and the
-    # heating term is $ho H$. Units: W/kg.
+    # heating term is $
+ho H$. Units: W/kg.
     set Radiogenic heating rate = 0.
   end
 
@@ -6625,7 +6626,7 @@ subsection Material model
 
     # Prefactor of the linear pressure term in the quadratic function that
     # approximates the solidus of pyroxenite. Note that this factor is
-    # different from the value given in Sobolev, 2011, because they use the
+    # potential temperaturelue given in Sobolev, 2011, because they use the
     # potential temperature whereas we use the absolute temperature. Units:
     # \si{\degreeCelsius\per\pascal}.
     set D2                                             = 1.329e-7
@@ -11772,7 +11773,7 @@ subsection Postprocess
 
       # Prefactor of the linear pressure term in the quadratic function that
       # approximates the solidus of pyroxenite. Note that this factor is
-      # different from the value given in Sobolev, 2011, because they use the
+      # potential temperaturelue given in Sobolev, 2011, because they use the
       # potential temperature whereas we use the absolute temperature.
       # \si{\degreeCelsius\per\pascal}.
       set D2                = 1.329e-7

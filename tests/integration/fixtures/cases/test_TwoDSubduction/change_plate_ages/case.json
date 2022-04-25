@@ -2,7 +2,7 @@
 	"base directory": "${ASPECT_LAB_DIR}/files/TwoDSubduction/211201", 
 	"output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
 	"name": "change_plate_ages_0",
-	"Include fast first step": 1,
+	"include fast first step": 1,
 	"geometry": "box",
 	"boundary condition": {"model": "all free slip"},
 	"prescribe temperature method": "plate model",

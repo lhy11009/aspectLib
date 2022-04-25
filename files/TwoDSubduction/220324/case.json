@@ -2,9 +2,9 @@
   "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220324",
   "output directory": "/home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT_peierls",
   "name": "eba_cdpt_SA80.0_OA40.0",
-  "Include fast first step": 1,
+  "include fast first step": 1,
   "geometry": "chunk",
-  "Potential temperature": 1573.0,
+  "potential temperature": 1573.0,
   "boundary condition": {
     "model": "all free slip"
   },
@@ -26,8 +26,8 @@
     }
   },
   "include peierls creep": 0,
-  "Peierls creep": {
-    "Scheme": "MK10"
+  "peierls creep": {
+    "scheme": "MK10"
   },
   "shear zone": {
     "coupling the eclogite phase to shear zone viscosity": 1

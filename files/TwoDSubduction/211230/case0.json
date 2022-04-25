@@ -2,9 +2,9 @@
   "base directory": "${ASPECT_LAB_DIR}/tests/integration/fixtures/cases/test_TwoDSubduction/adjust_box_width",
   "output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
   "name": "adjust_box0",
-  "Include fast first step": 1,
+  "include fast first step": 1,
   "geometry": "chunk",
-  "Potential temperature": 1573.0,
+  "potential temperature": 1573.0,
   "boundary condition": {
     "model": "all free slip"
   },
