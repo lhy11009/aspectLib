@@ -559,9 +559,6 @@ def peierls_visc(flv, P, T,sigma):
     '''
     Peierls creep flow law 
     flv: flow law version
-    P: pressure
-    T: temperature
-    sigma: differential stress
     '''
     mpa = 1e6  # MPa to Pa
     if flv == "MK10":
@@ -609,7 +606,6 @@ def peierls_visc_from_edot(flv, P, T, edotp0, limit=0.1):
         diff = np.log(edotp / edotp0)
         n += 1
     return etap, sigma, diff, n
-
 
 
 def peierls_approx_visc(flv,gam,P,T,edot):

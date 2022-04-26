@@ -144,7 +144,9 @@ def test_plot_peierls():
     dV = -4.5e-6  	# dV = +/-4.5e-6  # Ohuchi et al, 2012	
     
     Edf = Emid1 + dE
-    Vdf = Vmid1 + dV	
+    Vdf = Vmid1 + dV
+    print("Diffusion E: ", Edf)	
+    print("Diffusion V: ", Vdf)	  # debug
     fh2o = flf.convert_OH_fugacity(T,P,coh)	# Convert coh to water fugacity
     etadf = 0.5*(dm)**p/(Am*fh2o**r)*np.exp((Edf + P*Vdf)/(R*T)) # Pa s
     
@@ -158,6 +160,8 @@ def test_plot_peierls():
     
     Eds = Emid2 + dE
     Vds = Vmid2 + dV
+    print("Dislocation E: ", Eds)	
+    print("Dislocation V: ", Vds)	  # debug
     lab2 = 'ds: ' + str(Eds/1e3) + '/' + str(Vds*1e6)	
     					
     fh2o = flf.convert_OH_fugacity(T,P,coh)	# Convert coh to water fugacity
@@ -165,7 +169,6 @@ def test_plot_peierls():
     	
     # Peierls Creep
     etap = flf.peierls_approx_visc('MK10',0.17,P,T,edot)
-    
     
     # Composite viscosity
     etacomp1 = etadf*etads*etap/(etadf*etads + etadf*etap + etads*etap)
