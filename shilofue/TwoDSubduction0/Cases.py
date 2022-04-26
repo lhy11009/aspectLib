@@ -780,7 +780,6 @@ def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_
 
 
 def Usage():
-    Case_Opt = CASE_OPT()
     print("\
 (One liner description\n\
 \n\
@@ -789,11 +788,18 @@ Examples of usage: \n\
   - create case with json file: \n\
 \n\
         Lib_TwoDSubduction0_Cases create_with_json -j \
-        /home/lochy/ASPECT_PROJECT/TwoDSubduction/wb_create_test/configure_1.json \n\
-\n\
+        /home/lochy/ASPECT_PROJECT/TwoDSubduction/wb_create_test/configure_1.json"
+        )
+
+
+def ShowJsonOption():
+    Case_Opt = CASE_OPT()
+    print("\
   - options defined in the json file:\n\
         %s\n\
-        " % Case_Opt.document_str())
+        " % Case_Opt.document_str()
+        )
+
 
 def SomeFunction(foo):
     '''
@@ -835,6 +841,9 @@ def main():
     if (_commend in ['-h', '--help']):
         # example:
         Usage()
+    elif (_commend in ['--json_option', '-jo']):
+        # json options
+        ShowJsonOption()
     elif _commend == 'create_with_json':
         # example:
         CasesP.create_case_with_json(arg.json, CASE, CASE_OPT)

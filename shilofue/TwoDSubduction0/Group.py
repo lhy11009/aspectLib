@@ -39,18 +39,23 @@ sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
 
 def Usage():
-    Group_Opt = GROUP_OPT()
     print("\
 (One liner description\n\
 \n\
 Examples of usage: \n\
 \n\
   - default usage, create group: \n\
-        Lib_TwoDSubduction0_Group create_group -j ~/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/TwoDSubduction/test_group/test.json\n\
-\n\
+        Lib_TwoDSubduction0_Group create_group -j ~/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/TwoDSubduction/test_group/test.json\n"
+        )
+
+def ShowJsonOption():
+    Group_Opt = GROUP_OPT()
+    print("\
   - options defined in the json file:\n\
         %s\n\
-        " % Group_Opt.document_str())
+        " % Group_Opt.document_str()
+        )
+
 
 class GROUP_OPT(GroupP.GROUP_OPT):
     pass
@@ -98,6 +103,9 @@ def main():
     if (_commend in ['-h', '--help']):
         # example:
         Usage()
+    elif (_commend in ['--json_option', '-jo']):
+        # json options
+        ShowJsonOption()
     elif _commend == 'create_group':
         CreateGroup(arg.json, CASE, CASE_OPT)
     else:

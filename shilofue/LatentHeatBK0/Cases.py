@@ -163,7 +163,6 @@ class CASE(CasesP.CASE):
 
 
 def Usage():
-    Case_Opt = CASE_OPT()
     print("\
 (One liner description\n\
 \n\
@@ -171,8 +170,13 @@ Examples of usage: \n\
 \n\
   - create case with json file: \n\
 \n\
-        Lib_LatentHeatBK0_Cases create_with_json -j foo.json \n\
-\n\
+        Lib_LatentHeatBK0_Cases create_with_json -j foo.json \n"
+    )
+
+
+def ShowJsonOption():
+    Case_Opt = CASE_OPT()
+    print("\
   - options defined in the json file:\n\
         %s\n\
         " % Case_Opt.document_str())
@@ -207,6 +211,9 @@ def main():
     if (_commend in ['-h', '--help']):
         # example:
         Usage()
+    elif (_commend in ['--json_option', '-jo']):
+        # json options
+        ShowJsonOption()
     elif _commend == 'create_with_json':
         # example:
         CasesP.create_case_with_json(arg.json, CASE, CASE_OPT)
