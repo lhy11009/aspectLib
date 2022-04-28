@@ -13,7 +13,7 @@ Examples of usage:
 
   - default usage: plot case running results
 
-        Lib_FOO_PlotCase plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20
+        Lib_FOO0_PlotCase plot_case -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20
 
 descriptions
     First replate FOO with the name of the project
@@ -52,23 +52,23 @@ Examples of usage: \n\
 \n\
   - default usage: plot case running results, -t option deals with a time range, default is a whole range\n\
 \n\
-        Lib_FOO_PlotCase plot_case -i  ~/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT1/eba_cdpt_SA80.0_OA40.0\
+        Lib_FOO0_PlotCase plot_case -i  `pwd`\
  -t 0.0 -t1 0.5e6\n\
 \n\
   - plot cases in a directory (loop), same options as before:\n\
-        Lib_FOO_PlotCase  plot_case_in_dir -i ~/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT\n\
+        Lib_FOO0_PlotCase  plot_case_in_dir -i `pwd`\n\
 \n\
   - prepare result of a single step by combining figures:\n\
-        Lib_FOO_PlotCase prepare_result_step -i ~/ASPECT_PROJECT/TwoDSubduction/test_peierls1/peierls\n\
+        Lib_FOO0_PlotCase prepare_result_step -i `pwd`\n\
 \n\
   - plot and then prepare result of a single step by combining figures:\n\
-        Lib_FOO_PlotCase plot_prepare_result_step -i ~/ASPECT_PROJECT/TwoDSubduction/test_peierls1/peierls\n\
+        Lib_FOO0_PlotCase plot_prepare_result_step -i `pwd`\n\
 \n\
   - generate animation: \n\
-        Lib_FOO_PlotCase animate_case -i ~/ASPECT_PROJECT/TwoDSubduction/test_peierls1/peierls\n\
+        Lib_FOO0_PlotCase animate_case -i `pwd`\n\
 \n\
   - generate animation for cases in a directory: \n\
-        Lib_FOO_PlotCase animate_case_in_dir -i `pwd`\n\
+        Lib_FOO0_PlotCase animate_case_in_dir -i `pwd`\n\
 \n\
         ")
 
@@ -125,7 +125,8 @@ class PLOTTER(PlotCase.PLOTTER):
 
 def PrScriptToUse(case_path, default):
     '''
-    Return model geometry
+    Return the script to use for preparing results
+    This is mainly used for generating figures for animation
     Inputs:
     '''
     pr_script = default

@@ -41,14 +41,14 @@ Examples of usage: \n\
 \n\
   - translate script: \n\
 \n\
-        Lib_PlotVisit visit_options -i $FOO_DIR/latent_heat_issue/cookbook_latent-heat -sr temperature.py\n\
+        Lib_FOO0_PlotVisit visit_options -i `pwd` -sr temperature.py\n\
             -sr: the relative path under the visit_script folder\n\
 \n\
   - run script: \n\
-        Lib_PlotVisit run -i $FOO_DIR/non_linear34/eba_low_tol_newton_shift_CFL0.8/visit_scripts/slab.py\n\
+        Lib_FOO0_PlotVisit run -i `pwd`\n\
 \n\
   - run vtk scripts: \n\
-        Lib_PlotVisit vtk_options -i /home/lochy/ASPECT_PROJECT/FOO/non_linear34/eba_low_tol_newton_shift_CFL0.8_lh -p FOO_MOW -s 25\n\
+        Lib_FOO0_PlotVisit vtk_options -i `pwd` -p FOO_MOW -s 25\n\
             -p operations, available operations are: \n\
                 FOO_MOW: pull out tentative MOW from temperature: \n\
                 FOO_SlabAnalysis: analyze slab morphology: \n\
