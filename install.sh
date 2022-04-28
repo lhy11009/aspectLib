@@ -33,6 +33,8 @@ Example Usage:
         ./install.sh execute
     clean:
         ./install.sh clean
+    deploy the Scientific Color Map for visit (copy and paste the .ct file into the .visit directory)
+        ./install.sh deploy_crameri_SCM_colors_visit /home/lochy/Downloads/ScientificColourMaps7 ~/.visit 
 "
     printf "${_text}"
 
@@ -220,6 +222,33 @@ ${help_message}\n"
 }
 
 
+deploy_SCM_visit(){
+    ###
+    # deploy SCM color table to visit
+    # inputs:
+    #   $1: folder for ScientificColorMap
+    #   $2: output folder (.visit)
+    ###
+    # check directories exist
+    [[ -d "$1" ]] || { cecho "${FUNCNAME[0]}: no such directory ${bash_subdir}"; exit 1; }
+    [[ -d "$2" ]] || { cecho "${FUNCNAME[0]}: no such directory ${bash_subdir}"; exit 1; }
+    for subdir in "$1"/* ; do
+        if [[ -d "${subdir}" ]]; then
+            for _file in "${subdir}"/*; do
+                if [[ "${_file}" =~ ".ct" ]]; then
+                    base_name=`basename "$_file"`
+                    dir_name=`dirname "$_file"`
+                    target="$2/SCM_${base_name}"
+                    echo "cp ${_file} ${target}"
+                    eval "cp ${_file} ${target}"
+                fi 
+            done
+        fi
+    done
+
+}
+
+
 main(){
     ###
     # main function
@@ -239,6 +268,11 @@ main(){
         # Install utility
         ##
         install_utilities
+    elif [[ "$1" = "deploy_crameri_SCM_colors_visit" ]]; then
+        ##
+        # Install utility
+        ##
+        deploy_SCM_visit  "$2" "$3"
     elif [[ "$1" = "clean" ]]; then
         # clean previous installation
         clean
