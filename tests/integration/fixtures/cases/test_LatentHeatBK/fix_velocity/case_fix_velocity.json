@@ -1,0 +1,20 @@
+{
+  "_comments": "In this case, I fix the vertical velocity to a constant value",
+  "base directory": "",
+  "output directory": "/home/lochy/ASPECT_PROJECT/LatentHeatBK/LatentHeat3",
+  "name": "lh_test",
+  "type": "layered",
+  "include fast first step": 1,
+  "max time step": 1000000.0,
+  "resolution": 200,
+  "fix vertical velocity": 1,
+  "vertical velocity": -0.03,
+  "potential temperature": 1573.0,
+  "material model": "visco plastic twod",
+  "phase transition model": "CDPT",
+  "additional files": [
+    "job_rome.sh",
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ]
+}

@@ -11,8 +11,8 @@ subsection Geometry model
     subsection Box
         set X extent = 1000000
         set Y extent = 1000000
-        set X repetitions = 100
-        set Y repetitions = 100
+        set X repetitions = 200
+        set Y repetitions = 200
     end
 end
 
@@ -34,17 +34,7 @@ subsection Boundary temperature model
     set Fixed temperature boundary indicators = top
     set List of model names = box
     subsection Box
-        set Top temperature = 1573
-    end
-end
-
-
-subsection Boundary velocity model
-    set Prescribed velocity boundary indicators = bottom:function, top:function
-    set Tangential velocity boundary indicators = left, right
-    subsection Function
-        set Function expression = 0; -6.7601e-4
-        set Variable names = x,y
+        set Top temperature = 1573.0
     end
 end
 
@@ -103,3 +93,13 @@ subsection Postprocess
 end
 
 set Additional shared libraries = $ASPECT_SOURCE_DIR/build_master_TwoD/visco_plastic_TwoD/libvisco_plastic_TwoD.so
+set Nonlinear solver scheme = single Advection, no Stokes
+
+subsection Prescribed Stokes solution
+    set Model name = function
+    subsection Velocity function
+        set Function expression = 0; -3.0000e-02
+        set Variable names = x,y
+    end
+end
+

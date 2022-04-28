@@ -60,25 +60,20 @@ class CASE_OPT(CasesP.CASE_OPT):
          ["phase transition", "json file"], 'foo.json', nick="phase_json_path")
         self.add_key("Material model to use", str,\
          ["material model"], 'visco plastic', nick="material_model")
-        self.add_key("Vertical velocity", float,\
-         ["vertical velocity"], -6.7601e-4, nick="vy")
+        self.add_key("Vertical velocity. This is assigned to the top boundary.\
+if the variable fix_velocity is true, then this is prescribed",\
+        float, ["vertical velocity"], -6.7601e-4, nick="vy")
         self.add_key("Resolution", int,\
          ["resolution"], 100, nick="resolution")
+        self.add_key("Fix vertical velocity", int,\
+         ["fix vertical velocity"], 0, nick="fix_velocity")
         
 
     def check(self):
         phase_model = self.values[self.start]
         phase_json_path = Utilities.var_subs(self.values[self.start+1])
         material_model = self.values[self.start + 2]
-        if phase_model == "default":
-            pass
-        elif phase_model == "CDPT":
-            if not os.path.isfile(phase_json_path):
-                raise FileExistsError("%s doesn't exist" % phase_json_path)
-            assert(material_model in ["visco plastic", "visco plastic twod"])
-        else:
-            raise ValueError("check: value for phase model is not valid.")
-        pass
+        assert(phase_model in ["default", "CDPT"])
 
     def to_configure_prm(self):
         '''
@@ -91,7 +86,8 @@ class CASE_OPT(CasesP.CASE_OPT):
         resolution = self.values[self.start+4]
         potential_T = self.values[4]
         _type = self.values[9] 
-        return _type, phase_model, phase_json_path, material_model, vy, resolution, potential_T
+        fix_velocity = self.values[self.start + 5]
+        return _type, phase_model, phase_json_path, material_model, vy, resolution, potential_T, fix_velocity
 
     def to_configure_wb(self):
         '''
@@ -105,7 +101,7 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self, _type, phase_model, phase_json_path, material_model, vy, resolution, potential_T):
+    def configure_prm(self, _type, phase_model, phase_json_path, material_model, vy, resolution, potential_T, fix_velocity):
         '''
         Configure prm file
         Inputs:
@@ -120,38 +116,33 @@ class CASE(CasesP.CASE):
         # vertical velocity
         if _type == 'layered':
             o_dict['Boundary velocity model']['Function']['Function expression'] = "0; %.4e" % vy
+        if fix_velocity:
+            # fix velocity field
+            # a. fix solver scheme
+            # b. prescribe the velocity
+            # c. get rid of boundary velocity conditions
+            o_dict['Nonlinear solver scheme'] = 'single Advection, no Stokes'
+            o_dict['Prescribed Stokes solution'] = {
+                "Model name": "function",
+                "Velocity function": {
+                    "Function expression": "0; %.4e" % vy,
+                    "Variable names": "x,y"
+                }
+            }
+            o_dict.pop('Boundary velocity model')
         # Adiabatic surface temperature
         o_dict["Adiabatic surface temperature"] = str(potential_T)
         o_dict["Boundary temperature model"]["Box"]["Top temperature"] = str(potential_T)
-        # modify material model, first parse from the phase transition model,
+        # modify material model
         # then merge it into the material model of the prm file.
-        if phase_model == "CDPT":
-            outputs = ParsePTfromJson(phase_json_path)
-            # todo, check that we have the same composition with the prm file
-        else:
-            outputs = {}
+        outputs = {}
         o_dict['Material model']['Model name'] = material_model  # material model to use
         # subsection setup
         if material_model == "visco plastic twod":
             material_model_subsection = "Visco Plastic TwoD"
         else:
             material_model_subsection = material_model.title()  # convert the first letter to capital
-        for key in list(o_dict['Material model']):
-        # for key, value in o_dict['Material model'].items():
-            value = o_dict['Material model'][key]
-            if type(value) == dict:
-                o_dict['Material model'].pop(key)
-                o_dict['Material model'][material_model_subsection] = value
         o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries
-        # manage shared library
-        if material_model == "visco plastic twod":
-            try:
-                shared_lib_entry = o_dict["Additional shared libraries"]
-            except KeyError:
-                shared_lib_entry = "$ASPECT_SOURCE_DIR/build_master_TwoD/visco_plastic_TwoD/libvisco_plastic_TwoD.so"
-            else:
-                shared_lib_entry += ", $ASPECT_SOURCE_DIR/build_master_TwoD/visco_plastic_TwoD/libvisco_plastic_TwoD.so"
-            o_dict["Additional shared libraries"] = shared_lib_entry
         self.idict = o_dict
         pass
 

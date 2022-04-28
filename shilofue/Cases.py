@@ -142,14 +142,25 @@ class CASE_OPT(Utilities.JSON_OPT):
         '''
         if_wb = self.values[8]
         return  (if_wb==1)
+    
+    def fix_case_name(self, case_name):
+        '''
+        fix base dir with a new value
+        '''
+        self.values[0] = case_name
 
     def fix_base_dir(self, base_dir):
         '''
         fix base dir with a new value
-        todo
         '''
         assert(os.path.isdir(base_dir))
         self.values[1] = base_dir
+    
+    def fix_output_dir(self, o_dir):
+        '''
+        fix directory to output
+        '''
+        self.values[2] = o_dir
 
 
 class CASE():
@@ -291,7 +302,9 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     '''
     print("%s: Creating case" % Utilities.func_name())
     is_update = kwargs.get('update', True)
+    fix_case_name = kwargs.get('fix_case_name', None)
     fix_base_dir = kwargs.get('fix_base_dir', None)
+    fix_output_dir = kwargs.get('fix_output_dir', None)
     Case_Opt = CASE_OPT()
     if type(json_opt) == str:
         assert(os.access(json_opt, os.R_OK))
@@ -301,8 +314,12 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     else:
         raise TypeError("Type of json_opt must by str or dict")
     Case_Opt.check()
+    if fix_case_name != None:
+        Case_Opt.fix_case_name(fix_case_name)  # fix base dir, useful when creating a group of case from a folder
     if fix_base_dir != None:
         Case_Opt.fix_base_dir(fix_base_dir)  # fix base dir, useful when creating a group of case from a folder
+    if fix_output_dir != None:
+        Case_Opt.fix_output_dir(fix_output_dir)  # fix output dir, useful when doing tests
     # check if the case already exists. If so, only update if it is explicitly 
     # required
     case_dir_to_check = os.path.join(Case_Opt.o_dir(), Case_Opt.case_name())
