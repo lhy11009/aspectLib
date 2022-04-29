@@ -249,6 +249,26 @@ deploy_SCM_visit(){
 }
 
 
+initiate_new_project(){
+    # initial a new project by copying and pasting the required py files.
+    [[ -n "$1" ]] || { cecho "${FUNCNAME[0]}: no entry for project (\$1)"; exit 1; }
+    project="$1"
+    source_dir="${ASPECT_LAB_DIR}/files/Project"
+    target_dir="${ASPECT_LAB_DIR}/shilofue/${project}0"
+    [[ -d "${target_dir}" ]] && { cecho "${FUNCNAME[0]}: target directory already exists, please first delete it (${target_dir})"; exit 1; }
+    mkdir "${target_dir}"  # initiate the directory for py scripts
+    for py_script in "${source_dir}"/* ; do
+        if [[ "${py_script}" =~ ".py" ]]; then
+            base_name=`basename "${py_script}"`
+            target="${target_dir}/${base_name}"
+            echo "initiate ${target}"
+            eval "cp ${py_script} ${target}"  # print to a new file
+        fi
+    done
+    
+}
+
+
 main(){
     ###
     # main function
@@ -273,6 +293,11 @@ main(){
         # Install utility
         ##
         deploy_SCM_visit  "$2" "$3"
+    elif [[ "$1" = "initiate_new_project" ]]; then
+        ##
+        # initiate new project
+        ##
+        initiate_new_project "$2"
     elif [[ "$1" = "clean" ]]; then
         # clean previous installation
         clean
