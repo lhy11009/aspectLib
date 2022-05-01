@@ -71,4 +71,18 @@ def test_get_sub_cases():
     case_dirs = Parse.GetSubCases(test_source_dir)
     assert(case_dirs == 
            ['/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/parse/foo',
-           '/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/parse/foo1'])
+           '/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/parse/foo1',
+           '/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/parse/test_create_snapshot'])
+
+
+def test_create_from_old_snapshot():
+    '''
+    assert create a new case from a snapshot saved for an old one
+    '''
+    case_dirs = os.path.join(test_source_dir, 'test_create_snapshot')
+    assert(os.path.isdir(case_dirs))
+    o_dir = os.path.join(_test_dir, "test_create_snapshot_s99_t0.40myr")
+    if os.path.isdir(o_dir):
+        rmtree(o_dir)
+    Parse.CreateNewFromSnapshot(case_dirs, _test_dir, snapshot=0)
+    assert(os.path.isdir(o_dir))
