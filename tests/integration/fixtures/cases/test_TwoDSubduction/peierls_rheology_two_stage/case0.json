@@ -1,0 +1,37 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220109",
+  "output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
+  "name": "peierls0_two_stage",
+  "include fast first step": 1,
+  "geometry": "chunk",
+  "potential temperature": 1573.0,
+  "boundary condition": {
+    "model": "all free slip"
+  },
+  "use world builder": 1,
+  "world builder": {
+    "plate age method": "adjust box width",
+    "subducting plate": {
+      "age trench": 80000000.0,
+      "sp rate": 0.05
+    },
+    "overiding plate": {
+      "age": 40000000.0,
+      "transit": {
+        "age": 20000000.0,
+        "length": 700000.0
+      }
+    },
+    "box width before adjusting": 6783000.0
+  },
+  "include peierls creep": 1,
+  "Peierls creep":{
+     "two stage intial time" : 2e6
+  },
+  "additional files": [
+    "job_rome.sh",
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ],
+  "coupling the eclogite phase to shear zone viscosity": 0
+}

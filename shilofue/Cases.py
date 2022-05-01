@@ -175,6 +175,8 @@ class CASE():
             dictionary of world builder options
         extra_files(array):
             an array of extra files of this case
+        model_stages(int):]
+            stages in a model: if > 0, then create multiple prm files
     '''
     # future: add interface for extra
     def __init__(self, case_name, inputs, if_wb, **kwargs):
@@ -192,6 +194,8 @@ class CASE():
         self.case_name = case_name
         self.extra_files = []
         self.wb_dict = {}
+        self.model_stages = 1
+        self.additional_idicts = []
         if type(inputs)==dict:
             # direct read if dict is given
             print("    Read inputs from a dictionary")
@@ -240,6 +244,11 @@ class CASE():
         prm_out_path = os.path.join(case_dir, "case.prm")  # prm for running the case
         wb_out_path = os.path.join(case_dir, "case.wb")  # world builder file
         ParsePrm.WritePrmFile(prm_out_path, self.idict)
+        if self.model_stages > 1:
+            assert(len(self.additional_idicts) == self.model_stages-1)
+            for i in range(self.model_stages-1):
+                prm_out_path = os.path.join(case_dir, "case_%d.prm" % (i+1))  # prm for running the case
+                ParsePrm.WritePrmFile(prm_out_path, self.additional_idicts[i])
         # fast first step
         fast_first_step = kwargs.get('fast_first_step', 0) 
         if fast_first_step == 1:

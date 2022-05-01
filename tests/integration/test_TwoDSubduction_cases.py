@@ -166,6 +166,28 @@ def test_peierls_rheology():
     assert(filecmp.cmp(wb_path, wb_std_path))
 
 
+def test_peierls_rheology_2_stages():
+    '''
+    # test using the peierls rheology
+    '''
+    source_case_dir = os.path.join(source_dir, "peierls_rheology_two_stage")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'peierls0_two_stage')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case0_std.prm')
+    prm_std_path_1 = os.path.join(source_case_dir, 'case1_std.prm')
+    wb_std_path = os.path.join(source_case_dir, 'case0_std.wb')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    prm_path_1 = os.path.join(output_dir, 'case_1.prm')
+    wb_path = os.path.join(output_dir, 'case.wb')
+    assert(filecmp.cmp(prm_path, prm_std_path))
+    assert(filecmp.cmp(prm_path_1, prm_std_path_1))
+    assert(filecmp.cmp(wb_path, wb_std_path))
+
+
 def test_adjust_box():
     '''
     Adjust the width of the box

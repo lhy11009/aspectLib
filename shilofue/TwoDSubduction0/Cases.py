@@ -29,6 +29,7 @@ import json, re
 # import subprocess
 import warnings
 import numpy as np
+from copy import deepcopy
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 import shilofue.Cases as CasesP
@@ -101,7 +102,10 @@ different age will be adjusted.",\
           ["world builder", "adjust mesh with box width"], 0, nick='adjust_mesh_with_width') 
         self.add_key("Thickness of the shear zone / crust", float, ["shear zone", 'thickness'], 7.5e3, nick='Dsz')
         self.add_key("Refinement scheme", str, ["refinement scheme"], "2d", nick='rf_scheme')
-        self.add_key("Peierls creep scheme", str, ['Peierls creep', 'Scheme'], "MK10", nick='peierls_scheme')  # todo
+        self.add_key("Peierls creep scheme", str, ['Peierls creep', 'Scheme'], "MK10", nick='peierls_scheme')
+        self.add_key("Peierls creep, create a 2 stage model. I want to do this because including peierls scheme in the\
+intiation stage causes the slab to break in the middle",\
+         float, ['Peierls creep', 'two stage intial time'], -1.0, nick='peierls_two_stage_time')
 
         pass
     
@@ -177,10 +181,11 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         adjust_mesh_with_width = self.values[self.start+15]
         rf_scheme = self.values[self.start + 17]
         peierls_scheme = self.values[self.start + 18]
+        peierls_two_stage_time = self.values[self.start + 19]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
-        peierls_scheme
+        peierls_scheme, peierls_two_stage_time
 
     def to_configure_wb(self):
         '''
@@ -230,7 +235,7 @@ class CASE(CasesP.CASE):
     '''
     def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T,\
     sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
-    HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme):
+    HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme, peierls_two_stage_time):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
@@ -342,6 +347,17 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             pass
         elif phase_model == "CDPT":
             o_dict['Material model']['Visco Plastic TwoD'].pop("Use lookup table", "Foo")
+        # create a multi-stage model
+        if if_peierls and (peierls_two_stage_time > 0):
+            o_dict1 = deepcopy(o_dict)
+            # for stage 1
+            o_dict['Material model']['Visco Plastic TwoD']['Include Peierls creep'] = 'false'
+            o_dict['End time'] = '%.4e' % peierls_two_stage_time
+            # for stage 2
+            o_dict1['Resume computation'] = 'true'
+            self.model_stages = 2
+            self.additional_idicts.append(o_dict1)
+            pass 
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
         if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz):
