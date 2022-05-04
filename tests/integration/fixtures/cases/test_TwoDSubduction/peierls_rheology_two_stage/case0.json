@@ -25,7 +25,7 @@
     "box width before adjusting": 6783000.0
   },
   "include peierls creep": 1,
-  "Peierls creep":{
+  "peierls creep":{
      "two stage intial time" : 2e6
   },
   "additional files": [

@@ -102,10 +102,10 @@ different age will be adjusted.",\
           ["world builder", "adjust mesh with box width"], 0, nick='adjust_mesh_with_width') 
         self.add_key("Thickness of the shear zone / crust", float, ["shear zone", 'thickness'], 7.5e3, nick='Dsz')
         self.add_key("Refinement scheme", str, ["refinement scheme"], "2d", nick='rf_scheme')
-        self.add_key("Peierls creep scheme", str, ['Peierls creep', 'Scheme'], "MK10", nick='peierls_scheme')
-        self.add_key("Peierls creep, create a 2 stage model. I want to do this because including peierls scheme in the\
+        self.add_key("peierls creep scheme", str, ['peierls creep', 'Scheme'], "MK10", nick='peierls_scheme')
+        self.add_key("peierls creep, create a 2 stage model. I want to do this because including peierls scheme in the\
 intiation stage causes the slab to break in the middle",\
-         float, ['Peierls creep', 'two stage intial time'], -1.0, nick='peierls_two_stage_time')
+         float, ['peierls creep', 'two stage intial time'], -1.0, nick='peierls_two_stage_time')
 
         pass
     
