@@ -1,0 +1,15 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/05042022",
+  "output directory": "${ASPECT_LAB_DIR}/.test/",
+  "name": "test_schellart_07",
+  "type": "s07",
+  "use world builder": 1,
+  "geometry setup":{
+      "box width": 3000e3
+  },
+  "additional files": [
+    "job_rome.sh",
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ]
+}

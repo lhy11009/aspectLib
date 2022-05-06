@@ -29,6 +29,17 @@ from scipy.special import erf
 
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
+
+# directory to the aspect Lab
+ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
+# directory to shilofue
+shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+# import utilities in subdirectiory
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
+
+
 #Physical Constants
 R=8.314 #J/mol*K
 
@@ -570,6 +581,17 @@ def peierls_visc(flv, P, T,sigma):
         A = 1.4e-7/np.power(mpa,n) 	# s^-1 Pa^-2
         E = 320e3  					# J/mol (+/-50e3 J/mol)
         V = 0.0
+    elif flv == "Idrissi16":
+        # Idrissi et al 2016, this doesn't actually converge.
+        q = 2.0
+        p = 0.5
+        n = 0
+        sigp0 = 3.8e9
+        A = 1e6
+        E = 566e3
+        V = 0.0
+    else:
+        raise ValueError("flv must be \"MK10\" or \"Idrissi16\".")
     expo = np.exp(-(E + P*V) / (R*T) * (1 - (sigma/sigp0)**p)**q)
     edot = A * expo * sigma ** n
     eta = sigma / (2 * edot)
@@ -639,6 +661,35 @@ def peierls_approx_visc(flv,gam,P,T,edot):
     
     return visc
 
+
+def PlotPeierlsPTMap(flv, edotp0):
+    '''
+    plot the peierls creep in P and T space
+    '''
+    nP = 100
+    nT = 200
+    Ps = np.linspace(0, 2.6e10, nP)
+    Ts = np.linspace(273.0, 2000, nT)
+    PPs, TTs = np.meshgrid(Ps, Ts)
+    etapps = np.zeros(PPs.shape)
+    for i in range(PPs.shape[0]):
+        for j in range(PPs.shape[1]):
+            P = PPs[i, j]
+            T = TTs[i, j]
+            etap, _, _, _ = peierls_visc_from_edot(flv, P, T, edotp0, limit=0.1)
+            etapps[i, j] = etap
+    fig, ax = plt.subplots()
+    h = ax.pcolormesh(TTs, PPs, np.log10(etapps), shading='auto')
+    ax.set_title("Peierls creep of %s, with eta = %.4e" % (flv, edotp0))
+    ax.set_xlabel('Temperature (T)')
+    ax.set_ylabel('Pressure (Pa)')
+    fig.colorbar(h, ax=ax, label='log(Viscosity (Pa *s))')
+    filename = "./Peierls_PT_%s_edot%.4e.png" % (flv, edotp0)
+    fig.savefig(filename)
+    print("%s: export figure %s" % (Utilities.func_name(), filename))
+
+
+
     
 def main():
     '''
@@ -666,6 +717,9 @@ def main():
     
     if _commend == 'plot_upper_mantle_viscosity':
         plot_upper_mantle_viscosity(ptplt=True, flavor=arg.flavor)
+    elif _commend == 'plot_peiers_creep_PT': 
+        edotp0 = 1e-15
+        PlotPeierlsPTMap(arg.flavor, edotp0)
 
 
 

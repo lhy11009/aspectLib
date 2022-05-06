@@ -100,7 +100,12 @@ class CASE_OPT(Utilities.JSON_OPT):
         '''
         Interface to wb_inputs
         '''
-        wb_inputs = os.path.join(self.values[1], 'case.wb')
+        _type = self.values[9]
+        if _type == '':
+            base_name = 'case.wb'
+        else:
+            base_name = 'case_%s.wb' % _type
+        wb_inputs = os.path.join(self.values[1], base_name)
         return wb_inputs
     
     def o_dir(self):
