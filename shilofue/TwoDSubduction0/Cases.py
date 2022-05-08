@@ -34,7 +34,7 @@ from copy import deepcopy
 from matplotlib import pyplot as plt
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
-import shilofue.flow_law_functions as flf
+import shilofue.FlowLaws as flf
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']

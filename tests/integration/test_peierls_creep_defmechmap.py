@@ -29,7 +29,7 @@ from scipy.special import erf
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 
-import shilofue.flow_law_functions as flf
+import shilofue.FlowLaws as flf
 
 test_dir = ".test"
 # source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_plot_run_time')
@@ -47,7 +47,7 @@ def test_get_peierls():
 
 def test_peierls_visc():
     '''
-    test peierls_visc function
+    test peierls_visc_from_stress function
     assert:
         values of strain rate
     '''
@@ -61,7 +61,7 @@ def test_peierls_visc():
     P = 0.0
     T = 1400.0
     sigma = 2.35e9
-    etap, edotp = flf.peierls_visc('MK10',P,T, sigma)
+    etap, edotp = flf.peierls_visc_from_stress('MK10',P,T, sigma)
     assert(abs((edotp - 3.0468359e-05)/3.0468359e-05) < 1e-6)
 
 
@@ -168,7 +168,7 @@ def test_plot_peierls():
     etads =  0.5*edot**(1/n - 1)/(Am*fh2o**r)**(1/n)*np.exp((Eds + P*Vds)/(n*R*T)) # Pa s
     	
     # Peierls Creep
-    etap = flf.peierls_approx_visc('MK10',0.17,P,T,edot)
+    etap = flf.peierls_approx_visc('MK10', P,T,edot)
     
     # Composite viscosity
     etacomp1 = etadf*etads*etap/(etadf*etads + etadf*etap + etads*etap)
@@ -319,8 +319,7 @@ def test_plot_peierls1():
     etads =  0.5*edot**(1/n - 1)/(Am*fh2o**r)**(1/n)*np.exp((Eds + P*Vds)/(n*R*T)) # Pa s
     	
     # Peierls Creep
-    etap = flf.peierls_approx_visc('MK10',0.17,P,T,edot)
-    #etap1 = flf.peierls_approx_visc('MK10',0.17,P1,T1,edot)
+    etap = flf.peierls_approx_visc('MK10',P,T,edot)
     
     
     # Composite viscosity

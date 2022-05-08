@@ -76,7 +76,7 @@ import argparse
 import numpy as np
 from matplotlib import pyplot as plt
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
-from shilofue.flow_law_functions import visc_diff_HK
+from shilofue.FlowLaws import visc_diff_HK
 from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic
 from scipy.interpolate import interp1d
 from mpl_toolkits.mplot3d import Axes3D

@@ -27,7 +27,7 @@ import os
 # from matplotlib import pyplot as plt
 # from shutil import rmtree  # for remove directories
 from shilofue.Rheology import *
-from shilofue.flow_law_functions import visc_diff_HK
+from shilofue.FlowLaws import visc_diff_HK
 
 test_dir = ".test"
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse')
