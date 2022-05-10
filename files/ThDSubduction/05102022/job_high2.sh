@@ -1,12 +1,12 @@
 #!/bin/bash -l
 #SBATCH -J task
-#SBATCH -N 1
-#SBATCH -n 64
-#SBATCH --threads-per-core=2
-#SBATCH --tasks-per-node=64
+#SBATCH -N 4
+#SBATCH -n 128
+#SBATCH --threads-per-core=1
+#SBATCH --tasks-per-node=32
 #SBATCH -o task-%j.stdout
 #SBATCH -e task-%j.stderr
-#SBATCH -t 96:00:00
+#SBATCH -t 300:00:00
 #SBATCH --partition=high2
 #SBATCH --switches=1
 
