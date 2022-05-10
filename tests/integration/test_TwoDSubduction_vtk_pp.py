@@ -26,13 +26,14 @@ import filecmp  # for compare file contents
 import numpy as np
 import shilofue.VtkPp as VtkPp
 from shilofue.TwoDSubduction0.VtkPp import *  # import test module
+from shilofue.ParsePrm import ParseFromDealiiInput
 # from shilofue.Utilities import 
 # from matplotlib import pyplot as plt
 from shutil import rmtree  # for remove directories
 import vtk
 
 test_dir = ".test"
-source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse')
+source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'TwoDSubduction', 'test_vtk_pp_slab')
 
 
 if not os.path.isdir(test_dir):
@@ -83,7 +84,7 @@ def test_prepare_slab():
     assert((b_profile[11, 1]-1.09996017e+12)/1.09996017e+12 < 1e-8)
 
 
-def test_export_slab_info():
+def test_export_slab_info_sph():
     '''
     Test slab properties from VtkPp.py
     assert:
@@ -102,9 +103,46 @@ def test_export_slab_info():
     VtkP.ConstructPolyData(field_names, include_cell_center=True)
     VtkP.PrepareSlab(['spcrust', 'spharz'])
     trench, slab_depth, dip_100 = VtkP.ExportSlabInfo()
-    assert(abs(trench - 0.6342158389165757)/0.6342158389165757 < 1e-6)
+    assert(abs(trench - 0.6466922210397674)/0.6466922210397674 < 1e-6)
     assert(abs(slab_depth - 191927.42159304488)/191927.42159304488 < 1e-6)
-    assert(abs(dip_100 - 0.22073102845130024)/0.22073102845130024 < 1e-6)
+    assert(abs(dip_100 - 1.0637211885065927)/1.0637211885065927 < 1e-6)
+
+
+def test_export_slab_info_cart():
+    '''
+    Test slab properties from VtkPp.py
+    assert:
+        1. value of trench position, slab_depth, dip angle
+    Note:
+        here the error in dip100 has a lot to do with resolution. If
+        we take both the 5th adaptive refinement, both of these angles (chunk and box)
+        are around 0.63
+    '''
+    case_dir = os.path.join(source_dir, 'cartesian')
+    prm_file = os.path.join(case_dir, 'case.prm')
+    assert(os.path.isfile(prm_file))
+    with open(prm_file, 'r') as fin:
+        idict = ParseFromDealiiInput(fin)
+    geometry = idict['Geometry model']['Model name']
+    if geometry == 'chunk':
+        Ro = float(idict['Geometry model']['Chunk']['Chunk outer radius'])
+    elif geometry == 'box':
+        Ro = float(idict['Geometry model']['Box']['Y extent'])
+    output_path = os.path.join(test_dir, "TwoDSubduction_vtk_pp_slab")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    os.mkdir(output_path)
+    filein = os.path.join(case_dir, "output", "solution", "solution-00002.pvtu")
+    assert(os.path.isfile(filein))
+    VtkP = VTKP(geometry=geometry, Ro=Ro)
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density', 'spcrust', 'spharz']
+    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.PrepareSlab(['spcrust', 'spharz'])
+    trench, slab_depth, dip_100 = VtkP.ExportSlabInfo()
+    assert(abs(trench - 4210541.75)/4210541.75 < 1e-6)
+    assert(abs(slab_depth - 220136.75)/220136.75 < 1e-6)
+    assert(abs(dip_100- 0.6702772823940486)/0.6702772823940486 < 1e-6)
 
 # notes
     

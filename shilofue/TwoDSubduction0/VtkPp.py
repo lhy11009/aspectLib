@@ -34,7 +34,7 @@ import multiprocessing
 #### self
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
-from shilofue.ParsePrm import ReadPrmFile
+from shilofue.ParsePrm import ReadPrmFile, ParseFromDealiiInput
 from shilofue.Plot import LINEARPLOT
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 
@@ -56,16 +56,16 @@ Examples of usage: \n\
   - Write slab forces output: \n\
 \n\
         python -m shilofue.TwoDSubduction0.VtkPp analyze_slab\n\
-            -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 -s 100 -o foo.txt\n\
+            -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 -vss 105 -o foo.txt\n\
 \n\
   - plot the slab forces: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_slab_forces -i foo.txt -o foo.png\n\
 \n\
   - Perform analysis on a single step for one case: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_slab_case_step -i \n\
-            /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0  -s 100\n\
+            /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0  -vs 100\n\
 \n\
-  - python -m shilofue.TwoDSubduction0.VtkPp morph_step -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 -vs 105 \n\
+  - python -m shilofue.TwoDSubduction0.VtkPp morph_step -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 -vss 105 \n\
 \n\
   - Plot the morphology of the slab: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_morph -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 \n\
@@ -80,8 +80,16 @@ class VTKP(VtkPp.VTKP):
         slab_cells: cell id of internal points in the slab
         slab_envelop_cell_list0: cell id of slab envelop with smaller theta, slab bottom
         slab_envelop_cell_list1: cell id of slab envelop with bigger theta, slab surface
+        slab_trench: trench position, theta for a 'chunk' model and x for a 'box' model
+        coord_100: position where slab is 100km deep, theta for a 'chunk' model and x for a 'box' model
     '''
     def __init__(self, **kwargs):
+        '''
+        Initiation
+        kwargs (dict):
+            geometry - type of geometry
+            Ro - outer radius
+        '''
         VtkPp.VTKP.__init__(self)
         self.geometry = kwargs.get('geometry', 'chunk')
         self.slab_cells = []
@@ -90,11 +98,11 @@ class VTKP(VtkPp.VTKP):
         self.slab_envelop_cell_list1 = []
         self.slab_depth = None
         self.slab_trench = None
-        self.coord_100 = None
+        self.coord_100 = None 
         self.dip_100 = None
         self.slab_shallow_cutoff = 50e3  # depth limit to slab
         self.slab_envelop_interval = 5e3
-        self.Ro = 6371e3
+        self.Ro = kwargs.get('Ro', 6371e3)
 
     def PrepareSlab(self, slab_field_names, **kwargs):
         '''
@@ -122,20 +130,20 @@ class VTKP(VtkPp.VTKP):
             id_list = cell.GetPointIds()  # list of point ids in this cell
             x = centers[i][0]
             y = centers[i][1]
-            r = (x*x + y*y)**0.5
+            r = get_r(x, y, self.geometry)
             slab = slab_field[i]
-            if slab > slab_threshold and (self.Ro - r) > self.slab_shallow_cutoff:
+            if slab > slab_threshold and ((self.Ro - r) > self.slab_shallow_cutoff):
                 self.slab_cells.append(i)
                 if r < min_r:
                     min_r = r
-        self.slab_depth = self.Ro - min_r
+        self.slab_depth = self.Ro - min_r  # cart
         # get slab envelops
         total_en_interval = int((self.slab_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval + 1)
         slab_en_cell_lists = [ [] for i in range(total_en_interval) ]
         for id in self.slab_cells:
             x = centers[id][0]  # first, separate cells into intervals
             y = centers[id][1]
-            r = (x*x + y*y)**0.5
+            r = get_r(x, y, self.geometry)
             id_en =  int(np.floor(
                                   (self.Ro - r - self.slab_shallow_cutoff)/
                                   self.slab_envelop_interval))# id in the envelop list
@@ -152,7 +160,7 @@ class VTKP(VtkPp.VTKP):
             for id in cell_list:
                 x = centers[id][0]
                 y = centers[id][1]
-                theta = np.arctan2(y, x)
+                theta = get_theta(x, y, self.geometry)  # cart
                 if is_first:
                     id_min = id
                     id_max = id
@@ -169,22 +177,23 @@ class VTKP(VtkPp.VTKP):
             self.slab_envelop_cell_list0.append(id_min)  # first half of the envelop
             self.slab_envelop_cell_list1.append(id_max)  # second half of the envelop
         # trench
-        id_tr = self.slab_envelop_cell_list0[0] # point of the trench
+        id_tr = self.slab_envelop_cell_list1[0] # point of the trench
         x_tr = centers[id_tr][0]  # first, separate cells into intervals
         y_tr = centers[id_tr][1]
-        if self.geometry == "chunk":
-            self.trench = np.arctan2(y_tr, x_tr)
-        elif self.geometry == "box":
-            self.trench = x_tr
-        else:
-            raise ValueError("Geometry needs to be either \"chunk\" or \"box\".")
+        self.trench = get_theta(x_tr, y_tr, self.geometry)
         # 100 km dip angle
         depth_lookup = 100e3
         self.coord_100 = self.SlabSurfDepthLookup(depth_lookup)
         if self.geometry == "chunk":
             x100 = (self.Ro - depth_lookup) * np.cos(self.coord_100)
             y100 = (self.Ro - depth_lookup) * np.sin(self.coord_100)
-            self.dip_100 = np.arctan((y_tr - y100)/(x100 - x_tr))
+        elif self.geometry == "box":
+            x100 = self.coord_100
+            y100 = self.Ro - depth_lookup
+        r100 = get_r(x100, y100, self.geometry)
+        theta100 = get_theta(x100, y100, self.geometry)
+        self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
+        pass
 
     
     def ExportSlabInfo(self):
@@ -199,21 +208,17 @@ class VTKP(VtkPp.VTKP):
         Get point from the surface of the slab by depth
         '''
         centers = vtk_to_numpy(self.c_poly_data.GetPoints().GetData())
-        assert(len(self.slab_envelop_cell_list0) > 0)
+        assert(len(self.slab_envelop_cell_list1) > 0)
         assert(depth_lkp < self.slab_depth)
         is_first = True
         coord_last = 0.0
         depth_last = 0.0
-        for id in self.slab_envelop_cell_list0:
+        for id in self.slab_envelop_cell_list1:
             x = centers[id][0]
             y = centers[id][1]
-            if self.geometry == 'chunk':
-                r = (x * x + y * y)**0.5
-                theta = np.arctan2(y, x)
-                coord = theta
-                depth = self.Ro - r
-            else:
-                raise ValueError("Not implemented")
+            r = get_r(x, y, self.geometry)
+            coord = get_theta(x, y, self.geometry)
+            depth = self.Ro - r
             if depth_last < depth_lkp and depth_lkp <= depth:
                 coord_lkp = coord * (depth_lkp - depth_last) / (depth - depth_last) +\
                             coord_last * (depth_lkp - depth) / (depth_last - depth)
@@ -294,12 +299,12 @@ class VTKP(VtkPp.VTKP):
         for i in self.slab_cells:
             x = centers[i][0]
             y = centers[i][1]
-            r = (x*x + y*y)**0.5
+            r = get_r(x, y, self.geometry)
             i_r = int(np.floor((self.Ro - r) / depth_increment))
             density = density_data[i]
             density_ref = density_ref_func(r)
             cell_size = self.cell_sizes[i]  # temp
-            buoyancy = - grav_acc * (density - density_ref) * cell_size
+            buoyancy = - grav_acc * (density - density_ref) * cell_size  # gravity
             buoyancies[i_r] += buoyancy
             total_buoyancy += buoyancy
         b_profile = np.zeros((n_depth, 2))
@@ -307,6 +312,66 @@ class VTKP(VtkPp.VTKP):
         b_profile[:, 1] = buoyancies
         return total_buoyancy, b_profile
 
+####
+# Utilities functions
+####
+def get_r(x, y, geometry): 
+    '''
+    Get r (the first coordinate)
+    Inputs:
+        x - x coordinate
+        y - y coordinate
+        geometry - 'chunk' or 'box'
+    '''
+    if geometry == 'chunk':
+        r = (x*x + y*y)**0.5
+    elif geometry == 'box':
+        r = y
+    else:
+        raise ValueError("not implemented")
+    return r
+
+
+def get_theta(x, y, geometry):
+    '''
+    Get theta (the second coordinate)
+    Inputs:
+        x - x coordinate
+        y - y coordinate
+        geometry - 'chunk' or 'box'
+    '''
+    if geometry == 'chunk':
+        theta = np.arctan2(y, x)  # cart
+    elif geometry == 'box':
+        theta = x
+    else:
+        raise ValueError("not implemented")
+    return theta
+
+
+def get_dip(x0, y0, x1, y1, geometry):
+    '''
+    Get dip angle
+    Inputs:
+        x0, y0: coordinates of the first point
+        x1, y1: coordinates of the second point
+        geometry - 'chunk' or 'box'
+    '''
+    if geometry == 'chunk':
+        # here, for the 2nd dimension, we need something multiple the change in theta,
+        # and I pick (r1 + r0)/2.0 for it.
+        theta0 = np.arctan2(y0, x0)  # cart
+        theta1 = np.arctan2(y1, x1)  # cart
+        dtheta = theta1 - theta0
+        r0 = (x0*x0 + y0*y0)**0.5
+        r1 = (x1*x1 + y1*y1)**0.5
+        dip = np.arctan2(r0-r1*np.cos(dtheta), r1*np.sin(dtheta))
+    elif geometry == 'box':
+        dip = np.arctan2(-(y1-y0), (x1-x0))
+    else:
+        raise ValueError("not implemented")
+    return dip
+    
 
 ####
 # stepwise functions
@@ -385,18 +450,24 @@ def PlotSlabForces(filein, fileout, **kwargs):
     plt.savefig(fileout)
     print("PlotSlabForces: plot figure", fileout)
 
-def SlabMorphology(case_dir, vtu_step, **kwargs):
+def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     '''
     Wrapper for using PVTK class to get slab morphology
     Inputs:
         case_dir (str): case directory
-        vtu_step (int): step in vtu outputs
+        vtu_snapshot (int): index of file in vtu outputs
     '''
-    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_step)
+    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
     assert(os.path.isfile(filein))
-    vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis',\
-    vtu_step=vtu_step, include_step_in_filename=True, generate_horiz=True)
-    VtkP = VTKP()
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis',\
+    # vtu_step=vtu_step, include_step_in_filename=True, generate_horiz=True)
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    _time, step = Visit_Options.get_time_and_step(vtu_step)
+    geometry = Visit_Options.options['GEOMETRY']
+    Ro =  Visit_Options.options['RO']
+    VtkP = VTKP(geometry=geometry, Ro=Ro)
     VtkP.ReadFile(filein)
     field_names = ['T', 'density', 'spcrust', 'spharz']
     VtkP.ConstructPolyData(field_names, include_cell_center=True)
@@ -409,7 +480,7 @@ def SlabMorphology(case_dir, vtu_step, **kwargs):
     return vtu_step, outputs
 
 
-def SlabAnalysis(case_dir, vtu_step, o_file, **kwargs):
+def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
     '''
     Perform analysis on the slab
     Inputs:
@@ -424,8 +495,15 @@ def SlabAnalysis(case_dir, vtu_step, o_file, **kwargs):
     if not os.path.isdir(output_path):
         os.mkdir(output_path)
     filein = os.path.join(case_dir, "output", "solution",\
-         "solution-%05d.pvtu" % (vtu_step))
+         "solution-%05d.pvtu" % (vtu_snapshot))
     assert(os.path.isfile(filein))
+    # get parameters
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    geometry = Visit_Options.options['GEOMETRY']
+    Ro =  Visit_Options.options['RO']
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    # initiate class
     VtkP = VTKP()
     VtkP.ReadFile(filein)
     field_names = ['T', 'p', 'density', 'spcrust', 'spharz']
@@ -523,18 +601,18 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
         depths[i] = depth
         d1 = 0.0  # coordinate differences
         d2 = 0.0
+        # here we first get a dip angle
         if is_first:
             xnext = slab_envelop_rs[i+1, 0]  # coordinates of this and the last point
             ynext = slab_envelop_rs[i+1, 1]
-            dr, dl = Utilities.dXY2RL(x, y, xnext, ynext, VtkP.geometry)
+            theta = get_dip(x, y, xnext, ynext, VtkP.geometry)
             is_first = False
         else: 
             xlast = slab_envelop_rs[i-1, 0]  # coordinates of this and the last point
             ylast = slab_envelop_rs[i-1, 1]
-            dr, dl = Utilities.dXY2RL(xlast, ylast, x, y, VtkP.geometry) 
-        # theta = np.arctan(-dr/dl)
-        theta = np.arctan2(-dr, dl)
+            theta = get_dip(xlast, ylast, x, y, VtkP.geometry) 
         thetas[i, 0] = theta
+        # then we project the pressure into vertical and horizontal
         p_v = p * np.cos(theta)
         p_h = p * np.sin(theta)
         ps[i, 0] = p
@@ -617,7 +695,7 @@ def SlabMorphologyCase(case_dir, **kwargs):
         print('Updated output: %s' % output_file)
     
 
-def PlotSlabForcesCase(case_dir, step, **kwargs):
+def PlotSlabForcesCase(case_dir, vtu_step, **kwargs):
     '''
     Inputs:
         case_dir (str): case directory
@@ -631,12 +709,12 @@ def PlotSlabForcesCase(case_dir, step, **kwargs):
     # call function
     Visit_Options.Interpret()
     step = step
-    vtu_step = int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) + step
+    vtu_snapshot = int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) + step
     vtk_output_dir = os.path.join(case_dir, 'vtk_outputs')
     if not os.path.isdir(vtk_output_dir):
         os.mkdir(vtk_output_dir)
     ofile = os.path.join(vtk_output_dir, "slab_forces_%05d" % vtu_step)
-    SlabAnalysis(case_dir, vtu_step, ofile, output_slab=output_slab)
+    SlabAnalysis(case_dir, vtu_snapshot, ofile, output_slab=output_slab)
     # plot figure
     img_dir = os.path.join(case_dir, 'img')
     if not os.path.isdir(img_dir):
@@ -848,12 +926,12 @@ def main():
     parser.add_argument('-o', '--outputs', type=str,
                         default='',
                         help='Some outputs')
-    parser.add_argument('-s', '--step', type=int,
-                        default=0,
-                        help='step')
     parser.add_argument('-vs', '--vtu_step', type=int,
                         default=0,
                         help='vtu_step')
+    parser.add_argument('-vss', '--vtu_snapshot', type=int,
+                        default=0,
+                        help='vtu_snapshot')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -870,23 +948,21 @@ def main():
         Visit_Options = VISIT_OPTIONS(arg.inputs)
         # call function
         Visit_Options.Interpret()
-        step = arg.step
-        vtu_step = int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) + step
         ofile = arg.outputs
-        SlabAnalysis(arg.inputs, vtu_step, ofile)
+        SlabAnalysis(arg.inputs, arg.vtu_snapshot, ofile)
     elif _commend == 'plot_slab_envelops': 
         # plot slab envelops
-        PlotSlabEnvelops(arg.inputs, arg.outputs, arg.step, include_internal=True)
+        PlotSlabEnvelops(arg.inputs, arg.outputs, arg.vtu_step, include_internal=True)
     elif _commend == 'plot_slab_forces':
         # plot slab forces
         PlotSlabForces(arg.inputs, arg.outputs)
     elif _commend == "plot_slab_case_step":
-        PlotSlabForcesCase(arg.inputs, arg.step, output_slab=True)
+        PlotSlabForcesCase(arg.inputs, arg.vtu_step, output_slab=True)
     elif _commend == "plot_slab_shape":
-        PlotSlabShape(arg.inputs, arg.step)
+        PlotSlabShape(arg.inputs, arg.vtu_step)
     elif _commend == 'morph_step':
         # slab_morphology, input is the case name
-        SlabMorphology(arg.inputs, int(arg.vtu_step), rewrite=1)
+        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1)
     elif _commend == 'morph_case':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs)

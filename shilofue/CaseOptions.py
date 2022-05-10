@@ -129,7 +129,15 @@ class CASE_OPTIONS(Utilities.CODESUB):
         # initial adaptive refinement
         self.options['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '0')
         # geometry
-        self.options['GEOMETRY'] = self.idict['Geometry model']['Model name']
+        geometry = self.idict['Geometry model']['Model name']
+        self.options['GEOMETRY'] = geometry
+        self.options["Y_EXTENT"] = -1.0
+        if geometry == 'chunk':
+            self.options["RO"]  = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
+        elif geometry == 'box':
+            self.options["RO"]  = float(self.idict['Geometry model']['Box']['Y extent'])
+
+
         pass
     
     def get_geometry(self):

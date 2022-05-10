@@ -15,6 +15,12 @@ Examples of usage:
         python -m
 
 descriptions
+
+Notes:
+    on the name standard:
+        step - computational step in model
+        vtu_step - indexing of steps of vtu outputs. (e.g. step = 0, vtu_step = 0; step = 1, vtu_step = 100)
+        vtu_snapshot - indexing of output files of vtu (e.g. solution-00001.pvtu, then vtu_snapshot = 1)
 """
 import numpy as np
 import sys, os, argparse
