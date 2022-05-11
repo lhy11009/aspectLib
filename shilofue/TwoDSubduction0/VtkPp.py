@@ -365,7 +365,8 @@ def get_dip(x0, y0, x1, y1, geometry):
         dtheta = theta1 - theta0
         r0 = (x0*x0 + y0*y0)**0.5
         r1 = (x1*x1 + y1*y1)**0.5
-        dip = np.arctan2(r0-r1*np.cos(dtheta), r1*np.sin(dtheta))
+        # dip = np.arctan2(r0-r1*np.cos(dtheta), r1*np.sin(dtheta))
+        dip = np.arctan2(r0-r1, (r1 + r0)/2.0*dtheta)
     elif geometry == 'box':
         dip = np.arctan2(-(y1-y0), (x1-x0))
     else:

@@ -105,7 +105,7 @@ def test_export_slab_info_sph():
     trench, slab_depth, dip_100 = VtkP.ExportSlabInfo()
     assert(abs(trench - 0.6466922210397674)/0.6466922210397674 < 1e-6)
     assert(abs(slab_depth - 191927.42159304488)/191927.42159304488 < 1e-6)
-    assert(abs(dip_100 - 1.0637211885065927)/1.0637211885065927 < 1e-6)
+    assert(abs(dip_100 - 1.061791071552635)/1.061791071552635< 1e-6)
 
 
 def test_export_slab_info_cart():
