@@ -63,7 +63,9 @@ class CASE_OPT(CasesP.CASE_OPT):
         '''
         if_wb = self.values[8]
         geometry = self.values[3]
-        return if_wb, geometry
+        material_model = self.values[10]
+        _type = self.values[9] 
+        return if_wb, geometry, material_model, _type
         
 
     def to_configure_wb(self):
@@ -72,7 +74,9 @@ class CASE_OPT(CasesP.CASE_OPT):
         '''
         if_wb = self.values[8]
         geometry = self.values[3]
-        return if_wb, geometry
+        material_model = self.values[10]
+        _type = self.values[9] 
+        return if_wb, geometry, material_model, _type
 
 
 class CASE(CasesP.CASE):
@@ -80,10 +84,11 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self, if_wb, geometry):
+    def configure_prm(self, if_wb, geometry, material_model, _type):
         '''
         Configure prm file
         '''
+        o_dict = self.idict.copy()  # make a copy of the parameter dictionary
         # geometry options
         # o_dict["Geometry model"] = 
         
@@ -116,7 +121,7 @@ class CASE(CasesP.CASE):
         pass
 
 
-    def configure_wb(self, if_wb, geometry):
+    def configure_wb(self, if_wb, geometry, material_model, _type):
         '''
         Configure wb file
         '''

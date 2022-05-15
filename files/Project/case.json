@@ -1,0 +1,14 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files",
+  "output directory": "/home/lochy/ASPECT_PROJECT",
+  "type": "",
+  "name": "eba_cdpt_SA80.0_OA40.0",
+  "include fast first step": 1,
+  "geometry": "chunk",
+  "potential temperature": 1573.0,
+  "use world builder": 0,
+  "additional files": [
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/PhaseDiagram/05152022",
+  "output directory": "${ASPECT_LAB_DIR}/.test",
+  "type": "CDPT",
+  "name": "test_PhaseDiagram_CDPT",
+  "include fast first step": 1,
+  "composition": "basalt",
+  "material model": "visco plastic twod",
+  "_geometry": "chunk",
+  "_potential temperature": 1573.0,
+  "_use world builder": 0,
+  "additional files": [
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ]
+}

@@ -69,6 +69,8 @@ class CASE_OPT(Utilities.JSON_OPT):
          ["root level"], 1, nick="root_level")
         self.add_key("If use world builder", int, ['use world builder'], 0, nick='if_wb')
         self.add_key("Type of the case", str, ["type"], '', nick='_type')
+        self.add_key("Material model to use", str,\
+         ["material model"], 'visco plastic', nick="material_model")
         pass
     
     def check(self):

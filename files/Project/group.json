@@ -1,0 +1,34 @@
+{
+    "base name": "eba_cdpt", 
+    "base json": "${ASPECT_LAB_DIR}/files/TwoDSubduction/220130/case.json",
+    "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220130",
+    "output directory": "${TwoDSubduction_DIR}/EBA_CDPT4",
+	"base features":[
+        {
+            "name": "Width of the box",
+            "key": ["world builder", "box width before adjusting"],
+            "unit": "km",
+            "values": [1.557e7],
+            "abbreviating strings": [""]
+        }
+	],
+    "features":[
+        {
+            "name": "Age of the subducting plate",
+            "key": ["world builder", "subducting plate", "age trench"],
+            "unit": "yr",
+            "values": [40e6, 80e6],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["SA", 1e-6]
+        },
+        {
+            "name": "coupling the eclogite phase to shear zone viscosity",
+            "key": ["coupling the eclogite phase to shear zone viscosity"],
+            "unit": "",
+            "values": [0, 1],
+            "abbreviating strings": ["", "CpEcl"],
+            "if abbreviating": [0, 1]
+        }
+    ],
+    "bindings": [[0, 0], [1, 0], [1, 1], [1, 1]]
+}
