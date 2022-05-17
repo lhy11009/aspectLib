@@ -205,7 +205,7 @@ fix_test(){
         file_name=$(basename "${_file}")
         _file_out="${test_output_dir}/${file_name}"
         [[ -e ${_file_out} ]] || { cecho ${BAD} "${FUNCNAME[0]}: ${_file_out} doesn't exist, please run the test first"; exit 1; }
-        cp "${_file_out}" "${test_source_dir}"
+        cp -r "${_file_out}" "${test_source_dir}"
     done
     # redo the test
     local current_dir=$(pwd)
