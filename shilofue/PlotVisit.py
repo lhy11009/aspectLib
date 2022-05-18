@@ -85,7 +85,9 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         if os.access(particle_file, os.R_OK):
             self.options["VISIT_PARTICLE_FILE"] = particle_file
         # visit file
-        self.options["VISIT_FILE"] = self._visit_file
+        self.options["VISIT_FILE"] = self.visit_file
+        self.options["PARAVIEW_FILE"] = self.paraview_file
+        print('paraview_file:', self.paraview_file)  # debug
         # get snaps for plots
         graphical_snaps_guess, _, time_steps_guess = GetSnapsSteps(self._case_dir, 'graphical')
         graphical_snaps = []

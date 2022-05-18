@@ -56,7 +56,7 @@ class CASE_OPTIONS(Utilities.CODESUB):
     Attributes:
         _case_dir(str): path of this case
         _output_dir(str): path of the output
-        _visit_file(str): path of the visit file
+        visit_file(str): path of the visit file
         options(dict): dictionary of key and value to output
         i_dict(dict): dictionary for prm file
         wb_dict(dict): dictionary for wb file
@@ -75,15 +75,18 @@ class CASE_OPTIONS(Utilities.CODESUB):
         self._output_dir = os.path.join(case_dir, 'output')
         Utilities.my_assert(os.path.isdir(self._output_dir), FileNotFoundError,
                   'BASH_OPTIONS.__init__: case output directory - %s doesn\'t exist' % self._output_dir)
-        self._visit_file = os.path.join(self._output_dir, 'solution.visit')
-        Utilities.my_assert(os.access(self._visit_file, os.R_OK), FileNotFoundError,
-                  'BASH_OPTIONS.__init__: case visit file - %s cannot be read' % self._visit_file)
+        self.visit_file = os.path.join(self._output_dir, 'solution.visit')
+        print('output_dir:', self._output_dir)  # debug
+        self.paraview_file = os.path.join(self._output_dir, 'solution.pvd')
+        Utilities.my_assert(os.access(self.visit_file, os.R_OK), FileNotFoundError,
+                  'BASH_OPTIONS.__init__: case visit file - %s cannot be read' % self.visit_file)
         # output dir
         self._output_dir = os.path.join(case_dir, 'output')
         if not os.path.isdir(self._output_dir):
             os.mkdir(self._output_dir)
         # img dir
         self._img_dir = os.path.join(case_dir, 'img')
+        print('img_dir:', self._img_dir)
         if not os.path.isdir(self._img_dir):
             os.mkdir(self._img_dir)
 
@@ -133,9 +136,9 @@ class CASE_OPTIONS(Utilities.CODESUB):
         self.options['GEOMETRY'] = geometry
         self.options["Y_EXTENT"] = -1.0
         if geometry == 'chunk':
-            self.options["RO"]  = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
+            self.options["OUTER_RADIUS"]  = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
         elif geometry == 'box':
-            self.options["RO"]  = float(self.idict['Geometry model']['Box']['Y extent'])
+            self.options["OUTER_RADIUS"]  = float(self.idict['Geometry model']['Box']['Y extent'])
 
 
         pass

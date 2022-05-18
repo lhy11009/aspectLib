@@ -138,10 +138,10 @@ subsection Material model
         set Reference strain rate = 1e-15
         set Minimum viscosity = 1e18
         set Maximum viscosity = 1e24
-	set Phase transition depths = background:670e3
-	set Phase transition widths = background:5e3
-	set Phase transition temperatures = background:1662.0
-	set Phase transition Clapeyron slopes = background:-2e6
+	    set Phase transition depths = background:670e3
+	    set Phase transition widths = background:5e3
+	    set Phase transition temperatures = background:1662.0
+	    set Phase transition Clapeyron slopes = background:-2e6
         set Thermal diffusivities = 1.0e-6
         set Heat capacities = 1250.0
         set Densities = background: 3300.0, sp_lower: 3380.0, sp_upper: 3380
@@ -157,6 +157,7 @@ subsection Material model
         set Angles of internal friction = background:0.0, sp_upper: 5.71, sp_lower: 0.0
         set Cohesions = background:1e31, sp_upper: 48e6, sp_lower:1e31
         set Include Peierls creep = false
+        set Fix unrealistic compositions = true
         set Reset viscosity = false
         subsection Reset viscosity function
             set Coordinate system = cartesian

@@ -12,7 +12,9 @@
   },
   "plate setup":{
       "sp width": 2000e3,
-      "sp length": 3000e3
+      "sp length": 3000e3,
+      "trailing length": 275e3,
+      "reset trailing morb": 0
   },
   "additional files": [
     "job_high2.sh",
