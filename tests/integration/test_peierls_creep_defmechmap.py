@@ -55,7 +55,7 @@ def test_peierls_visc():
     P = 0.0
     T = 1050.0
     sigma = 3e9
-    etap, edotp = flf.peierls_visc('MK10',P,T, sigma)
+    etap, edotp = flf.peierls_visc_from_stress('MK10',P,T, sigma)
     assert(abs((edotp - 3.408743e-05)/3.408743e-05) < 1e-6)
     # test 2
     P = 0.0
