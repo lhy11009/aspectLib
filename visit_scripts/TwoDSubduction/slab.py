@@ -325,7 +325,7 @@ class EXPORT_PARTICLE(VISIT_PLOT):
 
 def main():
     if IF_PLOT_SLAB:
-        Slab = SLAB_SPH("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
+        Slab = SLAB_SPH("%s/../output/solution.visit" % _dir, output_dir="%s/../img" % _dir)
         # First number is the number of initial adaptive refinements
         # Second one is the snapshot to plot
         # here we prefer to use a series of snapshots.

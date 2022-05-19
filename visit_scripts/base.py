@@ -3,6 +3,8 @@
 # e.g. open file vtk files, add plots, choose color schemes, etc
 # Usage of this class is to be combined with classes defined for
 # individual visualizations
+import os
+_dir = os.path.dirname(os.path.abspath(__file__))
 class VISIT_PLOT():
     """
     BASE CLASS for visit plot()

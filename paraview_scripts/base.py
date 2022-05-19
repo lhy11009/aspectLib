@@ -9,6 +9,7 @@ import os
 #import paraview
 #paraview.compatibility.major = 5
 #paraview.compatibility.minor = 10
+_dir = os.path.dirname(os.path.abspath(__file__))
 
 #### import the simple module from the paraview
 from paraview.simple import *

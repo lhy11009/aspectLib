@@ -23,11 +23,13 @@ class SLAB(PARAVIEW_PLOT):
 
 
 def main():
+    img_dir = "%s/../img" % _dir
+    paraview_file = "%s/../output/solution.pvd" % _dir
     # First, make directory for images if it's not there
-    if not os.path.isdir("IMG_OUTPUT_DIR"):
-        os.mkdir("IMG_OUTPUT_DIR")
+    if not os.path.isdir(img_dir):
+        os.mkdir(img_dir)
     # Process and generate plots
-    Slab = SLAB("PARAVIEW_FILE", output_dir="IMG_OUTPUT_DIR")
+    Slab = SLAB(paraview_file, output_dir=img_dir)
     Slab.plot_surface_slice()
 
 

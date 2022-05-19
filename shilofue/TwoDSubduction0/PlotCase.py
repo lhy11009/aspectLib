@@ -94,6 +94,7 @@ def PlotCaseRun(case_path, **kwargs):
     Returns:
         -
     '''
+    run_visual = kwargs.get('run_visual', 0)
     print("PlotCaseRun in TwoDSubduction0: operating")
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
@@ -109,6 +110,7 @@ def PlotCaseRun(case_path, **kwargs):
     odir = os.path.join(case_path, 'visit_scripts')
     if not os.path.isdir(odir):
         os.mkdir(odir)
+    print("Generating visit scripts")
     py_script = 'slab.py'
     ofile = os.path.join(odir, py_script)
     visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', py_script)
@@ -116,8 +118,10 @@ def PlotCaseRun(case_path, **kwargs):
     Visit_Options.read_contents(visit_script_base, visit_script)  # combine these two scripts
     Visit_Options.substitute()
     ofile_path = Visit_Options.save(ofile, relative=True)
-    print("Visualizing using visit")
-    RunScripts(ofile_path)  # run scripts
+    if run_visual == 1:
+        print("Visualizing using visit")
+        RunScripts(ofile_path)  # run scripts
+
 
 class PLOTTER(PlotCase.PLOTTER):
     '''
@@ -173,6 +177,9 @@ def main():
     parser.add_argument('-r', '--rewrite', type=int,
                         default=0,
                         help='If rewrite previous result')
+    parser.add_argument('-rv', '--run_visualization', type=int,
+                        default=0,
+                        help='if visualization programs run with the script we generate to get figures')
     
     _options = []
     try:
@@ -193,9 +200,9 @@ def main():
         assert(type(arg.time) == float and type(arg.time1) == float)
         time_range = [arg.time, arg.time1]
     if _commend == 'plot_case':
-        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range)
+        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization)
     elif _commend == 'plot_case_in_dir':
-        PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range)
+        PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization)
         pass
     elif _commend == 'prepare_result_step':
         pr_script = PrScriptToUse(arg.inputs, default_chunk, default_box)
