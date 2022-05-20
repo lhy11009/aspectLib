@@ -49,7 +49,7 @@ options(){
     "ParsePrm.py" "PlotRunTime.py" "PlotVisit.py" "PlotCase.py" "PlotCombine.py" "PlotDepthAverage.py"\
     "TwoDSubduction0/Cases.py" "TwoDSubduction0/Group.py"\
     "LatentHeatBK0/Cases.py" "LatentHeatBK0/PlotCase.py" "LatentHeatBK0/Group.py"\
-    "ThDSubduction0/Cases.py" "ThDSubduction0/Group.py")
+    "ThDSubduction0/Cases.py" "ThDSubduction0/Group.py" "ThDSubduction0/PlotCase.py")
 }
 
 

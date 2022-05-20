@@ -3,13 +3,11 @@
 # e.g. open file vtk files, add plots, choose color schemes, etc
 # Usage of this class is to be combined with classes defined for
 # individual visualizations
-
 import os
 # trace generated using paraview version 5.10.1
 #import paraview
 #paraview.compatibility.major = 5
 #paraview.compatibility.minor = 10
-_dir = os.path.dirname(os.path.abspath(__file__))
 
 #### import the simple module from the paraview
 from paraview.simple import *
@@ -38,13 +36,14 @@ class PARAVIEW_PLOT():
         # assign initial values 
         self.idxs = {}
         self.all_idxs = 0
-        self.time_snap = 0
+        self.time = 0.0
         self.solutionpvd = PVDReader(registrationName='solution.pvd', FileName=filein)
         self.solutionpvd.PointArrays = self.all_variables
         # get animation scene
         animationScene1 = GetAnimationScene()
         # update animation scene based on data timesteps
         animationScene1.UpdateAnimationUsingDataTimeSteps()
+        self.time = animationScene1.AnimationTime
         # get active view
         self.renderView1 = GetActiveViewOrCreate('RenderView')
         if self.view_solution_pvd:
@@ -55,6 +54,13 @@ class PARAVIEW_PLOT():
         # update the view to ensure updated data information
         self.renderView1.Update()
 
+    def goto_time(self, _time):
+        '''
+        go to a different snapshot
+        '''
+        animationScene1 = GetAnimationScene()
+        animationScene1.AnimationTime = _time
+        self.time = _time
 
 
 

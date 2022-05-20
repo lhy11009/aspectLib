@@ -18,6 +18,7 @@ class SLAB(PARAVIEW_PLOT):
         [0.0, 0.0, 1.0], renderView=self.renderView1)
         adjust_camera(self.renderView1, [2000000.0, 2000000.0, 14540803.753676033],\
         [2000000.0, 2000000.0, 990000.0], 4019667.7972010756, [0.0, 1.0, 0.0])
+        Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
         file_out = os.path.join(self.output_dir, "surface_slice.png")
         SaveScreenshot(file_out, self.renderView1, ImageResolution=[1148, 792])
 

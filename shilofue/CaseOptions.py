@@ -76,7 +76,6 @@ class CASE_OPTIONS(Utilities.CODESUB):
         Utilities.my_assert(os.path.isdir(self._output_dir), FileNotFoundError,
                   'BASH_OPTIONS.__init__: case output directory - %s doesn\'t exist' % self._output_dir)
         self.visit_file = os.path.join(self._output_dir, 'solution.visit')
-        print('output_dir:', self._output_dir)  # debug
         self.paraview_file = os.path.join(self._output_dir, 'solution.pvd')
         Utilities.my_assert(os.access(self.visit_file, os.R_OK), FileNotFoundError,
                   'BASH_OPTIONS.__init__: case visit file - %s cannot be read' % self.visit_file)
@@ -86,7 +85,6 @@ class CASE_OPTIONS(Utilities.CODESUB):
             os.mkdir(self._output_dir)
         # img dir
         self._img_dir = os.path.join(case_dir, 'img')
-        print('img_dir:', self._img_dir)
         if not os.path.isdir(self._img_dir):
             os.mkdir(self._img_dir)
 
@@ -160,6 +158,7 @@ class CASE_OPTIONS(Utilities.CODESUB):
         if use_relative_path:
             _path = os.path.join(self._case_dir, _path)
         o_path = Utilities.CODESUB.save(self, _path)
+        print("saved file: %s" % _path)
         return o_path
 
     def __call__(self, ofile, kwargs):

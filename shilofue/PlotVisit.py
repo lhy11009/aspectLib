@@ -87,18 +87,20 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         # visit file
         self.options["VISIT_FILE"] = self.visit_file
         self.options["PARAVIEW_FILE"] = self.paraview_file
-        print('paraview_file:', self.paraview_file)  # debug
         # get snaps for plots
-        graphical_snaps_guess, _, time_steps_guess = GetSnapsSteps(self._case_dir, 'graphical')
+        graphical_snaps_guess, times_guess, time_steps_guess = GetSnapsSteps(self._case_dir, 'graphical')
         graphical_snaps = []
         time_steps = []
+        times = []
         for i in range(len(graphical_snaps_guess)):
             graphical_snap = graphical_snaps_guess[i]
             time_step = time_steps_guess[i]
+            _time = times_guess[i]
             pvtu_file_path = os.path.join(self.options["DATA_OUTPUT_DIR"], "solution", "solution-%05d.pvtu" % graphical_snap)
             if os.path.isfile(pvtu_file_path):
                 graphical_snaps.append(graphical_snap)
                 time_steps.append(time_step)
+                times.append(_time)
         self.all_graphical_snaps = graphical_snaps
         self.all_graphical_timesteps = time_steps 
         self.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'] = str(graphical_snaps)
@@ -129,13 +131,15 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             self.options['GRAPHICAL_STEPS'] = [i for i in range(min(self.last_step+1, 7))]
 
         # get time steps
-        self.options['TIME_STEPS'] = []
+        self.options['GRAPHICAL_TIME_STEPS'] = []
+        self.options['GRAPHICAL_TIMES'] = []
         for step in self.options['GRAPHICAL_STEPS']:
             found = False
             for i in range(len(graphical_snaps)):
                 if step == max(0, graphical_snaps[i] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])):
                     found = True
-                    self.options['TIME_STEPS'].append(time_steps[i])
+                    self.options['GRAPHICAL_TIME_STEPS'].append(time_steps[i])
+                    self.options['GRAPHICAL_TIMES'].append(times[i])
             # todo
             if not found:
                 warnings.warn("%s: step %d is not found" % (Utilities.func_name(), step))
