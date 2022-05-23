@@ -1,0 +1,13 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/05042022",
+  "output directory": "${ASPECT_LAB_DIR}/.test/",
+  "name": "test_schellart_07_2",
+  "type": "s07",
+  "use world builder": 1,
+  "rheology":{
+    "reference viscosity": 1e20,
+    "plate relative viscosity": 60.0,
+    "friction angle": 11.32,
+    "cohesion": 24e6
+  }
+}
