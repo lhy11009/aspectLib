@@ -127,8 +127,8 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             self.options['GRAPHICAL_STEPS'] = [0]  # always plot the 0 th step
             self.options['GRAPHICAL_STEPS'] += [i for i in range(max(self.last_step - last_step + 1, 0), self.last_step + 1)]
         else:
-            # by default append 7 steps
-            self.options['GRAPHICAL_STEPS'] = [i for i in range(min(self.last_step+1, 7))]
+            # by default append the first computing step.
+            self.options['GRAPHICAL_STEPS'] = [self.last_step]
 
         # get time steps
         self.options['GRAPHICAL_TIME_STEPS'] = []

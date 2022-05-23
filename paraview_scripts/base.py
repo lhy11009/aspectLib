@@ -29,7 +29,7 @@ class PARAVIEW_PLOT():
         # 'velocity', 'p', 'T', 'sp_upper', 'sp_lower', 'density', 'viscosity', 
         # 'current_cohesions', 'current_friction_angles', 'plastic_yielding', 'dislocation_viscosity', 
         # 'diffusion_viscosity', 'peierls_viscosity', 'error_indicator']
-        self.view_solution_pvd = False  # if the solutionpvd is included as a view
+        self.view_solution_pvd = True  # if the solutionpvd is included as a view
         self.all_variables = ['velocity', 'p', 'T', 'sp_upper', 'sp_lower', 'density', 'viscosity']
         # open data base
         self.filein = filein

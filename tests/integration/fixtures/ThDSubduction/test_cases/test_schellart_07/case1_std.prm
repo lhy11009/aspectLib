@@ -164,12 +164,12 @@ subsection Material model
         set Viscous flow law = diffusion
         set Yield mechanism = drucker
         set Grain size = 1.0000e-02
-        set Prefactors for diffusion creep = background: 5e-21|5e-23, sp_upper: 2.5e-23, sp_lower: 2.5e-23
+        set Prefactors for diffusion creep = background: 5.0000e-21|5.0000e-23, sp_upper: 2.5000e-23, sp_lower: 2.5000e-23
         set Grain size exponents for diffusion creep = 0.0
         set Activation energies for diffusion creep = 0.0
         set Activation volumes for diffusion creep = 0.0
-        set Angles of internal friction = background:0.0, sp_upper: 5.71, sp_lower: 0.0
-        set Cohesions = background:1e31, sp_upper: 48e6, sp_lower:1e31
+        set Angles of internal friction = background:0.0, sp_upper: 5.7100e+00, sp_lower: 0.0
+        set Cohesions = background:1e31, sp_upper: 4.8000e+07, sp_lower:1e31
         set Include Peierls creep = false
         set Reset viscosity = true
         subsection Reset viscosity function
