@@ -102,6 +102,7 @@ class VTKP():
         self.c_poly_data = vtk.vtkPolyData()
         self.cell_sizes = None
         self.dim = kwargs.get('dim', 2)
+        self.grav_data = None  # a 2 column array to save the gravity data (depth in meter and grav_acc)
         pass
 
     def ReadFile(self, filein):
@@ -235,6 +236,26 @@ class VTKP():
         for i in range(1, n):
             static_pressure += (density_field[i-1] + density_field[i]) / 2.0 * grav_acc * interval
         return static_pressure
+    
+    def ImportGravityData(self, filein):
+        '''
+        Import gravity data, file shoud contain depth and 
+        gravity accerleration.
+        Inputs:
+            filein (str): path to a input file
+        '''
+        assert(os.path.isfile(filein))
+        self.grav_data = np.loadtxt(filein, skiprows=8)
+    
+    def GetGravityAcc(self, depths):
+        '''
+        Get gravity from a profile
+        Inputs:
+            depths - depth of point, float or a vector
+        '''
+        assert(self.grav_data.shape[1] == 2)
+        grav_accs = np.interp(depths, self.grav_data[:, 0], self.grav_data[:, 1])
+        return grav_accs
 
 
 def ExportContour(poly_data, field_name, contour_value, **kwargs):

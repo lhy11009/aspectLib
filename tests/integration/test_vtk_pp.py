@@ -29,8 +29,13 @@ from shilofue.VtkPp import *  # import test module
 # from matplotlib import pyplot as plt
 from shutil import rmtree  # for remove directories
 
+# import utilities in subdirectiory
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
+
 test_dir = ".test"
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse')
+
 
 
 if not os.path.isdir(test_dir):
@@ -115,6 +120,21 @@ def test_static_pressure():
     static_pressure2 = VtkP.StaticPressure([r, ro-10.0], theta2, 500)  # n = 500 - 1000
     assert((static_pressure2-static_pressure_std2)/ static_pressure_std2 < 1e-6)
     # assert(static_pressure == )
+
+
+def test_gravity_data():
+    '''
+    test the function of importing gravity
+    Assert:
+        1. value of gravity at 1000 km depth
+    '''
+    aspect_source_dir = Utilities.var_subs('${ASPECT_SOURCE_DIR}')
+    gravity_file = os.path.join(aspect_source_dir, "data", "gravity-model", "prem.txt")  # default gravity file (prem) for aspect
+    assert(os.path.isfile(gravity_file))
+    VtkP = VTKP()
+    VtkP.ImportGravityData(gravity_file)
+    grav_acc_1000 = VtkP.GetGravityAcc(1e6)
+    assert((grav_acc_1000 - 9.966665)/9.966665 < 1e-6)
 
 
 # notes
