@@ -398,14 +398,19 @@ def PlotSlabForces(filein, fileout, **kwargs):
     differiential_pressure_v = data[:, 6]
     differiential_pressure_v_1 = data[:, 7]
     compensation = data[:, 8]
+    dynamic_pressure_lower = data[:, 9]
+    dynamic_pressure_upper = data[:, 10]
+    differiential_dynamic_pressure = data[:, 11]
+    differiential_dynamic_pressure_v = data[:, 12]
     v_zeros = np.zeros(data.shape[0])
-    fig = plt.figure(tight_layout=True, figsize=(15, 10))
-    gs = gridspec.GridSpec(2, 3) 
+    fig = plt.figure(tight_layout=True, figsize=(15, 15))
+    gs = gridspec.GridSpec(3, 3) 
     # figure 1: show forces
     ax = fig.add_subplot(gs[0, 0]) 
     ax.plot(buoyancie_gradients, depths/1e3, 'b', label='Buoyancy gradients (N/m2)')
     ax.plot(pressure_upper, depths/1e3, 'c--', label='sigma_n (upper) (N/m2)')
     ax.plot(pressure_lower, depths/1e3, 'm--', label='sigma_n (lower) (N/m2)')
+    ax.set_title('Buoyancy gradients and total pressure')
     ax.set_xlabel('Pressure (Pa)')
     ax.legend()
     ax.invert_yaxis()
@@ -416,7 +421,7 @@ def PlotSlabForces(filein, fileout, **kwargs):
     ax.plot(differiential_pressure_v, depths/1e3, 'r--', label='Vertical pressure differences (N/m2)')
     ax.plot(v_zeros, depths/1e3, 'k--')
     ax.invert_yaxis()
-    ax.set_title('Buoyancy (total %.4e N/m2) and sigma_v0' % total_buoyancy)
+    ax.set_title('Buoyancy gradients and pressure differences')
     ax.set_xlabel('Pressure (Pa)')
     ax.set_ylabel('Depth (km)')
     ax.legend()
@@ -426,13 +431,14 @@ def PlotSlabForces(filein, fileout, **kwargs):
     ax.plot(differiential_pressure_v_1, depths/1e3, '--', color=mcolors.CSS4_COLORS['lightcoral'], label='Vertical pressure differences 1 (N/m2)')
     ax.plot(v_zeros, depths/1e3, 'k--')
     ax.invert_yaxis()
-    ax.set_title('Buoyancy (total %.4e N/m2) and sigma_v1' % total_buoyancy)
+    ax.set_title('Buoyancy gradients and pressure differences (defined otherwise)')
     ax.set_xlabel('Pressure (Pa)')
     ax.set_ylabel('Depth (km)')
     # figure 4: field of compensation
     ax = fig.add_subplot(gs[1, 0]) 
     ax.plot(compensation, depths/1e3, 'k')
     ax.invert_yaxis()
+    ax.set_title("Field of compensation")
     ax.set_xlim([-10, 10])
     ax.set_xlabel('Compensation')
     # figure 5: buoyancy and vertical pressure differences - with a 500 km limit
@@ -444,10 +450,30 @@ def PlotSlabForces(filein, fileout, **kwargs):
     ax.plot(v_zeros[mask], depths[mask]/1e3, 'k--')
     ax.set_ylim([0, 500]) # set y limit
     ax.invert_yaxis()
-    ax.set_title('Buoyancy (total %.4e N/m2) and sigma_v0' % total_buoyancy)
+    ax.set_title('Buoyancy gradients and pressure differences, depth in [0, 500] km')
     ax.set_xlabel('Pressure (Pa)')
     ax.set_ylabel('Depth (km)')
     ax.legend()
+    # figure 6: dynamic pressure
+    ax = fig.add_subplot(gs[1, 2]) 
+    ax.plot(dynamic_pressure_upper, depths/1e3, 'c--', label='Dynamic P (upper) (N/m2)')
+    ax.plot(dynamic_pressure_lower, depths/1e3, 'm--', label='Dynamic P (lower) (N/m2)')
+    ax.set_title('Buoyancy gradients and dynamic pressure')
+    ax.set_xlabel('Pressure (Pa)')
+    ax.legend()
+    ax.invert_yaxis()
+    # figure 7: dynamic pressure differences
+    ax = fig.add_subplot(gs[2, 0])
+    ax.plot(buoyancie_gradients, depths/1e3, 'b', label='Buoyancy gradients (N/m2)')
+    ax.plot(differiential_dynamic_pressure, depths/1e3, 'm--', label='Dynamic P differences (N/m2)')
+    ax.plot(differiential_dynamic_pressure_v, depths/1e3, 'r--', label='Vertical dynamic P differences (N/m2)')
+    ax.plot(v_zeros, depths/1e3, 'k--')
+    ax.set_title('Buoyancy gradients and differential dynamic pressure')
+    ax.set_xlabel('Pressure (Pa)')
+    ax.legend()
+    ax.invert_yaxis() 
+    fig.suptitle('Buoyancy (total %.4e N/m2)' % total_buoyancy)
+    fig.tight_layout()
     plt.savefig(fileout)
     print("PlotSlabForces: plot figure", fileout)
 
@@ -483,7 +509,8 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
 
 def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
     '''
-    Perform analysis on the slab
+    Perform analysis on the slab, this would output a file including the
+    buoyancy forces of the slab and the pressures on the slab surface.
     Inputs:
         kwargs(dict):
             output_slab - output slab file
@@ -502,7 +529,6 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
     geometry = Visit_Options.options['GEOMETRY']
-    Ro =  Visit_Options.options['RO']
     vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
     # initiate class
     VtkP = VTKP()
@@ -524,7 +550,7 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
         print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env0))
         np.savetxt(o_slab_env1, slab_envelop1)
         print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env1))
-        np.savetxt(o_slab_in, slab_internal)  # todo
+        np.savetxt(o_slab_in, slab_internal)
         print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
     # buoyancy
     r0_range = [6371e3 - 2890e3, 6371e3]
@@ -537,30 +563,38 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
     buoyancies = b_profile[:, 1]
     buoyancy_gradients = buoyancies / (depths_o[1] - depths_o[0])  # gradient of buoyancy
     # pressure 
-    slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
+    slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()  # raw data on the envelop and output
     fileout = os.path.join(output_path, 'slab_pressures0_%05d.txt' % (vtu_step))
-    depths0, thetas0, ps0= SlabPressures(VtkP, slab_envelop0, fileout=fileout, indent=4)
-    ps0_o = np.interp(depths_o, depths0, ps0[:, 0])
-    thetas0_o = np.interp(depths_o, depths0, thetas0)
+    depths0, thetas0, ps0= SlabPressures(VtkP, slab_envelop0, fileout=fileout, indent=4)  # depth, dip angle and pressure
     fileout = os.path.join(output_path, 'slab_pressures1_%05d.txt' % (vtu_step))
     depths1, thetas1, ps1 = SlabPressures(VtkP, slab_envelop1, fileout=fileout, indent=4)
-    ps1_o = np.interp(depths_o, depths1, ps1[:, 0])
+    ps0_o = np.interp(depths_o, depths0, ps0[:, 0])  # interpolation to uniform interval
+    thetas0_o = np.interp(depths_o, depths0, thetas0)
+    ps0_d_o = np.interp(depths_o, depths0, ps0[:, 3])  # dynamic pressure
+    ps1_o = np.interp(depths_o, depths1, ps1[:, 0])  # interpolation to uniform interval
     thetas1_o = np.interp(depths_o, depths1, thetas1)
+    ps1_d_o = np.interp(depths_o, depths1, ps1[:, 3])  # dynamic pressure
     ps_o = ps0_o - ps1_o  # this has to be minus: sides of pressure are differnent on top or below.
+    ps_d_o = ps0_d_o - ps1_d_o  # dynamic pressure difference
     # pvs_o = ps0_o * np.cos(thetas0_o)  - ps1_o * np.cos(thetas0_o)
     # pvs_o1 = ps0_o * np.cos(thetas0_o)  - ps1_o * np.cos(thetas1_o)  # here we cannot multiply thetas1_o, otherwise it will be zagged
     pvs_o = ps0_o / np.tan(thetas0_o)  - ps1_o / np.tan(thetas0_o)   # Right now, I am convinced this is the right way.
+    pvs_d_o = ps0_d_o / np.tan(thetas0_o)  - ps1_d_o / np.tan(thetas0_o)   # vertical component of dynamic pressure differences
     pvs_o1 = ps0_o / np.tan(thetas0_o)  - ps1_o / np.tan(thetas1_o)  # here we cannot multiply thetas1_o, otherwise it will be zagged
     compensation = pvs_o / (-buoyancy_gradients)
     outputs = np.concatenate((b_profile, buoyancy_gradients.reshape((-1, 1)),\
     ps0_o.reshape((-1, 1)), ps1_o.reshape((-1, 1)),\
     ps_o.reshape((-1, 1)), pvs_o.reshape((-1, 1)), pvs_o1.reshape((-1, 1)),\
-    compensation.reshape((-1, 1))), axis=1)
+    compensation.reshape((-1, 1)), ps0_d_o.reshape((-1, 1)), ps1_d_o.reshape((-1, 1)),\
+    ps_d_o.reshape((-1, 1)), pvs_d_o.reshape((-1, 1))), axis=1)
     # output data
+    # all this data are outputed just to toy with the plot of buoyancy and pressure
     header = "# 1: depth (m)\n# 2: buoyancy (N/m)\n\
 # 3: buoyancy gradient (Pa)\n# 4: pressure upper (Pa) \n# 5: pressure lower (Pa)\n\
 # 6: differiential pressure (Pa)\n# 7: vertical differiential pressure\n\
-# 8: vertical differiential pressure 1\n# 9: compensation\n"
+# 8: vertical differiential pressure 1\n# 9: compensation\n\
+# 10: dynamic pressure upper (Pa)\n# 11: dynamic pressure lower (Pa)\n\
+# 12: differential dynamic pressure (Pa)\n# 13: vertical differential dynamic pressure (Pa)\n"
     with open(o_file, 'w') as fout:
         fout.write(header)  # output header
     with open(o_file, 'a') as fout:
@@ -570,10 +604,15 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
 
 def SlabPressures(VtkP, slab_envelop, **kwargs):
     '''
-    extract slab pressures
+    extract slab pressures, interpolated results onto regular grid is outputed,
+    original data is returned
     Inputs:
         VtkP: VTKP class
         slab_envelop: slab envelop coordinates (x and y)
+    returns:
+        depths: depth of points
+        thetas: dip angles
+        ps: pressures
     '''
     Ro = 6371e3
     fileout = kwargs.get('fileout', None)  # debug
@@ -584,21 +623,23 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
     n_point = slab_envelop.shape[0]
     rs_idx = range(0, n_point, rs_n)
     slab_envelop_rs = slab_envelop[np.ix_(rs_idx, [0, 1])]
-    slab_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, slab_envelop_rs, quiet=True)
+    slab_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, slab_envelop_rs, quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
     temp_vtk_array = slab_env_polydata.GetPointData().GetArray('p')
     env_ps  = vtk_to_numpy(temp_vtk_array)
-    temp_vtk_array = slab_env_polydata.GetPointData().GetArray('p')
     # import data onto selected points
     depths = np.zeros(slab_envelop_rs.shape[0]) # data on envelop0
-    ps = np.zeros((slab_envelop_rs.shape[0], 3)) # pressure, horizontal & vertical components
+    ps = np.zeros((slab_envelop_rs.shape[0], 4)) # pressure, horizontal & vertical components, dynamic pressure
     thetas = np.zeros((slab_envelop_rs.shape[0], 1))
     is_first = True
     for i in range(0, slab_envelop_rs.shape[0]):
         x = slab_envelop_rs[i, 0]
         y = slab_envelop_rs[i, 1]
+        theta_xy = np.arctan2(y, x)
         r = (x*x + y*y)**0.5
         depth = Ro - r  # depth of this point
         p = env_ps[i]  # pressure of this point
+        p_static = VtkP.StaticPressure([r, VtkP.Ro], theta_xy, 2000)
+        p_d = p - p_static # dynamic pressure
         depths[i] = depth
         d1 = 0.0  # coordinate differences
         d2 = 0.0
@@ -619,6 +660,7 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
         ps[i, 0] = p
         ps[i, 1] = p_h
         ps[i, 2] = p_v
+        ps[i, 3] = p_d
     temp = np.concatenate((slab_envelop_rs, thetas), axis=1)
     data_env0 = np.concatenate((temp, ps), axis=1)  # assemble all the data
     c_out = data_env0.shape[1]
@@ -709,8 +751,7 @@ def PlotSlabForcesCase(case_dir, vtu_step, **kwargs):
     Visit_Options = VISIT_OPTIONS(case_dir)
     # call function
     Visit_Options.Interpret()
-    step = step
-    vtu_snapshot = int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) + step
+    vtu_snapshot = int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) + vtu_step
     vtk_output_dir = os.path.join(case_dir, 'vtk_outputs')
     if not os.path.isdir(vtk_output_dir):
         os.mkdir(vtk_output_dir)
