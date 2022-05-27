@@ -168,21 +168,21 @@ class VTKP():
         '''
         Get vertical profile by looking at one vertical line
         Inputs:
-            x0_range: range of the first coordinate (x or r)
-            x1: second coordinate (y or theta)
+            x0_range: range of the first coordinate (y or r)
+            x1: second coordinate (x or theta)
             n (int): number of point in the profile
             kwargs (dict):
                 geometry: spherical or cartesian
         '''
-        geometry = kwargs.get('geometry', 'spherical')
+        geometry = kwargs.get('geometry', 'chunk')
         assert(len(x0_range) == 2)
         points = np.zeros((n, 2))
         x0s = np.linspace(x0_range[0], x0_range[1], n)
         x1s = np.ones(n) * x1
-        if geometry == 'spherical':
+        if geometry == 'chunk':
             xs = x0s * np.cos(x1s)
             ys = x0s * np.sin(x1s)
-        elif geometry == 'cartesian':
+        elif geometry == 'box':
             ys = x0s
             xs = x1s
         else:
@@ -200,6 +200,41 @@ class VTKP():
             fields.append(field)
         v_profile = VERTICAL_PROFILE(x0s, field_names, fields, uniform=True)
         return v_profile
+    
+    def StaticPressure(self, x0_range, x1, n, **kwargs):
+        '''
+        Compute the static pressure at a point
+        Inputs:
+            x0_range: range of the first coordinate (y or r)
+            x1: second coordinate (x or theta)
+            n (int): number of point in the profile
+            kwargs (dict):
+                geometry: spherical or cartesian
+        '''
+        geometry = kwargs.get('geometry', 'chunk') # geometry
+        grav_acc = kwargs.get('grav_acc', 9.8) # geometry
+        points = np.zeros((n, 2))
+        assert(x0_range[0] < x0_range[1])
+        x0s = np.linspace(x0_range[0], x0_range[1], n)
+        interval = (x0_range[1] - x0_range[0]) / (n-1)
+        x1s = np.ones(n) * x1
+        if geometry == 'chunk':
+            xs = x0s * np.cos(x1s)
+            ys = x0s * np.sin(x1s)
+        elif geometry == 'box':
+            ys = x0s
+            xs = x1s
+        else:
+            raise ValueError('Wrong option for geometry')
+        points[:, 0] = xs
+        points[:, 1] = ys
+        v_poly_data = InterpolateGrid(self.i_poly_data, points, quiet=True)
+        point_data = v_poly_data.GetPointData()
+        density_field = vtk_to_numpy(point_data.GetArray('density'))
+        static_pressure = 0.0  # integrate the static pressure
+        for i in range(1, n):
+            static_pressure += (density_field[i-1] + density_field[i]) / 2.0 * grav_acc * interval
+        return static_pressure
 
 
 def ExportContour(poly_data, field_name, contour_value, **kwargs):

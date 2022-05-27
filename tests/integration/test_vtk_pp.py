@@ -93,6 +93,30 @@ def test_utilities():
     assert(abs(Ts[1] - 2971.1995) / 2971.1995 < 1e-6)
 
 
+def test_static_pressure():
+    '''
+    test the function of StaticPressure
+    '''
+    case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp')
+    filein = os.path.join(case_dir, "output", "solution", "solution-00002.pvtu")
+    VtkP = VTKP()
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density']
+    VtkP.ConstructPolyData(field_names)
+    # extract static pressure
+    ro = 6371e3
+    r = ro - 100e3
+    theta1 = 1  # under the subducting plate
+    theta2 = 61 * np.pi / 180.0  # under the overiding plate
+    static_pressure_std1 = 3.228537216558201e9
+    static_pressure1 = VtkP.StaticPressure([r, ro-10.0], theta1, 500)  # n = 500 - 1000
+    assert((static_pressure1-static_pressure_std1)/ static_pressure_std1 <  1e-6)
+    static_pressure_std2 = 3.224576241711115e9 # smaller than previous, as the subducting plate is older.
+    static_pressure2 = VtkP.StaticPressure([r, ro-10.0], theta2, 500)  # n = 500 - 1000
+    assert((static_pressure2-static_pressure_std2)/ static_pressure_std2 < 1e-6)
+    # assert(static_pressure == )
+
+
 # notes
     
 # to check for error message
