@@ -102,6 +102,8 @@ class VTKP():
         self.cell_sizes = None
         self.dim = kwargs.get('dim', 2)
         self.grav_data = None  # a 2 column array to save the gravity data (depth in meter and grav_acc)
+        self.geometry = kwargs.get('geometry', 'chunk')
+        self.Ro = kwargs.get('Ro', 6371e3)
         pass
 
     def ReadFile(self, filein):
@@ -128,7 +130,10 @@ class VTKP():
                 include_cell_center - include_cell_center in the poly_data
         '''
         include_cell_center = kwargs.get('include_cell_center', False)
+        quiet = kwargs.get('quiet', False)
         assert(type(field_names) == list and len(field_names) > 0)
+        noP = 0
+        noC = 0
         grid = self.reader.GetOutput()
         data_set = self.reader.GetOutputAsDataSet()
         points = grid.GetPoints()
@@ -144,6 +149,7 @@ class VTKP():
                 is_first = False
             else:
                 self.i_poly_data.GetPointData().AddArray(point_data.GetArray(field_name))  # put T into cell data
+            noP = self.i_poly_data.GetNumberOfPoints()
         if include_cell_center:
             centers = vtk.vtkCellCenters()  # test the utilities of centers
             centers.SetInputData(self.i_poly_data)
@@ -154,6 +160,7 @@ class VTKP():
             probeFilter.Update()
             self.c_poly_data = probeFilter.GetOutput()  # poly data at the center of the point
             self.include_cell_center = True
+            noC = self.c_poly_data.GetNumberOfPoints() 
             # cell sizes
             cell_size_filter = vtk.vtkCellSizeFilter()
             cell_size_filter.SetInputDataObject(grid)
@@ -163,6 +170,11 @@ class VTKP():
                 self.cell_sizes = vtk_to_numpy(cz_cell_data.GetArray('Area'))
             else:
                 raise ValueError("Not implemented")
+        # send out message
+        message = "ConstructPolyData: %d * (%d + %d) entries in the polydata imported and %d * (%d + %d) points in the data at cell center"\
+        % (noP, self.dim, len(field_names), noC, self.dim, len(field_names))
+        if not quiet:
+            print(message)
 
     def VerticalProfile2D(self, x0_range, x1, n, **kwargs):
         '''
@@ -410,6 +422,32 @@ def NpIntToIdList(numpy_int_array):
         for i in range(numpy_int_array.size):
             id_list.InsertNextId(numpy_int_array[i])
     return id_list
+
+
+def OperateDataArrays(poly_data, names, operations):
+    '''
+    perform operation to vtk_arrays
+    Inputs:
+        poly_data - a poly data to work with
+        names - names of fields to operate on
+        operations - 0 (add) or 1 (minus)
+    '''
+    assert(len(operations) == len(names) - 1)
+    is_first = True
+    i = 0
+    for _name in names:
+        if is_first:
+            o_array = vtk_to_numpy(poly_data.GetArray(_name))
+            is_first = False
+        else:
+            if operations[i] == 0:
+                o_array += vtk_to_numpy(poly_data.GetArray(_name))
+            elif operations[i] == 1:
+                o_array -= vtk_to_numpy(poly_data.GetArray(_name))
+            else:
+                raise ValueError('operation for %d is not implemented.' % operations[i])
+        i += 1
+    return o_array
 
 
 def main():

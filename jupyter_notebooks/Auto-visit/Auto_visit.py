@@ -1,7 +1,7 @@
 import re
 import os
 
-# todo:
+# :
 # a. fix this with the class that manipulates the statistic file
 # b. distribute data in a separate folder
 
@@ -149,7 +149,7 @@ class VISIT_OPTIONS():
         # self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
         self.options['IF_DEFORM_MECHANISM'] = 1
 
-# todo: fix this with the class that manipulates the statistic file
+# : fix this with the class that manipulates the statistic file
 def GetSnapsSteps(case_dir, type_='graphical'):
     case_output_dir = os.path.join(case_dir, 'output')
     # parse parameters from case.prm

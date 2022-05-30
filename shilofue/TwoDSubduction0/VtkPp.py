@@ -90,8 +90,7 @@ class VTKP(VtkPp.VTKP):
             geometry - type of geometry
             Ro - outer radius
         '''
-        VtkPp.VTKP.__init__(self)
-        self.geometry = kwargs.get('geometry', 'chunk')
+        VtkPp.VTKP.__init__(self, **kwargs)
         self.slab_cells = []
         self.surface_cells = []
         self.slab_envelop_cell_list0 = []
@@ -102,7 +101,6 @@ class VTKP(VtkPp.VTKP):
         self.dip_100 = None
         self.slab_shallow_cutoff = 50e3  # depth limit to slab
         self.slab_envelop_interval = 5e3
-        self.Ro = kwargs.get('Ro', 6371e3)
         default_gravity_file = os.path.join(Utilities.var_subs('${ASPECT_SOURCE_DIR}'),\
         "data", "gravity-model", "prem.txt") 
         gravity_file = kwargs.get('gravity_file', default_gravity_file)
@@ -120,14 +118,8 @@ class VTKP(VtkPp.VTKP):
         point_data = self.i_poly_data.GetPointData()
         cell_point_data = self.c_poly_data.GetPointData()
         # slab composition field
-        is_first = True
-        for field_name in slab_field_names:
-            if is_first:
-                slab_field = vtk_to_numpy(cell_point_data.GetArray(field_name))
-                is_first = False
-            else:
-                slab_field += vtk_to_numpy(cell_point_data.GetArray(field_name))
-        Ts = self.i_poly_data.GetPointData().GetArray("T")  # temperature field
+        slab_field = VtkPp.OperateDataArrays(cell_point_data, slab_field_names,\
+        [0 for i in range(len(slab_field_namses) - 1)])
         # add cells by composition
         min_r = self.Ro
         for i in range(self.i_poly_data.GetNumberOfCells()):

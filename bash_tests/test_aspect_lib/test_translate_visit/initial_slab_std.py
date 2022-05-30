@@ -187,7 +187,7 @@ class SLAB(VISIT_PLOT):
 
 def main():
     Slab = SLAB("/home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12/output/solution.visit", output_dir="/home/lochy/ASPECT_PROJECT/TwoDSubduction/isosurf_global2/isosurfULV3.000e+01testS12/img")
-    # todo
+    # 
     # First number is the number of initial adaptive refinements
     # Second one is the snapshot to plot
     # here we prefer to use a series of snapshots.

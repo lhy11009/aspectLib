@@ -34,7 +34,6 @@ class SLAB(PARAVIEW_PLOT):
         [2000000.0, 1.0, 500000.0], 4019667.7972010756, [0.0, 0.0, 1.0])
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
 
-    # todo
     def setup_trench_slice_edge(self):
         '''
         Generate a visualization of a slice perpendicular to y direction, and locates at trench center (y=0)

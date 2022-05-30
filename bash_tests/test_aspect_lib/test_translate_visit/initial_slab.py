@@ -187,7 +187,7 @@ class SLAB(VISIT_PLOT):
 
 def main():
     Slab = SLAB("VISIT_FILE", output_dir="IMG_OUTPUT_DIR")
-    # todo
+    # 
     # First number is the number of initial adaptive refinements
     # Second one is the snapshot to plot
     # here we prefer to use a series of snapshots.
