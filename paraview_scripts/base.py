@@ -63,7 +63,7 @@ class PARAVIEW_PLOT():
         animationScene1 = GetAnimationScene()
         animationScene1.AnimationTime = _time
         self.time = _time
-
+        print("Time: %.4e" % _time)
 
 
 def add_slice(solutionpvd, field, Origin, Normal, **kwargs):

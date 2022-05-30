@@ -447,6 +447,10 @@ def FastZeroStep(Inputs):
     Inputs['Nonlinear solver scheme'] = 'no Advection, no Stokes'
 
 
+class WBFeatureNotFoundError(Exception):
+    pass
+
+
 def FindWBFeatures(Inputs_wb, key):
     '''
     find index of feature in a world builder inputs by its key
@@ -462,8 +466,9 @@ def FindWBFeatures(Inputs_wb, key):
             break
         i += 1
         if i == len(Features):  # not found
-            raise KeyError("%s: There is no feature named %s" % (Utilities.func_name(), key))
+            raise WBFeatureNotFoundError("%s: There is no feature named %s" % (Utilities.func_name(), key))
     return i
+
 
 def RemoveWBFeatures(Inputs_wb, i):
     '''
@@ -474,10 +479,14 @@ def RemoveWBFeatures(Inputs_wb, i):
     '''
     assert(type(Inputs_wb) == dict)
     Outputs_wb = Inputs_wb.copy()
-    Features = Inputs_wb['features']
+    try:
+        Features = Inputs_wb['features']
+    except KeyError:
+        raise WBFeatureNotFoundError()
     Features.pop(i)
     Outputs_wb['features'] = Features
     return Outputs_wb
+
 
 def DumpToJson(filein, fileout):
     '''
