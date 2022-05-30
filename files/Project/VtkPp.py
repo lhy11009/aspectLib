@@ -56,25 +56,30 @@ class VTKP(VtkPp.VTKP):
         VtkPp.VTKP.__init__(self)  # initiation of parental class
 
 
-def WrapperForStep(case_dir, vtu_step, **kwargs):
+def WrapperForStep(case_dir, vtu_snapshot, **kwargs):
     '''
     Wrapper for using PVTK class to analyze one step
     Inputs:
         case_dir (str): case directory
         vtu_step (int): step in vtu outputs
     '''
-    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_step)
+    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
     assert(os.path.isfile(filein))
-    vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'foo',\
-    vtu_step=vtu_step, include_step_in_filename=True, generate_horiz=True)
+    # Initiate an object for the options we use for vtk, also get time and step
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    geometry = Visit_Options.options['GEOMETRY']
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    _time, step = Visit_Options.get_time_and_step(vtu_step)
+    # Initiate the working class
     VtkP = VTKP()
     VtkP.ReadFile(filein)
-    field_names = ['T', 'density']
-    VtkP.ConstructPolyData(field_names, include_cell_center=True)
-    # generate outputs
+    # call some functions
+    VtkP.FOO()
+    # generate some outputs
     outputs = "%-12s%-12d%-14.4e\n"\
     % (vtu_step, step, _time)
-    print(outputs) # debug
+    print("Output file generated: ", outputs)
     return vtu_step, outputs
 
 
