@@ -89,7 +89,6 @@ class VTKP():
         reader (vtk reader object): reader for vtk file format
         i_poly_data (vtkPolydata): input data
     '''
-
     def __init__(self, **kwargs):
         '''
         Initiation
@@ -213,7 +212,11 @@ class VTKP():
                 geometry: spherical or cartesian
         '''
         geometry = kwargs.get('geometry', 'chunk') # geometry
-        grav_acc = kwargs.get('grav_acc', 9.8) # geometry
+        use_gravity_profile = False
+        if self.grav_data is not None:
+            use_gravity_profile = True
+        else:
+            constant_grav_acc = kwargs['grav_acc']
         points = np.zeros((n, 2))
         assert(x0_range[0] < x0_range[1])
         x0s = np.linspace(x0_range[0], x0_range[1], n)
@@ -234,6 +237,11 @@ class VTKP():
         density_field = vtk_to_numpy(point_data.GetArray('density'))
         static_pressure = 0.0  # integrate the static pressure
         for i in range(1, n):
+            depth = self.Ro - (x0s[i] + x0s[i-1])/2.0
+            if use_gravity_profile:
+                grav_acc = self.GetGravityAcc(depth)
+            else:
+                grav_acc = constant_grav_acc # geometry
             static_pressure += (density_field[i-1] + density_field[i]) / 2.0 * grav_acc * interval
         return static_pressure
     

@@ -105,6 +105,7 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         self.all_graphical_timesteps = time_steps 
         self.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'] = str(graphical_snaps)
         self.options['ALL_AVAILABLE_GRAPHICAL_TIMESTEPS'] = str(time_steps)
+        self.options['ALL_AVAILABLE_GRAPHICAL_TIMES'] = str(times)
         particle_snaps, _, _ = GetSnapsSteps(self._case_dir, 'particle')
         self.options['ALL_AVAILABLE_PARTICLE_SNAPSHOTS'] = str(particle_snaps)
         
@@ -132,14 +133,12 @@ class VISIT_OPTIONS(CASE_OPTIONS):
 
         # get time steps
         self.options['GRAPHICAL_TIME_STEPS'] = []
-        self.options['GRAPHICAL_TIMES'] = []
         for step in self.options['GRAPHICAL_STEPS']:
             found = False
             for i in range(len(graphical_snaps)):
                 if step == max(0, graphical_snaps[i] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])):
                     found = True
                     self.options['GRAPHICAL_TIME_STEPS'].append(time_steps[i])
-                    self.options['GRAPHICAL_TIMES'].append(times[i])
             # todo
             if not found:
                 warnings.warn("%s: step %d is not found" % (Utilities.func_name(), step))

@@ -31,6 +31,9 @@ class SLAB(PARAVIEW_PLOT):
 
 
 def main():
+    all_available_graphical_snapshots = ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS
+    all_available_graphical_times = ALL_AVAILABLE_GRAPHICAL_TIMES
+    assert(len(all_available_graphical_snapshots) == len(all_available_graphical_times))
     # First, make directory for images if it's not there
     if not os.path.isdir("IMG_OUTPUT_DIR"):
         os.mkdir("IMG_OUTPUT_DIR")
@@ -42,23 +45,22 @@ def main():
     # here we prefer to use a series of snapshots.
     # If this doesn't work, we will use a single snapshot
     steps = GRAPHICAL_STEPS
-    times = GRAPHICAL_TIMES
     if not steps == []:
-        i = 0
         for step in steps:
             # check that snapshot is valid
-            snapshots = INITIAL_ADAPTIVE_REFINEMENT+step
-            if snapshots in ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS:
-                _time =  times[i]
+            snapshot = INITIAL_ADAPTIVE_REFINEMENT+step
+            if snapshot in all_available_graphical_snapshots:
+                idx = all_available_graphical_snapshots.index(snapshot)
+                _time =  all_available_graphical_times[idx]
                 Slab.goto_time(_time)
                 Slab.plot_surface_slice()
                #  Slab(INITIAL_ADAPTIVE_REFINEMENT+step)
             else:
                 print ("step %s is not valid. There is no output" % step)
-            i += 1
     else:
-        step = SINGLE_SNAPSHOT
-        _time = SINGLE_TIMESHOT
+        snapshot = SINGLE_SNAPSHOT
+        idx = all_available_graphical_snapshots.index(snapshot)
+        _time =  all_available_graphical_times[idx]
         Slab.goto_time(_time)
         Slab.plot_surface_slice()
         # Slab(INITIAL_ADAPTIVE_REFINEMENT+SINGLE_SNAPSHOT)

@@ -25,6 +25,8 @@ class PARAVIEW_PLOT():
         """
         # get variables
         self.output_dir = kwargs.get('output_dir', ".")
+        if not os.path.isdir(self.output_dir):
+            os.mkidr(self.output_dir)
         # all the variables we want to plot, one in these:
         # 'velocity', 'p', 'T', 'sp_upper', 'sp_lower', 'density', 'viscosity', 
         # 'current_cohesions', 'current_friction_angles', 'plastic_yielding', 'dislocation_viscosity', 

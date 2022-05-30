@@ -114,10 +114,10 @@ def test_static_pressure():
     theta1 = 1  # under the subducting plate
     theta2 = 61 * np.pi / 180.0  # under the overiding plate
     static_pressure_std1 = 3.228537216558201e9
-    static_pressure1 = VtkP.StaticPressure([r, ro-10.0], theta1, 500)  # n = 500 - 1000
+    static_pressure1 = VtkP.StaticPressure([r, ro-10.0], theta1, 500, grav_acc=9.8)  # n = 500 - 1000
     assert((static_pressure1-static_pressure_std1)/ static_pressure_std1 <  1e-6)
     static_pressure_std2 = 3.224576241711115e9 # smaller than previous, as the subducting plate is older.
-    static_pressure2 = VtkP.StaticPressure([r, ro-10.0], theta2, 500)  # n = 500 - 1000
+    static_pressure2 = VtkP.StaticPressure([r, ro-10.0], theta2, 500, grav_acc=9.8)  # n = 500 - 1000
     assert((static_pressure2-static_pressure_std2)/ static_pressure_std2 < 1e-6)
     # assert(static_pressure == )
 
