@@ -127,19 +127,26 @@ class CASE_OPTIONS(Utilities.CODESUB):
         if not os.path.isdir(self._img_dir):
             os.mkdir(self._img_dir)
         self.options["IMG_OUTPUT_DIR"] = self._img_dir
+        # dimension
+        self.options['DIMENSION'] = int(self.idict['Dimension'])
         # initial adaptive refinement
         self.options['INITIAL_ADAPTIVE_REFINEMENT'] = self.idict['Mesh refinement'].get('Initial adaptive refinement', '0')
         # geometry
+        # some notes on the "OUTER_RADIUS", in the case of box geometry
+        # I want this value to record "Y" or "Z" in order to write consistent
+        # scripts for different geometry
         geometry = self.idict['Geometry model']['Model name']
         self.options['GEOMETRY'] = geometry
         self.options["Y_EXTENT"] = -1.0
         if geometry == 'chunk':
             self.options["OUTER_RADIUS"]  = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
         elif geometry == 'box':
-            self.options["OUTER_RADIUS"]  = float(self.idict['Geometry model']['Box']['Y extent'])
-
-
-        pass
+            if self.options['DIMENSION'] == 2:
+                self.options["OUTER_RADIUS"]  = float(self.idict['Geometry model']['Box']['Y extent'])
+            elif self.options['DIMENSION'] == 3:
+                self.options["OUTER_RADIUS"]  = float(self.idict['Geometry model']['Box']['Z extent']) 
+            else: 
+                raise ValueError("%d is not a dimension option" % self.options['DIMENSION'])
     
     def get_geometry(self):
         '''

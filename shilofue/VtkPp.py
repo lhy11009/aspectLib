@@ -446,8 +446,25 @@ def OperateDataArrays(poly_data, names, operations):
                 o_array -= vtk_to_numpy(poly_data.GetArray(_name))
             else:
                 raise ValueError('operation for %d is not implemented.' % operations[i])
-        i += 1
+            i += 1
     return o_array
+
+
+def get_r3(x, y, z, geometry):
+    '''
+    Get r (the first coordinate)
+    Inputs:
+        x - x coordinate
+        y - y coordinate
+        geometry - 'chunk' or 'box'
+    '''
+    if geometry == 'chunk':
+        r = (x*x + y*y + z*z)**0.5
+    elif geometry == 'box':
+        r = z
+    else:
+        raise ValueError("not implemented")
+    return r
 
 
 def main():

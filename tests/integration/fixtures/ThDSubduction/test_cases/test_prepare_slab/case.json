@@ -1,0 +1,21 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/05102022",
+  "output directory": "/home/lochy/ASPECT_PROJECT/ThDSubduction/s07_cases_1",
+  "name": "s07_bl4000.0_bw2000.0_sw750.0",
+  "type": "s07",
+  "use world builder": 1,
+  "include fast first step": 1,
+  "geometry setup": {
+    "box width": 2000000.0,
+    "box length": 4000000.0,
+    "box depth": 1000000.0
+  },
+  "plate setup": {
+    "sp width": 750000.0,
+    "sp length": 3000000.0
+  },
+  "additional files": [
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ]
+}

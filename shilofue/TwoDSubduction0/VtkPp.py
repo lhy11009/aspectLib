@@ -502,7 +502,7 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
     _time, step = Visit_Options.get_time_and_step(vtu_step)
     geometry = Visit_Options.options['GEOMETRY']
-    Ro =  Visit_Options.options['RO']
+    Ro =  Visit_Options.options['OUTER_RADIUS']
     VtkP = VTKP(geometry=geometry, Ro=Ro)
     VtkP.ReadFile(filein)
     field_names = ['T', 'density', 'spcrust', 'spharz']
