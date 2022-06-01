@@ -763,7 +763,10 @@ def write_dict_recursive(_dict, list_of_keys, value):
         list_of_keys (str): list of keys to look for
     '''
     if len(list_of_keys) > 1:
-        sub_dict = _dict[list_of_keys[0]]
+        key = list_of_keys[0]
+        if not _dict.has_key(key):
+            _dict[key] = {}  # initiate a new dict if the key is not there yet
+        sub_dict = _dict[key]
         sublist_of_keys = [list_of_keys[i] for i in range(1, len(list_of_keys))]
         sub_dict = write_dict_recursive(sub_dict, sublist_of_keys, value)
     else:

@@ -66,6 +66,11 @@ class CASE_OPT(CasesP.CASE_OPT):
         self.add_key("Yielding friction angle", float, ['rheology', 'friction angle'], 5.71, nick='friction_angle')
         self.add_key("Relative viscosity of the lower mantle", float, ['rheology', 'lower mantle relative viscosity'], 100.0, nick='relative_visc_lower_mantle')
         self.add_key("Yielding cohesion", float, ['rheology', 'cohesion'], 48e6, nick='cohesion')
+        self.add_key("Depth of the subducting plate to refilen (in schellart 07 model)", float,\
+                    ['plate setup', 'sp depth refining'], 200e3, nick='sp_depth_refining')
+        self.add_key("Mantle reference density", float, ['reference density'], 3300.0, nick='reference_density')
+        self.add_key("Excess of density of the subducting plate (in schellart 07 model)", float,\
+                    ['plate setup', 'sp relative density'], 80.0, nick='sp_relative_density')
 
     
     def check(self):
@@ -92,9 +97,13 @@ class CASE_OPT(CasesP.CASE_OPT):
         friction_angle = self.values[self.start+10]
         relative_visc_lower_mantle = self.values[self.start+11]
         cohesion = self.values[self.start+12]
+        sp_depth_refining = self.values[self.start+13]
+        reference_density = self.values[self.start+14]
+        sp_relative_density = self.values[self.start+15]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
-            relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion
+            relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
+            sp_depth_refining, reference_density, sp_relative_density
         
 
     def to_configure_wb(self):
@@ -118,7 +127,7 @@ class CASE(CasesP.CASE):
     '''
     def configure_prm(self, _type, if_wb, geometry, box_width, box_length, box_depth,\
     sp_width, trailing_length, reset_trailing_morb, ref_visc, relative_visc_plate, friction_angle,\
-    relative_visc_lower_mantle, cohesion):
+    relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density):
         '''
         Configure prm file
         '''
@@ -135,8 +144,12 @@ class CASE(CasesP.CASE):
         
         # refinement
         # Minimum refinement function
-        o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
-        "Do=%.4e, UM=670e3, DD=200e3, Dp=100e3" % (box_depth)
+        if (abs(sp_depth_refining - 200e3)/200e3 > 1e-6):
+            o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+            "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3" % (box_depth, sp_depth_refining)
+        else:
+            o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+            "Do=%.4e, UM=670e3, DD=200e3, Dp=100e3" % (box_depth)
         
         # boundary temperature model
         # o_dict['Boundary temperature model'] =
@@ -150,6 +163,13 @@ class CASE(CasesP.CASE):
         # b. then merge it into the material model of the prm file.
         outputs = {}
         material_model_subsection = "Visco Plastic TwoD"
+        # densities
+        sp_density = reference_density + sp_relative_density
+        if (abs(reference_density-3300.0)/3300.0 > 1e-6 or\
+         abs(sp_density-3380.0)/3380.0 > 1e-6):
+            o_dict['Material model'][material_model_subsection]['Densities'] =\
+                'background: %.4e, sp_upper: %.4e, sp_lower: %.4e'\
+                % (reference_density, sp_density, sp_density)
         # rheology
         prefactor_ref = 1.0 / 2.0 / ref_visc  # prefactors for diffusion creep
         prefactor_plate = 1.0 / 2.0 / (ref_visc * relative_visc_plate)

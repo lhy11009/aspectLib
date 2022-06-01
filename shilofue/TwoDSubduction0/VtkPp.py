@@ -119,7 +119,7 @@ class VTKP(VtkPp.VTKP):
         cell_point_data = self.c_poly_data.GetPointData()
         # slab composition field
         slab_field = VtkPp.OperateDataArrays(cell_point_data, slab_field_names,\
-        [0 for i in range(len(slab_field_namses) - 1)])
+        [0 for i in range(len(slab_field_names) - 1)])
         # add cells by composition
         min_r = self.Ro
         for i in range(self.i_poly_data.GetNumberOfCells()):
