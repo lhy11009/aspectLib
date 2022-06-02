@@ -280,6 +280,10 @@ class RHEOLOGY_OPR():
         dEdisl = kwargs.get('dEdisl', 0.0)
         dVdisl = kwargs.get('dVdisl', 0.0)
         rheology = kwargs.get('rheology', 'HK03_wet_mod')
+        save_profile = kwargs.get('save_profile', 0)
+        save_json = kwargs.get('save_json', 0)
+        
+        
         diffusion_creep, dislocation_creep = GetRheology(rheology)
         diffusion_creep['E'] += dEdiff
         dislocation_creep['E'] += dEdisl
@@ -344,23 +348,22 @@ class RHEOLOGY_OPR():
         integral = np.trapz(integral_cores[mask_integral] * np.log10(eta[mask_integral]), self.depths[mask_integral])
         volume = np.trapz(integral_cores[mask_integral], self.depths[mask_integral])
         average_log_eta = integral / volume
-
         # dump json file 
-        save_profile = kwargs.get('save_profile', 0)
-        json_path = os.path.join(RESULT_DIR, "mantle_profile_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
         constrained_rheology = {'diffusion_creep': diffusion_creep, 'dislocation_creep': dislocation_creep, 'diffusion_lm': diff_lm}
-        json_path_aspect = os.path.join(RESULT_DIR, "mantle_profile_aspect_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
         # convert aspect rheology
         diffusion_creep_aspect = Convert2AspectInput(diffusion_creep)
         diffusion_lm_aspect = Convert2AspectInput(diff_lm)
         dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=True)
         constrained_rheology_aspect = {'diffusion_creep': diffusion_creep_aspect, 'dislocation_creep': dislocation_creep_aspect, 'diffusion_lm': diffusion_lm_aspect}
-        with open(json_path, 'w') as fout:
-            json.dump(constrained_rheology, fout)
-        with open(json_path_aspect, 'w') as fout:
-            json.dump(constrained_rheology_aspect, fout)
-        print("New json: %s" % json_path)
-        print("New json: %s" % json_path_aspect)
+        if save_json == 1:
+            json_path = os.path.join(RESULT_DIR, "mantle_profile_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
+            json_path_aspect = os.path.join(RESULT_DIR, "mantle_profile_aspect_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
+            with open(json_path, 'w') as fout:
+                json.dump(constrained_rheology, fout)
+            with open(json_path_aspect, 'w') as fout:
+                json.dump(constrained_rheology_aspect, fout)
+            print("New json: %s" % json_path)
+            print("New json: %s" % json_path_aspect)
         # plot
         if save_profile == 1:
             # plots
@@ -883,6 +886,8 @@ def GetRheology(rheology):
     read rheology parameters, and account for effects of water if it is a wet rheology
     '''
     RheologyPrm = RHEOLOGY_PRM()
+    if not hasattr(RheologyPrm, rheology + "_diff") and hasattr(RheologyPrm, rheology + "_disl"):
+        raise ValueError("RHEOLOGY_PRM object doesn't have attribute %s_diff" % rheology)
     diffusion_creep = getattr(RheologyPrm, rheology + "_diff")
     dislocation_creep = getattr(RheologyPrm, rheology + "_disl")
     try:

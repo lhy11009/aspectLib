@@ -35,6 +35,7 @@ from matplotlib import pyplot as plt
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 import shilofue.FlowLaws as flf
+from shilofue.Rheology import RHEOLOGY_OPR
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -102,10 +103,12 @@ different age will be adjusted.",\
           ["world builder", "adjust mesh with box width"], 0, nick='adjust_mesh_with_width') 
         self.add_key("Thickness of the shear zone / crust", float, ["shear zone", 'thickness'], 7.5e3, nick='Dsz')
         self.add_key("Refinement scheme", str, ["refinement scheme"], "2d", nick='rf_scheme')
-        self.add_key("peierls creep scheme", str, ['peierls creep', 'Scheme'], "MK10", nick='peierls_scheme')
+        self.add_key("peierls creep scheme", str, ['peierls creep', 'scheme'], "MK10", nick='peierls_scheme')
         self.add_key("peierls creep, create a 2 stage model. I want to do this because including peierls scheme in the\
 intiation stage causes the slab to break in the middle",\
          float, ['peierls creep', 'two stage intial time'], -1.0, nick='peierls_two_stage_time')
+        # todo1
+        self.add_key("mantle rheology", str, ['mantle rheology', 'scheme'], "HK03_wet_mod", nick='mantle_rheology_scheme')
 
         pass
     
@@ -182,10 +185,11 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         rf_scheme = self.values[self.start + 17]
         peierls_scheme = self.values[self.start + 18]
         peierls_two_stage_time = self.values[self.start + 19]
+        mantle_rheology_scheme = self.values[self.start + 20]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
-        peierls_scheme, peierls_two_stage_time
+        peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme
 
     def to_configure_wb(self):
         '''
@@ -235,7 +239,7 @@ class CASE(CasesP.CASE):
     '''
     def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T,\
     sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
-    HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme, peierls_two_stage_time):
+    HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
@@ -290,6 +294,19 @@ class CASE(CasesP.CASE):
         else:
             # remove this feature if otherwise
             pass
+        # Material model
+        if mantle_rheology_scheme == "HK03_wet_mod":
+            pass # this is just the default, so skip
+        else:
+            # todo1
+            da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
+            assert(os.path.isfile(da_file))
+            Operator = RHEOLOGY_OPR()
+            # read profile
+            Operator.ReadProfile(da_file)
+            rheology = Operator.MantleRheology_v0(rheology=mantle_rheology_scheme)
+            CDPT_assign_mantle_rheology(o_dict, rheology)
+
         # Include peierls rheology
         if if_peierls:
             try:
@@ -793,6 +810,98 @@ def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_
     '''
     box_width = box_width0 + (sp_age - sp_age0) * sp_rate
     return box_width
+
+
+# todo1
+def CDPT_assign_mantle_rheology(o_dict, rheology):
+    '''
+    Assign mantle rheology in the CDPT model
+    ''' 
+    diff_crust_A = 5e-21
+    diff_crust_m = 0.0
+    diff_crust_E = 0.0
+    diff_crust_V = 0.0
+    disl_crust_A = 5e-32
+    disl_crust_n = 1.0
+    disl_crust_E = 0.0
+    disl_crust_V = 0.0
+    diffusion_creep = rheology['diffusion_creep']
+    dislocation_creep = rheology['dislocation_creep']
+    diffusion_creep_lm = rheology['diffusion_lm']
+    diff_A = diffusion_creep['A']
+    diff_m = diffusion_creep['m']
+    diff_n = diffusion_creep['n']
+    diff_E = diffusion_creep['E']
+    diff_V = diffusion_creep['V']
+    diff_d = diffusion_creep['d']
+    disl_A = dislocation_creep['A']
+    disl_m = dislocation_creep['m']
+    disl_n = dislocation_creep['n']
+    disl_E = dislocation_creep['E']
+    disl_V = dislocation_creep['V']
+    disl_d = dislocation_creep['d']
+    diff_A_lm = diffusion_creep_lm['A']
+    diff_m_lm = diffusion_creep_lm['m']
+    diff_n_lm = diffusion_creep_lm['n']
+    diff_E_lm = diffusion_creep_lm['E']
+    diff_V_lm = diffusion_creep_lm['V']
+    diff_d_lm = diffusion_creep_lm['d']
+    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+spcrust: %.4e|%.4e|%.4e|%.4e,\
+spharz: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+opcrust: %.4e, opharz: %.4e" % (diff_A, diff_A, diff_A, diff_A, diff_A_lm, diff_A_lm,\
+diff_A_lm, diff_A_lm, diff_crust_A, diff_A, diff_A_lm, diff_A_lm,\
+diff_A, diff_A, diff_A, diff_A, diff_A_lm, diff_A_lm, diff_A_lm, diff_A_lm,\
+diff_A, diff_A)
+    o_dict['Material model']['Visco Plastic TwoD']['Grain size exponents for diffusion creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+spcrust: %.4e|%.4e|%.4e|%.4e,\
+spharz: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+opcrust: %.4e, opharz: %.4e" % (diff_m, diff_m, diff_m, diff_m, diff_m_lm, diff_m_lm,\
+diff_m_lm, diff_m_lm, diff_crust_m, diff_m, diff_m_lm, diff_m_lm,\
+diff_m, diff_m, diff_m, diff_m, diff_m_lm, diff_m_lm, diff_m_lm, diff_m_lm,\
+diff_m, diff_m)
+    o_dict['Material model']['Visco Plastic TwoD']['Activation energies for diffusion creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+spcrust: %.4e|%.4e|%.4e|%.4e,\
+spharz: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+opcrust: %.4e, opharz: %.4e" % (diff_E, diff_E, diff_E, diff_E, diff_E_lm, diff_E_lm,\
+diff_E_lm, diff_E_lm, diff_crust_E, diff_E, diff_E_lm, diff_E_lm,\
+diff_E, diff_E, diff_E, diff_E, diff_E_lm, diff_E_lm, diff_E_lm, diff_E_lm,\
+diff_E, diff_E)
+    o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for diffusion creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+spcrust: %.4e|%.4e|%.4e|%.4e,\
+spharz: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+opcrust: %.4e, opharz: %.4e" % (diff_V, diff_V, diff_V, diff_V, diff_V_lm, diff_V_lm,\
+diff_V_lm, diff_V_lm, diff_crust_V, diff_V, diff_V_lm, diff_V_lm,\
+diff_V, diff_V, diff_V, diff_V, diff_V_lm, diff_V_lm, diff_V_lm, diff_V_lm,\
+diff_V, diff_V)
+    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for dislocation creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|5.0000e-32|5.0000e-32|5.0000e-32|5.0000e-32,\
+spcrust: %.4e|%.4e|5.0000e-32|5.0000e-32,\
+spharz: %.4e|%.4e|%.4e|%.4e|5.0000e-32|5.0000e-32|5.0000e-32|5.0000e-32,\
+opcrust: %.4e, opharz: %.4e" % (disl_A, disl_A, disl_A, disl_A,\
+disl_crust_A, disl_A, disl_A, disl_A, disl_A, disl_A, disl_A, disl_A)
+    o_dict['Material model']['Visco Plastic TwoD']['Stress exponents for dislocation creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|1.0000e+00|1.0000e+00|1.0000e+00|1.0000e+00,\
+spcrust: %.4e|%.4e|1.0000e+00|1.0000e+00,\
+spharz: %.4e|%.4e|%.4e|%.4e|1.0000e+00|1.0000e+00|1.0000e+00|1.0000e+00,\
+opcrust: %.4e, opharz: %.4e" % (disl_n, disl_n, disl_n, disl_n,\
+disl_crust_n, disl_n, disl_n, disl_n, disl_n, disl_n, disl_n, disl_n)
+    o_dict['Material model']['Visco Plastic TwoD']['Activation energies for dislocation creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,\
+spcrust: %.4e|%.4e|0.0000e+00|0.0000e+00,\
+spharz: %.4e|%.4e|%.4e|%.4e|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,\
+opcrust: %.4e, opharz: %.4e" % (disl_E, disl_E, disl_E, disl_E,\
+disl_crust_E, disl_E, disl_E, disl_E, disl_E, disl_E, disl_E, disl_E)
+    o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for dislocation creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,\
+spcrust: %.4e|%.4e|0.0000e+00|0.0000e+00,\
+spharz: %.4e|%.4e|%.4e|%.4e|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,\
+opcrust: %.4e, opharz: %.4e" % (disl_V, disl_V, disl_V, disl_V,\
+disl_crust_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V)
 
 
 def Usage():
