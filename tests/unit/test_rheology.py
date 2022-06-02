@@ -219,12 +219,7 @@ def test_Convert2AspectInputLowerMantle():
 
     assert(abs(eta_lower - jump * 1e21)/1e21 < tolerance)
 
-    
-def test_Convert2AspectInput():
-    """
-    compare different rheologies
-    """
-    pass
+
 
 
 # notes
