@@ -397,7 +397,6 @@ class RHEOLOGY_OPR():
             print("New figure: %s" % fig_path)
             plt.close()
             pass
-        # todo1
         return constrained_rheology_aspect
     
     def ConstrainRheology_v0(self, **kwargs):
