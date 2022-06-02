@@ -107,7 +107,6 @@ different age will be adjusted.",\
         self.add_key("peierls creep, create a 2 stage model. I want to do this because including peierls scheme in the\
 intiation stage causes the slab to break in the middle",\
          float, ['peierls creep', 'two stage intial time'], -1.0, nick='peierls_two_stage_time')
-        # todo1
         self.add_key("mantle rheology", str, ['mantle rheology', 'scheme'], "HK03_wet_mod", nick='mantle_rheology_scheme')
 
         pass
@@ -298,7 +297,6 @@ class CASE(CasesP.CASE):
         if mantle_rheology_scheme == "HK03_wet_mod":
             pass # this is just the default, so skip
         else:
-            # todo1
             da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
             assert(os.path.isfile(da_file))
             Operator = RHEOLOGY_OPR()
@@ -812,7 +810,6 @@ def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_
     return box_width
 
 
-# todo1
 def CDPT_assign_mantle_rheology(o_dict, rheology):
     '''
     Assign mantle rheology in the CDPT model
