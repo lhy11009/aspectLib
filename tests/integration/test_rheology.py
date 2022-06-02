@@ -36,7 +36,7 @@ if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
 
-# todo1
+
 def test_HK03_mod_whole_mantle_apsect_prm():
     """
     test converting the HK03 modified rheology to a whole-mantle rheology in aspect
@@ -47,7 +47,7 @@ def test_HK03_mod_whole_mantle_apsect_prm():
     Operator = RHEOLOGY_OPR()
     # read profile
     Operator.ReadProfile(da_file)
-    rheology_aspect = Operator.MantleRheology_v0()
+    rheology_aspect = Operator.MantleRheology_v0(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3, dVdiff=-5.5e-6, dVdisl=0.0)
     diffusion_creep = rheology_aspect['diffusion_creep']
     diffusion_A = diffusion_creep['A']
     diffusion_E = diffusion_creep['E']

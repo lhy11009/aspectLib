@@ -275,11 +275,10 @@ class RHEOLOGY_OPR():
         eta_diff = np.ones(self.depths.size)
         eta_disl = np.ones(self.depths.size)
         eta = np.ones(self.depths.size)
-        # get rheology
-        dEdiff = -40e3  # -50 - 50e3
-        dEdisl = 20e3  # -40 - 40e3
-        dVdiff = -5.5e-6  # -5.5 - 5.5e-6
-        dVdisl = 0.0e-6  # -4.0 - 4.0e-6
+        dEdiff = kwargs.get('dEdiff', 0.0)  # numbers for the variation in the rheology
+        dVdiff = kwargs.get('dVdiff', 0.0)
+        dEdisl = kwargs.get('dEdisl', 0.0)
+        dVdisl = kwargs.get('dVdisl', 0.0)
         rheology = kwargs.get('rheology', 'HK03_wet_mod')
         diffusion_creep, dislocation_creep = GetRheology(rheology)
         diffusion_creep['E'] += dEdiff
