@@ -74,6 +74,23 @@ def test_HirthKohlstedt():
     assert(abs((check5 - 89.99710450882286) / check5) < tolerance)
 
 
+def test_HirthKohlstedt_mantle_ref():
+    '''
+    test under the mantle reference state
+    '''
+    # read parameters
+    RheologyPrm = RHEOLOGY_PRM()
+    diffusion_creep = RheologyPrm.HK03_diff
+    dislocation_creep = RheologyPrm.HK03_disl
+
+    # get the diffusion creep and dislocation creep viscosity
+    diff_visc = CreepRheology(diffusion_creep, 1e-15, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+    disl_visc = CreepRheology(dislocation_creep, 1e-15, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+    print("diff_visc: ", diff_visc)
+    print("disl_visc: ", disl_visc)
+
+
+
 def test_HirthKohlstedt_wet_modified():
     """
     test the implementation of equations from Hirth & Kohlstedt, 2003(filename='Hirth_Kohlstedt.json')
@@ -92,6 +109,23 @@ def test_HirthKohlstedt_wet_modified():
     check0_std = visc_diff_HK(1400 + 273.15,1e9,1e4,1000.0,'wet','new','mid','mid')
     assert(abs(check0 - check0_std) / check0 < tolerance)
     pass
+
+
+def test_AB17():
+    '''
+    test the implementation of flow low in Arredondo & Billen 2017
+    '''
+    rheology = 'AB17'
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+    diff_eta_1 = CreepRheology(diffusion_creep, 1e-15, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+    disl_eta_1 = CreepRheology(dislocation_creep, 1e-15, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+    print("diff_eta_1: ", diff_eta_1)
+    print("disl_eta_1: ", disl_eta_1)
+    diff_eta_2 = CreepRheology(diffusion_creep, 1e-13, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+    disl_eta_2 = CreepRheology(dislocation_creep, 1e-13, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+    print("diff_eta_2: ", diff_eta_2)
+    print("disl_eta_2: ", disl_eta_2)
+
 
 
 def test_creep_compute_V():
