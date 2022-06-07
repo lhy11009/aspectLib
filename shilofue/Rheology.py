@@ -479,6 +479,7 @@ class RHEOLOGY_OPR():
         # diff_lm['V'] = LowerMantleV(diffusion_creep['E'], T_lm_mean, P_lm_mean, lm_grad_T, lm_grad_P) # compute from less variation criteria
         diff_lm['V'] = 3e-6  # assign a value
         diff_lm['A'] = CreepComputeA_v1(diff_lm, strain_rate, P660, T660, eta660*jump_lower_mantle, use_effective_strain_rate=True)
+        # print('diff_lm: ', diff_lm) # print additional information
         eta_diff[mask_low] = CreepRheology_v1(diff_lm, strain_rate, self.pressures[mask_low], self.temperatures[mask_low], use_effective_strain_rate=True)
         eta_disl[mask_low] = None  # this is just for visualization
         eta_disl13[mask_low] = None  # this is just for visualization
