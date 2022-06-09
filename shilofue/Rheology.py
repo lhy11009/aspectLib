@@ -127,9 +127,12 @@ class RHEOLOGY_PRM():
             }
         
         # dislocation creep in Arredondo & Billen 2017
+        # this is found in the supplementary material in the paper.
+        # Note that the original value in the paper uses "Pa" for A,
+        # while I converted it to "MPa" here.
         self.AB17_disl = \
             {
-                "A": 2.57e-20,
+                "A": 25.7,
                 "p": 0.0,
                 "r": 1.2,
                 "n": 3.5,
