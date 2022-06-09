@@ -18,10 +18,11 @@ class SLAB(PARAVIEW_PLOT):
         Here I first set the plots up. This is equivalent to add filters to a paraview window in the gui.
         '''
         slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, 2000000.0, 990000.0],\
-        [0.0, 0.0, 1.0], renderView=self.renderView1)
+        [0.0, 0.0, 1.0], renderView=self.renderView1, name="surface_z")
         adjust_camera(self.renderView1, [2000000.0, 2000000.0, 14540803.753676033],\
         [2000000.0, 2000000.0, 990000.0], 4019667.7972010756, [0.0, 1.0, 0.0])
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
+        Hide(slice1, self.renderView1) # hide data in view
     
     def setup_trench_slice_center(self):
         '''
@@ -29,10 +30,11 @@ class SLAB(PARAVIEW_PLOT):
         Here I first set the plots up. This is equivalent to add filters to a paraview window in the gui.
         '''
         slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, 1.0, 500000.0],\
-        [0.0, 1.0, 0.0], renderView=self.renderView1)
+        [0.0, 1.0, 0.0], renderView=self.renderView1, name="trench_center_y")
         adjust_camera(self.renderView1, [2000000.0, 14540803.753676033, 500000.0],\
         [2000000.0, 1.0, 500000.0], 4019667.7972010756, [0.0, 0.0, 1.0])
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
+        Hide(slice1, self.renderView1) # hide data in view
 
     def setup_trench_slice_edge(self):
         '''
@@ -40,19 +42,55 @@ class SLAB(PARAVIEW_PLOT):
         Here I first set the plots up. This is equivalent to add filters to a paraview window in the gui.
         '''
         slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, TRENCH_EDGE_Y, 500000.0],\
-        [0.0, 1.0, 0.0], renderView=self.renderView1)
+        [0.0, 1.0, 0.0], renderView=self.renderView1, name="trench_edge_y")
         adjust_camera(self.renderView1, [2000000.0, 14540803.753676033, 500000.0],\
         [2000000.0, TRENCH_EDGE_Y, 500000.0], 4019667.7972010756, [0.0, 0.0, 1.0])
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
+        Hide(slice1, self.renderView1) # hide data in view
+    
+    def setup_slab_iso_volume_upper(self):
+        '''
+        Generate a visualization of the iso volume of the upper crust
+        '''
+        isoVolume1, isoVolume1Display, _ = add_isovolume(self.solutionpvd, "sp_upper", (0.8, 1.0), name="slab_upper")
+        Hide(isoVolume1, self.renderView1)  # hide data in view
+
  
     def plot_slice(self, filename_base):
         '''
         Plot surface slice
         After the the plots are setup, this function is then called to execute the exportation of figures.
         '''
+        field_name = 'sp_upper'
+        slice1 = FindSource(field_name)
+        SetActiveSource(slice1)
+        renderView1 = GetActiveViewOrCreate('RenderView') 
+        # Show(slice1, renderView1, 'GeometryRepresentation')
+        # adjust colorbar and camera
+        sp_upperLUT = GetColorTransferFunction(field_name)
+        adjust_slice_colorbar_camera(self.renderView1, sp_upperLUT)
+        # save figure
         file_out = os.path.join(self.output_dir, "%s_%.4e.png" % (filename_base, self.time))
         SaveScreenshot(file_out, self.renderView1, ImageResolution=[1148, 792])
         print("Figure saved: %s" % file_out)
+
+
+def adjust_slice_colorbar_camera(renderView, colorLUT):
+    '''
+    adjust colorbar and camera for a slice
+    Inputs:
+        renderView: an instance of the rendered view
+        colorLUT: an instance of the colorbar
+    '''
+    # adjust colorbar
+    colorLUTColorBar = GetScalarBar(colorLUT, renderView)
+    colorLUTColorBar.WindowLocation = 'Any Location'
+    colorLUTColorBar.ScalarBarLength = 0.33000000000000007
+    colorLUTColorBar.Orientation = 'Horizontal'
+    colorLUTColorBar.Position = [0.3458232931726907, 0.2540226986128623]
+    # adjust camera
+    adjust_camera(renderView, [2000000.0, 14540803.753676033, 500000.0],\
+    [2000000.0, 1.0, 500000.0], 1875204.6933857028, [0.0, 0.0, 1.0])
 
 
 def main():
@@ -64,9 +102,10 @@ def main():
         os.mkdir("IMG_OUTPUT_DIR")
     # Process and generate plots
     Slab = SLAB("PARAVIEW_FILE", output_dir="IMG_OUTPUT_DIR")
-    # Slab.setup_surface_slice()
-    # Slab.setup_trench_slice_center()
+    Slab.setup_surface_slice()
+    Slab.setup_trench_slice_center()
     Slab.setup_trench_slice_edge()
+    Slab.setup_slab_iso_volume_upper()
     # First number is the number of initial adaptive refinements
     # Second one is the snapshot to plot
     # here we prefer to use a series of snapshots.

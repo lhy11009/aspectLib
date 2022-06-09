@@ -77,8 +77,9 @@ def add_slice(solutionpvd, field, Origin, Normal, **kwargs):
     '''
     # get additional variables
     renderView0 = kwargs.get('renderView', None)
+    _name = kwargs.get('name', '0')
     # create slice
-    slice1 = Slice(registrationName='Slice1', Input=solutionpvd)
+    slice1 = Slice(registrationName='slice_%s' % _name, Input=solutionpvd)
     slice1.SliceType = 'Plane'
     slice1.HyperTreeGridSlicer = 'Plane'
     slice1.SliceOffsetValues = [0.0]
@@ -98,6 +99,30 @@ def add_slice(solutionpvd, field, Origin, Normal, **kwargs):
     adjust_slice_color(slice1Display, field, renderView1)
     renderView1.Update()
     return slice1, slice1Display, renderView1
+
+
+def add_isovolume(solutionpvd, field, thresholds, **kwargs):
+    '''
+    Inputs:
+        solutionpvd: a solutionpvd object of paraview
+        field: field to show
+        thresholds: thresholds to apply
+    '''
+    renderView0 = kwargs.get('renderView', None)
+    _name = kwargs.get('name', 0)
+    assert(len(thresholds) == 2)
+    isoVolume1 = IsoVolume(registrationName='isoVolume_%s' % _name, Input=solutionpvd)
+    isoVolume1.InputScalars = ['POINTS', field]
+    isoVolume1.ThresholdRange = thresholds
+    # get active view
+    if renderView0 == None:
+        renderView1 = GetActiveViewOrCreate('RenderView')
+    else:
+        renderView1 = renderView0
+    # show data in view
+    isoVolume1Display = Show(isoVolume1, renderView1, 'GeometryRepresentation')
+    renderView1.Update()
+    return isoVolume1, isoVolume1Display, renderView1
 
     
 def adjust_slice_color(slice1Display, field, renderView):
