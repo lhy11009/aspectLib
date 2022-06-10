@@ -71,6 +71,8 @@ class CASE_OPT(CasesP.CASE_OPT):
         self.add_key("Mantle reference density", float, ['reference density'], 3300.0, nick='reference_density')
         self.add_key("Excess of density of the subducting plate (in schellart 07 model)", float,\
                     ['plate setup', 'sp relative density'], 80.0, nick='sp_relative_density')
+        self.add_key("Global refinement", int, ['refinement', 'global refinement'], 4, nick='global_refinement')
+        self.add_key("Adaptive refinement", int, ['refinement', 'adaptive refinement'], 2, nick='adaptive_refinement')
 
     
     def check(self):
@@ -100,10 +102,13 @@ class CASE_OPT(CasesP.CASE_OPT):
         sp_depth_refining = self.values[self.start+13]
         reference_density = self.values[self.start+14]
         sp_relative_density = self.values[self.start+15]
+        global_refinement = self.values[self.start+16]
+        adaptive_refinement = self.values[self.start+17]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
-            sp_depth_refining, reference_density, sp_relative_density
+            sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
+            adaptive_refinement
         
 
     def to_configure_wb(self):
@@ -127,7 +132,8 @@ class CASE(CasesP.CASE):
     '''
     def configure_prm(self, _type, if_wb, geometry, box_width, box_length, box_depth,\
     sp_width, trailing_length, reset_trailing_morb, ref_visc, relative_visc_plate, friction_angle,\
-    relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density):
+    relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
+    global_refinement, adaptive_refinement):
         '''
         Configure prm file
         '''
@@ -143,13 +149,22 @@ class CASE(CasesP.CASE):
         o_dict['Geometry model']['Box']['Z repetitions'] = str(int(box_depth//repitition_slice))
         
         # refinement
+        o_dict["Mesh refinement"]["Initial global refinement"] = str(global_refinement)
+        o_dict["Mesh refinement"]["Minimum refinement level"] = str(global_refinement)
+        o_dict["Mesh refinement"]["Initial adaptive refinement"] = str(adaptive_refinement)
         # Minimum refinement function
-        if (abs(sp_depth_refining - 200e3)/200e3 > 1e-6):
-            o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
-            "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3" % (box_depth, sp_depth_refining)
-        else:
-            o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
-            "Do=%.4e, UM=670e3, DD=200e3, Dp=100e3" % (box_depth)
+        max_refinement = global_refinement + adaptive_refinement + 1
+        if _type == "s07":
+            if (abs(sp_depth_refining - 200e3)/200e3 > 1e-6):
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+                "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3" % (box_depth, sp_depth_refining)
+            else:
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+                "Do=%.4e, UM=670e3, DD=200e3, Dp=100e3" % (box_depth)
+        elif _type == "s07T":
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+                "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining, max_refinement-1, max_refinement-2)
+
         
         # boundary temperature model
         # o_dict['Boundary temperature model'] =
@@ -165,31 +180,35 @@ class CASE(CasesP.CASE):
         material_model_subsection = "Visco Plastic TwoD"
         # densities
         sp_density = reference_density + sp_relative_density
-        if (abs(reference_density-3300.0)/3300.0 > 1e-6 or\
-         abs(sp_density-3380.0)/3380.0 > 1e-6):
-            o_dict['Material model'][material_model_subsection]['Densities'] =\
-                'background: %.4e, sp_upper: %.4e, sp_lower: %.4e'\
-                % (reference_density, sp_density, sp_density)
+        if _type == 's07':
+           if (abs(reference_density-3300.0)/3300.0 > 1e-6 or\
+            abs(sp_density-3380.0)/3380.0 > 1e-6):
+               o_dict['Material model'][material_model_subsection]['Densities'] =\
+                   'background: %.4e, sp_upper: %.4e, sp_lower: %.4e'\
+                   % (reference_density, sp_density, sp_density)
         # rheology
-        prefactor_ref = 1.0 / 2.0 / ref_visc  # prefactors for diffusion creep
-        prefactor_plate = 1.0 / 2.0 / (ref_visc * relative_visc_plate)
-        prefactor_lower = 1.0 / 2.0 / (ref_visc * relative_visc_lower_mantle)
-        o_dict['Material model'][material_model_subsection]['Prefactors for diffusion creep'] =\
-            'background: %.4e|%.4e, sp_upper: %.4e, sp_lower: %.4e'\
-            % (prefactor_ref, prefactor_lower, prefactor_plate, prefactor_plate)
-        o_dict['Material model'][material_model_subsection]['Angles of internal friction'] =\
-            "background:0.0, sp_upper: %.4e, sp_lower: 0.0" % friction_angle
-        o_dict['Material model'][material_model_subsection]['Cohesions'] = "background:1e31, sp_upper: %.4e, sp_lower:1e31" % cohesion
+        if _type == 's07':
+            prefactor_ref = 1.0 / 2.0 / ref_visc  # prefactors for diffusion creep
+            prefactor_plate = 1.0 / 2.0 / (ref_visc * relative_visc_plate)
+            prefactor_lower = 1.0 / 2.0 / (ref_visc * relative_visc_lower_mantle)
+            o_dict['Material model'][material_model_subsection]['Prefactors for diffusion creep'] =\
+                'background: %.4e|%.4e, sp_upper: %.4e, sp_lower: %.4e'\
+                % (prefactor_ref, prefactor_lower, prefactor_plate, prefactor_plate)
+            o_dict['Material model'][material_model_subsection]['Angles of internal friction'] =\
+                "background:0.0, sp_upper: %.4e, sp_lower: 0.0" % friction_angle
+            o_dict['Material model'][material_model_subsection]['Cohesions'] = "background:1e31, sp_upper: %.4e, sp_lower:1e31" % cohesion
         # rewrite the reset viscosity part
-        o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
+        if _type == 's07':
+            o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
             "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
         # rewrite the reaction morb part
-        if reset_trailing_morb == 1:
-            o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'true'
-            o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
-                "Width=%.4e, Do=%.4e, xm=%.4e, DpUp=5e+04, Dp=1e5, Wp=%.4e, pWidth=1e5" %  (trailing_length, box_depth, box_length, sp_width)
-        else:
-            o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'false'
+        if _type == 's07':
+            if reset_trailing_morb == 1:
+                o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'true'
+                o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
+                    "Width=%.4e, Do=%.4e, xm=%.4e, DpUp=5e+04, Dp=1e5, Wp=%.4e, pWidth=1e5" %  (trailing_length, box_depth, box_length, sp_width)
+            else:
+                o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'false'
 
         o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries
             
