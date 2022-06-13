@@ -65,7 +65,11 @@ Examples of usage: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_slab_case_step -i \n\
             /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0  -vs 100\n\
 \n\
-  - python -m shilofue.TwoDSubduction0.VtkPp morph_step -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 -vss 105 \n\
+  - Perform analysis on a single case\n\
+        python -m shilofue.TwoDSubduction0.VtkPp morph_step -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 -vss 105 \n\
+\n\
+  - Perform analysis on one case for all the time steps\n\
+        python -m shilofue.TwoDSubduction0.VtkPp morph_case -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT_cart2/eba_cdpt_cart_width80\n\
 \n\
   - Plot the morphology of the slab: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_morph -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 \n\
@@ -1016,7 +1020,7 @@ def main():
         SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1)
     elif _commend == 'morph_case':
         # slab morphology for a case
-        SlabMorphologyCase(arg.inputs)
+        SlabMorphologyCase(arg.inputs, rewrite=1)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
