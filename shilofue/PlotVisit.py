@@ -78,6 +78,9 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             steps (int): plot some steps
             last_step(list): plot the last few steps
         """
+        steps = kwargs.get('steps', None)
+        last_step = kwargs.get('last_step', None)
+        time_interval = kwargs.get('time_interval', None)
         # call function from parent
         CASE_OPTIONS.Interpret(self)
         # particle file
@@ -87,7 +90,8 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         # visit file
         self.options["VISIT_FILE"] = self.visit_file
         self.options["PARAVIEW_FILE"] = self.paraview_file
-        # get snaps for plots
+        # get all the available snaps for ploting by checking on the existence of the pvtu file
+        # the correspondent, time, time step are also figured out.
         graphical_snaps_guess, times_guess, time_steps_guess = GetSnapsSteps(self._case_dir, 'graphical')
         graphical_snaps = []
         time_steps = []
@@ -108,21 +112,31 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         self.options['ALL_AVAILABLE_GRAPHICAL_TIMES'] = str(times)
         particle_snaps, _, _ = GetSnapsSteps(self._case_dir, 'particle')
         self.options['ALL_AVAILABLE_PARTICLE_SNAPSHOTS'] = str(particle_snaps)
-        
         particle_output_dir = os.path.join(self._output_dir, "slab_morphs")
         self.options["PARTICLE_OUTPUT_DIR"] = particle_output_dir
+        # get the last step in the series
         try:
             self.last_step = max(0, graphical_snaps[-1] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT']))  # it is the last step we have outputs
         except IndexError:
             # no snaps, stay on the safe side
             self.last_step = -1
-        steps = kwargs.get('steps', None)
-        last_step = kwargs.get('last_step', None)
         # set steps to plot
+        # Priority:
+        #   1. a list of steps
+        #   2. the last few steps
+        #   3. only the last step
         if type(steps) == list:
             for step in steps:
                 assert(type(step) == int)
             self.options['GRAPHICAL_STEPS'] = steps  # always plot the 0 th step
+        elif type(time_interval) is float and time_interval > 0.0:
+            times_ndarray = np.array(times)
+            time_series_from_interval = np.arange(0.0, times[-1], time_interval, dtype=float)
+            self.options['GRAPHICAL_STEPS'] = []
+            for i in range(time_series_from_interval.size):
+                _time = time_series_from_interval[i]
+                idx = np.argmin(abs(times_ndarray - _time))
+                self.options['GRAPHICAL_STEPS'].append(graphical_snaps[idx] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT']))
         elif type(last_step) == int:
             # by this option, plot the last few steps
             self.options['GRAPHICAL_STEPS'] = [0]  # always plot the 0 th step
@@ -139,7 +153,6 @@ class VISIT_OPTIONS(CASE_OPTIONS):
                 if step == max(0, graphical_snaps[i] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])):
                     found = True
                     self.options['GRAPHICAL_TIME_STEPS'].append(time_steps[i])
-            # todo
             if not found:
                 warnings.warn("%s: step %d is not found" % (Utilities.func_name(), step))
             # Utilities.my_assert(found, ValueError, "%s: step %d is not found" % (Utilities.func_name(), step))

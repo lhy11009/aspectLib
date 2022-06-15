@@ -95,6 +95,8 @@ def PlotCaseRun(case_path, **kwargs):
         -
     '''
     run_visual = kwargs.get('run_visual', 0)
+    step = kwargs.get('step', None)
+    time_interval = kwargs.get('time_interval', None)
     print("PlotCaseRun in TwoDSubduction0: operating")
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
@@ -102,11 +104,10 @@ def PlotCaseRun(case_path, **kwargs):
     # plot visit
     Visit_Options = VISIT_OPTIONS(case_path)
     # provide steps to plot and interpret
-    step = kwargs.get('step', None)
     if type(step) == int:
-        Visit_Options.Interpret(steps=[step])  # only plot a single step
+        Visit_Options.Interpret(steps=[step], time_interval=time_interval)  # only plot a single step
     else:
-        Visit_Options.Interpret(last_step=3)  # by default, plot the last 3 steps
+        Visit_Options.Interpret(last_step=3, time_interval=time_interval)  # by default, plot the last 3 steps
     odir = os.path.join(case_path, 'visit_scripts')
     if not os.path.isdir(odir):
         os.mkdir(odir)
@@ -171,6 +172,9 @@ def main():
     parser.add_argument('-t1', '--time1', type=float,
                         default=None,
                         help='Time1')
+    parser.add_argument('-ti', '--time_interval', type=float,
+                        default=None,
+                        help='Time interval, affecting the time steps to visualize')
     parser.add_argument('-s', '--step', type=int,
                         default=0,
                         help='step')
@@ -200,9 +204,9 @@ def main():
         assert(type(arg.time) == float and type(arg.time1) == float)
         time_range = [arg.time, arg.time1]
     if _commend == 'plot_case':
-        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization)
+        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization, time_interval=arg.time_interval)
     elif _commend == 'plot_case_in_dir':
-        PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization)
+        PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization, time_interval=arg.time_interval)
         pass
     elif _commend == 'prepare_result_step':
         pr_script = PrScriptToUse(arg.inputs, default_chunk, default_box)
