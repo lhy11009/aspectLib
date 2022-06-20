@@ -254,8 +254,12 @@ class GROUP():
                     feature = features[j]
                     x_j = binding[j]
                     values = feature.get_values()
-                    options = Utilities.write_dict_recursive(options,\
-                        feature.get_keys(), values[x_j])
+                    try:
+                        options = Utilities.write_dict_recursive(options,\
+                            feature.get_keys(), values[x_j])
+                    except IndexError:
+                        raise IndexError("values have length %d, while index is %d\
+It's likely a wrong value is assigned in the \"binding\" part of the json file." % (len(values), x_j))
                     if feature.if_append_abbrev(x_j):
                         if feature.if_abbrev_value():
                             name_appendix = get_name_appendix(feature.get_abbrev_value_options(), values[x_j]) # appendix by value
@@ -281,8 +285,10 @@ def get_name_appendix(options, value):
     scale = options[1]
     if type(value) == int:
         num_str = "%d" % (int(value * scale))
-    else:
+    elif value > 1.0:
         num_str = "%.1f" % (value * scale)
+    elif value < 1.0:
+        num_str = "%.2e" % (value * scale)
     return key + num_str
 
 

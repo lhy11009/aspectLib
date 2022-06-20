@@ -185,10 +185,12 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         peierls_scheme = self.values[self.start + 18]
         peierls_two_stage_time = self.values[self.start + 19]
         mantle_rheology_scheme = self.values[self.start + 20]
+        stokes_linear_tolerance = self.values[11]
+        end_time = self.values[12]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
-        peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme
+        peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time
 
     def to_configure_wb(self):
         '''
@@ -238,13 +240,21 @@ class CASE(CasesP.CASE):
     '''
     def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T,\
     sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
-    HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme):
+    HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme,\
+    peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
         else:
             if_fs_sides = False
         o_dict = self.idict.copy()
+        # solver schemes
+        if abs((stokes_linear_tolerance-0.1)/0.1) > 1e-6:
+            # default is negative, thus do nothing
+            o_dict["Solver parameters"]["Stokes solver parameters"]["Linear solver tolerance"] = str(stokes_linear_tolerance)
+        # time of computation
+        if abs((end_time - 60e6)/60e6) > 1e-6:
+            o_dict["End time"] = str(end_time)
         # Adiabatic surface temperature
         o_dict["Adiabatic surface temperature"] = str(potential_T)
         # geometry model

@@ -71,6 +71,9 @@ class CASE_OPT(Utilities.JSON_OPT):
         self.add_key("Type of the case", str, ["type"], '', nick='_type')
         self.add_key("Material model to use", str,\
          ["material model"], 'visco plastic', nick="material_model")
+        self.add_key("Linear solver toleracne", float,\
+         ["stokes solver", "linear solver tolerance"], 0.1, nick="stokes_linear_tolerance")
+        self.add_key("End time", float, ["end time"], 60e6, nick="end_time")
         pass
     
     def check(self):
