@@ -55,24 +55,30 @@ class SLAB(PARAVIEW_PLOT):
         isoVolume1, isoVolume1Display, _ = add_isovolume(self.solutionpvd, "sp_upper", (0.8, 1.0), name="slab_upper")
         Hide(isoVolume1, self.renderView1)  # hide data in view
 
- 
-    def plot_slice(self, filename_base):
+    def plot_slice(self, _source, field_name):
         '''
         Plot surface slice
         After the the plots are setup, this function is then called to execute the exportation of figures.
         '''
-        field_name = 'sp_upper'
-        slice1 = FindSource(field_name)
+        slice1 = FindSource(_source)
         SetActiveSource(slice1)
         renderView1 = GetActiveViewOrCreate('RenderView') 
-        # Show(slice1, renderView1, 'GeometryRepresentation')
+        Show(slice1, renderView1, 'GeometryRepresentation')
         # adjust colorbar and camera
         sp_upperLUT = GetColorTransferFunction(field_name)
         adjust_slice_colorbar_camera(self.renderView1, sp_upperLUT)
         # save figure
-        file_out = os.path.join(self.output_dir, "%s_%.4e.png" % (filename_base, self.time))
+        file_out = os.path.join(self.output_dir, "%s_%s_%.4e.png" % (_source, field_name, self.time))
         SaveScreenshot(file_out, self.renderView1, ImageResolution=[1148, 792])
         print("Figure saved: %s" % file_out)
+
+    def plot_step(self): 
+        '''
+        plot a step
+        '''
+        self.plot_slice("slice_trench_center_y", "sp_upper")
+        # self.plot_slice("slice_trench_edge_y", "sp_upper")
+        self.plot_slice("slice_surface_z", "sp_upper")
 
 
 def adjust_slice_colorbar_camera(renderView, colorLUT):
@@ -119,7 +125,7 @@ def main():
                 idx = all_available_graphical_snapshots.index(snapshot)
                 _time =  all_available_graphical_times[idx]
                 Slab.goto_time(_time)
-                Slab.plot_slice("trench_slice_edge")
+                Slab.plot_step()
                #  Slab(INITIAL_ADAPTIVE_REFINEMENT+step)
             else:
                 print ("step %s is not valid. There is no output" % step)
