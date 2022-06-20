@@ -71,6 +71,7 @@ class SLAB(PARAVIEW_PLOT):
         file_out = os.path.join(self.output_dir, "%s_%s_%.4e.png" % (_source, field_name, self.time))
         SaveScreenshot(file_out, self.renderView1, ImageResolution=[1148, 792])
         print("Figure saved: %s" % file_out)
+        Hide(slice1, renderView1)  # hide data in view
 
     def plot_step(self): 
         '''
