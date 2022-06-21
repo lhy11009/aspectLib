@@ -86,6 +86,8 @@ class VTKP(VtkPp.VTKP):
         slab_envelop_cell_list1: cell id of slab envelop with bigger theta, slab surface
         slab_trench: trench position, theta for a 'chunk' model and x for a 'box' model
         coord_100: position where slab is 100km deep, theta for a 'chunk' model and x for a 'box' model
+        vsp : velocity of the subducting plate
+        vov : velocity of the overiding plate
     '''
     def __init__(self, **kwargs):
         '''
@@ -103,8 +105,12 @@ class VTKP(VtkPp.VTKP):
         self.slab_trench = None
         self.coord_100 = None 
         self.dip_100 = None
+        self.vsp = None
+        self.vov = None
         self.slab_shallow_cutoff = 50e3  # depth limit to slab
         self.slab_envelop_interval = 5e3
+        self.velocity_query_depth = 5e3  # depth to look up plate velocities
+        self.velocity_query_disl_to_trench = 500e3  # distance to trench to look up plate velocities
         default_gravity_file = os.path.join(Utilities.var_subs('${ASPECT_SOURCE_DIR}'),\
         "data", "gravity-model", "prem.txt") 
         gravity_file = kwargs.get('gravity_file', default_gravity_file)
@@ -195,7 +201,6 @@ class VTKP(VtkPp.VTKP):
         theta100 = get_theta(x100, y100, self.geometry)
         self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
         pass
-
     
     def ExportSlabInfo(self):
         '''
@@ -203,6 +208,40 @@ class VTKP(VtkPp.VTKP):
         '''
         return self.trench, self.slab_depth, self.dip_100
 
+    # todo_export_velo
+    def ExportVelocity(self):
+        '''
+        Output sp and ov plate velocity
+        '''
+        assert(self.trench is not None)
+        if self.geometry == "chunk":
+            r_sp_query = self.Ro - self.velocity_query_depth
+            # theta_sp_query = self.trench - self.velocity_query_disl_to_trench / self.Ro
+            theta_sp_query = self.trench / 2.0
+            r_ov_query = self.Ro - self.velocity_query_depth
+            # theta_ov_query = self.trench + self.velocity_query_disl_to_trench / self.Ro
+            theta_ov_query = (self.trench + self.Xmax) / 2.0
+            x_sp_query = r_sp_query * np.cos(theta_sp_query)
+            y_sp_query = r_sp_query * np.sin(theta_sp_query)
+            x_ov_query = r_ov_query * np.cos(theta_ov_query)
+            y_ov_query = r_ov_query * np.sin(theta_ov_query)
+        elif self.geometry == "box":
+            # x_sp_query = self.trench - self.velocity_query_disl_to_trench
+            x_sp_query = self.trench / 2.0
+            y_sp_query = self.Ro - self.velocity_query_depth
+            # x_ov_query = self.trench + self.velocity_query_disl_to_trench
+            x_ov_query = (self.trench + self.Xmax) / 2.0
+            y_ov_query = self.Ro - self.velocity_query_depth
+        query_grid = np.zeros((2,2))
+        query_grid[0, 0] = x_sp_query
+        query_grid[0, 1] = y_sp_query
+        query_grid[1, 0] = x_ov_query
+        query_grid[1, 1] = y_ov_query
+        query_poly_data = VtkPp.InterpolateGrid(self.i_poly_data, query_grid, quiet=True)
+        query_vs = vtk_to_numpy(query_poly_data.GetPointData().GetArray('velocity'))
+        self.vsp = query_vs[0, :]
+        self.vov = query_vs[1, :]
+        return self.vsp, self.vov
 
     def SlabSurfDepthLookup(self, depth_lkp):
         '''
@@ -498,7 +537,8 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         vtu_snapshot (int): index of file in vtu outputs
     '''
     filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
-    assert(os.path.isfile(filein))
+    if not os.path.isfile(filein):
+        raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
     # vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis',\
@@ -507,15 +547,19 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     _time, step = Visit_Options.get_time_and_step(vtu_step)
     geometry = Visit_Options.options['GEOMETRY']
     Ro =  Visit_Options.options['OUTER_RADIUS']
-    VtkP = VTKP(geometry=geometry, Ro=Ro)
+    Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
+    VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
     VtkP.ReadFile(filein)
-    field_names = ['T', 'density', 'spcrust', 'spharz']
+    field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity']
     VtkP.ConstructPolyData(field_names, include_cell_center=True)
     VtkP.PrepareSlab(['spcrust', 'spharz'])
     trench, slab_depth, dip_100 = VtkP.ExportSlabInfo()
+    vsp, vov = VtkP.ExportVelocity()
+    vsp_magnitude = np.linalg.norm(vsp, 2)
+    vov_magnitude = np.linalg.norm(vov, 2)
     # generate outputs
-    outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e%-14.4e\n"\
-    % (vtu_step, step, _time, trench, slab_depth, dip_100)
+    outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e\n"\
+    % (vtu_step, step, _time, trench, slab_depth, dip_100, vsp_magnitude, vov_magnitude)
     print(outputs) # debug
     return vtu_step, outputs
 
@@ -735,7 +779,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
     pvtu_steps_o, outputs = ParallelWrapper.assemble()
     # last, output
     # header
-    file_header = "# 1: pvtu_step\n# 2: step\n# 3: time (yr)\n# 4: trench (rad)\n# 5: slab depth (m)\n# 6: 100km dip (rad)\n"
+    file_header = "# 1: pvtu_step\n# 2: step\n# 3: time (yr)\n# 4: trench (rad)\n# 5: slab depth (m)\n\
+# 6: 100km dip (rad)\n# 7: subducting plate velocity (m/yr)\n# 8: overiding plate velocity (m/yr)\n"
     output_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
     # output data
     if not os.path.isfile(output_file):
@@ -892,6 +937,8 @@ class SLABPLOT(LINEARPLOT):
         col_pvtu_time = self.header['time']['col']
         col_pvtu_trench = self.header['trench']['col']
         col_pvtu_slab_depth = self.header['slab_depth']['col']
+        col_pvtu_sp_v = self.header['subducting_plate_velocity']['col']
+        col_pvtu_ov_v = self.header['overiding_plate_velocity']['col']
         pvtu_steps = self.data[:, col_pvtu_step]
         times = self.data[:, col_pvtu_time]
         trenches = self.data[:, col_pvtu_trench]
@@ -904,6 +951,8 @@ class SLABPLOT(LINEARPLOT):
         slab_depthes = self.data[:, col_pvtu_slab_depth]
         trench_velocities = np.gradient(trenches_migration_length, times)
         sink_velocities = np.gradient(slab_depthes, times)
+        sp_velocities = self.data[:, col_pvtu_sp_v]
+        ov_velocities = self.data[:, col_pvtu_ov_v]
         # trench velocity
         # start figure
         fig = plt.figure(tight_layout=True, figsize=(15, 10)) 
@@ -912,12 +961,11 @@ class SLABPLOT(LINEARPLOT):
         # 1: trench & slab movement
         ax = fig.add_subplot(gs[0, 0:2]) 
         ax_tx = ax.twinx()
-        _color = 'tab:blue'
-        lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, '-', color=_color, label='trench position (km)')
+        lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, '-', color='tab:orange', label='trench position (km)')
         ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
-        ax.set_ylabel('Trench Position (km)', color=_color)
+        ax.set_ylabel('Trench Position (km)', color="tab:orange")
         ax.tick_params(axis='x', labelbottom=False) # labels along the bottom edge are off
-        ax.tick_params(axis='y', labelcolor=_color)
+        ax.tick_params(axis='y', labelcolor="tab:orange")
         ax.grid()
         lns1 = ax_tx.plot(times/1e6, slab_depthes/1e3, 'k-', label='slab depth (km)')
         ax_tx.set_ylabel('Slab Depth (km)')
@@ -926,20 +974,23 @@ class SLABPLOT(LINEARPLOT):
         # ax.legend(lns, labs)
         # 2: velocity
         ax = fig.add_subplot(gs[1, 0:2]) 
-        _color = 'tab:blue'
         ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
-        lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color=_color, label='trench velocity (cm/yr)')
-        ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='trench velocity (cm/yr)')
+        lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color='tab:orange', label='trench velocity (cm/yr)')
+        lns1 = ax.plot(times/1e6, sp_velocities*1e2, '-', color='tab:blue', label='subducting plate (cm/yr)')
+        lns2 = ax.plot(times/1e6, ov_velocities*1e2, '-', color='tab:purple', label='overiding velocity (cm/yr)')
+        ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='sinking velocity (cm/yr)')
         ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
         ax.set_ylim((-10, 10))
         ax.set_ylabel('Velocity (cm/yr)')
         ax.set_xlabel('Times (Myr)')
         ax.grid()
+        ax.legend()
         # 2.1: velocity smaller, no y limit, to show the whole curve
         ax = fig.add_subplot(gs[2, 0]) 
-        _color = 'tab:blue'
         ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
-        lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color=_color, label='trench velocity (cm/yr)')
+        lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color="tab:orange", label='trench velocity (cm/yr)')
+        lns1 = ax.plot(times/1e6, sp_velocities*1e2, '-', color='tab:blue', label='subducting plate (cm/yr)')
+        lns2 = ax.plot(times/1e6, ov_velocities*1e2, '-', color='tab:purple', label='overiding velocity (cm/yr)')
         ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='trench velocity (cm/yr)')
         ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
         ax.set_ylabel('Velocity (whole, cm/yr)')

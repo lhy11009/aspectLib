@@ -104,6 +104,7 @@ class VTKP():
         self.grav_data = None  # a 2 column array to save the gravity data (depth in meter and grav_acc)
         self.geometry = kwargs.get('geometry', 'chunk')
         self.Ro = kwargs.get('Ro', 6371e3)
+        self.Xmax = kwargs.get('Xmax', 61.0 * np.pi / 180.0)
         pass
 
     def ReadFile(self, filein):

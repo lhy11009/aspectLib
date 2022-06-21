@@ -144,6 +144,30 @@ def test_export_slab_info_cart():
     assert(abs(slab_depth - 220136.75)/220136.75 < 1e-6)
     assert(abs(dip_100- 0.6702772823940486)/0.6702772823940486 < 1e-6)
 
+
+def test_export_velocity():
+    '''
+    test function ExportVelocity
+    assert:
+        1. velocity of the overiding plate and the subducting plate
+    '''
+    case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp')
+    output_path = os.path.join(test_dir, "vtkp_readfile")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    os.mkdir(output_path)
+    filein = os.path.join(case_dir, "output", "solution", "solution-00002.pvtu")
+    assert(os.path.isfile(filein))
+    VtkP = VTKP()
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity']
+    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.PrepareSlab(['spcrust', 'spharz'])
+    vsp, vov = VtkP.ExportVelocity()
+    assert(abs(vsp[0]) < 1e-6 and abs(vsp[1]) < 1e-6 and abs(vsp[2]) < 1e-6)  # thest two values are 0.0
+    assert(abs(vov[0]) < 1e-6 and abs(vov[1]) < 1e-6 and abs(vov[2]) < 1e-6)
+    # assert
+
 # notes
     
 # to check for error message

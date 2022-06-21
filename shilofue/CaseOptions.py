@@ -140,6 +140,7 @@ class CASE_OPTIONS(Utilities.CODESUB):
         self.options["Y_EXTENT"] = -1.0
         if geometry == 'chunk':
             self.options["OUTER_RADIUS"]  = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
+            self.options["XMAX"] = float(self.idict['Geometry model']['Chunk']['Chunk maximum longitude'])
         elif geometry == 'box':
             if self.options['DIMENSION'] == 2:
                 self.options["OUTER_RADIUS"]  = float(self.idict['Geometry model']['Box']['Y extent'])
@@ -147,6 +148,7 @@ class CASE_OPTIONS(Utilities.CODESUB):
                 self.options["OUTER_RADIUS"]  = float(self.idict['Geometry model']['Box']['Z extent']) 
             else: 
                 raise ValueError("%d is not a dimension option" % self.options['DIMENSION'])
+            self.options["XMAX"] = float(self.idict['Geometry model']['Box']['X extent'])
     
     def get_geometry(self):
         '''
