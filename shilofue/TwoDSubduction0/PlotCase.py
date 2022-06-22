@@ -221,11 +221,11 @@ def main():
         Plotter.PlotPrepareResultStep(arg.inputs, pr_script, arg.step)
     elif _commend == 'animate_case':
         pr_script = PrScriptToUse(arg.inputs, default_chunk, default_box)
-        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, [PlotCase.PlotCaseRun, PlotCaseRun])
+        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, []) # note we don't want to replot things here
         PlotCase.AnimateCaseResults(Plotter.PlotPrepareResultStep, arg.inputs, pr_script, time_interval=arg.time_interval)
     elif _commend == 'animate_case_in_dir':
         pr_script = PrScriptToUse(arg.inputs, default_chunk, default_box)
-        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, [PlotCase.PlotCaseRun, PlotCaseRun])
+        Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, [PlotCaseRun])
         PlotCase.AnimateCombinedDir(Plotter.PlotPrepareResultStep, arg.inputs, pr_script)
     elif _commend == 'morph_case':
         # slab_morphology, input is the case name

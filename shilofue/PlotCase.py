@@ -254,6 +254,8 @@ def AnimateCaseResults(PrepareS, case_path, pr_script, **kwargs):
     create animation
     this function will be called upon with the "animate_case" option
     of each project.
+    Note that his would plot, at each step, the Statistic & Newton solver files again
+    by default, so it's better to not do that.
     Inputs:
         PrepareS: a function to plot case result for a single step
             I will pass "Plotter.PlotPrepareResultStep" for each
