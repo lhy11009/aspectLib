@@ -252,31 +252,31 @@ def PlotCaseCombinedDir(modules, dir, **kwargs):
 def AnimateCaseResults(PrepareS, case_path, pr_script, **kwargs):
     '''
     create animation
+    this function will be called upon with the "animate_case" option
+    of each project.
     Inputs:
+        PrepareS: a function to plot case result for a single step
+            I will pass "Plotter.PlotPrepareResultStep" for each
+            project to this function.
         case_path(str): path to the case
         kwargs(dict):
             step_range(list of 2): a list of steps to animate
             name(str): name of the animation
     '''
+    # initiation, note that we use the interfaces in VISIT_OPTIONS
+    # class to figure out the steps to plot
     name = kwargs.get('name', 'ani')  # name of the animation
+    time_interval = kwargs.get('time_interval', None)
     VisitOptions = PlotVisit.VISIT_OPTIONS(case_path)
-    VisitOptions.Interpret()
-    last_step = VisitOptions.last_step
-    print('last_step: ', last_step)
-    try:
-        step_range = kwargs['step_range']
-    except KeyError:
-        steps = range(0, last_step+1)  # no range given, take all
-    else:
-        # with a range, compare the left and right limits
-        step_range_fixed = [max(step_range[0], 0), min(step_range[1], last_step)]
-        steps = range(step_range_fixed[0], step_range_fixed[1]+1)
+    VisitOptions.Interpret(time_interval=time_interval)
+    steps = VisitOptions.options['GRAPHICAL_STEPS']
     # plot results
     filenames = []
     for step in steps:
         # prepare results, if the figure is already generated, skip
         filename = PrepareS(case_path, pr_script, step, update=False)
         filenames.append(filename)
+    # use the imageio module to generate gif
     o_dir = os.path.dirname(filenames[-1])  # just use this directory as output
     o_path = os.path.join(o_dir, "%s.gif" % name)
     print("%s: saving file %s" % (Utilities.func_name(), o_path))

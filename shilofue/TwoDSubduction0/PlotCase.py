@@ -192,6 +192,9 @@ def main():
         pass
     arg = parser.parse_args(_options)
 
+    # this two are the json files for the order of options to do in imageio
+    # following the options defined in this two files, the results would be a combination of result for
+    # one single computation step.
     default_chunk = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "figure_step_template.json")
     default_box = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "figure_step_template_box.json")
 
@@ -219,7 +222,7 @@ def main():
     elif _commend == 'animate_case':
         pr_script = PrScriptToUse(arg.inputs, default_chunk, default_box)
         Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, [PlotCase.PlotCaseRun, PlotCaseRun])
-        PlotCase.AnimateCaseResults(Plotter.PlotPrepareResultStep, arg.inputs, pr_script)
+        PlotCase.AnimateCaseResults(Plotter.PlotPrepareResultStep, arg.inputs, pr_script, time_interval=arg.time_interval)
     elif _commend == 'animate_case_in_dir':
         pr_script = PrScriptToUse(arg.inputs, default_chunk, default_box)
         Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, [PlotCase.PlotCaseRun, PlotCaseRun])
