@@ -27,6 +27,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
+from shilofue.Rheology import RHEOLOGY_OPR
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -73,6 +74,7 @@ class CASE_OPT(CasesP.CASE_OPT):
                     ['plate setup', 'sp relative density'], 80.0, nick='sp_relative_density')
         self.add_key("Global refinement", int, ['refinement', 'global refinement'], 4, nick='global_refinement')
         self.add_key("Adaptive refinement", int, ['refinement', 'adaptive refinement'], 2, nick='adaptive_refinement')
+        self.add_key("mantle rheology", str, ['mantle rheology', 'scheme'], "HK03_wet_mod", nick='mantle_rheology_scheme')
 
     
     def check(self):
@@ -104,11 +106,12 @@ class CASE_OPT(CasesP.CASE_OPT):
         sp_relative_density = self.values[self.start+15]
         global_refinement = self.values[self.start+16]
         adaptive_refinement = self.values[self.start+17]
+        mantle_rheology_scheme = self.values[self.start+18]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
             sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
-            adaptive_refinement
+            adaptive_refinement, mantle_rheology_scheme
         
 
     def to_configure_wb(self):
@@ -133,7 +136,7 @@ class CASE(CasesP.CASE):
     def configure_prm(self, _type, if_wb, geometry, box_width, box_length, box_depth,\
     sp_width, trailing_length, reset_trailing_morb, ref_visc, relative_visc_plate, friction_angle,\
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
-    global_refinement, adaptive_refinement):
+    global_refinement, adaptive_refinement, mantle_rheology_scheme):
         '''
         Configure prm file
         '''
@@ -187,6 +190,16 @@ class CASE(CasesP.CASE):
                    'background: %.4e, sp_upper: %.4e, sp_lower: %.4e'\
                    % (reference_density, sp_density, sp_density)
         # rheology
+        # 1. mantle rheology
+        if _type == 's07T':
+            da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'ThDSubduction', "depth_average.txt")
+            assert(os.path.isfile(da_file))
+            Operator = RHEOLOGY_OPR()
+            # read profile
+            Operator.ReadProfile(da_file)
+            rheology = Operator.MantleRheology_v0(rheology=mantle_rheology_scheme, save_profile=1)
+            s07T_assign_mantle_rheology(o_dict, rheology)    
+        # 2. Yielding criteria
         if _type == 's07':
             prefactor_ref = 1.0 / 2.0 / ref_visc  # prefactors for diffusion creep
             prefactor_plate = 1.0 / 2.0 / (ref_visc * relative_visc_plate)
@@ -245,6 +258,94 @@ def wb_configure_plate_schellart07(wb_dict, sp_width, sp_length, trailing_width)
     sdict = o_dict['features'][i0]
     sdict["coordinates"] = [[sp_length, -sp_width], [sp_length, sp_width]]
     o_dict['features'][i0] = sdict
+
+
+def s07T_assign_mantle_rheology(o_dict, rheology):
+    '''
+    Assign mantle rheology in the s07T model
+    Note this model has 2 compositions:
+        sp_upper and sp_lower
+    ''' 
+    diff_crust_A = 5e-21
+    diff_crust_m = 0.0
+    diff_crust_E = 0.0
+    diff_crust_V = 0.0
+    disl_crust_A = 5e-32
+    disl_crust_n = 1.0
+    disl_crust_E = 0.0
+    disl_crust_V = 0.0
+    diffusion_creep = rheology['diffusion_creep']
+    dislocation_creep = rheology['dislocation_creep']
+    diffusion_creep_lm = rheology['diffusion_lm']
+    diff_A = diffusion_creep['A']
+    diff_m = diffusion_creep['m']
+    diff_n = diffusion_creep['n']
+    diff_E = diffusion_creep['E']
+    diff_V = diffusion_creep['V']
+    diff_d = diffusion_creep['d']
+    disl_A = dislocation_creep['A']
+    disl_m = dislocation_creep['m']
+    disl_n = dislocation_creep['n']
+    disl_E = dislocation_creep['E']
+    disl_V = dislocation_creep['V']
+    disl_d = dislocation_creep['d']
+    diff_A_lm = diffusion_creep_lm['A']
+    diff_m_lm = diffusion_creep_lm['m']
+    diff_n_lm = diffusion_creep_lm['n']
+    diff_E_lm = diffusion_creep_lm['E']
+    diff_V_lm = diffusion_creep_lm['V']
+    diff_d_lm = diffusion_creep_lm['d']
+    disl_A_lm = 5.0000e-32
+    disl_n_lm = 1.0
+    disl_E_lm = 0.0
+    disl_V_lm = 0.0
+    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep'] = \
+        "background: %.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e"\
+        % (diff_A, diff_A_lm, diff_crust_A, diff_A, diff_A_lm, diff_A, diff_A_lm)
+
+    o_dict['Material model']['Visco Plastic TwoD']['Grain size exponents for diffusion creep'] = \
+        "background: %.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e"\
+        % (diff_m, diff_m_lm, diff_crust_m, diff_m, diff_m_lm, diff_m, diff_m_lm)
+    
+    o_dict['Material model']['Visco Plastic TwoD']['Activation energies for diffusion creep'] = \
+        "background: %.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e"\
+        % (diff_E, diff_E_lm, diff_crust_E, diff_E, diff_E_lm, diff_E, diff_E_lm)
+
+    o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for diffusion creep'] = \
+        "background: %.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e"\
+        % (diff_V, diff_V_lm, diff_crust_V, diff_V, diff_V_lm, diff_V, diff_V_lm)
+    
+    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for dislocation creep'] = \
+        "background: %.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e"\
+        % (disl_A, disl_A_lm, disl_crust_A, disl_A, disl_A_lm, disl_A, disl_A_lm)
+
+    o_dict['Material model']['Visco Plastic TwoD']['Stress exponents for dislocation creep'] = \
+        "background: %.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e"\
+        % (disl_n, disl_n_lm, disl_crust_n, disl_n, disl_n_lm, disl_n, disl_n_lm)
+    
+    o_dict['Material model']['Visco Plastic TwoD']['Activation energies for dislocation creep'] = \
+        "background: %.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e"\
+        % (disl_E, disl_E_lm, disl_crust_E, disl_E, disl_E_lm, disl_E, disl_E_lm)
+
+    o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for dislocation creep'] = \
+        "background: %.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e"\
+        % (disl_V, disl_V_lm, disl_crust_V, disl_V, disl_V_lm, disl_V, disl_V_lm)
 
 
 

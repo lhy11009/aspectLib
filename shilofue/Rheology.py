@@ -241,6 +241,50 @@ class RHEOLOGY_PRM():
             }
         
         
+        # modified creep laws from Hirth & Kohlstedt 2003
+        # I bring the values to the limit of the range
+        # for detail, refer to magali's explain_update_modHK03_rheology.pdf file
+        # this is specifically the one I used for the TwoD models.
+        # Combined with the usage of function "MantleRheology_v0", then same rheology
+        # could be reproduced
+        self.HK03_wet_mod_2d_diff = \
+            {
+                # "A" : 10**6.9,  # MPa^(-n-r)*um**p/s
+                "A" : 7.1768e6,  # MPa^(-n-r)*um**p/s
+                "p" : 3.0,
+                "r" : 1.0,
+                "n" : 1.0,
+                "E" : 375e3 - 40e3,
+                "V" : 23e-6 -5.5e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0,
+                "wet": 1.0  # I use this to mark this is a wet rheology, so I need to account for V and E for water later.
+            }
+
+        self.HK03_wet_mod_2d_disl = \
+            {
+                "A" : 10**2.65,
+                "p" : 0.0,
+                "r" : 1.0,
+                "n" : 3.5,
+                "E" : 520e3 + 20e3,
+                "V" : 24e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0,
+                "wet" : 1.0
+            }
+        
+        
+        self.water = \
+            {
+                "A" : 87.75,             # H/(10^6*Si)/MPa
+                "E" : 50e3,                     # J/mol +/-2e3
+                "V" : 10.6e-6                     # m^3/mol+/-1
+            }
+
+
+        
+        
         self.water = \
             {
                 "A" : 87.75,             # H/(10^6*Si)/MPa
@@ -300,7 +344,7 @@ class RHEOLOGY_OPR():
         # < 410 km
         depth_up = 410e3
         depth_low = 660e3
-        mask_up = (self.depths < depth_up)
+        mask_up = (self.depths <= depth_up)
         eta_diff[mask_up] = CreepRheology(diffusion_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up])
         eta_disl[mask_up] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up], use_effective_strain_rate=True)
         eta[mask_up] = ComputeComposite(eta_diff[mask_up], eta_disl[mask_up])
@@ -320,8 +364,9 @@ class RHEOLOGY_OPR():
         jump_lower_mantle = kwargs.get('jump_lower_mantle', 30.0)
         # values for computing V
         depth_lm = 660e3
-        T_lm_mean = T_func(1700e3)
-        P_lm_mean = P_func(1700e3)
+        depth_for_lm_mean = min(np.max(self.depths), 1700e3)
+        T_lm_mean = T_func(depth_for_lm_mean)
+        P_lm_mean = P_func(depth_for_lm_mean)
         depth_max = self.depths[-1] - 10e3
         lm_grad_T = (T_func(depth_max) - T_func(depth_lm)) / (depth_max - depth_lm)
         lm_grad_P = (P_func(depth_max) - P_func(depth_lm)) / (depth_max - depth_lm)
@@ -376,7 +421,7 @@ class RHEOLOGY_OPR():
             axs[0].set_ylabel('Depth [km]') 
             axs[0].set_xlabel('Pressure [GPa] P660: %.4e' % (P660), color=color) 
             # axs[0].invert_yaxis()
-            ylim=[2890, 0.0]
+            ylim=[np.ceil(np.max(self.depths) / 100e3) * 100.0, 0.0]
             axs[0].set_ylim(ylim)
             # ax2: temperature
             color = 'tab:red'
