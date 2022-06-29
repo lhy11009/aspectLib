@@ -183,6 +183,7 @@ class RHEOLOGY_PRM():
         
         # modified creep laws from Hirth & Kohlstedt 2003
         # for detail, refer to magali's explain_update_modHK03_rheology.pdf file
+        # 'wet' indicates this has to applied with a rheology of water
         self.HK03_wet_mod_diff = \
             {
                 # "A" : 10**6.9,  # MPa^(-n-r)*um**p/s
@@ -309,6 +310,9 @@ class RHEOLOGY_OPR():
         self.depths = None
         self.pressures = None
         self.tempertures = None
+        self.output_profile = None # for the figure plotted
+        self.output_json = None
+        self.output_aspect_json = None
         pass
     
     def ReadProfile(self, file_path):
@@ -318,6 +322,7 @@ class RHEOLOGY_OPR():
         '''
         Derive mantle rheology from an aspect profile
         '''
+        use_effective_strain_rate = kwargs.get('use_effective_strain_rate', True)
         strain_rate = kwargs.get('strain_rate', 1e-15)
         eta_diff = np.ones(self.depths.size)
         eta_disl = np.ones(self.depths.size)
@@ -346,7 +351,7 @@ class RHEOLOGY_OPR():
         depth_low = 660e3
         mask_up = (self.depths <= depth_up)
         eta_diff[mask_up] = CreepRheology(diffusion_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up])
-        eta_disl[mask_up] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up], use_effective_strain_rate=True)
+        eta_disl[mask_up] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up], use_effective_strain_rate=use_effective_strain_rate)
         eta[mask_up] = ComputeComposite(eta_diff[mask_up], eta_disl[mask_up])
 
 
@@ -355,7 +360,7 @@ class RHEOLOGY_OPR():
         if True:
             # MTZ from olivine rheology
             eta_diff[mask_mtz] = CreepRheology(diffusion_creep, strain_rate, self.pressures[mask_mtz], self.temperatures[mask_mtz])
-            eta_disl[mask_mtz] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_mtz], self.temperatures[mask_mtz], use_effective_strain_rate=True)
+            eta_disl[mask_mtz] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_mtz], self.temperatures[mask_mtz], use_effective_strain_rate=use_effective_strain_rate)
             eta[mask_mtz] = ComputeComposite(eta_diff[mask_mtz], eta_disl[mask_mtz])
         
         # lower mantle
@@ -374,7 +379,7 @@ class RHEOLOGY_OPR():
         P660 = P_func(depth_lm)
         eta_diff660 = CreepRheology(diffusion_creep, strain_rate, P660, T660)
         # dislocation creep
-        eta_disl660 = CreepRheology(dislocation_creep, strain_rate, P660, T660, use_effective_strain_rate=True)
+        eta_disl660 = CreepRheology(dislocation_creep, strain_rate, P660, T660, use_effective_strain_rate=use_effective_strain_rate)
         eta660 = ComputeComposite(eta_diff660, eta_disl660)
         diff_lm = diffusion_creep.copy()
         # diff_lm['V'] = LowerMantleV(diffusion_creep['E'], T_lm_mean, P_lm_mean, lm_grad_T, lm_grad_P) # compute from less variation criteria
@@ -401,7 +406,7 @@ class RHEOLOGY_OPR():
         # convert aspect rheology
         diffusion_creep_aspect = Convert2AspectInput(diffusion_creep)
         diffusion_lm_aspect = Convert2AspectInput(diff_lm)
-        dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=True)
+        dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=use_effective_strain_rate)
         constrained_rheology_aspect = {'diffusion_creep': diffusion_creep_aspect, 'dislocation_creep': dislocation_creep_aspect, 'diffusion_lm': diffusion_lm_aspect}
         if save_json == 1:
             json_path = os.path.join(RESULT_DIR, "mantle_profile_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
@@ -412,6 +417,8 @@ class RHEOLOGY_OPR():
                 json.dump(constrained_rheology_aspect, fout)
             print("New json: %s" % json_path)
             print("New json: %s" % json_path_aspect)
+            self.output_json = json_path
+            self.output_json_aspect = json_path_aspect
         # plot
         if save_profile == 1:
             # plots
@@ -446,6 +453,7 @@ class RHEOLOGY_OPR():
             fig.savefig(fig_path)
             print("New figure: %s" % fig_path)
             plt.close()
+            self.output_profile = fig_path
             pass
         return constrained_rheology_aspect
     

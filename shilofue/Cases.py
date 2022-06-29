@@ -206,6 +206,8 @@ class CASE():
         self.wb_dict = {}
         self.model_stages = 1
         self.additional_idicts = []
+        self.output_files = [] # for saving the path of files and images output from this class
+        self.output_imgs = []
         if type(inputs)==dict:
             # direct read if dict is given
             print("    Read inputs from a dictionary")
@@ -250,6 +252,12 @@ class CASE():
            # remove old ones 
            rmtree(case_dir)
         os.mkdir(case_dir)
+        output_files_dir = os.path.join(case_dir, 'configurations')
+        os.mkdir(output_files_dir)
+        img_dir = os.path.join(case_dir, 'img')
+        os.mkdir(img_dir)
+        output_img_dir = os.path.join(img_dir, 'initial_condition')
+        os.mkdir(output_img_dir)
         # file output
         prm_out_path = os.path.join(case_dir, "case.prm")  # prm for running the case
         wb_out_path = os.path.join(case_dir, "case.wb")  # world builder file
@@ -275,6 +283,15 @@ class CASE():
             with open(wb_out_path, 'w') as fout:
                 json.dump(self.wb_dict, fout, indent=2)
         print("New case created: %s" % case_dir)
+        # copy paste files and figures generated
+        for path in self.output_files:
+            base_name = os.path.basename(path)
+            path_out = os.path.join(output_files_dir, base_name)
+            copy2(path, path_out)
+        for path in self.output_imgs:
+            base_name = os.path.basename(path)
+            path_out = os.path.join(output_img_dir, base_name)
+            copy2(path, path_out)
         return case_dir
 
     def configure(self, func, config, **kwargs):

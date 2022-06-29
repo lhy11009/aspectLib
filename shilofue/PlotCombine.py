@@ -56,6 +56,11 @@ Examples of usage: \n\
     %s\n\
         " % Pc_opt.document())
 
+
+####
+# Classes and functions for the previous function - combine figures from different figures in a big one
+####
+
 class PC_OPT(Utilities.JSON_OPT):
     '''
     Define a class to work with json files
@@ -351,6 +356,17 @@ def PrepareResults(json_path):
     pillow_opt = Utilities.PILLOW_OPT()
     pillow_opt.read_json(json_path)
     Utilities.PillowRun(*pillow_opt.to_pillow_run())
+
+####
+# 06292022: new functions combines one kind of figures at a time (e.g. run time, visualization)
+####
+# todo_combine
+class Plot_Combine_RunTime(Plot_Combine):
+    '''
+    Combine results from run time outputs
+    '''
+    def __call__(self):
+        pass
 
 
 def main():
