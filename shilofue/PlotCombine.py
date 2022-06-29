@@ -20,13 +20,18 @@ descriptions
 """ 
 import numpy as np
 import sys, os, argparse
-# import json, re
+import json
 # import pathlib
 # import subprocess
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from matplotlib import cm
+from matplotlib import gridspec
+from matplotlib import patches as mpatches
 from PIL import Image, ImageDraw, ImageFont
+from shilofue.PlotRunTime import PlotFigure as RunTimePlotFigure
+from shilofue.PlotStatistics import STATISTICS_PLOT
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -39,6 +44,7 @@ import Utilities
 
 def Usage():
     Pc_opt = PC_OPT()
+    # todo_combine
     print("Combines separate figures to a bigger one.\
 Also combines figures from individual cases to a bigger one.\n\
 \n\
@@ -55,6 +61,89 @@ Examples of usage: \n\
   - options in the json file:\n\
     %s\n\
         " % Pc_opt.document())
+
+####
+# A base class for the task of combining plots
+####
+class PC_OPT_BASE(Utilities.JSON_OPT):
+    def __init__(self):
+        '''
+        initiation of the class
+        '''
+        Utilities.JSON_OPT.__init__(self)
+        self.add_key("Path of the root directory", str, ["case_root"], '', nick="case_root")
+        self.add_key("Relative Path of case directorys", list, ["cases"], ['foo'], nick="case_relative_paths")
+        self.add_key("Width of one subplot. This is set to -1.0 by default. By that, the width is determined with the \"anchor\" plot within the sequence",\
+             float, ["width"], -1.0, nick="width")
+        self.add_key("Use relative path for the output directory", int, ["output directory", "relative"],\
+        0, nick="output_dir_relative")
+        self.add_key("Path for the output directory", str, ["output directory", "path"], '', nick="output_dir_path")
+        self.n_cases = len(self.values[1])  # number of cases
+    
+    def check(self):
+        '''
+        check to see if these values make sense
+        '''
+        # check existence of cases
+        case_root = self.values[0]
+        case_relative_paths = self.values[1]
+        for case_relative_path in case_relative_paths:
+            case_path = os.path.join(Utilities.var_subs(case_root), case_relative_path)
+            if not os.path.isdir(case_path):
+                raise FileExistsError("Directory %s doesn't exist." % case_path)
+        # make the output directory if not existing
+        output_dir_relative = self.values[3]
+        output_dir_path = self.values[4]
+        if output_dir_relative == 1:
+            output_dir = os.path.join(Utilities.var_subs(case_root), output_dir_path)
+        else:
+            output_dir = Utilities.var_subs(output_dir_path)
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
+    
+    def get_case_absolute_paths(self):
+        '''
+        return the absolute paths of cases
+        '''
+        case_root = self.values[0]
+        case_relative_paths = self.values[1]
+        case_absolute_paths = []
+        for case_relative_path in case_relative_paths:
+            case_path = os.path.join(Utilities.var_subs(case_root), case_relative_path)
+            case_absolute_paths.append(case_path)
+        return case_absolute_paths
+
+    def get_case_names(self):
+        '''
+        return the names of cases
+        '''
+        case_names = []
+        for case_relative_path in case_relative_paths:
+            case_name = os.path.basename(case_relative_path)
+            case_names.append(case_name)
+        return case_names
+
+    def get_output_dir(self):
+        '''
+        return the output dir
+        '''
+        case_root = self.values[0]
+        case_relative_paths = self.values[1]
+        output_dir_relative = self.values[3]
+        output_dir_path = self.values[4]
+        if output_dir_relative == 1:
+            output_dir = os.path.join(Utilities.var_subs(case_root), output_dir_path)
+        else:
+            output_dir = Utilities.var_subs(output_dir_path)
+        return output_dir
+    
+    def get_color_json_output_path(self):
+        '''
+        return a path to output the color scheme to a json file
+        '''
+        output_dir = self.get_output_dir()
+        color_json_output_path = os.path.join(output_dir, 'color.json')
+        return color_json_output_path
 
 
 ####
@@ -361,12 +450,207 @@ def PrepareResults(json_path):
 # 06292022: new functions combines one kind of figures at a time (e.g. run time, visualization)
 ####
 # todo_combine
-class Plot_Combine_RunTime(Plot_Combine):
+class PC_RUNTIME_OPT(PC_OPT_BASE):
+    '''
+    Define a class to work with json files
+    '''
+    def __init__(self):
+        '''
+        Initiation, first perform parental class's initiation,
+        then perform daughter class's initiation.
+        '''
+        PC_OPT_BASE.__init__(self)
+        self.start = self.number_of_keys()
+
+    def to_init(self):
+        '''
+        interfaces to the __init__ function
+        '''
+        case_absolute_paths = self.get_case_absolute_paths()
+        return case_absolute_paths
+
+    def to_call(self):
+        '''
+        interfaces to the __call__ function
+        '''
+        width = self.values[2]
+        output_dir = self.get_output_dir()
+        return width, output_dir
+
+
+
+# todo_combine
+class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
     '''
     Combine results from run time outputs
     '''
-    def __call__(self):
+    def __init__(self, case_paths):
+        PLOT_COMBINE.__init__(self, case_paths)
+        UnitConvert = Utilities.UNITCONVERT()
+        self.StatisticPlotter = STATISTICS_PLOT("statistic_plot", unit_convert=UnitConvert)
         pass
+
+    def __call__(self, width, output_dir, **kwargs):
+        '''
+        perform combination
+        Inputs:
+            sizes: (list of 2) - size of the plot
+            output_dir: directory to output to
+        '''
+        _name = "combine_runtime"
+        _title = "Comparing run-time results"
+        color_method = kwargs.get('color_method', 'generated')
+        dump_color_to_json = kwargs.get('dump_color_to_json', None)
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
+        # initiate
+        case_names = []  # names of cases
+        for i in range(self.n_cases):
+            case_name = os.path.basename(self.cases[i])
+            case_names.append(case_name)
+        ni = 3  # number of plots along 1st and 2nd dimension
+        nj = 2
+        fig = plt.figure(tight_layout=True, figsize=[5*nj, 5*ni])
+        gs = gridspec.GridSpec(ni, nj)
+        colors_dict = {}
+        if color_method == 'generated':
+            normalizer = [ float(i)/(self.n_cases-1) for i in range(self.n_cases) ]
+            colors = cm.rainbow(normalizer)
+            for i in range(self.n_cases):
+                case_name = os.path.basename(self.cases[i])
+                colors_dict[case_name] = list(colors[i])
+        else:
+            raise ValueError('Not implemented')
+        # plot number of cells
+        ax = fig.add_subplot(gs[1, 0])
+        for i in range(self.n_cases):
+            case_name = os.path.basename(self.cases[i])
+            # plot results and combine
+            statistic_file_path = os.path.join(self.cases[i], 'output', 'statistics')
+            self.StatisticPlotter.ReadData(statistic_file_path)
+            self.StatisticPlotter.ReadHeader(statistic_file_path)
+            self.StatisticPlotter.PlotNumberOfCells(axis=ax, olor=colors[i])
+            pass
+        ax.legend()
+        # plot degree of freedoms
+        ax = fig.add_subplot(gs[1, 1])
+        for i in range(self.n_cases):
+            if i == 0:
+                label_all = True
+            else:
+                label_all = False
+            case_name = os.path.basename(self.cases[i])
+            # plot results and combine
+            statistic_file_path = os.path.join(self.cases[i], 'output', 'statistics')
+            self.StatisticPlotter.ReadData(statistic_file_path)
+            self.StatisticPlotter.ReadHeader(statistic_file_path)
+            self.StatisticPlotter.PlotDegreeOfFreedom(axis=ax, color=colors[i], label_all=label_all)
+            pass
+        ax.legend()
+        # plot temperatures
+        ax = fig.add_subplot(gs[2, 0])
+        for i in range(self.n_cases):
+            if i == 0:
+                label_all = True
+            else:
+                label_all = False
+            case_name = os.path.basename(self.cases[i])
+            # plot results and combine
+            statistic_file_path = os.path.join(self.cases[i], 'output', 'statistics')
+            self.StatisticPlotter.ReadData(statistic_file_path)
+            self.StatisticPlotter.ReadHeader(statistic_file_path)
+            self.StatisticPlotter.PlotTemperature(axis=ax, color=colors[i], label_all=label_all)
+            pass
+        ax.legend()
+        # plot velocities
+        ax = fig.add_subplot(gs[2, 1])
+        for i in range(self.n_cases):
+            if i == 0:
+                label_all = True
+            else:
+                label_all = False
+            case_name = os.path.basename(self.cases[i])
+            # plot results and combine
+            statistic_file_path = os.path.join(self.cases[i], 'output', 'statistics')
+            self.StatisticPlotter.ReadData(statistic_file_path)
+            self.StatisticPlotter.ReadHeader(statistic_file_path)
+            self.StatisticPlotter.PlotVelocity(axis=ax, color=colors[i], label_all=label_all)
+            pass
+        ax.legend()
+        # plot number of non-linear iterations
+        ax = fig.add_subplot(gs[2, 1])
+        for i in range(self.n_cases):
+            if i == 0:
+                label_all = True
+            else:
+                label_all = False
+            case_name = os.path.basename(self.cases[i])
+            # plot results and combine
+            statistic_file_path = os.path.join(self.cases[i], 'output', 'statistics')
+            self.StatisticPlotter.ReadData(statistic_file_path)
+            self.StatisticPlotter.ReadHeader(statistic_file_path)
+            self.StatisticPlotter.PlotNumberOfNonlinearIterations(axis=ax, color=colors[i], label_all=label_all)
+            pass
+        ax.legend()
+        # plot run time info
+        ax = fig.add_subplot(gs[0, 1])
+        ax_twin = ax.twinx()
+        for i in range(self.n_cases):
+            if i == 0:
+                label_all = True
+                append_extra_label = True
+                if_legend = True
+            else:
+                label_all = False
+                append_extra_label = False
+                if_legend = False
+            case_name = os.path.basename(self.cases[i])
+            # plot results and combine
+            log_file_path = os.path.join(self.cases[i], 'output', 'log.txt')
+            RunTimePlotFigure(log_file_path, None, savefig=False, axis=ax,\
+            label_all=label_all, append_extra_label=append_extra_label, if_legend=if_legend,\
+            twin_axis=ax_twin, color=colors[i], x_variable='time')
+            pass
+        # plot the color labels
+        ax = fig.add_subplot(gs[0, 0])
+        PlotColorLabels(ax, case_names, colors)
+        # generate figures
+        fig_path = os.path.join(output_dir, '%s.png' % _name)
+        print("%s: save figure: %s" % (Utilities.func_name(), fig_path))
+        plt.savefig(fig_path)
+        # dump a color file
+        if dump_color_to_json is not None:
+            assert(os.path.isdir(os.path.dirname(dump_color_to_json)))
+            with open(dump_color_to_json, 'w') as fout:
+                json.dump(colors_dict, fout)
+            print("%s: dump color options: %s" % (Utilities.func_name(), dump_color_to_json))
+        return fig_path
+
+def PlotColorLabels(ax, case_names, colors): 
+    '''
+    plot the color labels used for different cases
+    '''
+    labels = []
+    patches = []
+    for case_name in case_names:
+        labels.append(case_name)
+    for _color in colors:
+        patches.append(mpatches.Patch(color=_color))
+    ax.legend(patches, labels, loc='center', frameon=False)
+    ax.axis("off")
+
+# todo combine
+def PlotCombineRuntime(json_path):
+    '''
+    Combine runtime plot
+    Inputs:
+        json_path: path to a json file for configuration
+    '''
+    assert(os.access(json_path, os.R_OK))
+    Pc_opt = PC_RUNTIME_OPT()
+    Pc_opt.read_json(json_path)  # read options
+    PlotCombineRunTime = PLOT_COMBINE_RUNTIME(Pc_opt.to_init())
+    PlotCombineRunTime(*Pc_opt.to_call(), dump_color_to_json=Pc_opt.get_color_json_output_path())
 
 
 def main():
@@ -384,6 +668,9 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='./compile_figures.json')
+    parser.add_argument('-j', '--json', type=str,
+                        default='',
+                        help='A json file for configuration')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -403,6 +690,8 @@ def main():
         # prepare results
         assert(os.access(arg.inputs, os.R_OK))
         PrepareResults(arg.inputs)
+    elif _commend == "combine_runtime":
+        PlotCombineRuntime(arg.json)
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)

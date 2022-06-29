@@ -1,0 +1,10 @@
+{
+    "_comment" : "This is configuration for combining results of time run (time, step, dofs ...)",
+    "case_root": "${ASPECT_LAB_DIR}/tests/integration/fixtures/test_plot_combine/combine_runtime",
+    "cases": ["cartesian", "velocity"],
+    "output directory": {
+        "relative": 0,
+        "path": "${ASPECT_LAB_DIR}/.test/plot_combine_runtime"
+    },
+    "width": -1.0
+}

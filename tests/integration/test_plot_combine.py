@@ -63,6 +63,30 @@ def test_plot_combine():
     Plot_Combine(*Pc_opt.to_PC_call())
     assert(os.path.isfile(figure_path))
 
+def test_plot_combine_runtime():
+    '''
+    test the Plot_Combine_RunTime case
+    todo_combine
+    '''
+
+    test_source_dir = os.path.join(source_dir, "combine_runtime")
+    output_dir = os.path.join(test_dir, 'plot_combine_runtime')
+    output_path = os.path.join(output_dir, 'combine_runtime.png')
+    json_output_path = os.path.join(output_dir, 'color.json')
+    # remove old files
+    if os.path.isfile(output_path):
+        os.remove(output_path)
+    # test the interface
+    json_path = os.path.join(test_source_dir, 'test.json')
+    assert(os.access(json_path, os.R_OK))
+    Pc_opt = PC_RUNTIME_OPT()
+    Pc_opt.read_json(json_path)  # read options
+    PlotCombineRunTime = PLOT_COMBINE_RUNTIME(Pc_opt.to_init())
+    PlotCombineRunTime(*Pc_opt.to_call(), dump_color_to_json=json_output_path)
+    assert(os.path.isfile(output_path))
+    assert(os.path.isfile(json_output_path))
+
+
     
 # notes
     

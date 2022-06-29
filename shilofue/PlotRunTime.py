@@ -107,6 +107,17 @@ def PlotFigure(log_path, fig_path, **kwargs):
         RunTime.png
     '''
     trailer = None # add this to filename
+    to_myr = 1e6
+    fix_restart = kwargs.get('fix_restart', False)
+    savefig = kwargs.get('savefig', True)
+    _color = kwargs.get('color', None)
+    ax1 = kwargs.get('axis', None)
+    ax2 = kwargs.get('twin_axis', None)
+    if_legend = kwargs.get('if_legend', False)
+    x_variable = kwargs.get('x_variable', 'step')
+    if ax1 == None:
+        fig, ax1 = plt.subplots(figsize=(5, 5))
+    append_extra_label = kwargs.get('append_extra_label', True)  # add this because multiple plots mess up the axis
     hr = 3600.0  # hr to s
     # read log file
     temp_path = os.path.join(RESULT_DIR, 'run_time_output')
@@ -136,7 +147,6 @@ def PlotFigure(log_path, fig_path, **kwargs):
 
     # fix restart
     re_inds = []
-    fix_restart = kwargs.get('fix_restart', False)
     steps_fixed = np.array([])  # initialize these 3 as the original ones, so we'll see no changes if there is no restart
     times_fixed = np.array([])
     wallclocks_fixed = np.array([])
@@ -175,32 +185,71 @@ def PlotFigure(log_path, fig_path, **kwargs):
 
     # line 1: time
     # use mask
-    fig, ax1 = plt.subplots(figsize=(5, 5))
-    color = 'tab:blue'
-    ax1.plot(steps[t_mask], times[t_mask] / 1e6, '-', color=color, label='Time')
-    ax1.plot(steps_fixed[t_mask_fixed], times_fixed[t_mask_fixed] / 1e6, '.', color=color, label='Time')
-    ax1.set_ylabel('Time [myr]', color=color)
-    ax1.set_xlabel('Step')
-    ax1.tick_params(axis='y', labelcolor=color)
-    ax1.set_title('Run Time')
-    # line 2: wall clock
-    ax2 = ax1.twinx()
-    color = 'tab:red'
-    ax2.plot(steps[t_mask], wallclocks[t_mask] / hr, '-', color=color, label='Wall Clock [s]')
-    ax2.plot(steps_fixed[t_mask_fixed], wallclocks_fixed[t_mask_fixed] / hr, '.', color=color, label='Wall Clock [s]')
-    ax2.set_ylabel('Wall Clock [hr]', color=color)
-    ax2.set_xlabel('Step')
-    ax2.tick_params(axis='y', labelcolor=color)
-    # save figure
-    _name, _extension = Utilities.get_name_and_extention(fig_path)
-    if trailer != None:
-        fig_path = "%s_%s.%s" % (_name, trailer, _extension)
+    line_type = '-'
+    if _color is None:
+        color = 'tab:blue'
+        color_tab = 'tab:blue'
+        line_type = '-'
     else:
-        fig_path = fig_path
-    fig.tight_layout()
-
-    plt.savefig(fig_path)
-    print("New figure: %s" % fig_path)
+        color = _color
+        color_tab = 'k'
+        line_type = '-'
+    if x_variable == 'step':
+        ax1.plot(steps[t_mask], times[t_mask] / to_myr, line_type, color=color, label='Time')
+        ax1.plot(steps_fixed[t_mask_fixed], times_fixed[t_mask_fixed] / to_myr, '.', color=color)
+        ax1.set_xlabel('Step')
+        ax1.set_ylabel('Time [myr]', color=color_tab)
+    elif x_variable == 'time':
+        ax1.plot(times[t_mask] / to_myr, steps[t_mask], line_type, color=color, label='Step')
+        ax1.plot(times_fixed[t_mask_fixed] / to_myr, steps_fixed[t_mask_fixed], '.', color=color)
+        ax1.set_xlabel('Time [myr]', color=color_tab)
+        ax1.set_ylabel('Step')
+    else:
+        raise ValueError("x_variable needs to be \"time\" or \"step\"")
+    ax1.tick_params(axis='y', labelcolor=color_tab)
+    ax1.set_title('Run Time')
+    if if_legend:
+        ax1.legend()
+    # line 2: wall clock
+    if ax2 == None:
+        ax2 = ax1.twinx()
+    if _color is None:
+        color = 'tab:red'
+        color_tab = 'tab:red'
+        line_type = '-'
+    else:
+        color = _color
+        color_tab = 'k'
+        line_type = '--'
+    if x_variable == 'step':
+        ax2.plot(steps[t_mask], wallclocks[t_mask] / hr, line_type, color=color, label='Wall Clock [s]')
+        ax2.plot(steps_fixed[t_mask_fixed], wallclocks_fixed[t_mask_fixed] / hr, '.', color=color)
+    elif x_variable == 'time':
+        ax2.plot(times[t_mask] / to_myr, wallclocks[t_mask] / hr, line_type, color=color, label='Wall Clock [s]')
+        ax2.plot(times_fixed[t_mask_fixed] / to_myr, wallclocks_fixed[t_mask_fixed] / hr, '.', color=color)
+    else:
+        raise ValueError("x_variable needs to be \"time\" or \"step\"")  
+    if append_extra_label:
+        ax2.set_ylabel('Wall Clock [hr]', color=color_tab)
+        if x_variable == 'step':
+            ax2.set_xlabel('Step')
+        elif x_variable == 'time':
+            ax2.set_xlabel('Time [myr]')
+        ax2.tick_params(axis='y', labelcolor=color_tab)
+    if if_legend:
+        ax2.legend()
+    # save figure
+    if savefig: 
+        _name, _extension = Utilities.get_name_and_extention(fig_path)
+        if trailer != None:
+            fig_path = "%s_%s.%s" % (_name, trailer, _extension)
+        else:
+            fig_path = fig_path
+        fig.tight_layout()
+        plt.savefig(fig_path)
+        print("New figure: %s" % fig_path)
+    else:
+        fig_path=None
     # return range of steps
     steps_plotted = steps[t_mask]
     return fig_path, [steps_plotted[0], steps_plotted[-1]]

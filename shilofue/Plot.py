@@ -93,7 +93,8 @@ class LINEARPLOT():
             _filename(str):
                 filename for data file
         '''
-        assert(os.access(_filename, os.R_OK))
+        if not os.access(_filename, os.R_OK):  # read in data
+            raise FileExistsError("%s cannot be read." % _filename)
         with open(_filename, 'r') as fin:
             _texts = fin.readlines()  # read the text of the file header
         try:
@@ -130,7 +131,8 @@ class LINEARPLOT():
             _filename(string):
                 filename for data file
         '''
-        assert(os.access(_filename, os.R_OK))  # read in data
+        if not os.access(_filename, os.R_OK):  # read in data
+            raise FileExistsError("%s cannot be read." % _filename)
         # self.data = np.genfromtxt(_filename, comments='#')
 
         # import data via numpy buid in method
