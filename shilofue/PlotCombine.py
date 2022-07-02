@@ -21,6 +21,7 @@ descriptions
 import numpy as np
 import sys, os, argparse
 import json
+import shutil
 # import pathlib
 # import subprocess
 import numpy as np
@@ -57,6 +58,9 @@ Examples of usage: \n\
 \n\
   - prepare_results using the IMAGE_OPT module (from one case, e.g. combine plots from one step)\n\
         Lib_PlotCombine prepare_results -i ~/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/211230/figure_option.json \n\
+\n\
+  - prepare results by combining runtime outputs\n\
+        Lib_PlotCombine combine_runtime -j `pwd`/runtime.json \n\
 \n\
   - options in the json file:\n\
     %s\n\
@@ -508,7 +512,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
         for i in range(self.n_cases):
             case_name = os.path.basename(self.cases[i])
             case_names.append(case_name)
-        ni = 3  # number of plots along 1st and 2nd dimension
+        ni = 4  # number of plots along 1st and 2nd dimension
         nj = 2
         fig = plt.figure(tight_layout=True, figsize=[5*nj, 5*ni])
         gs = gridspec.GridSpec(ni, nj)
@@ -578,7 +582,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             pass
         ax.legend()
         # plot number of non-linear iterations
-        ax = fig.add_subplot(gs[2, 1])
+        ax = fig.add_subplot(gs[3, 0])
         for i in range(self.n_cases):
             if i == 0:
                 label_all = True
@@ -607,7 +611,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             case_name = os.path.basename(self.cases[i])
             # plot results and combine
             log_file_path = os.path.join(self.cases[i], 'output', 'log.txt')
-            RunTimePlotFigure(log_file_path, None, savefig=False, axis=ax,\
+            RunTimePlotFigure(log_file_path, None, savefig=False, axis=ax, fix_restart=True,\
             label_all=label_all, append_extra_label=append_extra_label, if_legend=if_legend,\
             twin_axis=ax_twin, color=colors[i], x_variable='time')
             pass
@@ -649,8 +653,14 @@ def PlotCombineRuntime(json_path):
     assert(os.access(json_path, os.R_OK))
     Pc_opt = PC_RUNTIME_OPT()
     Pc_opt.read_json(json_path)  # read options
+    # plot the combined figure
     PlotCombineRunTime = PLOT_COMBINE_RUNTIME(Pc_opt.to_init())
     PlotCombineRunTime(*Pc_opt.to_call(), dump_color_to_json=Pc_opt.get_color_json_output_path())
+    # save the configuration file
+    json_copy_path = os.path.join(Pc_opt.get_output_dir(), 'runtime.json')
+    shutil.copy(json_path, json_copy_path)
+    print("Saved json file: ", json_copy_path)
+    
 
 
 def main():

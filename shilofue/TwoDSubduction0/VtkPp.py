@@ -759,7 +759,10 @@ def SlabMorphologyCase(case_dir, **kwargs):
     available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
     available_pvtu_steps = [i - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) for i in available_pvtu_snapshots]
     # get where previous session ends
-    slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+    vtk_output_dir = os.path.join(case_dir, 'vtk_outputs')
+    if not os.path.isdir(vtk_output_dir):
+        os.mkdir(vtk_output_dir)
+    slab_morph_file = os.path.join(vtk_output_dir, 'slab_morph.txt')
     # Initiation Wrapper class for parallel computation
     ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology, if_rewrite=True)
     ParallelWrapper.configure(case_dir)  # assign case directory
