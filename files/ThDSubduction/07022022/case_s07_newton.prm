@@ -28,7 +28,7 @@ end
 
 subsection Solver parameters
     subsection Stokes solver parameters  # this step
-        set Stokes solver type = block GMG
+        set Stokes solver type = block AMG
         set Maximum number of expensive Stokes solver steps = 5000
         set Number of cheap Stokes solver steps = 500
         set Linear solver tolerance = 1e-6
@@ -152,7 +152,7 @@ subsection Material model
         set Phase transition Clapeyron slopes = background:-2e6, sp_upper: 0.0|-2e6, sp_lower:-2e6, plate_edge: 0.0|-2e6
         set Thermal diffusivities = 1.0e-6
         set Heat capacities = 1250.0
-        set Densities = background: 3300.0, sp_lower: 3000.0|3540.0|3540.0, sp_upper: 3235.0, plate_edge: 3300.0
+        set Densities = background: 3300.0, sp_upper: 3000.0|3540.0|3540.0, sp_lower: 3235.0, plate_edge: 3300.0
         set Thermal expansivities = 3.1e-5
         set Viscosity averaging scheme = harmonic
         set Viscous flow law = diffusion

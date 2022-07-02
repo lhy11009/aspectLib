@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH -J task
-#SBATCH -N 2
-#SBATCH -n 256
+#SBATCH -N 4
+#SBATCH -n 512
 #SBATCH --threads-per-core=1
 #SBATCH --tasks-per-node=128
 #SBATCH -o task-%j.stdout
