@@ -87,27 +87,19 @@ def PlotCaseRun(case_path, **kwargs):
     print("PlotCaseRun in FOO: operating")
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
+    # plot with paraview
+    # initiate class object
+    Paraview_Options = VISIT_OPTIONS(case_path)
+    # call function
+    Paraview_Options.Interpret()
+    # ofile = os.path.join('visit_scripts', 'slab_sph.py')
+    ofile = os.path.join(case_path, 'paraview_scripts', 'slab.py')
+    paraview_script = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts',"ThDSubduction", 'slab.py')
+    paraview_base_script = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts', 'base.py')  # base.py : base file
+    Paraview_Options.read_contents(paraview_base_script, paraview_script)  # this part combines two scripts
+    Paraview_Options.substitute()  # substitute keys in these combined file with values determined by Interpret() function
+    ofile_path = Paraview_Options.save(ofile, relative=False)  # save the altered script
 
-    # # plot visit
-    # Visit_Options = VISIT_OPTIONS(case_path)
-    # # provide steps to plot and interpret
-    # step = kwargs.get('step', None)
-    # if type(step) == int:
-    #     Visit_Options.Interpret(steps=[step])  # only plot a single step
-    # else:
-    #     Visit_Options.Interpret(last_step=3)  # by default, plot the last 3 steps
-    # odir = os.path.join(case_path, 'visit_scripts')
-    # if not os.path.isdir(odir):
-    #     os.mkdir(odir)
-    # py_script = 'slab.py'
-    # ofile = os.path.join(odir, py_script)
-    # visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', py_script)
-    # visit_script_base = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'base.py')
-    # Visit_Options.read_contents(visit_script_base, visit_script)  # combine these two scripts
-    # Visit_Options.substitute()
-    # ofile_path = Visit_Options.save(ofile, relative=True)
-    # print("Visualizing using visit")
-    # RunScripts(ofile_path)  # run scripts
 
 class PLOTTER(PlotCase.PLOTTER):
     '''
