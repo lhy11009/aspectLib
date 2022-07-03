@@ -34,6 +34,10 @@ import vtk
 
 test_dir = ".test"
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'TwoDSubduction', 'test_vtk_pp_slab')
+# todo_dp
+TwoDSubduction_DIR = os.environ['TwoDSubduction_DIR']
+has_project_root = (os.path.isdir(TwoDSubduction_DIR))
+ASPECTLIB_PERFORM_TEST_ON_LOCAL_DATA = True
 
 
 if not os.path.isdir(test_dir):
@@ -168,13 +172,48 @@ def test_export_velocity():
     assert(abs(vov[0]) < 1e-6 and abs(vov[1]) < 1e-6 and abs(vov[2]) < 1e-6)
     # assert
 
-# notes
-    
-# to check for error message
-    # with pytest.raises(SomeError) as _excinfo:
-    #    foo()
-    # assert(r'foo' in str(_excinfo.value))
 
-# assert the contents of file
-    # assert(filecmp.cmp(out_path, std_path))
-
+def test_slab_analysis():
+    ''' 
+    test the SlabAnalysis class, only works if the project files are presented
+    todo_dp
+    '''
+    source_dir1 = os.path.join(source_dir, 'slab_analysis') 
+    # test 1: compute dynamic pressure by post-processing
+    if has_project_root and ASPECTLIB_PERFORM_TEST_ON_LOCAL_DATA:
+        o_file_std = os.path.join(source_dir1, 'slab_forces_std')
+        assert(os.path.isfile(o_file_std))
+        o_dir = os.path.join(test_dir, "TwoDSubduction_vtk_pp")
+        if not os.path.isdir(o_dir):
+            os.mkdir(o_dir)
+        o_file = os.path.join(o_dir, "slab_forces")
+        if os.path.isfile(o_file):
+            os.remove(o_file)
+        vtu_snapshot = 105 # 10 Ma
+        case_dir = os.path.join(TwoDSubduction_DIR, 'EBA_CDPT3', 'eba_cdpt_SA80.0_OA40.0')
+        assert(os.path.isdir(case_dir))
+        SlabAnalysis(case_dir, vtu_snapshot, o_file, ouptut_slab=True)
+        assert(os.path.isfile(o_file))
+        assert(filecmp.cmp(o_file, o_file_std))  # compare file contents
+        fig_ofile = os.path.join(o_dir, "slab_forces.png")
+        PlotSlabForces(o_file, fig_ofile)
+        assert(os.path.isfile(fig_ofile))
+    # test 2: with dynamic pressure outputed in vtu file
+    if has_project_root and ASPECTLIB_PERFORM_TEST_ON_LOCAL_DATA:
+        o_file_std = os.path.join(source_dir1, 'slab_forces_dp_std')
+        assert(os.path.isfile(o_file_std))
+        o_dir = os.path.join(test_dir, "TwoDSubduction_vtk_pp")
+        if not os.path.isdir(o_dir):
+            os.mkdir(o_dir)
+        o_file = os.path.join(o_dir, "slab_forces_dp")
+        if os.path.isfile(o_file):
+            os.remove(o_file)
+        vtu_snapshot = 105 # 10 Ma
+        case_dir = os.path.join(TwoDSubduction_DIR, 'EBA_CDPT3_dp', 'eba_cdpt_SA80.0_OA40.0')
+        assert(os.path.isdir(case_dir))
+        SlabAnalysis(case_dir, vtu_snapshot, o_file, ouptut_slab=True)
+        assert(os.path.isfile(o_file))
+        assert(filecmp.cmp(o_file, o_file_std))  # compare file contents
+        fig_ofile = os.path.join(o_dir, "slab_forces_dp.png")
+        PlotSlabForces(o_file, fig_ofile)
+        assert(os.path.isfile(fig_ofile))

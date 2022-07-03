@@ -590,7 +590,11 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
     # initiate class
     VtkP = VTKP()
     VtkP.ReadFile(filein)
+    # todo_dp
     field_names = ['T', 'p', 'density', 'spcrust', 'spharz']
+    has_dynamic_pressure = int(Visit_Options.options['HAS_DYNAMIC_PRESSURE']) 
+    if has_dynamic_pressure == 1:
+        field_names += ['nonadiabatic_pressure']
     VtkP.ConstructPolyData(field_names, include_cell_center=True)
     VtkP.PrepareSlab(['spcrust', 'spharz'])
     # output slab profile
@@ -622,9 +626,9 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
     # pressure 
     slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()  # raw data on the envelop and output
     fileout = os.path.join(output_path, 'slab_pressures0_%05d.txt' % (vtu_step))
-    depths0, thetas0, ps0= SlabPressures(VtkP, slab_envelop0, fileout=fileout, indent=4)  # depth, dip angle and pressure
+    depths0, thetas0, ps0= SlabPressures(VtkP, slab_envelop0, fileout=fileout, indent=4, has_dynamic_pressure=has_dynamic_pressure)  # depth, dip angle and pressure
     fileout = os.path.join(output_path, 'slab_pressures1_%05d.txt' % (vtu_step))
-    depths1, thetas1, ps1 = SlabPressures(VtkP, slab_envelop1, fileout=fileout, indent=4)
+    depths1, thetas1, ps1 = SlabPressures(VtkP, slab_envelop1, fileout=fileout, indent=4, has_dynamic_pressure=has_dynamic_pressure)
     ps0_o = np.interp(depths_o, depths0, ps0[:, 0])  # interpolation to uniform interval
     thetas0_o = np.interp(depths_o, depths0, thetas0)
     ps0_d_o = np.interp(depths_o, depths0, ps0[:, 3])  # dynamic pressure
@@ -674,6 +678,7 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
     Ro = 6371e3
     fileout = kwargs.get('fileout', None)  # debug
     indent = kwargs.get('indent', 0)
+    has_dynamic_pressure = kwargs.get('has_dynamic_pressure', 0)
     rs_n = 5 # resample interval
     ip_interval = 1e3  # interval for interpolation
     # resample the original envelop dataset
@@ -683,6 +688,13 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
     slab_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, slab_envelop_rs, quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
     temp_vtk_array = slab_env_polydata.GetPointData().GetArray('p')
     env_ps  = vtk_to_numpy(temp_vtk_array)
+    # todo_dp
+    if has_dynamic_pressure == 1:
+        temp_vtk_array = slab_env_polydata.GetPointData().GetArray('nonadiabatic_pressure')
+        env_dps  = vtk_to_numpy(temp_vtk_array)
+        print("Read in the dynamic pressures")  # debug
+    else:
+        env_dps = None
     # import data onto selected points
     depths = np.zeros(slab_envelop_rs.shape[0]) # data on envelop0
     ps = np.zeros((slab_envelop_rs.shape[0], 4)) # pressure, horizontal & vertical components, dynamic pressure
@@ -696,7 +708,11 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
         depth = Ro - r  # depth of this point
         p = env_ps[i]  # pressure of this point
         p_static = VtkP.StaticPressure([r, VtkP.Ro], theta_xy, 2000)
-        p_d = p - p_static # dynamic pressure
+        # todo_dp
+        if env_dps is not None:
+            p_d = env_dps[i]
+        else:
+            p_d = p - p_static # dynamic pressure, read in or compute
         depths[i] = depth
         d1 = 0.0  # coordinate differences
         d2 = 0.0

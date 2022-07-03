@@ -90,6 +90,18 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         # visit file
         self.options["VISIT_FILE"] = self.visit_file
         self.options["PARAVIEW_FILE"] = self.paraview_file
+        # data types
+        # todo_dp
+        self.options["HAS_DYNAMIC_PRESSURE"] = '0'
+        try:
+            visualization_output_variables = self.idict['Postprocess']['Visualization']['List of output variables']
+        except KeyError:
+            pass
+        else:
+            if re.match('.*nonadiabatic\ pressure', visualization_output_variables):
+                self.options["HAS_DYNAMIC_PRESSURE"] = '1'
+            
+
         # get all the available snaps for ploting by checking on the existence of the pvtu file
         # the correspondent, time, time step are also figured out.
         graphical_snaps_guess, times_guess, time_steps_guess = GetSnapsSteps(self._case_dir, 'graphical')
