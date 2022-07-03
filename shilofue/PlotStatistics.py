@@ -104,7 +104,6 @@ class STATISTICS_PLOT(LINEARPLOT):
         idx = np.argmax(steps)
         return int(steps[idx]), times[idx]
 
-    # todo_combine
     def PlotNumberOfCells(self, **kwargs):
         '''
         plot the number of cells
@@ -130,7 +129,6 @@ class STATISTICS_PLOT(LINEARPLOT):
         ax.set_ylabel('Number of mesh cells')
         pass
     
-    # todo_combine
     def PlotNumberOfNonlinearIterations(self, **kwargs):
         '''
         plot the number of cells
@@ -156,7 +154,6 @@ class STATISTICS_PLOT(LINEARPLOT):
         ax.set_ylabel('Number of nonlinear iterations')
         pass
     
-    # todo_combine
     def PlotDegreeOfFreedom(self, **kwargs):
         '''
         plot the number of cells
@@ -204,7 +201,6 @@ class STATISTICS_PLOT(LINEARPLOT):
         ax.set_ylabel('Number of degree of freedoms')
         pass
     
-    # todo_combine
     def PlotTemperature(self, **kwargs):
         '''
         plot the number of cells
@@ -250,7 +246,6 @@ class STATISTICS_PLOT(LINEARPLOT):
         ax.set_ylabel('Temperature (K)')
         pass
     
-    # todo_combine
     def PlotVelocity(self, **kwargs):
         '''
         plot the velocity outputs

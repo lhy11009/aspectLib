@@ -45,7 +45,6 @@ import Utilities
 
 def Usage():
     Pc_opt = PC_OPT()
-    # todo_combine
     print("Combines separate figures to a bigger one.\
 Also combines figures from individual cases to a bigger one.\n\
 \n\
@@ -453,7 +452,6 @@ def PrepareResults(json_path):
 ####
 # 06292022: new functions combines one kind of figures at a time (e.g. run time, visualization)
 ####
-# todo_combine
 class PC_RUNTIME_OPT(PC_OPT_BASE):
     '''
     Define a class to work with json files
@@ -483,7 +481,6 @@ class PC_RUNTIME_OPT(PC_OPT_BASE):
 
 
 
-# todo_combine
 class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
     '''
     Combine results from run time outputs
@@ -503,6 +500,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
         '''
         _name = "combine_runtime"
         _title = "Comparing run-time results"
+        n_color_max = 10
         color_method = kwargs.get('color_method', 'generated')
         dump_color_to_json = kwargs.get('dump_color_to_json', None)
         if not os.path.isdir(output_dir):
@@ -518,11 +516,40 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
         gs = gridspec.GridSpec(ni, nj)
         colors_dict = {}
         if color_method == 'generated':
-            normalizer = [ float(i)/(self.n_cases-1) for i in range(self.n_cases) ]
+            colors_dict['max'] = n_color_max
+            if self.n_cases > n_color_max:
+                raise ValueError("max number of colors must be bigger than the number of cases")
+            normalizer = [ float(i)/(n_color_max) for i in range(self.n_cases) ]
             colors = cm.rainbow(normalizer)
             for i in range(self.n_cases):
                 case_name = os.path.basename(self.cases[i])
                 colors_dict[case_name] = list(colors[i])
+        elif color_method == 'check_first':
+            colors = []
+            if dump_color_to_json is not None:
+                if os.path.isfile(dump_color_to_json):
+                    with open(dump_color_to_json, 'r') as fin:
+                        colors_dict = json.load(fin)
+                else:
+                    colors_dict['max'] = n_color_max
+            # first loop to get the number of colors in the json file
+            n_color_in_json = 0
+            for i in range(self.n_cases):
+                case_name = os.path.basename(self.cases[i])
+                if case_name in colors_dict:
+                    n_color_in_json += 1
+            normalizer = [ float(i)/(n_color_max) for i in range(n_color_in_json, self.n_cases) ]
+            new_colors = cm.rainbow(normalizer)
+            # second loop to assign colors to new cases
+            j = 0
+            for i in range(self.n_cases):
+                case_name = os.path.basename(self.cases[i])
+                try:
+                    colors.append(colors_dict[case_name])
+                except KeyError:
+                    colors.append(new_colors[j])
+                    colors_dict[case_name] = list(colors[i])
+                    j += 1
         else:
             raise ValueError('Not implemented')
         # plot number of cells
@@ -533,7 +560,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             statistic_file_path = os.path.join(self.cases[i], 'output', 'statistics')
             self.StatisticPlotter.ReadData(statistic_file_path)
             self.StatisticPlotter.ReadHeader(statistic_file_path)
-            self.StatisticPlotter.PlotNumberOfCells(axis=ax, olor=colors[i])
+            self.StatisticPlotter.PlotNumberOfCells(axis=ax, color=colors[i])
             pass
         ax.legend()
         # plot degree of freedoms
@@ -643,7 +670,7 @@ def PlotColorLabels(ax, case_names, colors):
     ax.legend(patches, labels, loc='center', frameon=False)
     ax.axis("off")
 
-# todo combine
+
 def PlotCombineRuntime(json_path):
     '''
     Combine runtime plot
@@ -655,11 +682,15 @@ def PlotCombineRuntime(json_path):
     Pc_opt.read_json(json_path)  # read options
     # plot the combined figure
     PlotCombineRunTime = PLOT_COMBINE_RUNTIME(Pc_opt.to_init())
-    PlotCombineRunTime(*Pc_opt.to_call(), dump_color_to_json=Pc_opt.get_color_json_output_path())
+    PlotCombineRunTime(*Pc_opt.to_call(), dump_color_to_json=Pc_opt.get_color_json_output_path(),\
+    color_method='check_first')
     # save the configuration file
     json_copy_path = os.path.join(Pc_opt.get_output_dir(), 'runtime.json')
-    shutil.copy(json_path, json_copy_path)
-    print("Saved json file: ", json_copy_path)
+    try:
+        shutil.copy(json_path, json_copy_path)
+        print("Saved json file: ", json_copy_path)
+    except shutil.SameFileError:
+        print("Saing json file: The two files are the same, skip")
     
 
 
