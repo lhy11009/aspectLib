@@ -19,8 +19,12 @@ class SLAB(PARAVIEW_PLOT):
         '''
         slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, 2000000.0, 990000.0],\
         [0.0, 0.0, 1.0], renderView=self.renderView1, name="surface_z")
-        adjust_camera(self.renderView1, [2000000.0, 2000000.0, 14540803.753676033],\
-        [2000000.0, 2000000.0, 990000.0], 4019667.7972010756, [0.0, 1.0, 0.0])
+        _camera = [[2000000.0, 2000000.0, 14540803.753676033],\
+        [2000000.0, 2000000.0, 990000.0], 4019667.7972010756, [0.0, 1.0, 0.0]]
+        _color_bar = [[0.3417165169919925, 0.12791929382093295], 0.3299999999999999]
+        self.camera_dict['slice_surface_z'] = _camera
+        self.colorbar_dict['slice_surface_z'] = _color_bar
+        adjust_camera(self.renderView1, _camera[0],_camera[1], _camera[2], _camera[3])
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
         Hide(slice1, self.renderView1) # hide data in view
     
@@ -31,8 +35,12 @@ class SLAB(PARAVIEW_PLOT):
         '''
         slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, 1.0, 500000.0],\
         [0.0, 1.0, 0.0], renderView=self.renderView1, name="trench_center_y")
-        adjust_camera(self.renderView1, [2000000.0, 14540803.753676033, 500000.0],\
-        [2000000.0, 1.0, 500000.0], 4019667.7972010756, [0.0, 0.0, 1.0])
+        _camera = [[2000000.0, 14540803.753676033, 500000.0],\
+        [2000000.0, 1.0, 500000.0], 4019667.7972010756, [0.0, 0.0, 1.0]]
+        _color_bar = [[0.3376097408112943, 0.19727616645649412], 0.36285420944558516]
+        self.camera_dict['slice_trench_center_y'] = _camera
+        self.colorbar_dict['slice_trench_center_y'] = _color_bar
+        adjust_camera(self.renderView1, _camera[0],_camera[1], _camera[2], _camera[3])
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
         Hide(slice1, self.renderView1) # hide data in view
 
@@ -43,8 +51,10 @@ class SLAB(PARAVIEW_PLOT):
         '''
         slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, TRENCH_EDGE_Y, 500000.0],\
         [0.0, 1.0, 0.0], renderView=self.renderView1, name="trench_edge_y")
-        adjust_camera(self.renderView1, [2000000.0, 14540803.753676033, 500000.0],\
-        [2000000.0, TRENCH_EDGE_Y, 500000.0], 4019667.7972010756, [0.0, 0.0, 1.0])
+        _camera = [[2000000.0, 14540803.753676033, 500000.0],\
+        [2000000.0, TRENCH_EDGE_Y, 500000.0], 4019667.7972010756, [0.0, 0.0, 1.0]]
+        self.camera_dict['slice_trench_edge_y'] = _camera
+        adjust_camera(self.renderView1, _camera[0],_camera[1], _camera[2], _camera[3])
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
         Hide(slice1, self.renderView1) # hide data in view
     
@@ -55,40 +65,56 @@ class SLAB(PARAVIEW_PLOT):
         isoVolume1, isoVolume1Display, _ = add_isovolume(self.solutionpvd, "sp_upper", (0.8, 1.0), name="slab_upper")
         Hide(isoVolume1, self.renderView1)  # hide data in view
 
-    def plot_slice(self, _source, field_name):
+    def plot_slice(self, _source, field_name, **kwargs):
         '''
         Plot surface slice
         After the the plots are setup, this function is then called to execute the exportation of figures.
         '''
+        fig_resolution = (974, 793)
+        hide_plot = kwargs.get("hide_plot", True)
         slice1 = FindSource(_source)
         SetActiveSource(slice1)
         renderView1 = GetActiveViewOrCreate('RenderView') 
-        Show(slice1, renderView1, 'GeometryRepresentation')
+        _display = Show(slice1, renderView1, 'GeometryRepresentation')
         # adjust colorbar and camera
         sp_upperLUT = GetColorTransferFunction(field_name)
-        adjust_slice_colorbar_camera(self.renderView1, sp_upperLUT)
+        _camera = self.camera_dict[_source]
+        adjust_slice_colorbar_camera(self.renderView1, sp_upperLUT, _camera)
+        # adjust colorbar, if there is a configuration for the source
+        _display.SetScalarBarVisibility(self.renderView1, True)
+        try:
+            _color_bar = self.colorbar_dict[_source]
+            adjust_color_bar(sp_upperLUT, self.renderView1, _color_bar) 
+        except KeyError:
+            pass
+        # get layout
+        layout1 = GetLayout()
+        # layout/tab size in pixels
+        layout1.SetSize(fig_resolution[0], fig_resolution[1])
         # save figure
         file_out = os.path.join(self.output_dir, "%s_%s_%.4e.png" % (_source, field_name, self.time))
-        SaveScreenshot(file_out, self.renderView1, ImageResolution=[1148, 792])
+        SaveScreenshot(file_out, self.renderView1, ImageResolution=fig_resolution)
         print("Figure saved: %s" % file_out)
-        Hide(slice1, renderView1)  # hide data in view
+        if hide_plot:
+            Hide(slice1, renderView1)  # hide data in view
 
     def plot_step(self): 
         '''
         plot a step
         '''
         self.plot_slice("slice_trench_center_y", "sp_upper")
-        # self.plot_slice("slice_trench_edge_y", "sp_upper")
+        self.plot_slice("slice_trench_edge_y", "sp_upper")
         self.plot_slice("slice_surface_z", "sp_upper")
 
 
-def adjust_slice_colorbar_camera(renderView, colorLUT):
+def adjust_slice_colorbar_camera(renderView, colorLUT, _camera):
     '''
     adjust colorbar and camera for a slice
     Inputs:
         renderView: an instance of the rendered view
         colorLUT: an instance of the colorbar
     '''
+    assert(len(_camera) == 4)
     # adjust colorbar
     colorLUTColorBar = GetScalarBar(colorLUT, renderView)
     colorLUTColorBar.WindowLocation = 'Any Location'
@@ -96,8 +122,7 @@ def adjust_slice_colorbar_camera(renderView, colorLUT):
     colorLUTColorBar.Orientation = 'Horizontal'
     colorLUTColorBar.Position = [0.3458232931726907, 0.2540226986128623]
     # adjust camera
-    adjust_camera(renderView, [2000000.0, 14540803.753676033, 500000.0],\
-    [2000000.0, 1.0, 500000.0], 1875204.6933857028, [0.0, 0.0, 1.0])
+    adjust_camera(renderView, _camera[0],_camera[1], _camera[2], _camera[3])
 
 
 def main():

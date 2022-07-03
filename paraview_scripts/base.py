@@ -41,6 +41,8 @@ class PARAVIEW_PLOT():
         self.time = 0.0
         self.solutionpvd = PVDReader(registrationName='solution.pvd', FileName=filein)
         self.solutionpvd.PointArrays = self.all_variables
+        self.camera_dict = {}  # a dictionary for saving camera settings
+        self.colorbar_dict = {} # a dictionary for saving colorbar settings
         # get animation scene
         animationScene1 = GetAnimationScene()
         # update animation scene based on data timesteps
@@ -161,3 +163,18 @@ def adjust_camera(renderView, position, focalPoint, parallelScale, viewUp):
     renderView.CameraFocalPoint = focalPoint
     renderView.CameraParallelScale = parallelScale
     renderView.CameraViewUp = viewUp
+
+
+def adjust_color_bar(colorTransferFunc, renderView, color_bar_config):
+    '''
+    adjust color bar
+    '''
+    assert(len(color_bar_config) == 2)
+    position = color_bar_config[0]
+    length = color_bar_config[1]
+    assert(len(position) == 2)
+    # get color legend/bar for sp_upperLUT in view renderView1
+    colorBar = GetScalarBar(colorTransferFunc, renderView)
+    # change scalar bar placement
+    colorBar.Position = position
+    colorBar.ScalarBarLength = length
