@@ -190,7 +190,7 @@ def PlotCaseRun(case_path, **kwargs):
     if time_range is not None:
         fig_output_path, step_range = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True, time_range=time_range)
     else:
-        fig_output_path = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True)
+        fig_output_path = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True, save_temp_file_local=True)
         step_range = None
 
     # Newton history

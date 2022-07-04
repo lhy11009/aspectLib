@@ -44,7 +44,6 @@ sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
 
 def Usage():
-    Pc_opt = PC_OPT()
     print("Combines separate figures to a bigger one.\
 Also combines figures from individual cases to a bigger one.\n\
 \n\
@@ -61,9 +60,16 @@ Examples of usage: \n\
   - prepare results by combining runtime outputs\n\
         Lib_PlotCombine combine_runtime -j `pwd`/runtime.json \n\
 \n\
-  - options in the json file:\n\
-    %s\n\
-        " % Pc_opt.document())
+        ")
+
+
+def ShowJsonOption():
+    Pc_opt = PC_OPT()
+    print("\
+  - options defined in the json file:\n\
+        %s\n\
+        " % Pc_opt.document_str()
+        )
 
 ####
 # A base class for the task of combining plots
@@ -733,6 +739,9 @@ def main():
         PrepareResults(arg.inputs)
     elif _commend == "combine_runtime":
         PlotCombineRuntime(arg.json)
+    elif (_commend in ['--json_option', '-jo']):
+        # json options
+        ShowJsonOption()
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)

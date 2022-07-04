@@ -62,10 +62,17 @@ def RunTimeInfo(log_path, **kwargs):
     Inputs:
         log_path(str) - path to log file
     '''
+    save_temp_file_local = kwargs.get('save_temp_file_local', False)
+    if save_temp_file_local:
+        temp_dir = os.path.join(os.path.dirname(log_path), 'py_outputs')
+        if not os.path.isdir(temp_dir):
+            os.mkdir(temp_dir)
+        temp_path = os.path.join(temp_dir, 'run_time_output')
+    else:
+        temp_path = os.path.join(RESULT_DIR, 'run_time_output')
     trailer = None # add this to filename
     hr = 3600.0  # hr to s
     # read log file
-    temp_path = os.path.join(RESULT_DIR, 'run_time_output')
     print("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
     os.system("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
 
@@ -115,12 +122,19 @@ def PlotFigure(log_path, fig_path, **kwargs):
     ax2 = kwargs.get('twin_axis', None)
     if_legend = kwargs.get('if_legend', False)
     x_variable = kwargs.get('x_variable', 'step')
+    save_temp_file_local = kwargs.get('save_temp_file_local', False)  # save temp file to a local place
+    if save_temp_file_local:
+        temp_dir = os.path.join(os.path.dirname(log_path), 'py_outputs')
+        if not os.path.isdir(temp_dir):
+            os.mkdir(temp_dir)
+        temp_path = os.path.join(temp_dir, 'run_time_output')
+    else:
+        temp_path = os.path.join(RESULT_DIR, 'run_time_output')
     if ax1 == None:
         fig, ax1 = plt.subplots(figsize=(5, 5))
     append_extra_label = kwargs.get('append_extra_label', True)  # add this because multiple plots mess up the axis
     hr = 3600.0  # hr to s
     # read log file
-    temp_path = os.path.join(RESULT_DIR, 'run_time_output')
     print("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
     os.system("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
 
@@ -144,6 +158,30 @@ def PlotFigure(log_path, fig_path, **kwargs):
     times = Plotter.data[:, col_time]
     steps = Plotter.data[:, col_step]
     wallclocks = Plotter.data[:, col_wallclock]
+
+
+    # fix bugs in data
+    i = 1
+    n_found = 0
+    n_size = times.shape[0]
+    while i < n_size - n_found:
+        wallclock_pre = wallclocks[i-1]
+        step_pre = steps[i-1]
+        wallclock = wallclocks[i]
+        step = steps[i]
+        if step > step_pre and wallclock < wallclock_pre :
+            # this is an error, delete this one
+            print("step: ", step)  # debug
+            print("wallclock: ", wallclock)
+            times[i: n_size-1] = times[i+1: n_size]
+            steps[i: n_size-1] = steps[i+1: n_size]
+            wallclocks[i: n_size-1] = wallclocks[i+1: n_size]
+            n_found += 1
+        else:
+            i += 1
+    times = times[0: n_size-n_found]
+    steps = steps[0: n_size-n_found]
+    wallclocks = wallclocks[0: n_size-n_found]
 
     # fix restart
     re_inds = []
