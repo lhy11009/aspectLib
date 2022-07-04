@@ -76,19 +76,23 @@ class SLAB(PARAVIEW_PLOT):
         '''
         fig_resolution = (974, 793)
         hide_plot = kwargs.get("hide_plot", True)
+        # show the slice
         slice1 = FindSource(_source)
         SetActiveSource(slice1)
         renderView1 = GetActiveViewOrCreate('RenderView') 
         _display = Show(slice1, renderView1, 'GeometryRepresentation')
+        slice_Display = GetDisplayProperties(slice1, view=renderView1)
+        # adjust the field to plot
+        ColorBy(slice_Display, ('POINTS', field_name))
+        fieldLUT = GetColorTransferFunction(field_name)
         # adjust colorbar and camera
-        sp_upperLUT = GetColorTransferFunction(field_name)
         _camera = self.camera_dict[_source]
-        adjust_slice_colorbar_camera(self.renderView1, sp_upperLUT, _camera)
+        adjust_slice_colorbar_camera(self.renderView1, fieldLUT, _camera)
         # adjust colorbar, if there is a configuration for the source
         _display.SetScalarBarVisibility(self.renderView1, True)
         try:
             _color_bar = self.colorbar_dict[_source]
-            adjust_color_bar(sp_upperLUT, self.renderView1, _color_bar) 
+            adjust_color_bar(fieldLUT, self.renderView1, _color_bar) 
         except KeyError:
             pass
         # get layout
@@ -107,6 +111,7 @@ class SLAB(PARAVIEW_PLOT):
         plot a step
         '''
         self.plot_slice("slice_trench_center_y", "sp_upper")
+        self.plot_slice("slice_trench_center_y", "T")
         self.plot_slice("slice_trench_edge_y", "sp_upper")
         self.plot_slice("slice_surface_z", "sp_upper")
 
