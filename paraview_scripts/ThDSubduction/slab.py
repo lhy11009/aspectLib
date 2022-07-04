@@ -19,6 +19,10 @@ class SLAB(PARAVIEW_PLOT):
         '''
         slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, 2000000.0, 990000.0],\
         [0.0, 0.0, 1.0], renderView=self.renderView1, name="surface_z")
+        # 0: renderView.CameraPosition
+        # 1: renderView.CameraFocalPoint 
+        # 2: renderView.CameraParallelScale
+        # 3: renderView.CameraViewUp
         _camera = [[2000000.0, 2000000.0, 14540803.753676033],\
         [2000000.0, 2000000.0, 990000.0], 4019667.7972010756, [0.0, 1.0, 0.0]]
         _color_bar = [[0.3417165169919925, 0.12791929382093295], 0.3299999999999999]
@@ -36,7 +40,7 @@ class SLAB(PARAVIEW_PLOT):
         slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, 1.0, 500000.0],\
         [0.0, 1.0, 0.0], renderView=self.renderView1, name="trench_center_y")
         _camera = [[2000000.0, 14540803.753676033, 500000.0],\
-        [2000000.0, 1.0, 500000.0], 4019667.7972010756, [0.0, 0.0, 1.0]]
+        [2000000.0, 1.0, 500000.0], 1875204.6933857028, [0.0, 0.0, 1.0]]
         _color_bar = [[0.3376097408112943, 0.19727616645649412], 0.36285420944558516]
         self.camera_dict['slice_trench_center_y'] = _camera
         self.colorbar_dict['slice_trench_center_y'] = _color_bar
@@ -52,7 +56,7 @@ class SLAB(PARAVIEW_PLOT):
         slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, TRENCH_EDGE_Y, 500000.0],\
         [0.0, 1.0, 0.0], renderView=self.renderView1, name="trench_edge_y")
         _camera = [[2000000.0, 14540803.753676033, 500000.0],\
-        [2000000.0, TRENCH_EDGE_Y, 500000.0], 4019667.7972010756, [0.0, 0.0, 1.0]]
+        [2000000.0, TRENCH_EDGE_Y, 500000.0], 1875204.6933857028, [0.0, 0.0, 1.0]]
         self.camera_dict['slice_trench_edge_y'] = _camera
         adjust_camera(self.renderView1, _camera[0],_camera[1], _camera[2], _camera[3])
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
