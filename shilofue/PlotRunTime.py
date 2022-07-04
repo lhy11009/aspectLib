@@ -171,8 +171,6 @@ def PlotFigure(log_path, fig_path, **kwargs):
         step = steps[i]
         if step > step_pre and wallclock < wallclock_pre :
             # this is an error, delete this one
-            print("step: ", step)  # debug
-            print("wallclock: ", wallclock)
             times[i: n_size-1] = times[i+1: n_size]
             steps[i: n_size-1] = steps[i+1: n_size]
             wallclocks[i: n_size-1] = wallclocks[i+1: n_size]
