@@ -32,7 +32,17 @@ Example Usage:
 
         Lib_build_aspect all master_TwoD
 
+	(equivalent to the first one, 0 - do not cmake)
+	Lib_build_aspect all master_TwoD 0
+
+	(append a flag to tbe build directory, must assign 4 varibales in total)
+	Lib_build_aspect all master_TwoD 0 dealii-9.3.3
+
         the last one is the branch to build
+
+    build release
+
+    	Lib_build_aspect release master_TwoD 0 dealii-9.3.3
 
      build a plugin:
         (build it in a build directory of aspect)
@@ -72,6 +82,15 @@ build_aspect_project(){
         mode="debug"
     fi
     [[ ${mode} == "debug" ]] && build_dir="${build_dir}_debug"
+    local do_configure  # run cmake before make, default is 0, stay on the safe side
+    if [[ -n $3 ]]; then
+        [[ $3 == "0" || $3 == "1" ]] || { cecho ${BAD} "${FUNCNAME[0]}: do_configure is either \'0\' or \'1\'"; exit 1; }
+	do_configure="$3"
+    else
+    	do_configure="0"
+    fi
+    [[ -n $4 ]] && build_dir="${build_dir}_${4}" # additional flag to append to the build directory
+    
     [[ -d ${build_dir} ]] || mkdir ${build_dir}
 
     # shift the git dir
@@ -105,8 +124,10 @@ build_aspect_project(){
     # build source code
     local cmake_appendix=""
     [[ -n $WORLD_BUILDER_SOURCE_DIR ]] && cmake_appendix="${cmake_appendix} -DWORLD_BUILDER_SOURCE_DIR=$WORLD_BUILDER_SOURCE_DIR"
-    echo "cmake .. ${cmake_appendix}"
-    eval "cmake .. ${cmake_appendix}"
+    if [[ $do_configure == "1" ]]; then
+    	echo "cmake .. ${cmake_appendix}"
+    	eval "cmake .. ${cmake_appendix}"
+    fi
     quit_if_fail "${FUNCNAME[0]}: cmake inside ${build_dir} failed"
     echo "make ${mode}"
     eval "make ${mode}"
@@ -232,8 +253,27 @@ main(){
         # Terninal Outputs
         ##
     	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
-        build_aspect_project "$2" "release"
-        build_aspect_project "$2" "debug"
+	do_configure="$3"
+        build_aspect_project "$2" "release" "${do_configure}" "$4"
+        build_aspect_project "$2" "debug" "${do_configure}" "$4"
+    elif [[ "${command}" = "release" ]]; then
+	##
+        # Build the main program in release mode with all the plugins
+        # Inputs:
+        # Terninal Outputs
+        ##
+    	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
+	do_configure="$3"
+        build_aspect_project "$2" "release" "${do_configure}" "$4"
+    elif [[ "${command}" = "debug" ]]; then
+	##
+        # Build the main program in debug mode with all the plugins
+        # Inputs:
+        # Terninal Outputs
+        ##
+    	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
+	do_configure="$3"
+        build_aspect_project "$2" "debug" "${do_configure}"
     elif [[ "${command}" = "all_plugins" ]]; then
         ##
         # Build all the plugins separately
