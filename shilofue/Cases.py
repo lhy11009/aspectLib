@@ -74,6 +74,11 @@ class CASE_OPT(Utilities.JSON_OPT):
         self.add_key("Linear solver toleracne", float,\
          ["stokes solver", "linear solver tolerance"], 0.1, nick="stokes_linear_tolerance")
         self.add_key("End time", float, ["end time"], 60e6, nick="end_time")
+        # todo_bc
+        self.add_key("Type of velocity boundary condition\n\
+            available options in [all fs, bt fs side ns]", str,\
+            ["boundary condition", "velocity", "type"], "all fs", nick='type_bd_v')
+        self.add_key("Dimension", int, ['dimension'], 2, nick='dimension')
         pass
     
     def check(self):
@@ -343,7 +348,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     fix_output_dir = kwargs.get('fix_output_dir', None)
     Case_Opt = CASE_OPT()
     if type(json_opt) == str:
-        assert(os.access(json_opt, os.R_OK))
+        if not os.access(json_opt, os.R_OK):
+            raise FileNotFoundError("%s doesn't exist" % json_opt)
         Case_Opt.read_json(json_opt)
     elif type(json_opt) == dict:
         Case_Opt.import_options(json_opt)
@@ -375,6 +381,38 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     # create new case
     case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step())
     return case_dir
+
+def SetBcVelocity(bc_dict, dimension, type_bc_v):
+    '''
+    set the boundary condition for velocity
+    Inputs:
+        bc_dict: an input with entries for Boundary velocity model in a prm file
+        type_bc_v: type of velocity bc
+    '''
+    # todo_bc
+    fs_indicator=[]
+    ns_indicator = []
+    if dimension == 2 and type_bc_v == 'all fs':
+        fs_indicator = [0, 1, 2, 3]
+    elif dimension == 2 and type_bc_v == 'bt fs side ns':
+        fs_indicator = [1, 3]
+        ns_indicator = [0, 2]
+        pass
+    else:
+        raise NotImplementedError("This combination of dimension (%d) and \
+velocity boundary (%s) is not implemented yet." % (dimension, type_bc_v))
+    if len(fs_indicator) > 0:
+        bc_dict["Tangential velocity boundary indicators"] = str(fs_indicator).strip(']').lstrip('[')  # free slip
+    else:
+        if "Tangential velocity boundary indicators" in bc_dict:
+            _ = bc_dict.pop("Tangential velocity boundary indicators")
+    if len(ns_indicator) > 0:
+        bc_dict["Zero velocity boundary indicators"] = str(ns_indicator).strip(']').lstrip('[')  # no slip
+    else:
+        if "Zero velocity boundary indicators" in bc_dict:
+            _ = bc_dict.pop("Zero velocity boundary indicators")
+    return bc_dict
+    pass
     
 
 
