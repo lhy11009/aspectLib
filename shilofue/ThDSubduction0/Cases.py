@@ -75,6 +75,11 @@ class CASE_OPT(CasesP.CASE_OPT):
         self.add_key("Global refinement", int, ['refinement', 'global refinement'], 4, nick='global_refinement')
         self.add_key("Adaptive refinement", int, ['refinement', 'adaptive refinement'], 2, nick='adaptive_refinement')
         self.add_key("mantle rheology", str, ['mantle rheology', 'scheme'], "HK03_wet_mod", nick='mantle_rheology_scheme')
+        # todo_sz
+        self.add_key("Thickness of the shear zone / crust", float, ["shear zone", 'thickness'], 50e3, nick='Dsz')
+        self.add_key("Thickness of the depleted lithosphere", float, ['plate setup', 'dl thickness'], 50e3, nick='Ddl')
+        self.add_key("Apply the mantle reference density for all the compositions", int, ['apply reference density'],\
+        0, nick='apply_reference_density')
 
     
     def check(self):
@@ -107,11 +112,15 @@ class CASE_OPT(CasesP.CASE_OPT):
         global_refinement = self.values[self.start+16]
         adaptive_refinement = self.values[self.start+17]
         mantle_rheology_scheme = self.values[self.start+18]
+        Dsz = self.values[self.start+19]
+        apply_reference_density = self.values[self.start+21]
+        Ddl = self.values[self.start+20]
+        
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
             sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
-            adaptive_refinement, mantle_rheology_scheme
+            adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl
         
 
     def to_configure_wb(self):
@@ -124,7 +133,9 @@ class CASE_OPT(CasesP.CASE_OPT):
         sp_width = self.values[self.start+3]
         sp_length = self.values[self.start+4]
         trailing_length = self.values[self.start+6]
-        return _type, if_wb, geometry, sp_width, sp_length, trailing_length
+        Dsz = self.values[self.start+19]
+        Ddl = self.values[self.start+20]
+        return _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl
 
 
 
@@ -136,7 +147,7 @@ class CASE(CasesP.CASE):
     def configure_prm(self, _type, if_wb, geometry, box_width, box_length, box_depth,\
     sp_width, trailing_length, reset_trailing_morb, ref_visc, relative_visc_plate, friction_angle,\
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
-    global_refinement, adaptive_refinement, mantle_rheology_scheme):
+    global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl):
         '''
         Configure prm file
         '''
@@ -189,6 +200,9 @@ class CASE(CasesP.CASE):
                o_dict['Material model'][material_model_subsection]['Densities'] =\
                    'background: %.4e, sp_upper: %.4e, sp_lower: %.4e'\
                    % (reference_density, sp_density, sp_density)
+        if apply_reference_density:
+            # apply reference density, rewrting all the previous settings
+            o_dict['Material model'][material_model_subsection]['Densities'] = str(reference_density)
         # rheology
         # 1. mantle rheology
         if _type == 's07_newton':
@@ -223,21 +237,30 @@ class CASE(CasesP.CASE):
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
             "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
         # rewrite the reaction morb part
-        if _type == 's07':
+        if _type in ['s07', 's07_newton']:
+            # todo_sz
+            if abs(Dsz - 50e3)/50e3 > 1e-6:
+                # for the sake of backwards compatible
+                Dsz_str = str(Dsz)
+            else:
+                Dsz_str = "5e+04"
+            if abs(Dsz + Ddl - 100e3)/100e3 > 1e-6:
+                # for the sake of backwards compatible
+                Dp_str = str(Dsz + Ddl)
+            else:
+                Dp_str = "1e5"
             if reset_trailing_morb == 1:
                 o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'true'
                 o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
-                    "Width=%.4e, Do=%.4e, xm=%.4e, DpUp=5e+04, Dp=1e5, Wp=%.4e, pWidth=1e5" %  (trailing_length, box_depth, box_length, sp_width)
+                    "Width=%.4e, Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (trailing_length, box_depth, box_length, Dsz_str, Dp_str, sp_width)
             else:
                 o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'false'
 
         o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries
-            
-
         pass
 
 
-    def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length):
+    def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl):
         '''
         Configure wb file
         '''
@@ -245,26 +268,43 @@ class CASE(CasesP.CASE):
             # check first if we use wb file for this one
             return
         # geometry options
-        wb_configure_plate_schellart07(self.wb_dict, sp_width, sp_length, trailing_length)
+        wb_configure_plate_schellart07(self.wb_dict, sp_width, sp_length, trailing_length, Dsz, Ddl)
 
         pass
 
 
-def wb_configure_plate_schellart07(wb_dict, sp_width, sp_length, trailing_width):
+def wb_configure_plate_schellart07(wb_dict, sp_width, sp_length, trailing_width, Dsz, Ddl):
     '''
     World builder configuration of plates in Schellart etal 2007
     '''
-    # subducting plate
     o_dict = wb_dict.copy()
+    # subducting plate
+    # todo_sz
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Subducting plate')
     sp_dict = o_dict['features'][i0]
     sp_dict["coordinates"] = [[trailing_width, -sp_width], [trailing_width, sp_width], [sp_length, sp_width] ,[sp_length, -sp_width]]
+    if abs(Dsz - 50e3) / 50e3 > 1e-6:
+        sp_dict["composition models"][0]["max depth"] = Dsz
+        sp_dict["composition models"][1]["min depth"] = Dsz
+    if abs(Dsz + Ddl - 100e3) / 100e3 > 1e-6:
+        sp_dict["composition models"][1]["max depth"] = Dsz + Ddl
     o_dict['features'][i0] = sp_dict
     # slab
-    o_dict = wb_dict.copy()
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Slab')
     sdict = o_dict['features'][i0]
     sdict["coordinates"] = [[sp_length, -sp_width], [sp_length, sp_width]]
+    if abs(Dsz - 50e3) / 50e3 > 1e-6:
+        for i in range(len(sdict["segments"])-1):
+            # the last one is a phantom for temperature tapering
+            segment = sdict["segments"][i]
+            segment["composition models"][0]["max distance slab top"] = Dsz
+            segment["composition models"][1]["min distance slab top"] = Dsz
+            sdict["segments"][i] = segment
+    if abs(Dsz + Ddl - 100e3) / 100e3 > 1e-6:
+        for i in range(len(sdict["segments"])-1):
+            segment = sdict["segments"][i]
+            segment["composition models"][1]["max distance slab top"] = Dsz + Ddl
+            sdict["segments"][i] = segment
     o_dict['features'][i0] = sdict
 
 
