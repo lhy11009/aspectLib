@@ -1,0 +1,13 @@
+{
+    "_comment": "todo_bc",
+    "base directory": "${ASPECT_LAB_DIR}/files/PhaseDiagram/07062022",
+    "output directory": "${ASPECT_LAB_DIR}/.test/",
+    "type": "bd_lsolver",
+    "name": "test_PhaseDiagram_bd_lsolver",
+    "dimension": 2,
+    "boundary condition": {
+        "velocity": {
+            "type": "all fs"
+        }
+    }
+}
