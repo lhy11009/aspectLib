@@ -433,6 +433,17 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
 
+    def generate_input_file_with_resolution_level(self, base_input_path, input_file_path, resolution_level):
+        '''
+        generate input file with different resolution levels
+        Inputs:
+            base_input_path: input file path
+            input_file_path: path to generate input file
+            resolution_level: level of resolution
+        '''
+        # todo_affinity
+        pass
+
 
 def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     '''

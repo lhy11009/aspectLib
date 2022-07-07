@@ -57,6 +57,10 @@ parse_options(){
           shift
           g_from_local="$1"
         ;;
+        --skip_restart)
+          shift
+          skip_restart_file="$1"
+        ;;
       esac
       shift
     done
@@ -74,17 +78,19 @@ rsync_server(){
     local local_dir=$2
     local server_dir=$3
     local addr=$4
+    local flag=""
     [[ -n "${case_dir}" ]] || { cecho "${BAD}" "no case given (\$1}"; exit 1; }
     [[ -n "${local_dir}" ]] || { cecho "${BAD}" "fail to read local directory"; exit 1; }
     [[ -n "${server_dir}" ]] || { cecho "${BAD}" "fail to read peloton directory"; exit 1; }
+    [[ -n "${skip_restart_file}" ]] && flag="--exclude=*restart*" 
     if [[ -n "${g_from_local}" ]]; then
         local parental_dir=$(dirname "${server_dir}/${case_dir}")
-        echo "rsync -avur --progress ${local_dir}/${case_dir} ${addr}:${parental_dir}/"
-        eval "rsync -avur --progress ${local_dir}/${case_dir} ${addr}:${parental_dir}/"
+        echo "rsync -avur --progress ${flag} ${local_dir}/${case_dir} ${addr}:${parental_dir}/"
+        eval "rsync -avur --progress ${flag} ${local_dir}/${case_dir} ${addr}:${parental_dir}/"
     else
         local parental_dir=$(dirname "${local_dir}/${case_dir}")
-        echo "rsync -avur --progress ${addr}:${server_dir}/${case_dir} ${parental_dir}/"
-        eval "rsync -avur --progress ${addr}:${server_dir}/${case_dir} ${parental_dir}/"
+        echo "rsync -avur --progress ${flag} ${addr}:${server_dir}/${case_dir} ${parental_dir}/"
+        eval "rsync -avur --progress ${flag} ${addr}:${server_dir}/${case_dir} ${parental_dir}/"
     fi
     return 0
 }

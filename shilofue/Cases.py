@@ -79,6 +79,9 @@ class CASE_OPT(Utilities.JSON_OPT):
             available options in [all fs, bt fs side ns]", str,\
             ["boundary condition", "velocity", "type"], "all fs", nick='type_bd_v')
         self.add_key("Dimension", int, ['dimension'], 2, nick='dimension')
+        # todo_affinity
+        self.add_key("Refinement level, note this is a summarized parameter of the refinement scheme assigned",\
+            int, ["refinement level"], 1, nick="refinement_level")
         pass
     
     def check(self):
@@ -176,6 +179,33 @@ class CASE_OPT(Utilities.JSON_OPT):
         fix directory to output
         '''
         self.values[2] = o_dir
+    
+    def generate_affinity_input_file(self, base_input_path, input_file, parameters):
+        '''
+        to work with the AffinityTest.py and generate tests for different
+        resolution levels for research cases
+        Inputs:
+            base_input_path: input file path
+            input_file: path to generate input file
+            parameters: parameters for generating input file
+        '''
+        # todo_affinity
+        assert(type(parameters)==dict)
+        output_directory = parameters['OUTPUT_DIRECTORY']
+        resolution_level = parameters['RESOLUTION']
+        input_file_path = os.path.join(output_directory, input_file)
+        self.generate_input_file_with_resolution_level(base_input_path, input_file_path, resolution_level)
+    
+    def generate_input_file_with_resolution_level(self, base_input_path, input_file_path, resolution_level):
+        '''
+        generate input file with different resolution levels, to be reload in daughter classes
+        Inputs:
+            base_input_path: input file path
+            input_file_path: path to generate input file
+            resolution_level: level of resolution
+        '''
+        pass
+
 
 
 class CASE():
