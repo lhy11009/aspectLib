@@ -80,6 +80,7 @@ class CASE_OPT(CasesP.CASE_OPT):
         self.add_key("Thickness of the depleted lithosphere", float, ['plate setup', 'dl thickness'], 50e3, nick='Ddl')
         self.add_key("Apply the mantle reference density for all the compositions", int, ['apply reference density'],\
         0, nick='apply_reference_density')
+        self.add_key("Length of the initial slab", float, ['slab setup', 'length'], 167e3, nick='slab_length')
 
     
     def check(self):
@@ -113,8 +114,8 @@ class CASE_OPT(CasesP.CASE_OPT):
         adaptive_refinement = self.values[self.start+17]
         mantle_rheology_scheme = self.values[self.start+18]
         Dsz = self.values[self.start+19]
-        apply_reference_density = self.values[self.start+21]
         Ddl = self.values[self.start+20]
+        apply_reference_density = self.values[self.start+21]
         
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
@@ -135,7 +136,8 @@ class CASE_OPT(CasesP.CASE_OPT):
         trailing_length = self.values[self.start+6]
         Dsz = self.values[self.start+19]
         Ddl = self.values[self.start+20]
-        return _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl
+        slab_length = self.values[self.start+22]
+        return _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length
 
 
 
@@ -260,7 +262,7 @@ class CASE(CasesP.CASE):
         pass
 
 
-    def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl):
+    def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length):
         '''
         Configure wb file
         '''
@@ -268,12 +270,12 @@ class CASE(CasesP.CASE):
             # check first if we use wb file for this one
             return
         # geometry options
-        wb_configure_plate_schellart07(self.wb_dict, sp_width, sp_length, trailing_length, Dsz, Ddl)
+        wb_configure_plate_schellart07(self.wb_dict, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length)
 
         pass
 
 
-def wb_configure_plate_schellart07(wb_dict, sp_width, sp_length, trailing_width, Dsz, Ddl):
+def wb_configure_plate_schellart07(wb_dict, sp_width, sp_length, trailing_width, Dsz, Ddl, slab_length):
     '''
     World builder configuration of plates in Schellart etal 2007
     '''
@@ -305,6 +307,10 @@ def wb_configure_plate_schellart07(wb_dict, sp_width, sp_length, trailing_width,
             segment = sdict["segments"][i]
             segment["composition models"][1]["max distance slab top"] = Dsz + Ddl
             sdict["segments"][i] = segment
+    if abs(slab_length - 167e3)/167e3 > 1e-6:
+        segment = sdict["segments"][1]
+        segment['length'] = slab_length
+        sdict["segments"][1] = segment
     o_dict['features'][i0] = sdict
 
 
