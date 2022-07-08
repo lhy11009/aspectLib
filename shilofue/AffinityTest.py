@@ -257,7 +257,8 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
         server(str): options for server
         _path(str): directory to hold test files, pull path
         tasks_per_node (int): number of tasks to run on each node.
-        base_input_path: The 'base' input file that gets modified
+        base_input_path: The 'base' input file that gets modified, if project is None,
+        this option points to a json file to import the settings
         kwargs(dict):
             branch (str): branch to use, default is master
             nodelist: (list of str) - list of node to run on
@@ -273,26 +274,43 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
     max_core_count = kwargs.get('max_core_count', 10000)
     debug = kwargs.get('debug', 0) # debug mode
     project = kwargs.get('project', None)  # use a project instead of the default prm
-    json_file = kwargs.get('json_file', None)
-    # slurm parameterization
+    branch = 'master'
+    if project is not None:
+        assert(os.path.isfile(base_input_path) and base_input_path.split(".")[1]== "json")
+        if project == "TwoDSubduction":
+            branch = "master_TwoD"
+    else:
+        branch = kwargs.get('branch', 'master')
+    # a. slurm parameterization
     # for peloton ii
     # core_counts = [1,2,4,8,16,32,64,128,256,512,768,1024]#,200,300,400]#,500,800,1000,1500]
     # for rome-256-512
     # 64 tasks per node
     setups = [1, ]
     all_available_core_counts = [1,2,4,8,16,32,64, 128,256, 512, 768,1024]#,200,300,400]#,500,800,1000,1500]
+    # b. options for refinement
+    # Note the options for minimum_core_count_for_refinement_level and 
+    # maximum_core_count_for_refinement_level are there because in some cases
+    # the small core numbers will run forever and the really big core numbers
+    # don't make sense.
     if debug:
-        core_counts = [1,2,4] # debug mode, see all the settings work
+        core_counts = [1,16, 128] # debug mode, see all the settings work
     else:
         core_counts = []
         for core_count in all_available_core_counts:
             if core_count < max_core_count:
                 core_counts.append(core_count)
-    refinement_levels = [2,3,4,5]#,6]
-    # refinement_levels = [2]
-    #                                          0   1   2   3       4     5    6
-    minimum_core_count_for_refinement_level = [0,  0,   1,   1,   10, 100, 500]# for refinement levels 0-6
-    maximum_core_count_for_refinement_level = [0,  0,1000,1000, 1000,2000,2000] 
+    if project == "TwoDSubduction":
+        refinement_levels = [9, 10, 11]
+        minimum_core_count_for_refinement_level = [8 for i in range(12)]
+        minimum_core_count_for_refinement_level[11] = 16
+        maximum_core_count_for_refinement_level = [256 for i in range(12)]
+        maximum_core_count_for_refinement_level[11] = 512
+    else:
+        refinement_levels = [2,3,4,5]#,6]
+        minimum_core_count_for_refinement_level = [0,  0,   1,   1,   10, 100, 500]# for refinement levels 0-6
+        maximum_core_count_for_refinement_level = [0,  0,1000,1000, 1000,2000,2000] 
+    # options for claster
     openmpi = "4.1.0"  # change with updates
     cluster_label = "%s-%stasks-socket-openmpi-%s" % (server, tasks_per_node, openmpi) # ?
     if len(nodelist) > 0:
@@ -314,7 +332,6 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
     if not os.path.isdir(cluster_dir):
         os.mkdir(cluster_dir)
     # generate test files
-    branch = kwargs.get('branch', 'master')
     for core_count in core_counts:
         for resolution in refinement_levels:
             if( core_count >= minimum_core_count_for_refinement_level[resolution]
@@ -332,26 +349,32 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
                     # do string replacement on the base input file
                     # todo_affinity
                     if project is not None:
-                        assert(os.path.isfile(json_file))
+                        assert(os.path.isfile(base_input_path))
+                        if not os.path.isdir(os.path.dirname(input_file)):
+                            os.mkdir(os.path.dirname(input_file))
                         if project == "TwoDSubduction":
                             CASE = CasesTwoDSubduction.CASE
                             CASE_OPT = CasesTwoDSubduction.CASE_OPT
                         else:
                             NotImplementedError("Options for project %s is not implemented." % project)
-                        CasesP.create_case_with_json(json_file, CASE, CASE_OPT, reset_refinement_level=parameters["RESOLUTION"],\
-                            fix_output_dir=parameters["OUTPUT_DIRECTORY"])
+                        print("go to generate case") # debug
+                        CasesP.create_case_with_json(base_input_path, CASE, CASE_OPT, reset_refinement_level=resolution,\
+                            fix_output_dir=os.path.dirname(input_file), fix_case_name=os.path.basename(input_file),\
+                            fix_case_output_dir="../%s" % os.path.basename(output_file))
+                        prm_file = os.path.join(input_file, "case.prm")
                     else:
                         generate_input_file(base_input_path,input_file,parameters)
+                        prm_file = input_file
                     slurm_file = input_file + ".slurm"
                     # haoyuan: calls function to generate slurm file for one job
                     if server == "peloton-ii":
-                        generate_slurm_file_peloton(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
+                        generate_slurm_file_peloton(slurm_file,core_count,tasks_per_node,jobname,prm_file, branch=branch)
                         command_line="sbatch " + slurm_file
                     elif server == "stampede2":
-                        generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch)
+                        generate_slurm_file(slurm_file,core_count,tasks_per_node,jobname,prm_file, branch=branch)
                         command_line="sbatch " + slurm_file
                     if server == "peloton-rome":
-                        generate_slurm_file_peloton_roma(slurm_file,core_count,tasks_per_node,jobname,input_file, branch=branch, nodelist=nodelist)
+                        generate_slurm_file_peloton_roma(slurm_file,core_count,tasks_per_node,jobname,prm_file, branch=branch, nodelist=nodelist)
                         command_line="sbatch " + "-A billen " + slurm_file
                     print(command_line)
                     os.system(command_line)
@@ -529,6 +552,7 @@ def main():
             This is not the real maximum number of cpus to be run on,\
             but meant to manually put a limit on that.\
             This doesn't work with the debug mode.")
+    parser.add_argument('-p', '--project', type=str, default=None, help='A specific project to test, for default tests, leave this blank')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -540,7 +564,8 @@ def main():
     if commend == 'run_tests':
         # base_input_path = os.path.join(ASPECT_LAB_DIR, 'files', 'AffinityTest', 'spherical_shell_expensive_solver.prm')
         assert(os.path.isdir(arg.outputs))  # check output dir exists
-        do_tests(arg.server, arg.outputs, arg.tasks_per_node, arg.inputs, branch=arg.branch, nodelist=arg.nodelist, debug=arg.debug, max_core_count=arg.max_cpu)  # create and submit jobs
+        do_tests(arg.server, arg.outputs, arg.tasks_per_node, arg.inputs, branch=arg.branch, nodelist=arg.nodelist,\
+            debug=arg.debug, max_core_count=arg.max_cpu, project=arg.project)  # create and submit jobs
     elif commend == 'analyze_results':
         # example:
         # python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results

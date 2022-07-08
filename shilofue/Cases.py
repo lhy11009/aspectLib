@@ -83,6 +83,7 @@ class CASE_OPT(Utilities.JSON_OPT):
         self.add_key("Refinement level, note this is a summarized parameter of the refinement scheme assigned,\
 it only takes effect if the input is positiveh",\
             int, ["refinement level"], -1, nick="refinement_level")
+        self.add_key("Case Output directory", str, ["case output directory"], "output", nick='case_o_dir')
         pass
     
     def check(self):
@@ -93,7 +94,8 @@ it only takes effect if the input is positiveh",\
         base_dir = Utilities.var_subs(self.values[1])
         o_dir = Utilities.var_subs(self.values[2])
         Utilities.my_assert(os.path.isdir(base_dir), FileNotFoundError, "No such directory: %s" % base_dir)
-        Utilities.my_assert(os.path.isdir(o_dir), FileNotFoundError, "No such directory: %s" % o_dir)
+        # in case this is "", we'll fix that later.
+        Utilities.my_assert(o_dir=="" or os.path.isdir(o_dir), FileNotFoundError, "No such directory: %s" % o_dir)
         pass
 
     def to_init(self):
@@ -188,6 +190,13 @@ it only takes effect if the input is positiveh",\
         # todo_affinity
         self.values[15] = reset_refinement_level
         pass
+    
+    def fix_case_output_dir(self, case_o_dir):
+        '''
+        reset refinement level
+        '''
+        # todo_affinity
+        self.values[16] = case_o_dir
     
 
 class CASE():
@@ -359,6 +368,7 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     fix_base_dir = kwargs.get('fix_base_dir', None)
     fix_output_dir = kwargs.get('fix_output_dir', None)
     reset_refinement_level = kwargs.get('reset_refinement_level', None)
+    fix_case_output_dir = kwargs.get('fix_case_output_dir', None)
     Case_Opt = CASE_OPT()
     if type(json_opt) == str:
         if not os.access(json_opt, os.R_OK):
@@ -368,7 +378,6 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
         Case_Opt.import_options(json_opt)
     else:
         raise TypeError("Type of json_opt must by str or dict")
-    Case_Opt.check()
     if fix_case_name != None:
         Case_Opt.fix_case_name(fix_case_name)  # fix base dir, useful when creating a group of case from a folder
     if fix_base_dir != None:
@@ -378,6 +387,9 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     # todo_affinity
     if reset_refinement_level != None:
         Case_Opt.reset_refinement(reset_refinement_level)
+    if fix_case_output_dir != None:
+        Case_Opt.fix_case_output_dir(fix_case_output_dir)
+    Case_Opt.check()
     # check if the case already exists. If so, only update if it is explicitly 
     # required
     case_dir_to_check = os.path.join(Case_Opt.o_dir(), Case_Opt.case_name())

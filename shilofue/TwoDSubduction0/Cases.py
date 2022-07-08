@@ -191,11 +191,12 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         stokes_linear_tolerance = self.values[11]
         end_time = self.values[12]
         refinement_level = self.values[15]
+        case_o_dir = self.values[16]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
-        refinement_level
+        refinement_level, case_o_dir
 
     def to_configure_wb(self):
         '''
@@ -247,13 +248,16 @@ class CASE(CasesP.CASE):
     sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
     HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme,\
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
-    refinement_level):
+    refinement_level, case_o_dir):
         Ro = 6371e3
+        # velocity boundaries
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
         else:
             if_fs_sides = False
         o_dict = self.idict.copy()
+        # directory to put outputs
+        o_dict["Output directory"] = case_o_dir
         # solver schemes
         if abs((stokes_linear_tolerance-0.1)/0.1) > 1e-6:
             # default is negative, thus do nothing
@@ -275,20 +279,25 @@ class CASE(CasesP.CASE):
             if refinement_level == 9:
                 # this is only an option if the input is positive
                 # todo_affinity
-                o_dict["Mesh refinement"]["Initial global refinement"] = 5
-                o_dict["Mesh refinement"]["Initial adaptive refinement"] = 4
+                o_dict["Mesh refinement"]["Initial global refinement"] = "5"
+                o_dict["Mesh refinement"]["Initial adaptive refinement"] = "4"
             elif refinement_level == 10:
-                o_dict["Mesh refinement"]["Initial global refinement"] = 5
-                o_dict["Mesh refinement"]["Initial adaptive refinement"] = 5
+                o_dict["Mesh refinement"]["Initial global refinement"] = "5"
+                o_dict["Mesh refinement"]["Initial adaptive refinement"] = "5"
                 pass
             elif refinement_level == 11:
-                o_dict["Mesh refinement"]["Initial global refinement"] = 6
-                o_dict["Mesh refinement"]["Initial adaptive refinement"] = 5
+                o_dict["Mesh refinement"]["Initial global refinement"] = "6"
+                o_dict["Mesh refinement"]["Initial adaptive refinement"] = "5"
             o_dict["Mesh refinement"]["Minimum refinement level"] = o_dict["Mesh refinement"]["Initial global refinement"]
-        if geometry == 'chunk':
-            o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph(refinement_level=refinement_level)
-        elif geometry == 'box':
-            o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart(refinement_level=refinement_level)
+            if geometry == 'chunk':
+                o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph(refinement_level=refinement_level)
+            elif geometry == 'box':
+                o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart(refinement_level=refinement_level)
+        else:
+            if geometry == 'chunk':
+                o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph()
+            elif geometry == 'box':
+                o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart()
         # adjust refinement with different schemes, todo_3d_coarse
         if rf_scheme == "3d_coarse":
             pass
@@ -588,7 +597,7 @@ def prm_minimum_refinement_sph(**kwargs):
     """
     Ro = kwargs.get('Ro', 6371e3)
     # todo_affinity
-    refinement_level = kwargs.get(refinement_level, 10)
+    refinement_level = kwargs.get("refinement_level", 10)
     if refinement_level == 9:
         R_UM = 6
         R_LS = 7
@@ -600,8 +609,7 @@ def prm_minimum_refinement_sph(**kwargs):
         R_UM = 7
         R_LS = 9
     else:
-        raise ValueError("Wrong value for the \"refinement_level\"")
-
+        raise ValueError("Wrong value %d for the \"refinement_level\"" % refinement_level)
     o_dict = {
       "Coordinate system": "spherical",
       "Variable names": "r,phi,t",
@@ -617,7 +625,7 @@ def prm_minimum_refinement_cart(**kwargs):
     """
     Do = kwargs.get('Do', 2890e3)
     # todo_affinity
-    refinement_level = kwargs.get(refinement_level, 10)
+    refinement_level = kwargs.get("refinement_level", 10)
     if refinement_level == 9:
         R_UM = 6
         R_LS = 7
