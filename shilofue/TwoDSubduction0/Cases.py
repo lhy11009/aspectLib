@@ -271,13 +271,24 @@ class CASE(CasesP.CASE):
             o_dict["Geometry model"] = prm_geometry_cart(box_width, adjust_mesh_with_width=adjust_mesh_with_width)
         # refinement
         if refinement_level > 0:
-            # this is only an option if the input is positive
-            # todo_affinity
-            pass
+            # these options only take effects when refinement level is positive
+            if refinement_level == 9:
+                # this is only an option if the input is positive
+                # todo_affinity
+                o_dict["Mesh refinement"]["Initial global refinement"] = 5
+                o_dict["Mesh refinement"]["Initial adaptive refinement"] = 4
+            elif refinement_level == 10:
+                o_dict["Mesh refinement"]["Initial global refinement"] = 5
+                o_dict["Mesh refinement"]["Initial adaptive refinement"] = 5
+                pass
+            elif refinement_level == 11:
+                o_dict["Mesh refinement"]["Initial global refinement"] = 6
+                o_dict["Mesh refinement"]["Initial adaptive refinement"] = 5
+            o_dict["Mesh refinement"]["Minimum refinement level"] = o_dict["Mesh refinement"]["Initial global refinement"]
         if geometry == 'chunk':
-            o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph()
+            o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph(refinement_level=refinement_level)
         elif geometry == 'box':
-            o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart()
+            o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart(refinement_level=refinement_level)
         # adjust refinement with different schemes, todo_3d_coarse
         if rf_scheme == "3d_coarse":
             pass

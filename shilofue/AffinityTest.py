@@ -14,6 +14,7 @@ import shutil
 import numpy as np
 import math
 import shilofue.Cases as CasesP
+import shilofue.TwoDSubduction0.Cases as CasesTwoDSubduction
 try:
     import pathlib
     import subprocess
@@ -271,6 +272,8 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
         assert(server in ["peloton-rome"]) # this only works with these servers
     max_core_count = kwargs.get('max_core_count', 10000)
     debug = kwargs.get('debug', 0) # debug mode
+    project = kwargs.get('project', None)  # use a project instead of the default prm
+    json_file = kwargs.get('json_file', None)
     # slurm parameterization
     # for peloton ii
     # core_counts = [1,2,4,8,16,32,64,128,256,512,768,1024]#,200,300,400]#,500,800,1000,1500]
@@ -328,12 +331,14 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
                     
                     # do string replacement on the base input file
                     # todo_affinity
-                    use_generator = False
-                    if use_generator:
-                        CASE = None
-                        CASE_OPT = None
-                        json_path = None
-                        CasesP.create_case_with_json(json_path, CASE, CASE_OPT, reset_refinement_level=parameters["RESOLUTION"],\
+                    if project is not None:
+                        assert(os.path.isfile(json_file))
+                        if project == "TwoDSubduction":
+                            CASE = CasesTwoDSubduction.CASE
+                            CASE_OPT = CasesTwoDSubduction.CASE_OPT
+                        else:
+                            NotImplementedError("Options for project %s is not implemented." % project)
+                        CasesP.create_case_with_json(json_file, CASE, CASE_OPT, reset_refinement_level=parameters["RESOLUTION"],\
                             fix_output_dir=parameters["OUTPUT_DIRECTORY"])
                     else:
                         generate_input_file(base_input_path,input_file,parameters)
