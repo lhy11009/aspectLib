@@ -253,8 +253,14 @@ class CASE(CasesP.CASE):
                 Dp_str = "1e5"
             if reset_trailing_morb == 1:
                 o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'true'
-                o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
-                    "Width=%.4e, Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (trailing_length, box_depth, box_length, Dsz_str, Dp_str, sp_width)
+                if _type == "s07":
+                    o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
+                        "Width=%.4e, Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (trailing_length, box_depth, box_length, Dsz_str, Dp_str, sp_width)
+                elif _type == "s07_newton":
+                    o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
+                        "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (box_depth, box_length, Dsz_str, Dp_str, sp_width)
+                else:
+                    raise ValueError()
             else:
                 o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'false'
 
@@ -270,7 +276,12 @@ class CASE(CasesP.CASE):
             # check first if we use wb file for this one
             return
         # geometry options
-        wb_configure_plate_schellart07(self.wb_dict, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length)
+        if _type in ["s07", "s07T"]:
+            wb_configure_plate_schellart07(self.wb_dict, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length)
+        elif _type in ["s07_newton"]:
+            wb_configure_plate_schellart07_Tdependent(self.wb_dict, sp_width, sp_length, Dsz, Ddl, slab_length)
+        else:
+            raise ValueError("Wrong value for \"type\"")
 
         pass
 
@@ -285,6 +296,45 @@ def wb_configure_plate_schellart07(wb_dict, sp_width, sp_length, trailing_width,
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Subducting plate')
     sp_dict = o_dict['features'][i0]
     sp_dict["coordinates"] = [[trailing_width, -sp_width], [trailing_width, sp_width], [sp_length, sp_width] ,[sp_length, -sp_width]]
+    if abs(Dsz - 50e3) / 50e3 > 1e-6:
+        sp_dict["composition models"][0]["max depth"] = Dsz
+        sp_dict["composition models"][1]["min depth"] = Dsz
+    if abs(Dsz + Ddl - 100e3) / 100e3 > 1e-6:
+        sp_dict["composition models"][1]["max depth"] = Dsz + Ddl
+    o_dict['features'][i0] = sp_dict
+    # slab
+    i0 = ParsePrm.FindWBFeatures(o_dict, 'Slab')
+    sdict = o_dict['features'][i0]
+    sdict["coordinates"] = [[sp_length, -sp_width], [sp_length, sp_width]]
+    if abs(Dsz - 50e3) / 50e3 > 1e-6:
+        for i in range(len(sdict["segments"])-1):
+            # the last one is a phantom for temperature tapering
+            segment = sdict["segments"][i]
+            segment["composition models"][0]["max distance slab top"] = Dsz
+            segment["composition models"][1]["min distance slab top"] = Dsz
+            sdict["segments"][i] = segment
+    if abs(Dsz + Ddl - 100e3) / 100e3 > 1e-6:
+        for i in range(len(sdict["segments"])-1):
+            segment = sdict["segments"][i]
+            segment["composition models"][1]["max distance slab top"] = Dsz + Ddl
+            sdict["segments"][i] = segment
+    if abs(slab_length - 167e3)/167e3 > 1e-6:
+        segment = sdict["segments"][1]
+        segment['length'] = slab_length
+        sdict["segments"][1] = segment
+    o_dict['features'][i0] = sdict
+
+
+def wb_configure_plate_schellart07_Tdependent(wb_dict, sp_width, sp_length, Dsz, Ddl, slab_length):
+    '''
+    World builder configuration of plates in Schellart etal 2007
+    '''
+    o_dict = wb_dict.copy()
+    # subducting plate
+    # todo_sz
+    i0 = ParsePrm.FindWBFeatures(o_dict, 'Subducting plate')
+    sp_dict = o_dict['features'][i0]
+    sp_dict["coordinates"] = [[0.0, -sp_width], [0.0, sp_width], [sp_length, sp_width] ,[sp_length, -sp_width]]
     if abs(Dsz - 50e3) / 50e3 > 1e-6:
         sp_dict["composition models"][0]["max depth"] = Dsz
         sp_dict["composition models"][1]["min depth"] = Dsz
