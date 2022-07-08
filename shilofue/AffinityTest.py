@@ -49,6 +49,12 @@ Examples of usage: \n\
  -nl topaz-0 topaz-2 topaz-3\
  -m 385\n\
 \n\
+        (for running affinity tests for a research project: -i is the json for the project cases instead, -p is the name\
+of the project.\n\
+        Note on doing this for a new project: search for \"project\" in this script and apply changes)\n\
+        python -m shilofue.AffinityTest run_tests -i /home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220708/case.json\
+ -o /home/lochy/ASPECT_PROJECT/aspectLib/results -p TwoDSubduction\n\
+\n\
   - Analyze results: \n\
     (run this part on a laptop)\n\
 \n\
