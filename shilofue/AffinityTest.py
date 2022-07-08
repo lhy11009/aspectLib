@@ -13,6 +13,7 @@ import sys, os, argparse
 import shutil
 import numpy as np
 import math
+import shilofue.Cases as CasesP
 try:
     import pathlib
     import subprocess
@@ -326,7 +327,16 @@ def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
                     parameters['RESOLUTION'] = resolution
                     
                     # do string replacement on the base input file
-                    generate_input_file(base_input_path,input_file,parameters)
+                    # todo_affinity
+                    use_generator = False
+                    if use_generator:
+                        CASE = None
+                        CASE_OPT = None
+                        json_path = None
+                        CasesP.create_case_with_json(json_path, CASE, CASE_OPT, reset_refinement_level=parameters["RESOLUTION"],\
+                            fix_output_dir=parameters["OUTPUT_DIRECTORY"])
+                    else:
+                        generate_input_file(base_input_path,input_file,parameters)
                     slurm_file = input_file + ".slurm"
                     # haoyuan: calls function to generate slurm file for one job
                     if server == "peloton-ii":

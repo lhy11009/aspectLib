@@ -124,7 +124,6 @@ intiation stage causes the slab to break in the middle",\
             Utilities.my_assert(self.values[8] == 1, ValueError,\
             "%s: When using the box geometry, world builder must be used for initial conditions" \
             % Utilities.func_name())  # use box geometry, wb is mandatory
-        pass
         # check the setting for adjust box width
         plate_age_method = self.values[self.start + 8] 
         if plate_age_method == 'adjust box width':
@@ -139,6 +138,10 @@ intiation stage causes the slab to break in the middle",\
             Utilities.my_assert(box_width_pre_adjust > sp_age_trench_default * sp_rate_default, ValueError,\
             "For the \"adjust box width\" method to work, the box width before adjusting needs to be wider\
 than the multiplication of the default values of \"sp rate\" and \"age trench\"")
+        # check the option for refinement
+        # todo_affinity
+        refinement_level = self.values[15]
+        assert(refinement_level in [-1, 9, 10, 11])  # it's either not turned on or one of the options for the total refinement levels
         # check the method to use for phase transition
         phase_model = self.values[self.start + 12]
         Utilities.my_assert( phase_model in ["CDPT", "HeFESTo"], ValueError,\
@@ -187,10 +190,12 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         mantle_rheology_scheme = self.values[self.start + 20]
         stokes_linear_tolerance = self.values[11]
         end_time = self.values[12]
+        refinement_level = self.values[15]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
-        peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time
+        peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
+        refinement_level
 
     def to_configure_wb(self):
         '''
@@ -241,7 +246,8 @@ class CASE(CasesP.CASE):
     def configure_prm(self, if_wb, geometry, box_width, type_of_bd, potential_T,\
     sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
     HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme,\
-    peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time):
+    peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
+    refinement_level):
         Ro = 6371e3
         if type_of_bd == "all free slip":  # boundary conditions
             if_fs_sides = True  # use free slip on both sides
@@ -264,6 +270,10 @@ class CASE(CasesP.CASE):
         elif geometry == 'box':
             o_dict["Geometry model"] = prm_geometry_cart(box_width, adjust_mesh_with_width=adjust_mesh_with_width)
         # refinement
+        if refinement_level > 0:
+            # this is only an option if the input is positive
+            # todo_affinity
+            pass
         if geometry == 'chunk':
             o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph()
         elif geometry == 'box':
@@ -433,17 +443,6 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
 
-    def generate_input_file_with_resolution_level(self, base_input_path, input_file_path, resolution_level):
-        '''
-        generate input file with different resolution levels
-        Inputs:
-            base_input_path: input file path
-            input_file_path: path to generate input file
-            resolution_level: level of resolution
-        '''
-        # todo_affinity
-        pass
-
 
 def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     '''
@@ -577,11 +576,26 @@ def prm_minimum_refinement_sph(**kwargs):
     minimum refinement function for spherical geometry
     """
     Ro = kwargs.get('Ro', 6371e3)
+    # todo_affinity
+    refinement_level = kwargs.get(refinement_level, 10)
+    if refinement_level == 9:
+        R_UM = 6
+        R_LS = 7
+        pass
+    elif refinement_level == 10:
+        R_UM = 6
+        R_LS = 8
+    elif refinement_level == 11:
+        R_UM = 7
+        R_LS = 9
+    else:
+        raise ValueError("Wrong value for the \"refinement_level\"")
+
     o_dict = {
       "Coordinate system": "spherical",
       "Variable names": "r,phi,t",
       "Function constants": "Ro=%.4e, UM=670e3, DD=100e3" % Ro,
-      "Function expression": "((Ro-r<UM)? \\\n                                   ((Ro-r<DD)? 8: 6): 0.0)"
+      "Function expression": "((Ro-r<UM)? \\\n                                   ((Ro-r<DD)? %d: %d): 0.0)" % (R_LS, R_UM)
     }
     return o_dict
 
@@ -591,11 +605,25 @@ def prm_minimum_refinement_cart(**kwargs):
     minimum refinement function for cartesian geometry
     """
     Do = kwargs.get('Do', 2890e3)
+    # todo_affinity
+    refinement_level = kwargs.get(refinement_level, 10)
+    if refinement_level == 9:
+        R_UM = 6
+        R_LS = 7
+        pass
+    elif refinement_level == 10:
+        R_UM = 6
+        R_LS = 8
+    elif refinement_level == 11:
+        R_UM = 7
+        R_LS = 9
+    else:
+        raise ValueError("Wrong value for the \"refinement_level\"")
     o_dict = {
       "Coordinate system": "cartesian",
       "Variable names": "x, y, t",
       "Function constants": "Do=%.4e, UM=670e3, DD=100e3" % Do,
-      "Function expression": "((Do-y<UM)? \\\n                                   ((Do-y<DD)? 8: 6): 0.0)"
+      "Function expression": "((Do-y<UM)? \\\n                                   ((Do-y<DD)? %d: %d): 0.0)" % (R_LS, R_UM)
     }
     return o_dict
 

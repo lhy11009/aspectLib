@@ -80,8 +80,9 @@ class CASE_OPT(Utilities.JSON_OPT):
             ["boundary condition", "velocity", "type"], "all fs", nick='type_bd_v')
         self.add_key("Dimension", int, ['dimension'], 2, nick='dimension')
         # todo_affinity
-        self.add_key("Refinement level, note this is a summarized parameter of the refinement scheme assigned",\
-            int, ["refinement level"], 1, nick="refinement_level")
+        self.add_key("Refinement level, note this is a summarized parameter of the refinement scheme assigned,\
+it only takes effect if the input is positiveh",\
+            int, ["refinement level"], -1, nick="refinement_level")
         pass
     
     def check(self):
@@ -179,34 +180,15 @@ class CASE_OPT(Utilities.JSON_OPT):
         fix directory to output
         '''
         self.values[2] = o_dir
-    
-    def generate_affinity_input_file(self, base_input_path, input_file, parameters):
+        
+    def reset_refinement(self, reset_refinement_level):
         '''
-        to work with the AffinityTest.py and generate tests for different
-        resolution levels for research cases
-        Inputs:
-            base_input_path: input file path
-            input_file: path to generate input file
-            parameters: parameters for generating input file
+        reset refinement level
         '''
         # todo_affinity
-        assert(type(parameters)==dict)
-        output_directory = parameters['OUTPUT_DIRECTORY']
-        resolution_level = parameters['RESOLUTION']
-        input_file_path = os.path.join(output_directory, input_file)
-        self.generate_input_file_with_resolution_level(base_input_path, input_file_path, resolution_level)
-    
-    def generate_input_file_with_resolution_level(self, base_input_path, input_file_path, resolution_level):
-        '''
-        generate input file with different resolution levels, to be reload in daughter classes
-        Inputs:
-            base_input_path: input file path
-            input_file_path: path to generate input file
-            resolution_level: level of resolution
-        '''
+        self.values[15] = reset_refinement_level
         pass
-
-
+    
 
 class CASE():
     '''
@@ -376,6 +358,7 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     fix_case_name = kwargs.get('fix_case_name', None)
     fix_base_dir = kwargs.get('fix_base_dir', None)
     fix_output_dir = kwargs.get('fix_output_dir', None)
+    reset_refinement_level = kwargs.get('reset_refinement_level', None)
     Case_Opt = CASE_OPT()
     if type(json_opt) == str:
         if not os.access(json_opt, os.R_OK):
@@ -392,6 +375,9 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
         Case_Opt.fix_base_dir(fix_base_dir)  # fix base dir, useful when creating a group of case from a folder
     if fix_output_dir != None:
         Case_Opt.fix_output_dir(fix_output_dir)  # fix output dir, useful when doing tests
+    # todo_affinity
+    if reset_refinement_level != None:
+        Case_Opt.reset_refinement(reset_refinement_level)
     # check if the case already exists. If so, only update if it is explicitly 
     # required
     case_dir_to_check = os.path.join(Case_Opt.o_dir(), Case_Opt.case_name())
