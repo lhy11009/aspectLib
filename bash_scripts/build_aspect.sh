@@ -73,7 +73,7 @@ build_aspect_project(){
     #   project: name of the project
     ###
     local build_dir
-    [[ $1 == "master" ]] && build_dir="${ASPECT_SOURCE_DIR}/build" || build_dir="${ASPECT_SOURCE_DIR}/build_$1"
+    [[ $1 == "main" ]] && build_dir="${ASPECT_SOURCE_DIR}/build" || build_dir="${ASPECT_SOURCE_DIR}/build_$1"
     local mode
     if [[ -n $2 ]]; then
         [[ $2 == "debug" || $2 == "release" ]] || { cecho ${BAD} "${FUNCNAME[0]}: mode is either \'debug\' or \'release\'"; exit 1; }

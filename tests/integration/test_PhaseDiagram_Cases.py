@@ -70,7 +70,7 @@ def test_bd_lsolver():
     assert(os.path.isdir(output_dir))  # check case generation
     prm_std_path = os.path.join(source_case_dir, 'case_std.prm')
     prm_path = os.path.join(output_dir, 'case.prm')
-    # assert(filecmp.cmp(prm_path, prm_std_path))
+    assert(filecmp.cmp(prm_path, prm_std_path))
     # test 2: tangential bc on top and bottom, no slip on both sides
     source_case_dir = os.path.join(source_dir, "test_bd_lsolver_ns")
     json_path = os.path.join(source_case_dir, 'case.json')
@@ -81,7 +81,7 @@ def test_bd_lsolver():
     assert(os.path.isdir(output_dir))  # check case generation
     prm_std_path = os.path.join(source_case_dir, 'case_std.prm')
     prm_path = os.path.join(output_dir, 'case.prm')
-    # assert(filecmp.cmp(prm_path, prm_std_path))
+    assert(filecmp.cmp(prm_path, prm_std_path))
 
 
     
