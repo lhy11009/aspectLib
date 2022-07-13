@@ -1,0 +1,262 @@
+# Note this is the prm file I got from Shaohui, note the initial temperature and the gravity needs to be provided
+set Dimension                              = 2
+set Output directory                       = Ref_T50_D150_V1e-2
+set Use years in output instead of seconds = true
+set End time                               = 1e9
+
+
+subsection Geometry model
+  set Model name = spherical shell
+  subsection Spherical shell
+    set Outer radius = 1740000
+    set Inner radius = 350000
+    set Opening angle = 180
+    #set Phi periodic = true only for degree90
+  end
+end
+
+
+
+subsection Boundary velocity model
+  set Tangential velocity boundary indicators = bottom , left , right
+  set Zero velocity boundary indicators = top
+end
+
+
+subsection Boundary temperature model
+  set Fixed temperature boundary indicators = bottom , top
+  set List of model names = constant
+  subsection Constant
+    set Boundary indicator to temperature mappings  = bottom:1873 , top:273 
+  end
+end
+
+
+subsection Initial temperature model
+  set List of model names = ascii profile
+
+  subsection Ascii profile
+    set Data directory  = data/
+    set Data file name  = model_T.txt
+  end
+end
+
+
+subsection Gravity model
+  set Model name = ascii data
+  subsection Vertical
+    set Magnitude = 1.5
+  end
+  subsection Radial constant
+    set Magnitude =1.5
+  end
+  subsection Ascii data model
+    set Data directory = data/
+    set Data file name =liu_G.txt
+  end
+end
+
+subsection Compositional fields
+  set Names of fields             = Crust , urKREEP , IBC
+  set Number of fields            = 3
+  set Compositional field methods = particles , particles , particles
+  set Mapped particle properties  = Crust:initial Crust , urKREEP:initial urKREEP , IBC:initial IBC
+end
+
+subsection Initial composition model
+  set Model name = function
+  subsection Function
+    set Coordinate system   = spherical
+    set Variable names      = r,phi
+    set Function expression = if(r>1700000,1,0) ; if((r<1700000) && (r>1695000),1,0)  ; if((r<1695000) && (r>1645000),1,0) 
+  end
+end
+
+
+subsection Discretization
+  #set Use discontinuous composition discretization  = true
+  #set Composition polynomial degree = 1 
+end
+
+subsection Material model
+
+  set Model name = compositing
+
+  subsection Diffusion dislocation
+    set Reference temperature  = 1573
+    set Reference viscosity    = 1e21 
+  
+    set Minimum viscosity      = 1e17
+    set Maximum viscosity      = 1e25
+    set Viscosity averaging scheme =  harmonic
+    set Effective viscosity coefficient           = 1.0
+
+    set Densities              = 3400 , 2750 , 2920 , 3550                        
+    set Thermal diffusivity    = 1e-6                                                    
+    #set Thermal expansivities  = 3e-5
+    set Heat capacity          = 1250
+
+    #set Prefactors for diffusion creep            = 1e-15          #e=0
+    set Prefactors for diffusion creep            = 1.046627e-18 , 1.046627e-18 , 5e-18 , 1.046627e-16     #e=100 
+    set Prefactors for dislocation creep          = 1e-100
+    set Activation energies for diffusion creep   = 100e3 , 100e3 , 0 , 100e3    #100kj
+    set Activation energies for dislocation creep = 0
+    set Activation volumes for diffusion creep    = 0
+    set Activation volumes for dislocation creep  = 0
+    set Stress exponents for diffusion creep      = 1
+    set Stress exponents for dislocation creep    = 1
+
+    set Grain size                                = 1      #defult:1e-3
+    set Grain size exponents for diffusion creep  = 0      #defult:3.
+    set Maximum strain rate ratio iterations      = 40
+    set Minimum strain rate                       = 1.4e-20
+    set Strain rate residual tolerance            = 1e-22
+  end
+
+  subsection Multicomponent
+    set Thermal conductivities = 4,2,4,4
+    set Thermal expansivities  = 2e-5
+  end
+
+  subsection Compositing
+    set Compressibility =  diffusion dislocation
+    set Density =  diffusion dislocation 
+    set Entropy derivative pressure =  diffusion dislocation
+    set Entropy derivative temperature =  diffusion dislocation
+    set Reaction terms =  diffusion dislocation
+    set Specific heat = diffusion dislocation
+    set Viscosity =  diffusion dislocation
+
+    set Thermal conductivity =  multicomponent
+    set Thermal expansion coefficient =  multicomponent
+  end
+
+end
+
+subsection Formulation
+  #set Formulation =  Boussinesq approximation 
+  set Mass conservation = incompressible
+  set Temperature equation =   reference density profile 
+end
+
+
+subsection Heating model
+  set List of model names = radioactive decay
+  subsection Radioactive decay
+    set Crust composition number      = 1
+    set Crust defined by composition  = true
+    set Heating rates              = 9.46e-5, 2.64e-5
+    set Half decay times           = 4.47e9, 14.00e9
+    #set Initial concentrations crust  = 7200e-3 , 26640e-3
+    set Initial concentrations crust  = 25e-3 , 92.5e-3
+    set Initial concentrations mantle = 25e-3 , 92.5e-3
+    set Number of elements            = 2
+  end
+end
+
+
+subsection Mesh refinement
+  set Initial global refinement          = 8
+  set Minimum refinement level           = 4
+  set Initial adaptive refinement        = 3
+  set Time steps between mesh refinement = 10
+  #set Skip solvers on initial refinement = true
+  set Strategy                           =  composition approximate gradient  , isosurfaces ,  minimum refinement function
+
+  subsection Composition approximate gradient     
+    set Compositional field scaling factors =  0.0  , 1.0 , 1.0    #urKREEP
+  end
+  
+  subsection Isosurfaces
+    set Isosurfaces = 7, 7, Crust: 0.1 | 1.0 
+    #11, 11, urKREEP: 0.1 | 1.0  ; 8, 8, IBC: 0.1 | 1.0
+  end
+
+  subsection Minimum refinement function
+    set Coordinate system   = spherical
+    set Variable names      = r , phi , theta
+    set Function constants  = upvalue=1701000 , lowvalue=1694000
+    set Function expression = if((r<=upvalue) && (r>=lowvalue),11,0)
+  end
+end
+
+#subsection Nullspace removal
+#  set Remove nullspace  =  angular momentum
+#end
+
+
+subsection Solver parameters
+  set Temperature solver tolerance = 1e-12
+  subsection Stokes solver parameters
+    set Linear solver tolerance = 1e-3
+    set Number of cheap Stokes solver steps = 5000
+    set GMRES solver restart length = 2000
+    set Use full A block as preconditioner = true
+    set Maximum number of expensive Stokes solver steps  = 10000
+  end
+end
+
+
+subsection Postprocess
+  set List of postprocessors = visualization, velocity statistics, composition statistics, particles,  particle count statistics ,  depth average , dynamic topography
+  subsection Visualization
+    set Interpolate output       = false
+    set Number of grouped files  = 1
+    set List of output variables      = material properties,spherical velocity components,temperature anomaly, heating, particle count ,  melt fraction ,  surface dynamic topography
+    set Output format                 = vtu
+    set Time between graphical output = 1e5
+    subsection Material properties
+      set List of material properties = density, viscosity
+    end
+  end
+
+  subsection Particles
+    set Number of particles = 2e8
+    set Number of grouped files = 1
+    set Load balancing strategy = repartition
+    set Time between data output = 2e6
+    set Data output format = none
+    set List of particle properties = velocity, initial composition
+    set Interpolation scheme = cell average
+    set Allow cells without particles  = true
+    set Minimum particles per cell = 9
+    set Maximum particles per cell = 100
+    set Particle generator name = probability density function
+    set Update ghost particles = true
+    #set Particle weight = 0
+
+    subsection Generator
+      subsection Probability density function
+        #set Coordinate system   = spherical
+        set Variable names      = x , y
+        #set Function constants  = upvalue=1710000 , lowvalue=1535000
+        #set Function expression = if( ((x^2+y^2)<=(upvalue^2))&&((x^2+y^2)>=(lowvalue^2)) , 1 , 0.1 );
+        set Function constants  = upvalue=1710000 , lowvalue=1630000 , up=1701000 , low=1693000
+        set Function expression = ( ( ((x*x+y*y) <= (up*up))&&((x*x+y*y) >= (low*low)) ) ? \
+                                  1: \
+                                  ( ((x*x+y*y) <= (upvalue*upvalue))&&((x*x+y*y) >= (lowvalue*lowvalue)) ) ? \
+                                  0.2: \
+                                  0.01);
+      end
+      subsection Reference cell
+        set Number of particles per cell per direction = 5
+      end
+    end
+  end
+
+  subsection Depth average
+    set List of output variables =  temperature , viscosity , composition ,  composition mass 
+    set Number of zones = 139
+    set Output format =  gnuplot, txt
+    set Time between graphical output = 1e5
+  end
+
+  subsection Dynamic topography
+    set Density above = 0.0
+    set Density below = 8000.0
+  end
+  
+end
+
+
+

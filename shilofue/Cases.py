@@ -422,6 +422,8 @@ def SetBcVelocity(bc_dict, dimension, type_bc_v):
     ns_indicator = []
     if dimension == 2 and type_bc_v == 'all fs':
         fs_indicator = [0, 1, 2, 3]
+    elif dimension == 3 and type_bc_v == 'all fs':
+        fs_indicator = [0, 1, 2, 3, 4, 5]
     elif dimension == 2 and type_bc_v == 'bt fs side ns':
         fs_indicator = [1, 3]
         ns_indicator = [0, 2]
