@@ -9,6 +9,7 @@
 #SBATCH -t 300:00:00
 #SBATCH --partition=p-billen
 #SBATCH --switches=1
+#SBATCH --mem-per-cpu=4G
 
 module unload openmpi/4.0.1
 module load openmpi/4.1.0-mpi-io
