@@ -1,0 +1,14 @@
+{
+    "_comment": "This is the json file for the tests I created for the PR of block GMG, Note on this test: It's a domain with temperature of 273K, viscosity of 1e21 (diffusion creep) and density of 3150.0",
+    "base directory": "${ASPECT_LAB_DIR}/files/PhaseDiagram/07132022",
+    "output directory": "${ASPECT_LAB_DIR}/.test/",
+    "type": "bd_lsolver_test",
+    "name": "test_PhaseDiagram_bd_lsolver_ns_3D",
+    "dimension": 3,
+    "geometry": "chunk",
+    "boundary condition": {
+        "velocity": {
+            "type": "bt fs side ns"
+        }
+    }
+}

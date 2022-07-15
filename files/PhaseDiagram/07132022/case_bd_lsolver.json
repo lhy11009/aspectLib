@@ -1,0 +1,14 @@
+{
+    "_comment": "todo_bc",
+    "base directory": "${ASPECT_LAB_DIR}/files/PhaseDiagram/07132022",
+    "output directory": "${ASPECT_LAB_DIR}/.test/",
+    "type": "bd_lsolver",
+    "name": "test_PhaseDiagram_bd_lsolver_ns_3D",
+    "dimension": 3,
+    "geometry": "chunk",
+    "boundary condition": {
+        "velocity": {
+            "type": "bt fs side ns"
+        }
+    }
+}

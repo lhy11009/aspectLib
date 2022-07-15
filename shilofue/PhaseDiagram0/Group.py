@@ -24,7 +24,7 @@ import sys, os, argparse
 # import subprocess
 import shilofue.Group as GroupP
 from shilofue.Group import CreateGroup
-from shilofue.FOO0.Cases import CASE, CASE_OPT
+from shilofue.PhaseDiagram0.Cases import CASE, CASE_OPT
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt

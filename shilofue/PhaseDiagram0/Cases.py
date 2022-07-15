@@ -58,7 +58,7 @@ class CASE_OPT(CasesP.CASE_OPT):
     def check(self):
         _type = self.values[9] 
         composition = self.values[self.start]
-        if _type not in ["CDPT", "bd_lsolver"]:
+        if _type not in ["CDPT", "bd_lsolver", "bd_lsolver_test"]:
             raise NotImplementedError('Type %s is not implemented.' % _type)
         if _type == "CDPT":
             assert(composition in ['pyrolite', 'basalt', 'harzburgite'])
@@ -104,7 +104,7 @@ class CASE(CasesP.CASE):
         o_dict = self.idict.copy()
         o_dict["Dimension"] = str(dimension)
         # geometry options
-        if _type in ["bd_lsolver"]:
+        if _type in ["bd_lsolver", "bd_lsolver_test"]:
             if geometry == 'chunk' and dimension == 2:
                 max_phi = box_width / Ro * 180.0 / np.pi  # extent in term of phi
                 if abs((max_phi - 61.0)/max_phi):
@@ -142,6 +142,25 @@ class CASE(CasesP.CASE):
                         "Z repetitions": "1"
                     }
                 }
+            elif geometry == 'chunk' and dimension == 3:
+                max_phi = box_width / Ro * 180.0 / np.pi  # extent in term of phi
+                if abs((max_phi - 61.0)/max_phi):
+                    str_max_phi = "61.0"
+                else:
+                    str_max_phi = "%.4e" % max_phi
+                o_dict["Geometry model"] = {
+                    "Model name": "chunk",
+                    "Chunk": {
+                        "Chunk inner radius": "3.481e6",\
+                        "Chunk outer radius": "6.371e6",\
+                        "Chunk maximum longitude": str_max_phi,\
+                        "Chunk minimum longitude": "0.0",\
+                        "Chunk maximum latitude": str_max_phi,\
+                        "Chunk minimum latitude": "0.0",\
+                        "Longitude repetitions": "2",\
+                        "Latitude repetitions": "2"
+                    }
+                }
             else:
                 raise NotImplementedError()
         
@@ -154,7 +173,7 @@ class CASE(CasesP.CASE):
 
         # velocity boundary
         # todo_bc
-        if _type in ["bd_lsolver"]:
+        if _type in ["bd_lsolver", "bd_lsolver_test"]:
             o_dict["Boundary velocity model"] = CasesP.SetBcVelocity(o_dict["Boundary velocity model"], dimension, type_bc_v)
         # boundary temperature model
         # o_dict['Boundary temperature model'] =
