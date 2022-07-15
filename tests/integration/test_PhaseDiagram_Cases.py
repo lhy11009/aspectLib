@@ -98,9 +98,21 @@ def test_bd_lsolver_3D():
     '''
     test for cases with bd and linear solver
     '''
+    # test 1: tangential bc, for 3d
     source_case_dir = os.path.join(source_dir, "test_bd_lsolver_box_3D")
     json_path = os.path.join(source_case_dir, 'case.json')
     output_dir = os.path.join(test_dir,'test_PhaseDiagram_bd_lsolver_box_3D')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_std.prm')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    assert(filecmp.cmp(prm_path, prm_std_path))
+    # test 2: tangential bc on top and bottom, no slip on both sides, for 3d
+    source_case_dir = os.path.join(source_dir, "test_bd_lsolver_ns_box_3D")
+    json_path = os.path.join(source_case_dir, 'case.json')
+    output_dir = os.path.join(test_dir,'test_PhaseDiagram_bd_lsolver_ns_box_3D')
     if os.path.isdir(output_dir):
         rmtree(output_dir)
     create_case_with_json(json_path, CASE, CASE_OPT)

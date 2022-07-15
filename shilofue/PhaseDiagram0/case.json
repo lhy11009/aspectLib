@@ -1,0 +1,15 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/PhaseDiagram/05152022",
+  "output directory": "/home/lochy/ASPECT_PROJECT/PhaseDiagram/test_cases",
+  "type": "CDPT",
+  "name": "test0",
+  "include fast first step": 1,
+  "composition": "pyrolite",
+  "_geometry": "chunk",
+  "_potential temperature": 1573.0,
+  "_use world builder": 0,
+  "additional files": [
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ]
+}

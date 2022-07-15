@@ -427,7 +427,9 @@ def SetBcVelocity(bc_dict, dimension, type_bc_v):
     elif dimension == 2 and type_bc_v == 'bt fs side ns':
         fs_indicator = [1, 3]
         ns_indicator = [0, 2]
-        pass
+    elif dimension == 3 and type_bc_v == 'bt fs side ns':
+        fs_indicator = [4, 5]
+        ns_indicator = [0, 1, 2, 3]
     else:
         raise NotImplementedError("This combination of dimension (%d) and \
 velocity boundary (%s) is not implemented yet." % (dimension, type_bc_v))
