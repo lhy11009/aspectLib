@@ -81,6 +81,7 @@ class CASE_OPT(CasesP.CASE_OPT):
         self.add_key("Apply the mantle reference density for all the compositions", int, ['apply reference density'],\
         0, nick='apply_reference_density')
         self.add_key("Length of the initial slab", float, ['slab setup', 'length'], 167e3, nick='slab_length')
+        self.add_key("Dipping angle of the initial slab", float, ['slab setup', 'dip'], 15.5, nick='dip_angle')
 
     
     def check(self):
@@ -88,6 +89,8 @@ class CASE_OPT(CasesP.CASE_OPT):
         assert(reset_trailing_morb in [0, 1])
         friction_angle = self.values[self.start+10] # range of friction angle, in degree
         assert(friction_angle >= 0.0 and friction_angle <= 90.0)
+        dip_angle = self.values[self.start+23] # initial dipping angle of the slab
+        assert(dip_angle > 0 and dip_angle <= 90.0) # an angle between 0 and 90
 
     def to_configure_prm(self):
         '''
@@ -137,7 +140,8 @@ class CASE_OPT(CasesP.CASE_OPT):
         Dsz = self.values[self.start+19]
         Ddl = self.values[self.start+20]
         slab_length = self.values[self.start+22]
-        return _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length
+        dip_angle = self.values[self.start+23]
+        return _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length, dip_angle
 
 
 
@@ -268,7 +272,7 @@ class CASE(CasesP.CASE):
         pass
 
 
-    def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length):
+    def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length, dip_angle):
         '''
         Configure wb file
         '''
@@ -279,11 +283,9 @@ class CASE(CasesP.CASE):
         if _type in ["s07", "s07T"]:
             wb_configure_plate_schellart07(self.wb_dict, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length)
         elif _type in ["s07_newton"]:
-            wb_configure_plate_schellart07_Tdependent(self.wb_dict, sp_width, sp_length, Dsz, Ddl, slab_length)
+            wb_configure_plate_schellart07_Tdependent(self.wb_dict, sp_width, sp_length, Dsz, Ddl, slab_length, dip_angle)
         else:
             raise ValueError("Wrong value for \"type\"")
-
-        pass
 
 
 def wb_configure_plate_schellart07(wb_dict, sp_width, sp_length, trailing_width, Dsz, Ddl, slab_length):
@@ -325,7 +327,7 @@ def wb_configure_plate_schellart07(wb_dict, sp_width, sp_length, trailing_width,
     o_dict['features'][i0] = sdict
 
 
-def wb_configure_plate_schellart07_Tdependent(wb_dict, sp_width, sp_length, Dsz, Ddl, slab_length):
+def wb_configure_plate_schellart07_Tdependent(wb_dict, sp_width, sp_length, Dsz, Ddl, slab_length, dip_angle):
     '''
     World builder configuration of plates in Schellart etal 2007
     '''
@@ -361,6 +363,17 @@ def wb_configure_plate_schellart07_Tdependent(wb_dict, sp_width, sp_length, Dsz,
         segment = sdict["segments"][1]
         segment['length'] = slab_length
         sdict["segments"][1] = segment
+    if abs(dip_angle - 15.5)/15.5 > 1e-6:
+        # initial dipping angle
+        segment = sdict["segments"][0]
+        segment['angle'] = [0, dip_angle]
+        segment['length'] = 20e3 * dip_angle/15.5 # maintain the same curvature
+        segment = sdict["segments"][1]
+        segment['angle'] = [dip_angle, dip_angle]
+        segment = sdict["segments"][2]
+        segment['angle'] = [dip_angle, dip_angle]
+
+
     o_dict['features'][i0] = sdict
 
 
