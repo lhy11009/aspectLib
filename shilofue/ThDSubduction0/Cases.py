@@ -82,6 +82,9 @@ class CASE_OPT(CasesP.CASE_OPT):
         0, nick='apply_reference_density')
         self.add_key("Length of the initial slab", float, ['slab setup', 'length'], 167e3, nick='slab_length')
         self.add_key("Dipping angle of the initial slab", float, ['slab setup', 'dip'], 15.5, nick='dip_angle')
+        self.add_key("Age of the subducting plate at trench", float, ['plate setup', 'sp age'], 80e6, nick='sp_age_trench')
+        self.add_key("Age of the overiding plate", float, ['plate setup', 'ov age'], 40e6, nick='ov_age')
+
 
     
     def check(self):
@@ -141,7 +144,9 @@ class CASE_OPT(CasesP.CASE_OPT):
         Ddl = self.values[self.start+20]
         slab_length = self.values[self.start+22]
         dip_angle = self.values[self.start+23]
-        return _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length, dip_angle
+        sp_age_trench = self.values[self.start+24]
+        ov_age = self.values[self.start+25]
+        return _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age
 
 
 
@@ -272,7 +277,7 @@ class CASE(CasesP.CASE):
         pass
 
 
-    def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length, dip_angle):
+    def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age):
         '''
         Configure wb file
         '''
@@ -283,7 +288,7 @@ class CASE(CasesP.CASE):
         if _type in ["s07", "s07T"]:
             wb_configure_plate_schellart07(self.wb_dict, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length)
         elif _type in ["s07_newton"]:
-            wb_configure_plate_schellart07_Tdependent(self.wb_dict, sp_width, sp_length, Dsz, Ddl, slab_length, dip_angle)
+            wb_configure_plate_schellart07_Tdependent(self.wb_dict, sp_width, sp_length, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age)
         else:
             raise ValueError("Wrong value for \"type\"")
 
@@ -327,12 +332,17 @@ def wb_configure_plate_schellart07(wb_dict, sp_width, sp_length, trailing_width,
     o_dict['features'][i0] = sdict
 
 
-def wb_configure_plate_schellart07_Tdependent(wb_dict, sp_width, sp_length, Dsz, Ddl, slab_length, dip_angle):
+def wb_configure_plate_schellart07_Tdependent(wb_dict, sp_width, sp_length, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age):
     '''
     World builder configuration of plates in Schellart etal 2007
     '''
     o_dict = wb_dict.copy()
     # subducting plate
+    i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate')
+    ov_dict = o_dict['features'][i0]
+    if abs(ov_age - 40e6) / 40e6 > 1e-6:
+        ov_dict["temperature models"][0]["plate age"] = ov_age
+    o_dict['features'][i0] = ov_dict
     # todo_sz
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Subducting plate')
     sp_dict = o_dict['features'][i0]
