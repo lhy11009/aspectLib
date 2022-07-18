@@ -1,0 +1,13 @@
+{
+    "_comment" : "This is configuration for combining results of time run (time, step, dofs ...)",
+    "case_root": "${TwoDSubduction_DIR}/EBA_CDPT_peierls1",
+    "cases": ["eba_cdpt_SA80.0_OA40.0_MK10", "eba_cdpt_SA80.0_OA40.0_MK10_re_test2", "eba_cdpt_SA80.0_OA40.0_MK10_re_test2_resume", "eba_cdpt_SA80.0_OA40.0_MK10_re_test2_resume1"],
+    "output directory": {
+        "relative": 1,
+        "path": "plot_combine"
+    },
+    "width": -1.0,
+    "time range": [15e6, 21e6],
+    "trench position range": [-200e3, -100e3],
+    "slab depth range": [1000e3, 1500e3]
+}

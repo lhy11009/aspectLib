@@ -673,6 +673,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
         plt.savefig(fig_path)
         return fig_path
 
+
 def PlotColorLabels(ax, case_names, colors): 
     '''
     plot the color labels used for different cases
@@ -687,21 +688,21 @@ def PlotColorLabels(ax, case_names, colors):
     ax.axis("off")
 
 
-def PlotCombineRuntime(json_path):
+def PlotCombineExecute(PLOT_COMBINE_CLASS, PLOT_COMBINE_OPT, _name, json_path):
     '''
     Combine runtime plot
     Inputs:
         json_path: path to a json file for configuration
     '''
     assert(os.access(json_path, os.R_OK))
-    Pc_opt = PC_RUNTIME_OPT()
+    Pc_opt = PLOT_COMBINE_OPT()
     Pc_opt.read_json(json_path)  # read options
     # plot the combined figure
-    PlotCombineRunTime = PLOT_COMBINE_RUNTIME(Pc_opt.to_init())
-    PlotCombineRunTime(*Pc_opt.to_call(), dump_color_to_json=Pc_opt.get_color_json_output_path(),\
+    PlotCombiner = PLOT_COMBINE_CLASS(Pc_opt.to_init())
+    PlotCombiner(*Pc_opt.to_call(), dump_color_to_json=Pc_opt.get_color_json_output_path(),\
     color_method='check_first')
     # save the configuration file
-    json_copy_path = os.path.join(Pc_opt.get_output_dir(), 'runtime.json')
+    json_copy_path = os.path.join(Pc_opt.get_output_dir(), '%s.json' % _name)
     try:
         shutil.copy(json_path, json_copy_path)
         print("Saved json file: ", json_copy_path)
@@ -748,7 +749,7 @@ def main():
         assert(os.access(arg.inputs, os.R_OK))
         PrepareResults(arg.inputs)
     elif _commend == "combine_runtime":
-        PlotCombineRuntime(arg.json)
+        PlotCombineExecute(PLOT_COMBINE_RUNTIME, PC_RUNTIME_OPT, "runtime", arg.json)
     elif (_commend in ['--json_option', '-jo']):
         # json options
         ShowJsonOption()

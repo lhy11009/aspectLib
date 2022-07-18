@@ -66,9 +66,7 @@ def test_plot_combine():
 def test_plot_combine_runtime():
     '''
     test the Plot_Combine_RunTime case
-    todo_combine
     '''
-
     test_source_dir = os.path.join(source_dir, "combine_runtime")
     output_dir = os.path.join(test_dir, 'plot_combine_runtime')
     output_path = os.path.join(output_dir, 'combine_runtime.png')

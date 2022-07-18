@@ -33,6 +33,7 @@ from numpy import linalg as LA
 import multiprocessing
 #### self
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
+from shilofue.PlotCombine import PLOT_COMBINE, PlotCombineExecute, PlotColorLabels, PC_OPT_BASE
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 from shilofue.ParsePrm import ReadPrmFile, ParseFromDealiiInput
 from shilofue.Plot import LINEARPLOT
@@ -73,6 +74,9 @@ Examples of usage: \n\
 \n\
   - Plot the morphology of the slab: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_morph -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 \n\
+\n\
+  - Combine the morphology of a few cases. Note for this to work, a json file needs to be presented: \n\
+        python -m shilofue.TwoDSubduction0.VtkPp combine_slab_morph -j /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT_peierls1/plot_combine/slab_morph.json\n\
 \n\
         ")
 
@@ -1032,22 +1036,28 @@ class SLABPLOT(LINEARPLOT):
         plt.savefig(o_path)
         print("%s: figure %s generated" % (Utilities.func_name(), o_path))
     
-    def PlotMorph1(self, case_dir, **kwargs):
+    def PlotTrenchVelocity(self, case_dir, **kwargs):
         '''
         a variation of the PlotMorph function: used for combining results
         Inputs:
             case_dir (str): directory of case
         kwargs(dict):
             defined but not used
-        todo_pm_combine
         '''
-        # path
-        img_dir = os.path.join(case_dir, 'img')
-        if not os.path.isdir(img_dir):
-            os.mkdir(img_dir)
-        morph_dir = os.path.join(img_dir, 'morphology')
-        if not os.path.isdir(morph_dir):
-            os.mkdir(morph_dir)
+        # initiate
+        ax = kwargs.get('axis', None)
+        if ax == None:
+            raise ValueError("Not implemented")
+        label_all = kwargs.get('label_all', False)
+        color = kwargs.get('color', None)
+        time_range = kwargs.get('time_range', [])
+        v_range = kwargs.get('v_range', [])
+        fix_v_range = kwargs.get('fix_v_range', False)
+        if label_all:
+            # if label_all, append labels, otherwise don't
+            labels = ["trench velocity", "subducting plate", "overiding velocity", "sinking velocity"]
+        else:
+            labels = [None, None, None, None]
         # read inputs
         prm_file = os.path.join(case_dir, 'output', 'original.prm')
         assert(os.access(prm_file, os.R_OK))
@@ -1060,7 +1070,7 @@ class SLABPLOT(LINEARPLOT):
             Ro = -1.0  # in this way, wrong is wrong
         # read data
         slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
-        assert(os.path.isfile(slab_morph_file))
+        Utilities.my_assert(os.path.isfile(slab_morph_file), FileExistsError, "%s doesn't exist" % slab_morph_file)
         self.ReadHeader(slab_morph_file)
         self.ReadData(slab_morph_file)
         if not self.HasData():
@@ -1087,64 +1097,239 @@ class SLABPLOT(LINEARPLOT):
         sp_velocities = self.data[:, col_pvtu_sp_v]
         ov_velocities = self.data[:, col_pvtu_ov_v]
         # trench velocity
-        # start figure
-        fig = plt.figure(tight_layout=True, figsize=(15, 10)) 
-        fig.subplots_adjust(hspace=0)
-        gs = gridspec.GridSpec(3, 2) 
-        # 1: trench & slab movement
-        ax = fig.add_subplot(gs[0, 0:2]) 
-        ax_tx = ax.twinx()
-        lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, '-', color='tab:orange', label='trench position (km)')
-        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
-        ax.set_ylabel('Trench Position (km)', color="tab:orange")
-        ax.tick_params(axis='x', labelbottom=False) # labels along the bottom edge are off
-        ax.tick_params(axis='y', labelcolor="tab:orange")
-        ax.grid()
-        lns1 = ax_tx.plot(times/1e6, slab_depthes/1e3, 'k-', label='slab depth (km)')
-        ax_tx.set_ylabel('Slab Depth (km)')
-        lns = lns0 + lns1
-        labs = [I.get_label() for I in lns]
-        # ax.legend(lns, labs)
-        # 2: velocity
-        ax = fig.add_subplot(gs[1, 0:2]) 
         ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
-        lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color='tab:orange', label='trench velocity (cm/yr)')
-        lns1 = ax.plot(times/1e6, sp_velocities*1e2, '-', color='tab:blue', label='subducting plate (cm/yr)')
-        lns2 = ax.plot(times/1e6, ov_velocities*1e2, '-', color='tab:purple', label='overiding velocity (cm/yr)')
-        ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='sinking velocity (cm/yr)')
-        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
-        ax.set_ylim((-10, 10))
+        lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color=color, label=labels[0])
+        lns1 = ax.plot(times/1e6, sp_velocities*1e2, '--', color=color, label=labels[1])
+        lns2 = ax.plot(times/1e6, ov_velocities*1e2, '-.', color=color, label=labels[2])
+        ax.plot(times/1e6, sink_velocities*1e2, ':', color=color, label=labels[3])
+        if time_range != []:
+            xlims = time_range
+        else:
+            xlims = (np.min(times), np.max(times))
+        ax.set_xlim(xlims[0]/1e6, xlims[1]/1e6)  # set x limit
+        # for the limit of y, there are 3 options: a. fix_v_range would give a (-10, 10);
+        # b. assigne a v_range will apply that value; c. by default, the min value of 
+        # the trench velocity and the max value of the subducting velocity will be used.
+        if v_range != []:
+            ylims = v_range
+        else:
+            mask = (times > xlims[0]) & (times < xlims[1])
+            ylims = [-0.15, np.max(sp_velocities[mask])]
+        if fix_v_range:
+            ax.set_ylim((-10, 10))
+        else:
+            ax.set_ylim((ylims[0]*1e2, ylims[1]*1e2))
         ax.set_ylabel('Velocity (cm/yr)')
         ax.set_xlabel('Times (Myr)')
         ax.grid()
         ax.legend()
-        # 2.1: velocity smaller, no y limit, to show the whole curve
-        ax = fig.add_subplot(gs[2, 0]) 
-        ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
-        lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color="tab:orange", label='trench velocity (cm/yr)')
-        lns1 = ax.plot(times/1e6, sp_velocities*1e2, '-', color='tab:blue', label='subducting plate (cm/yr)')
-        lns2 = ax.plot(times/1e6, ov_velocities*1e2, '-', color='tab:purple', label='overiding velocity (cm/yr)')
-        ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='trench velocity (cm/yr)')
-        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
-        ax.set_ylabel('Velocity (whole, cm/yr)')
+        # lns = lns0 + lns1
+        # labs = [I.get_label() for I in lns]
+        # return lns, labs
+    
+    
+    def PlotTrenchPosition(self, case_dir, **kwargs):
+        '''
+        a variation of the PlotMorph function: used for combining results
+        Inputs:
+            case_dir (str): directory of case
+        kwargs(dict):
+            defined but not used
+        '''
+        # initiate
+        ax = kwargs.get('axis', None)
+        if ax == None:
+            raise ValueError("Not implemented")
+        label = kwargs.get('label', [None, None])
+        assert(len(label) == 2)
+        color = kwargs.get('color', None)
+        time_range = kwargs.get('time_range', [])
+        tp_range = kwargs.get('tp_range', [])
+        sd_range = kwargs.get('sd_range', [])
+        # read inputs
+        prm_file = os.path.join(case_dir, 'output', 'original.prm')
+        assert(os.access(prm_file, os.R_OK))
+        self.ReadPrm(prm_file)
+        # read parameters
+        geometry = self.prm['Geometry model']['Model name']
+        if geometry == 'chunk':
+            Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        else:
+            Ro = -1.0  # in this way, wrong is wrong
+        # read data
+        slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+        Utilities.my_assert(os.path.isfile(slab_morph_file), FileExistsError, "%s doesn't exist" % slab_morph_file)
+        self.ReadHeader(slab_morph_file)
+        self.ReadData(slab_morph_file)
+        if not self.HasData():
+            print("PlotMorph: file %s doesn't contain data" % slab_morph_file)
+            return 1
+        col_pvtu_step = self.header['pvtu_step']['col']
+        col_pvtu_time = self.header['time']['col']
+        col_pvtu_trench = self.header['trench']['col']
+        col_pvtu_slab_depth = self.header['slab_depth']['col']
+        col_pvtu_sp_v = self.header['subducting_plate_velocity']['col']
+        col_pvtu_ov_v = self.header['overiding_plate_velocity']['col']
+        pvtu_steps = self.data[:, col_pvtu_step]
+        times = self.data[:, col_pvtu_time]
+        trenches = self.data[:, col_pvtu_trench]
+        if geometry == "chunk":
+            trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
+        elif geometry == 'box':
+            trenches_migration_length = trenches - trenches[0]
+        else:
+            raise ValueError('Invalid geometry')
+        slab_depthes = self.data[:, col_pvtu_slab_depth]
+        trench_velocities = np.gradient(trenches_migration_length, times)
+        sink_velocities = np.gradient(slab_depthes, times)
+        sp_velocities = self.data[:, col_pvtu_sp_v]
+        ov_velocities = self.data[:, col_pvtu_ov_v]
+        # trench velocity
+        # 1: trench & slab movement
+        ax_tx = ax.twinx()
+        lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, '-', color=color, label=label[0])
+        if time_range != []:
+            xlims = time_range
+        else:
+            xlims = (np.min(times), np.max(times))
+        ax.set_xlim(xlims[0]/1e6, xlims[1]/1e6)  # set x limit
+        ax.set_xlabel("Time (Myr)")
+        if tp_range != []:
+            ylims = tp_range
+        else:
+            ylims = (np.min(trenches_migration_length), np.max(trenches_migration_length))
+        ax.set_ylim(ylims[0]/1e3, ylims[1]/1e3)
+        ax.set_ylabel('Trench Position (km)')
+        ax.tick_params(axis='x') # labels along the bottom edge are off
+        ax.tick_params(axis='y')
         ax.grid()
-        # 3: wedge temperature
-#        depthes, Ts = self.ReadWedgeT(case_dir, int(pvtu_steps[0]), int(pvtu_steps[-1]))
-#        tt, dd = np.meshgrid(times, depthes)
-#        ax = fig.add_subplot(gs[2, 0:2]) 
-#        h = ax.pcolormesh(tt/1e6,dd/1e3,Ts, shading='gouraud') 
-#        ax.invert_yaxis()
-#        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
-#        ax.set_xlabel('Times (Myr)')
-#        ax.set_ylabel('Depth (km)')
-#        ax = fig.add_subplot(gs[2, 2])
-#        ax.axis('off') 
-#        fig.colorbar(h, ax=ax, label='T (K)') 
-        fig.tight_layout()
-        # save figure
-        o_path = os.path.join(morph_dir, 'trench.png')
-        plt.savefig(o_path)
-        print("%s: figure %s generated" % (Utilities.func_name(), o_path))
+        lns1 = ax_tx.plot(times/1e6, slab_depthes/1e3, '--', color=color, label=label[1])
+        if sd_range != []:
+            ylims = sd_range
+        else:
+            ylims = (np.min(slab_depthes), np.max(slab_depthes))
+        ax_tx.set_ylim(ylims[0]/1e3, ylims[1]/1e3)
+        ax_tx.set_ylabel('Slab Depth (km)')
+        lns = lns0 + lns1
+        labs = [I.get_label() for I in lns]
+        return lns, labs
+
+
+class PC_MORPH_OPT(PC_OPT_BASE):
+    '''
+    Define a class to work with json files
+    '''
+    def __init__(self):
+        '''
+        Initiation, first perform parental class's initiation,
+        then perform daughter class's initiation.
+        '''
+        PC_OPT_BASE.__init__(self)
+        self.start = self.number_of_keys()
+        self.add_key("time range", list, ["time range"], [], nick="time_range")
+        self.add_key("trench position range", list, ["trench position range"], [], nick="tp_range")
+        self.add_key("slab depth range", list, ["slab depth range"], [], nick="sd_range")
+
+    def to_init(self):
+        '''
+        interfaces to the __init__ function
+        '''
+        case_absolute_paths = self.get_case_absolute_paths()
+        return case_absolute_paths
+
+    def to_call(self):
+        '''
+        interfaces to the __call__ function
+        '''
+        width = self.values[2]
+        output_dir = self.get_output_dir()
+        time_range = self.values[self.start]
+        tp_range = self.values[self.start + 1]
+        sd_range = self.values[self.start + 2]
+        return width, output_dir, time_range, tp_range, sd_range
+
+
+class PLOT_COMBINE_SLAB_MORPH(PLOT_COMBINE):
+    '''
+    Combine results from slab morphology
+    '''
+    def __init__(self, case_paths):
+        PLOT_COMBINE.__init__(self, case_paths)
+        UnitConvert = Utilities.UNITCONVERT()
+        self.MorphPlotter = SLABPLOT("plot_slab")
+        pass
+
+    def __call__(self, width, output_dir, time_range, tp_range, sd_range, **kwargs):
+        '''
+        perform combination
+        Inputs:
+            sizes: (list of 2) - size of the plot
+            output_dir: directory to output to
+        '''
+        _name = "combine_morphology"
+        _title = "Comparing slab morphology results"
+        color_method = kwargs.get('color_method', 'generated')
+        dump_color_to_json = kwargs.get('dump_color_to_json', None)
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
+        # initiate
+        ni = 3  # number of plots along 1st and 2nd dimension
+        nj = 2
+        fig, gs, colors = self.initiate_combined_plotting((ni, nj), color_method, dump_color_to_json)
+        case_names = []  # names of cases
+        for i in range(self.n_cases):
+            case_name = os.path.basename(self.cases[i])
+            case_names.append(case_name)
+        # plot trench position
+        ax = fig.add_subplot(gs[1, 0])
+        lns = None
+        labs = None
+        for i in range(self.n_cases):
+            if i == 0:
+                label = ['Trench Position', 'Slab Depth']
+            else:
+                label = [None, None]
+            case_dir = self.cases[i]
+            case_name = os.path.basename(case_dir)
+            # plot results and combine
+            lns_temp, labs_temp = self.MorphPlotter.PlotTrenchPosition(case_dir, time_range=time_range,\
+            tp_range=tp_range, sd_range=sd_range, axis=ax, color=colors[i], label=label)
+            if i == 0:
+                lns = lns_temp  # record the lables at the start
+                labs = labs_temp
+            pass
+        ax.legend(lns, labs)
+        # plot trench velocity
+        ax = fig.add_subplot(gs[2, 0])
+        lns = None
+        labs = None
+        for i in range(self.n_cases):
+            if i == 0:
+                label_all = True
+            else:
+                label_all = False
+            case_dir = self.cases[i]
+            case_name = os.path.basename(case_dir)
+            # plot results and combine
+            self.MorphPlotter.PlotTrenchVelocity(case_dir, time_range=time_range,\
+            tp_range=tp_range, sd_range=sd_range, axis=ax, color=colors[i], label_all=label_all)
+        ax.legend()
+        # plot trench velocity, zoom in
+        ax = fig.add_subplot(gs[2, 1])
+        for i in range(self.n_cases):
+            case_dir = self.cases[i]
+            case_name = os.path.basename(case_dir)
+            # plot results and combine
+            self.MorphPlotter.PlotTrenchVelocity(case_dir, time_range=time_range,\
+            tp_range=tp_range, sd_range=sd_range, axis=ax, color=colors[i], label_all=False, fix_v_range=True)
+        # plot the color labels
+        ax = fig.add_subplot(gs[0, 0])
+        PlotColorLabels(ax, case_names, colors)
+        # generate figures
+        fig_path = os.path.join(output_dir, '%s.png' % _name)
+        print("%s: save figure: %s" % (Utilities.func_name(), fig_path))
+        plt.savefig(fig_path)
+        return fig_path
 
 
 def main():
@@ -1171,6 +1356,9 @@ def main():
     parser.add_argument('-vss', '--vtu_snapshot', type=int,
                         default=0,
                         help='vtu_snapshot')
+    parser.add_argument('-j', '--json', type=str,
+                        default='',
+                        help='A json file for configuration')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -1209,6 +1397,14 @@ def main():
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
         SlabPlot.PlotMorph(arg.inputs)
+    elif _commend == 'combine_slab_morph':
+        # combine plot of slab morphology
+        _continue = input("This option will plot the data in the vtk_outputs/slab_morph.txt file, \
+but will not generarte that file. Make sure all these files are updated, proceed (y/n)?")
+        if _continue == 'y':
+            PlotCombineExecute(PLOT_COMBINE_SLAB_MORPH, PC_MORPH_OPT, "slab_morph", arg.json)
+        else:
+            print("abort")
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 
