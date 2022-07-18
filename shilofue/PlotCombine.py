@@ -395,6 +395,62 @@ class PLOT_COMBINE():
                 w_location = w_locations[i] + 10
                 h_location = self.title_height / 2 + 10
                 d.text((w_location,h_location), case_name, font=fnt, fill=(0, 0, 0))  # anchor option doesn't work
+        
+    def initiate_combined_plotting(self, shape, color_method, dump_color_to_json):
+        '''
+        Initiate options for combining plots
+        '''
+        n_color_max = 10
+        ni = shape[0]
+        nj = shape[1]
+        fig = plt.figure(tight_layout=True, figsize=[5*nj, 5*ni])
+        gs = gridspec.GridSpec(ni, nj)
+        colors_dict = {}
+        if color_method == 'generated':
+            colors_dict['max'] = n_color_max
+            if self.n_cases > n_color_max:
+                raise ValueError("max number of colors must be bigger than the number of cases")
+            normalizer = [ float(i)/(n_color_max) for i in range(self.n_cases) ]
+            colors = cm.rainbow(normalizer)
+            for i in range(self.n_cases):
+                case_name = os.path.basename(self.cases[i])
+                colors_dict[case_name] = list(colors[i])
+        elif color_method == 'check_first':
+            colors = []
+            if dump_color_to_json is not None:
+                print("dump_color_to_json: ", dump_color_to_json) # debug
+                if os.path.isfile(dump_color_to_json):
+                    with open(dump_color_to_json, 'r') as fin:
+                        colors_dict = json.load(fin)
+                else:
+                    colors_dict['max'] = n_color_max
+            # first loop to get the number of colors in the json file
+            n_color_in_json = 0
+            for i in range(self.n_cases):
+                case_name = os.path.basename(self.cases[i])
+                if case_name in colors_dict:
+                    n_color_in_json += 1
+            normalizer = [ float(i)/(n_color_max) for i in range(n_color_in_json, self.n_cases) ]
+            new_colors = cm.rainbow(normalizer)
+            # second loop to assign colors to new cases
+            j = 0
+            for i in range(self.n_cases):
+                case_name = os.path.basename(self.cases[i])
+                try:
+                    colors.append(colors_dict[case_name])
+                except KeyError:
+                    colors.append(new_colors[j])
+                    colors_dict[case_name] = list(colors[i])
+                    j += 1
+        else:
+            raise ValueError('Not implemented')
+        # dump a color file
+        if dump_color_to_json is not None:
+            assert(os.path.isdir(os.path.dirname(dump_color_to_json)))
+            with open(dump_color_to_json, 'w') as fout:
+                json.dump(colors_dict, fout)
+            print("%s: dump color options: %s" % (Utilities.func_name(), dump_color_to_json))
+        return fig, gs, colors
     
     def __call__(self, width, anchor, output_dir, _title, if_include_case_names, _name):
         '''
@@ -506,58 +562,18 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
         '''
         _name = "combine_runtime"
         _title = "Comparing run-time results"
-        n_color_max = 10
         color_method = kwargs.get('color_method', 'generated')
         dump_color_to_json = kwargs.get('dump_color_to_json', None)
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
         # initiate
+        ni = 4  # number of plots along 1st and 2nd dimension
+        nj = 2
+        fig, gs, colors = self.initiate_combined_plotting((ni, nj), color_method, dump_color_to_json)
         case_names = []  # names of cases
         for i in range(self.n_cases):
             case_name = os.path.basename(self.cases[i])
             case_names.append(case_name)
-        ni = 4  # number of plots along 1st and 2nd dimension
-        nj = 2
-        fig = plt.figure(tight_layout=True, figsize=[5*nj, 5*ni])
-        gs = gridspec.GridSpec(ni, nj)
-        colors_dict = {}
-        if color_method == 'generated':
-            colors_dict['max'] = n_color_max
-            if self.n_cases > n_color_max:
-                raise ValueError("max number of colors must be bigger than the number of cases")
-            normalizer = [ float(i)/(n_color_max) for i in range(self.n_cases) ]
-            colors = cm.rainbow(normalizer)
-            for i in range(self.n_cases):
-                case_name = os.path.basename(self.cases[i])
-                colors_dict[case_name] = list(colors[i])
-        elif color_method == 'check_first':
-            colors = []
-            if dump_color_to_json is not None:
-                if os.path.isfile(dump_color_to_json):
-                    with open(dump_color_to_json, 'r') as fin:
-                        colors_dict = json.load(fin)
-                else:
-                    colors_dict['max'] = n_color_max
-            # first loop to get the number of colors in the json file
-            n_color_in_json = 0
-            for i in range(self.n_cases):
-                case_name = os.path.basename(self.cases[i])
-                if case_name in colors_dict:
-                    n_color_in_json += 1
-            normalizer = [ float(i)/(n_color_max) for i in range(n_color_in_json, self.n_cases) ]
-            new_colors = cm.rainbow(normalizer)
-            # second loop to assign colors to new cases
-            j = 0
-            for i in range(self.n_cases):
-                case_name = os.path.basename(self.cases[i])
-                try:
-                    colors.append(colors_dict[case_name])
-                except KeyError:
-                    colors.append(new_colors[j])
-                    colors_dict[case_name] = list(colors[i])
-                    j += 1
-        else:
-            raise ValueError('Not implemented')
         # plot number of cells
         ax = fig.add_subplot(gs[1, 0])
         for i in range(self.n_cases):
@@ -655,12 +671,6 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
         fig_path = os.path.join(output_dir, '%s.png' % _name)
         print("%s: save figure: %s" % (Utilities.func_name(), fig_path))
         plt.savefig(fig_path)
-        # dump a color file
-        if dump_color_to_json is not None:
-            assert(os.path.isdir(os.path.dirname(dump_color_to_json)))
-            with open(dump_color_to_json, 'w') as fout:
-                json.dump(colors_dict, fout)
-            print("%s: dump color options: %s" % (Utilities.func_name(), dump_color_to_json))
         return fig_path
 
 def PlotColorLabels(ax, case_names, colors): 

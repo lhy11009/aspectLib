@@ -527,6 +527,10 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     s_dict["dip point"] = [_max, 0.0]
     s_dict["temperature models"][0]["ridge coordinates"] = sp_ridge_coords
     s_dict["temperature models"][0]["plate velocity"] = sp_rate
+    if sp_age_trench > 100e6:
+        # in this case, I'll use the plate model
+        s_dict["temperature models"][0]["use plate model as reference"] = True
+        s_dict["temperature models"][0]["max distance slab top"] = 150e3
     o_dict['features'][i0] = s_dict
     # mantle for substracting adiabat
     i0 = ParsePrm.FindWBFeatures(o_dict, 'mantle to substract')

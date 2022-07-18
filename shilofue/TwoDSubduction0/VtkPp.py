@@ -1031,6 +1031,120 @@ class SLABPLOT(LINEARPLOT):
         o_path = os.path.join(morph_dir, 'trench.png')
         plt.savefig(o_path)
         print("%s: figure %s generated" % (Utilities.func_name(), o_path))
+    
+    def PlotMorph1(self, case_dir, **kwargs):
+        '''
+        a variation of the PlotMorph function: used for combining results
+        Inputs:
+            case_dir (str): directory of case
+        kwargs(dict):
+            defined but not used
+        todo_pm_combine
+        '''
+        # path
+        img_dir = os.path.join(case_dir, 'img')
+        if not os.path.isdir(img_dir):
+            os.mkdir(img_dir)
+        morph_dir = os.path.join(img_dir, 'morphology')
+        if not os.path.isdir(morph_dir):
+            os.mkdir(morph_dir)
+        # read inputs
+        prm_file = os.path.join(case_dir, 'output', 'original.prm')
+        assert(os.access(prm_file, os.R_OK))
+        self.ReadPrm(prm_file)
+        # read parameters
+        geometry = self.prm['Geometry model']['Model name']
+        if geometry == 'chunk':
+            Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        else:
+            Ro = -1.0  # in this way, wrong is wrong
+        # read data
+        slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+        assert(os.path.isfile(slab_morph_file))
+        self.ReadHeader(slab_morph_file)
+        self.ReadData(slab_morph_file)
+        if not self.HasData():
+            print("PlotMorph: file %s doesn't contain data" % slab_morph_file)
+            return 1
+        col_pvtu_step = self.header['pvtu_step']['col']
+        col_pvtu_time = self.header['time']['col']
+        col_pvtu_trench = self.header['trench']['col']
+        col_pvtu_slab_depth = self.header['slab_depth']['col']
+        col_pvtu_sp_v = self.header['subducting_plate_velocity']['col']
+        col_pvtu_ov_v = self.header['overiding_plate_velocity']['col']
+        pvtu_steps = self.data[:, col_pvtu_step]
+        times = self.data[:, col_pvtu_time]
+        trenches = self.data[:, col_pvtu_trench]
+        if geometry == "chunk":
+            trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
+        elif geometry == 'box':
+            trenches_migration_length = trenches - trenches[0]
+        else:
+            raise ValueError('Invalid geometry')
+        slab_depthes = self.data[:, col_pvtu_slab_depth]
+        trench_velocities = np.gradient(trenches_migration_length, times)
+        sink_velocities = np.gradient(slab_depthes, times)
+        sp_velocities = self.data[:, col_pvtu_sp_v]
+        ov_velocities = self.data[:, col_pvtu_ov_v]
+        # trench velocity
+        # start figure
+        fig = plt.figure(tight_layout=True, figsize=(15, 10)) 
+        fig.subplots_adjust(hspace=0)
+        gs = gridspec.GridSpec(3, 2) 
+        # 1: trench & slab movement
+        ax = fig.add_subplot(gs[0, 0:2]) 
+        ax_tx = ax.twinx()
+        lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, '-', color='tab:orange', label='trench position (km)')
+        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+        ax.set_ylabel('Trench Position (km)', color="tab:orange")
+        ax.tick_params(axis='x', labelbottom=False) # labels along the bottom edge are off
+        ax.tick_params(axis='y', labelcolor="tab:orange")
+        ax.grid()
+        lns1 = ax_tx.plot(times/1e6, slab_depthes/1e3, 'k-', label='slab depth (km)')
+        ax_tx.set_ylabel('Slab Depth (km)')
+        lns = lns0 + lns1
+        labs = [I.get_label() for I in lns]
+        # ax.legend(lns, labs)
+        # 2: velocity
+        ax = fig.add_subplot(gs[1, 0:2]) 
+        ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
+        lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color='tab:orange', label='trench velocity (cm/yr)')
+        lns1 = ax.plot(times/1e6, sp_velocities*1e2, '-', color='tab:blue', label='subducting plate (cm/yr)')
+        lns2 = ax.plot(times/1e6, ov_velocities*1e2, '-', color='tab:purple', label='overiding velocity (cm/yr)')
+        ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='sinking velocity (cm/yr)')
+        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+        ax.set_ylim((-10, 10))
+        ax.set_ylabel('Velocity (cm/yr)')
+        ax.set_xlabel('Times (Myr)')
+        ax.grid()
+        ax.legend()
+        # 2.1: velocity smaller, no y limit, to show the whole curve
+        ax = fig.add_subplot(gs[2, 0]) 
+        ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
+        lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color="tab:orange", label='trench velocity (cm/yr)')
+        lns1 = ax.plot(times/1e6, sp_velocities*1e2, '-', color='tab:blue', label='subducting plate (cm/yr)')
+        lns2 = ax.plot(times/1e6, ov_velocities*1e2, '-', color='tab:purple', label='overiding velocity (cm/yr)')
+        ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='trench velocity (cm/yr)')
+        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+        ax.set_ylabel('Velocity (whole, cm/yr)')
+        ax.grid()
+        # 3: wedge temperature
+#        depthes, Ts = self.ReadWedgeT(case_dir, int(pvtu_steps[0]), int(pvtu_steps[-1]))
+#        tt, dd = np.meshgrid(times, depthes)
+#        ax = fig.add_subplot(gs[2, 0:2]) 
+#        h = ax.pcolormesh(tt/1e6,dd/1e3,Ts, shading='gouraud') 
+#        ax.invert_yaxis()
+#        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+#        ax.set_xlabel('Times (Myr)')
+#        ax.set_ylabel('Depth (km)')
+#        ax = fig.add_subplot(gs[2, 2])
+#        ax.axis('off') 
+#        fig.colorbar(h, ax=ax, label='T (K)') 
+        fig.tight_layout()
+        # save figure
+        o_path = os.path.join(morph_dir, 'trench.png')
+        plt.savefig(o_path)
+        print("%s: figure %s generated" % (Utilities.func_name(), o_path))
 
 
 def main():
