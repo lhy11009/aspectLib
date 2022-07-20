@@ -344,7 +344,7 @@ class CASE(CasesP.CASE):
             Operator.ReadProfile(da_file)
             rheology = Operator.MantleRheology_v0(rheology=mantle_rheology_scheme)
             CDPT_assign_mantle_rheology(o_dict, rheology)
-        # todo_basalt
+        # todo_basalt, append to initial condition outputs
 
         # Include peierls rheology
         if if_peierls:
