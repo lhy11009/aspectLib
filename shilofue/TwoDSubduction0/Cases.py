@@ -973,6 +973,10 @@ spharz: %.4e|%.4e|%.4e|%.4e|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,\
 opcrust: %.4e, opharz: %.4e" % (disl_V, disl_V, disl_V, disl_V,\
 disl_crust_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V)
 
+def PlotStrengthProfileCrust():
+    # todo_basalt
+    pass
+
 
 def Usage():
     print("\
