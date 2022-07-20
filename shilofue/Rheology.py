@@ -301,10 +301,10 @@ class RHEOLOGY_PRM():
             }
         self.ARCAY17_brittle = \
         {
-            "friction" = 0.05
-            "cohesion": 1e6 # pa
-            "n": 30.0
-            "effective strain rate" = 1.0e-14
+            "friction" : 0.05,
+            "cohesion": 1e6, # pa
+            "n": 30.0,
+            "effective strain rate" : 1.0e-14
         }
 
         
