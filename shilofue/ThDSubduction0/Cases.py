@@ -231,7 +231,7 @@ class CASE(CasesP.CASE):
             s07T_assign_mantle_rheology(o_dict, rheology)    
             self.output_files.append(Operator.output_json)
             self.output_files.append(Operator.output_json_aspect)
-            self.output_imgs.append(Operator.output_profile)
+            self.output_imgs.append(Operator.output_profile) # append plot of initial conition to figures
         # 2. Yielding criteria
         if _type == 's07':
             prefactor_ref = 1.0 / 2.0 / ref_visc  # prefactors for diffusion creep

@@ -283,6 +283,20 @@ class RHEOLOGY_PRM():
                 "V" : 10.6e-6                     # m^3/mol+/-1
             }
 
+        # this is the values used in the ARCAY17 paper
+        # note: there rheology is only stress dependent (dislocation creep)
+        self.ARCAY17_diff = None
+        self.ARCAY17_disl = \
+            {
+                "A" : 339428.7,
+                "p" : 0.0,
+                "r" : 0.0,  # not dependent on the "Coh"
+                "n" : 3.0,
+                "E" : 465e3,
+                "V" : 17e-6,
+                "d" : 1e4, # not dependent on d
+                "Coh" : 1000.0
+            }
 
         
         
