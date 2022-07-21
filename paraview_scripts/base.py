@@ -32,7 +32,10 @@ class PARAVIEW_PLOT():
         # 'current_cohesions', 'current_friction_angles', 'plastic_yielding', 'dislocation_viscosity', 
         # 'diffusion_viscosity', 'peierls_viscosity', 'error_indicator']
         self.view_solution_pvd = True  # if the solutionpvd is included as a view
-        self.all_variables = ['velocity', 'p', 'T', 'sp_upper', 'sp_lower', 'density', 'viscosity']
+        self.all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'sp_upper', 'sp_lower']
+        HAS_PLATE_EDGE = True
+        if HAS_PLATE_EDGE:
+            self.all_variables.append('plate_edge')
         # open data base
         self.filein = filein
         # assign initial values 
