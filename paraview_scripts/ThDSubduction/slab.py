@@ -5,12 +5,22 @@
 #   IMG_OUTPUT_DIR
 # y coordinates for trench edge
 #   TRENCH_EDGE_Y
+# minimum viscosity
+#   ETA_MIN
+# maximum viscosity
+#   ETA_MAX
 
 class SLAB(PARAVIEW_PLOT):
     '''
     Inherit frome PARAVIEW_PLOT
     Usage is for plotting the shape of the 3D slabs
     '''
+    def __init__(self, filein, **kwargs):
+        PARAVIEW_PLOT.__init__(self, filein, **kwargs)
+        self.eta_min = ETA_MIN
+        self.eta_max = ETA_MAX
+        
+
     def setup_surface_slice(self):
         '''
         Generate a visualization of a slice perpendicular to z direction, and locates
@@ -76,15 +86,36 @@ class SLAB(PARAVIEW_PLOT):
         '''
         fig_resolution = (974, 793)
         hide_plot = kwargs.get("hide_plot", True)
+        use_log = kwargs.get("use_log", False)
+        _color = kwargs.get("color", None)
+        lim = kwargs.get("lim", None)
+        show_axis = kwargs.get("show_axis", True)
+        invert_color = kwargs.get("invert_color", False)
         # show the slice
         slice1 = FindSource(_source)
         SetActiveSource(slice1)
-        renderView1 = GetActiveViewOrCreate('RenderView') 
+        renderView1 = GetActiveViewOrCreate('RenderView')
+        if show_axis:
+            renderView1.AxesGrid.Visibility = 1 
         _display = Show(slice1, renderView1, 'GeometryRepresentation')
         slice_Display = GetDisplayProperties(slice1, view=renderView1)
         # adjust the field to plot
         ColorBy(slice_Display, ('POINTS', field_name))
-        fieldLUT = GetColorTransferFunction(field_name)
+        fieldLUT = GetColorTransferFunction(field_name)  # get color transfer map
+        fieldPWF = GetOpacityTransferFunction(field_name) # get opacity transfer function/opacity map
+        # todo_vis
+        if lim != None:
+            assert(len(lim)==2 and lim[0] < lim[1])
+            fieldLUT.RescaleTransferFunction(lim[0], lim[1]) # Rescale transfer function
+            fieldPWF.RescaleTransferFunction(lim[0], lim[1]) # Rescale transfer function
+        if use_log:
+            fieldLUT.UseLogScale = 1
+        if _color != None:
+            fieldLUT.ApplyPreset(_color, True)
+        if invert_color:
+            fieldLUT.InvertTransferFunction()
+
+
         # adjust colorbar and camera
         _camera = self.camera_dict[_source]
         adjust_slice_colorbar_camera(self.renderView1, fieldLUT, _camera)
@@ -110,10 +141,12 @@ class SLAB(PARAVIEW_PLOT):
         '''
         plot a step
         '''
-        self.plot_slice("slice_trench_center_y", "sp_upper")
-        self.plot_slice("slice_trench_center_y", "T")
-        self.plot_slice("slice_trench_edge_y", "sp_upper")
-        self.plot_slice("slice_surface_z", "sp_upper")
+        self.plot_slice("slice_trench_center_y", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
+        self.plot_slice("slice_trench_center_y", "T", color='vik')
+        self.plot_slice("slice_trench_edge_y", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
+        self.plot_slice("slice_surface_z", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
+        # todo_vis
+        self.plot_slice("slice_trench_center_y", "viscosity", use_log=True, color='roma', lim=[self.eta_min, self.eta_max])
 
 
 def adjust_slice_colorbar_camera(renderView, colorLUT, _camera):

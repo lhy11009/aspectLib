@@ -72,6 +72,8 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         sub_plate_feature = self.wb_dict["features"][idx]
         sub_plate_extends = sub_plate_feature['coordinates'][1]
         self.options['TRENCH_EDGE_Y'] = sub_plate_extends[1] * 0.75
+        self.options['ETA_MIN'] = self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']
+        self.options['ETA_MAX'] = self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity']
 
 
     def vtk_options(self, **kwargs):
