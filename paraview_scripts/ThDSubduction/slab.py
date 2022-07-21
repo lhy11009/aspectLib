@@ -103,7 +103,6 @@ class SLAB(PARAVIEW_PLOT):
         ColorBy(slice_Display, ('POINTS', field_name))
         fieldLUT = GetColorTransferFunction(field_name)  # get color transfer map
         fieldPWF = GetOpacityTransferFunction(field_name) # get opacity transfer function/opacity map
-        # todo_vis
         if lim != None:
             assert(len(lim)==2 and lim[0] < lim[1])
             fieldLUT.RescaleTransferFunction(lim[0], lim[1]) # Rescale transfer function
@@ -145,7 +144,6 @@ class SLAB(PARAVIEW_PLOT):
         self.plot_slice("slice_trench_center_y", "T", color='vik')
         self.plot_slice("slice_trench_edge_y", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
         self.plot_slice("slice_surface_z", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
-        # todo_vis
         self.plot_slice("slice_trench_center_y", "viscosity", use_log=True, color='roma', lim=[self.eta_min, self.eta_max])
 
 
