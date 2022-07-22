@@ -334,16 +334,19 @@ class CASE(CasesP.CASE):
             # remove this feature if otherwise
             pass
         # Material model
+        da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
+        assert(os.path.isfile(da_file))
+        Operator = RHEOLOGY_OPR()
+        # read profile
+        Operator.ReadProfile(da_file)
         if mantle_rheology_scheme == "HK03_wet_mod":
+            rheology = Operator.MantleRheology_v1(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
+    dVdiff=-5.5e-6, dVdisl=0.0, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.73205080757)
             pass # this is just the default, so skip
         else:
-            da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
-            assert(os.path.isfile(da_file))
-            Operator = RHEOLOGY_OPR()
-            # read profile
-            Operator.ReadProfile(da_file)
             rheology = Operator.MantleRheology_v0(rheology=mantle_rheology_scheme)
             CDPT_assign_mantle_rheology(o_dict, rheology)
+        print("rheology: ", rheology) # debug
         # todo_basalt, append to initial condition outputs
 
         # Include peierls rheology

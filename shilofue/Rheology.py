@@ -287,7 +287,6 @@ class RHEOLOGY_PRM():
         # this is the values used in the ARCAY17 paper
         # note: their rheology is only stress dependent (dislocation creep)
         # their yielding criterion is stress dependent as well.
-        # todo_basalt
         self.ARCAY17_diff = None
         self.ARCAY17_disl = \
             {
@@ -317,6 +316,26 @@ class RHEOLOGY_PRM():
                 "V" : 10.6e-6                     # m^3/mol+/-1
             }
 
+# todo_basalt
+    def get_rheology(self, _name, _type):
+        '''
+        read rheology parameters, and account for effects of water if it is a wet rheology
+        '''
+        assert(_type in ['diff', 'disl', 'plastic'])
+        _attr = _name + "_" + _type
+        if not hasattr(self, _attr):
+            raise ValueError("RHEOLOGY_PRM object doesn't have attribute %s" % _attr)
+        creep = getattr(self, _attr)
+        if "wet" in creep:
+            # foh enters explicitly, converting to use Coh
+            assert(_type in ['diffusion', 'dislocation'])
+            ### effects of water accounted, see Magali's file explain_update_modHK03_rheology eq(5)
+            water_creep = getattr(RheologyPrm, "water")
+            creep['A'] = creep['A'] / (water_creep['A'] ** creep['r'])
+            creep['V'] = creep['V'] - water_creep['V'] * creep['r']
+            creep['E'] = creep['E'] - water_creep['E'] * creep['r']
+        return creep
+
 
 class RHEOLOGY_OPR():
     '''
@@ -337,7 +356,35 @@ class RHEOLOGY_OPR():
         self.output_profile = None # for the figure plotted
         self.output_json = None
         self.output_aspect_json = None
+        # todo_basalt
+        self.diff = None
+        self.disl = None
+        self.plastic = None
         pass
+
+    def SetRheology(self, **kwargs):
+        '''
+        set rheology type with instances of rheology (i.e. a dictionary)
+        '''
+        self.diff = kwargs.get('diff', None)
+        self.disl = kwargs.get('disl', None)
+        self.plastic = kwargs.get('plastic', None)
+        pass
+    
+    def SetRheologyByName(self, **kwargs):
+        '''
+        set rheology type with instances of rheology (i.e. a dictionary)
+        '''
+        diff_type = kwargs.get('diff', None)
+        disl_type = kwargs.get('disl', None)
+        plastic_type = kwargs.get('plastic', None)
+        if diff_type != None:
+            self.diff = self.RheologyPrm.get_rheology(diff_type, 'diff')
+        if disl_type != None:
+            self.disl = self.RheologyPrm.get_rheology(disl_type, 'disl')
+        if plastic_type != None:
+            self.plastic = self.RheologyPrm.get_rheology(plastic_type, 'plastic')
+
     
     def ReadProfile(self, file_path):
         self.depths, self.pressures, self.temperatures = ReadAspectProfile(file_path)
@@ -1118,6 +1165,50 @@ class RHEOLOGY_OPR():
                 plt.close()
             i = i + 1
 
+    def PlotStrengthProfile(self, **kwargs):
+        '''
+        todo_basalt
+        '''
+        year = 365 * 24 * 3600.0
+        creep_type = kwargs.get('creep_type', 'diff')
+        creep = getattr(self, creep_type)
+        plastic = self.plastic
+        assert(creep != None)
+        assert(plastic != None)
+        # rheology_prm = RHEOLOGY_PRM()
+        # self.plastic = rheology_prm.ARCAY17_plastic
+        # self.dislocation_creep = rheology_prm.ARCAY17_disl
+        Zs = np.linspace(0.0, 40e3, 100)
+        Tliths = temperature_halfspace(Zs, 40e6*year, Tm=1573.0) # adiabatic temperature
+        Ts = 713 * Zs / 78.245e3  + 273.14# geotherm from Arcay 2017 pepi, figure 3d 2
+        Ps = pressure_from_lithostatic(Zs, Tliths)
+        strain_rate = 1e-14
+        # plastic self.plastic
+        Sigs_plastic = StressDependentYielding(Ps, plastic["cohesion"], plastic["friction"], plastic["ref strain rate"], plastic["n"], strain_rate)
+        # viscous stress
+        Sigs_viscous_wet_olivine = CreepStress(creep, strain_rate, Ps, Ts, 1e4, 1000)
+        Sigs = np.minimum(Sigs_plastic, Sigs_viscous_wet_olivine)
+        # viscous stress with smaller activation energy
+        creep_wet_olivine_70 = creep.copy()
+        creep_wet_olivine_70['E'] -= 70e3
+        Sigs_viscous_wet_olivine_70 = CreepStress(creep_wet_olivine_70, strain_rate, Ps, Ts, 1e4, 1000)
+        Sigs_70 = np.minimum(Sigs_plastic, Sigs_viscous_wet_olivine_70)
+        # make plots
+        fig, ax = plt.subplots()
+        ax.plot(Sigs/1e6, Zs/1e3, 'b')
+        ax.plot(Sigs_viscous_wet_olivine/1e6, Zs/1e3, 'b--', label="Wet Olivine")
+        ax.plot(Sigs_70/1e6, Zs/1e3, 'g')
+        ax.plot(Sigs_viscous_wet_olivine_70/1e6, Zs/1e3, 'g--', label="Wet Olivine, dEa = 70 kJ/mol")
+        ax.set_xlim([0.0, 100.0])
+        ax.invert_yaxis()
+        ax.set_xlabel("Second invariant of the stress tensor (MPa)")
+        ax.set_ylabel("Depth (km)")
+        ax.legend()
+        file_path = './strength_profile.png'
+        plt.savefig(file_path)
+        print("figure saved: ", file_path)
+        return Sigs, Zs
+
 
 
 def GetRheology(rheology):
@@ -1156,7 +1247,7 @@ def Config(_kwargs, _name, _default):
     return value
 
 
-def CreepStress(creep_type, strain_rate, P, T, d, Coh):
+def CreepStress(creep, strain_rate, P, T, d, Coh):
     """
     def DislocationCreep(strain_rate, P, T, d, Coh)
 
@@ -1169,20 +1260,20 @@ def CreepStress(creep_type, strain_rate, P, T, d, Coh):
      - Return value: Mpa
     Pay attention to pass in the right value, this custom is inherited
     """
-    A = creep_type['A']
-    p = creep_type['p']
-    r = creep_type['r']
-    n = creep_type['n']
-    E = creep_type['E']
-    V = creep_type['V']
+    A = creep['A']
+    p = creep['p']
+    r = creep['r']
+    n = creep['n']
+    E = creep['E']
+    V = creep['V']
     # calculate B
     B = A * d**(-p) * Coh**r
     return (strain_rate / B)**(1.0 / n) * np.exp((E + P * V) / (n * R * T))
 
 
-def CreepRheology(creep_type, strain_rate, P, T, d=None, Coh=None, **kwargs):
+def CreepRheology(creep, strain_rate, P, T, d=None, Coh=None, **kwargs):
     """
-    def CreepRheology(creep_type, strain_rate, P, T, d, Coh):
+    def CreepRheology(creep, strain_rate, P, T, d, Coh):
 
     Calculate viscosity by flow law in form of (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T))
     Units:
@@ -1193,12 +1284,12 @@ def CreepRheology(creep_type, strain_rate, P, T, d=None, Coh=None, **kwargs):
      - Return value: Pa*s
     Pay attention to pass in the right value, this custom is inherited
     """
-    A = creep_type['A']
-    p = creep_type['p']
-    r = creep_type['r']
-    n = creep_type['n']
-    E = creep_type['E']
-    V = creep_type['V']
+    A = creep['A']
+    p = creep['p']
+    r = creep['r']
+    n = creep['n']
+    E = creep['E']
+    V = creep['V']
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     if use_effective_strain_rate:
@@ -1207,9 +1298,9 @@ def CreepRheology(creep_type, strain_rate, P, T, d=None, Coh=None, **kwargs):
         F = 1.0
 
     if d is None:
-        d = creep_type['d']
+        d = creep['d']
     if Coh is None:
-        Coh = creep_type['Coh']
+        Coh = creep['Coh']
     # calculate B
     B = A * d**(-p) * Coh**r
     eta = 1/2.0 * F * (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T)) * 1e6
@@ -1217,7 +1308,7 @@ def CreepRheology(creep_type, strain_rate, P, T, d=None, Coh=None, **kwargs):
     return eta
 
 
-def CreepRheology_v1(creep_type, strain_rate, P, T, d=None, Coh=None, **kwargs):
+def CreepRheology_v1(creep, strain_rate, P, T, d=None, Coh=None, **kwargs):
     """
     Calculate viscosity by flow law in form of (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T))
     Previously, there is a typo in the F factor
@@ -1229,12 +1320,12 @@ def CreepRheology_v1(creep_type, strain_rate, P, T, d=None, Coh=None, **kwargs):
      - Return value: Pa*s
     Pay attention to pass in the right value, this custom is inherited
     """
-    A = creep_type['A']
-    p = creep_type['p']
-    r = creep_type['r']
-    n = creep_type['n']
-    E = creep_type['E']
-    V = creep_type['V']
+    A = creep['A']
+    p = creep['p']
+    r = creep['r']
+    n = creep['n']
+    E = creep['E']
+    V = creep['V']
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     if use_effective_strain_rate:
@@ -1243,9 +1334,9 @@ def CreepRheology_v1(creep_type, strain_rate, P, T, d=None, Coh=None, **kwargs):
         F = 1.0
 
     if d is None:
-        d = creep_type['d']
+        d = creep['d']
     if Coh is None:
-        Coh = creep_type['Coh']
+        Coh = creep['Coh']
     # calculate B
     B = A * d**(-p) * Coh**r
     eta = 1/2.0 * F * (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T)) * 1e6
@@ -1253,7 +1344,7 @@ def CreepRheology_v1(creep_type, strain_rate, P, T, d=None, Coh=None, **kwargs):
     return eta
 
 
-def CreepComputeV(creep_type, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
+def CreepComputeV(creep, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
     """
     Calculate V based on other parameters 
     Units:
@@ -1264,11 +1355,11 @@ def CreepComputeV(creep_type, strain_rate, P, T, eta, d=None, Coh=None, **kwargs
      - Return value: Pa*s
     Pay attention to pass in the right value, this custom is inherited
     """
-    A = creep_type['A']
-    p = creep_type['p']
-    r = creep_type['r']
-    n = creep_type['n']
-    E = creep_type['E']
+    A = creep['A']
+    p = creep['p']
+    r = creep['r']
+    n = creep['n']
+    E = creep['E']
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     if use_effective_strain_rate:
@@ -1277,9 +1368,9 @@ def CreepComputeV(creep_type, strain_rate, P, T, eta, d=None, Coh=None, **kwargs
         F = 1.0
 
     if d is None:
-        d = creep_type['d']
+        d = creep['d']
     if Coh is None:
-        Coh = creep_type['Coh']
+        Coh = creep['Coh']
     # calculate B
     B = A * d**(-p) * Coh**r
     exponential = eta / (1/2.0 * F * (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp(E / (n * R * T)) * 1e6)
@@ -1287,9 +1378,9 @@ def CreepComputeV(creep_type, strain_rate, P, T, eta, d=None, Coh=None, **kwargs
     return V
 
 
-def CreepComputeA(creep_type, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
+def CreepComputeA(creep, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
     """
-    def CreepRheology(creep_type, strain_rate, P, T, d, Coh):
+    def CreepRheology(creep, strain_rate, P, T, d, Coh):
 
     Calculate viscosity by flow law in form of (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T))
     Units:
@@ -1300,11 +1391,11 @@ def CreepComputeA(creep_type, strain_rate, P, T, eta, d=None, Coh=None, **kwargs
      - Return value: Pa*s
     Pay attention to pass in the right value, this custom is inherited
     """
-    p = creep_type['p']
-    r = creep_type['r']
-    n = creep_type['n']
-    E = creep_type['E']
-    V = creep_type['V']
+    p = creep['p']
+    r = creep['r']
+    n = creep['n']
+    E = creep['E']
+    V = creep['V']
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     if use_effective_strain_rate:
@@ -1313,16 +1404,16 @@ def CreepComputeA(creep_type, strain_rate, P, T, eta, d=None, Coh=None, **kwargs
         F = 1.0
 
     if d is None:
-        d = creep_type['d']
+        d = creep['d']
     if Coh is None:
-        Coh = creep_type['Coh']
+        Coh = creep['Coh']
     # calculate B
     B = (F/eta)**n * strain_rate**(1-n) * np.exp((E+P*V)/(R*T)) * (1e6)**n
     A = B * d**p * Coh**(-r)
     return A
 
 
-def CreepComputeA_v1(creep_type, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
+def CreepComputeA_v1(creep, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
     """
     Calculate viscosity by flow law in form of (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T))
     Units:
@@ -1334,11 +1425,11 @@ def CreepComputeA_v1(creep_type, strain_rate, P, T, eta, d=None, Coh=None, **kwa
     Pay attention to pass in the right value, this custom is inherited
     Here I tried to input the right value for the F factor
     """
-    p = creep_type['p']
-    r = creep_type['r']
-    n = creep_type['n']
-    E = creep_type['E']
-    V = creep_type['V']
+    p = creep['p']
+    r = creep['r']
+    n = creep['n']
+    E = creep['E']
+    V = creep['V']
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     if use_effective_strain_rate:
@@ -1347,18 +1438,18 @@ def CreepComputeA_v1(creep_type, strain_rate, P, T, eta, d=None, Coh=None, **kwa
         F = 1.0
 
     if d is None:
-        d = creep_type['d']
+        d = creep['d']
     if Coh is None:
-        Coh = creep_type['Coh']
+        Coh = creep['Coh']
     # calculate B
     B = (F/eta)**n * strain_rate**(1-n) * np.exp((E+P*V)/(R*T)) * (1e6)**n
     A = B * d**p * Coh**(-r)
     return A
 
 
-def CreepRheologyInAspectViscoPlastic(creep_type, strain_rate, P, T):
+def CreepRheologyInAspectViscoPlastic(creep, strain_rate, P, T):
     """
-    def CreepRheologyInAspectVisoPlastic(creep_type, strain_rate, P, T)
+    def CreepRheologyInAspectVisoPlastic(creep, strain_rate, P, T)
 
     Calculate viscosity by way of Visco Plastic module in aspect
     flow law in form of 0.5 * A**(-1.0 / n) * d**(m / n) * (strain_rate)**(1.0 / n - 1) * np.exp((E + P * V) / (n * R * T))
@@ -1368,17 +1459,17 @@ def CreepRheologyInAspectViscoPlastic(creep_type, strain_rate, P, T):
      - d: m
      - Return value: Pa*s
     """
-    A = creep_type['A']
-    m = creep_type['m']
-    n = creep_type['n']
-    E = creep_type['E']
-    V = creep_type['V']
-    d = creep_type['d']
+    A = creep['A']
+    m = creep['m']
+    n = creep['n']
+    E = creep['E']
+    V = creep['V']
+    d = creep['d']
     # calculate B
     return 0.5 * A**(-1.0 / n) * d**(m / n) * (strain_rate)**(1.0 / n - 1) * np.exp((E + P * V) / (n * R * T))
 
 
-def Convert2AspectInput(creep_type, **kwargs):
+def Convert2AspectInput(creep, **kwargs):
     """
     Viscosity is calculated by flow law in form of (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T)) * 1e6
     while in aspect, flow law in form of 0.5 * A**(-1.0 / n) * d**(m / n) * (strain_rate)**(1.0 / n - 1) * np.exp((E + P * V) / (n * R * T))
@@ -1393,14 +1484,14 @@ def Convert2AspectInput(creep_type, **kwargs):
      - d: m
     """
     # read in initial value
-    A = creep_type['A']
-    p = creep_type['p']
-    r = creep_type['r']
-    n = creep_type['n']
-    E = creep_type['E']
-    V = creep_type['V']
-    d = creep_type['d']
-    Coh = creep_type['Coh']
+    A = creep['A']
+    p = creep['p']
+    r = creep['r']
+    n = creep['n']
+    E = creep['E']
+    V = creep['V']
+    d = creep['d']
+    Coh = creep['Coh']
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     if use_effective_strain_rate:
@@ -1408,18 +1499,18 @@ def Convert2AspectInput(creep_type, **kwargs):
     else:
         F = 1.0
     # prepare values for aspect
-    aspect_creep_type = {}
+    aspect_creep = {}
     # stress in the original equation is in Mpa, grain size is in um
-    aspect_creep_type['A'] = 1e6**(-p) * (1e6)**(-n) * Coh**r * A / F**n  # F term: use effective strain rate
-    aspect_creep_type['d'] = d / 1e6
-    aspect_creep_type['n'] = n
-    aspect_creep_type['m'] = p
-    aspect_creep_type['E'] = E
-    aspect_creep_type['V'] = V
-    return aspect_creep_type
+    aspect_creep['A'] = 1e6**(-p) * (1e6)**(-n) * Coh**r * A / F**n  # F term: use effective strain rate
+    aspect_creep['d'] = d / 1e6
+    aspect_creep['n'] = n
+    aspect_creep['m'] = p
+    aspect_creep['E'] = E
+    aspect_creep['V'] = V
+    return aspect_creep
 
 
-def Convert2AspectInput_v1(creep_type, **kwargs):
+def Convert2AspectInput_v1(creep, **kwargs):
     """
     Viscosity is calculated by flow law in form of (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T)) * 1e6
     while in aspect, flow law in form of 0.5 * A**(-1.0 / n) * d**(m / n) * (strain_rate)**(1.0 / n - 1) * np.exp((E + P * V) / (n * R * T))
@@ -1435,14 +1526,14 @@ def Convert2AspectInput_v1(creep_type, **kwargs):
      - d: m
     """
     # read in initial value
-    A = creep_type['A']
-    p = creep_type['p']
-    r = creep_type['r']
-    n = creep_type['n']
-    E = creep_type['E']
-    V = creep_type['V']
-    d = creep_type['d']
-    Coh = creep_type['Coh']
+    A = creep['A']
+    p = creep['p']
+    r = creep['r']
+    n = creep['n']
+    E = creep['E']
+    V = creep['V']
+    d = creep['d']
+    Coh = creep['Coh']
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     if use_effective_strain_rate:
@@ -1450,15 +1541,15 @@ def Convert2AspectInput_v1(creep_type, **kwargs):
     else:
         F = 1.0
     # prepare values for aspect
-    aspect_creep_type = {}
+    aspect_creep = {}
     # stress in the original equation is in Mpa, grain size is in um
-    aspect_creep_type['A'] = 1e6**(-p) * (1e6)**(-n) * Coh**r * A / F**n  # F term: use effective strain rate
-    aspect_creep_type['d'] = d / 1e6
-    aspect_creep_type['n'] = n
-    aspect_creep_type['m'] = p
-    aspect_creep_type['E'] = E
-    aspect_creep_type['V'] = V
-    return aspect_creep_type
+    aspect_creep['A'] = 1e6**(-p) * (1e6)**(-n) * Coh**r * A / F**n  # F term: use effective strain rate
+    aspect_creep['d'] = d / 1e6
+    aspect_creep['n'] = n
+    aspect_creep['m'] = p
+    aspect_creep['E'] = E
+    aspect_creep['V'] = V
+    return aspect_creep
 
 
 def GetLowerMantleRheology(upper_mantle_creep_method, jump, T, P, **kwargs):
@@ -1768,7 +1859,6 @@ def Byerlee(P):
 
 def StressDependentYielding(P, cohesion, friction, strain_rate_ref, n, strain_rate):
     '''
-    todo_basalt
     a yielding criteria that include a stress dependence on strain rate
     '''
     tau_y = cohesion + friction * P
@@ -1812,43 +1902,6 @@ def temperature_halfspace(z, t, **kwargs):
     return T
 
 
-def PlotStrengthProfile():
-    '''
-    todo_basalt
-    '''
-    year = 365 * 24 * 3600.0
-    rheology_prm = RHEOLOGY_PRM()
-    yielding = rheology_prm.ARCAY17_plastic
-    dislocation_creep_wet_olivine = rheology_prm.ARCAY17_disl
-    Zs = np.linspace(0.0, 40e3, 100)
-    Tliths = temperature_halfspace(Zs, 40e6*year, Tm=1573.0) # adiabatic temperature
-    Ts = 713 * Zs / 78.245e3  + 273.14# geotherm from Arcay 2017 pepi, figure 3d 2
-    Ps = pressure_from_lithostatic(Zs, Tliths)
-    strain_rate = 1e-14
-    # plastic yielding
-    Sigs_plastic = StressDependentYielding(Ps, yielding["cohesion"], yielding["friction"], yielding["ref strain rate"], yielding["n"], strain_rate)
-    # viscous stress
-    Sigs_viscous_wet_olivine = CreepStress(dislocation_creep_wet_olivine, strain_rate, Ps, Ts, 1e4, 1000)
-    Sigs = np.minimum(Sigs_plastic, Sigs_viscous_wet_olivine)
-    # viscous stress with smaller activation energy
-    dislocation_creep_wet_olivine_70 = dislocation_creep_wet_olivine.copy()
-    dislocation_creep_wet_olivine_70['E'] -= 70e3
-    Sigs_viscous_wet_olivine_70 = CreepStress(dislocation_creep_wet_olivine_70, strain_rate, Ps, Ts, 1e4, 1000)
-    Sigs_70 = np.minimum(Sigs_plastic, Sigs_viscous_wet_olivine_70)
-    # make plots
-    fig, ax = plt.subplots()
-    ax.plot(Sigs/1e6, Zs/1e3, 'b')
-    ax.plot(Sigs_viscous_wet_olivine/1e6, Zs/1e3, 'b--', label="Wet Olivine")
-    ax.plot(Sigs_70/1e6, Zs/1e3, 'g')
-    ax.plot(Sigs_viscous_wet_olivine_70/1e6, Zs/1e3, 'g--', label="Wet Olivine, dEa = 70 kJ/mol")
-    ax.set_xlim([0.0, 100.0])
-    ax.invert_yaxis()
-    ax.set_xlabel("Second invariant of the stress tensor (MPa)")
-    ax.set_ylabel("Depth (km)")
-    ax.legend()
-    plt.savefig('./strength_profile.png')
-    return Sigs, Zs
-    pass
 
 
 def main():
@@ -1973,7 +2026,10 @@ def main():
         DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version)
 
     elif _commend == 'plot_strength_profile':
-        PlotStrengthProfile()
+        # todo_basalt
+        Operator = RHEOLOGY_OPR()
+        Operator.SetRheologyByName(disl='ARCAY17', plastic='ARCAY17')
+        Sigs, Zs = Operator.PlotStrengthProfile(creep_type='disl')
     
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)
