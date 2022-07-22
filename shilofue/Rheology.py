@@ -74,6 +74,7 @@ import sys
 import math
 import argparse
 import numpy as np
+from scipy.special import erf
 from matplotlib import pyplot as plt
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.FlowLaws import visc_diff_HK
@@ -299,12 +300,12 @@ class RHEOLOGY_PRM():
                 "d" : 1e4, # not dependent on d
                 "Coh" : 1000.0
             }
-        self.ARCAY17_brittle = \
+        self.ARCAY17_plastic = \
         {
             "friction" : 0.05,
             "cohesion": 1e6, # pa
             "n": 30.0,
-            "effective strain rate" : 1.0e-14
+            "ref strain rate" : 1.0e-14
         }
 
         
@@ -1765,20 +1766,88 @@ def Byerlee(P):
     return tau
 
 
-def StressDependentYielding(P, cohesion, friction, strain_rate_ref, strain_rate):
+def StressDependentYielding(P, cohesion, friction, strain_rate_ref, n, strain_rate):
     '''
     todo_basalt
     a yielding criteria that include a stress dependence on strain rate
     '''
     tau_y = cohesion + friction * P
-    tau = tau_y * (strain_rate / strain_rate_ref) ** (1.0/n) / strain_rate
+    tau = tau_y * (strain_rate / strain_rate_ref) ** (1.0/n)
     return tau
+
+def pressure_from_lithostatic(z,Tad):
+    '''
+    A lithostatic pressure profile
+    Inputs:
+	z (float) - depth in m
+	Tad (float) - adiabatic temperature
+    '''
+    # Density Profile
+    refrho = 3300  # kg/m^3
+    refT = 1673        # K
+    alpha = 3.1e-5  # 1/K
+    g = 9.81 # m/s^2
+    density = refrho*(1-alpha*(Tad-refT))
+    # start loop at 1 because P[0] = 0
+    dz = z[1]-z[0]
+    P = np.zeros(np.size(z))
+    for i in range(1, np.size(z)):
+        P[i] = P[i-1] + 0.5*(density[i]+density[i-1])*g*dz
+    return P
+
+def temperature_halfspace(z, t, **kwargs):
+    '''
+    temperature from a half-space cooling model
+    Inputs:
+	z (float) - depth (m)
+	t - age (s)
+    kwargs (dict):
+        Tm (float) - mantle temperature
+    '''
+    # Physical constants
+    kappa = 1e-6  # thermal diffusivity (m^2/s)
+    T_s = 273  # surface temperature (K)
+    T_m = kwargs.get("Tm", 1673) # mantle temperature (K)
+    T = T_s + (T_m - T_s)*erf(z/(2*np.sqrt(kappa*t)))
+    return T
 
 
 def PlotStrengthProfile():
     '''
     todo_basalt
     '''
+    year = 365 * 24 * 3600.0
+    rheology_prm = RHEOLOGY_PRM()
+    yielding = rheology_prm.ARCAY17_plastic
+    dislocation_creep_wet_olivine = rheology_prm.ARCAY17_disl
+    Zs = np.linspace(0.0, 40e3, 100)
+    Tliths = temperature_halfspace(Zs, 40e6*year, Tm=1573.0) # adiabatic temperature
+    Ts = 713 * Zs / 78.245e3  + 273.14# geotherm from Arcay 2017 pepi, figure 3d 2
+    Ps = pressure_from_lithostatic(Zs, Tliths)
+    strain_rate = 1e-14
+    # plastic yielding
+    Sigs_plastic = StressDependentYielding(Ps, yielding["cohesion"], yielding["friction"], yielding["ref strain rate"], yielding["n"], strain_rate)
+    # viscous stress
+    Sigs_viscous_wet_olivine = CreepStress(dislocation_creep_wet_olivine, strain_rate, Ps, Ts, 1e4, 1000)
+    Sigs = np.minimum(Sigs_plastic, Sigs_viscous_wet_olivine)
+    # viscous stress with smaller activation energy
+    dislocation_creep_wet_olivine_70 = dislocation_creep_wet_olivine.copy()
+    dislocation_creep_wet_olivine_70['E'] -= 70e3
+    Sigs_viscous_wet_olivine_70 = CreepStress(dislocation_creep_wet_olivine_70, strain_rate, Ps, Ts, 1e4, 1000)
+    Sigs_70 = np.minimum(Sigs_plastic, Sigs_viscous_wet_olivine_70)
+    # make plots
+    fig, ax = plt.subplots()
+    ax.plot(Sigs/1e6, Zs/1e3, 'b')
+    ax.plot(Sigs_viscous_wet_olivine/1e6, Zs/1e3, 'b--', label="Wet Olivine")
+    ax.plot(Sigs_70/1e6, Zs/1e3, 'g')
+    ax.plot(Sigs_viscous_wet_olivine_70/1e6, Zs/1e3, 'g--', label="Wet Olivine, dEa = 70 kJ/mol")
+    ax.set_xlim([0.0, 100.0])
+    ax.invert_yaxis()
+    ax.set_xlabel("Second invariant of the stress tensor (MPa)")
+    ax.set_ylabel("Depth (km)")
+    ax.legend()
+    plt.savefig('./strength_profile.png')
+    return Sigs, Zs
     pass
 
 
@@ -1902,6 +1971,9 @@ def main():
 
     elif _commend == 'derive_mantle_rheology':
         DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version)
+
+    elif _commend == 'plot_strength_profile':
+        PlotStrengthProfile()
     
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)

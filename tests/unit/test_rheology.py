@@ -253,6 +253,10 @@ def test_Convert2AspectInputLowerMantle():
 
     assert(abs(eta_lower - jump * 1e21)/1e21 < tolerance)
 
+def test_PlotStrengthProfile():
+    Sigs, Zs = PlotStrengthProfile()
+    assert((Sigs[-1] - 6420880.603595899)/6420880.603595899 < 1e-6)
+
 
 
 
