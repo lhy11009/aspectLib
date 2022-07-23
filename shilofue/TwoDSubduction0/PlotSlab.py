@@ -31,6 +31,7 @@ from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPE
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 from joblib import Parallel, delayed
 import multiprocessing
+import warnings
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -456,6 +457,8 @@ def main():
         sys.arg[2, :](str):
             options
     '''
+    warnings.warn('This scripts is deprecated, use the VtkPp.py script instead')
+    
     _commend = sys.argv[1]
     # parse options
     parser = argparse.ArgumentParser(description='Parse parameters')
@@ -480,6 +483,7 @@ def main():
     except IndexError:
         pass
     arg = parser.parse_args(_options)
+    
 
     # commands
     if (_commend in ['-h', '--help']):

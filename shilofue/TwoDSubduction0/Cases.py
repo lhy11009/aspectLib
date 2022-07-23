@@ -35,7 +35,7 @@ from matplotlib import pyplot as plt
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 import shilofue.FlowLaws as flf
-from shilofue.Rheology import RHEOLOGY_OPR
+from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -346,8 +346,18 @@ class CASE(CasesP.CASE):
         else:
             rheology = Operator.MantleRheology_v0(rheology=mantle_rheology_scheme)
             CDPT_assign_mantle_rheology(o_dict, rheology)
-        print("rheology: ", rheology) # debug
         # todo_basalt, append to initial condition outputs
+        sz_cohesion = 10e6
+        sz_friction = 0.05
+        plastic_yielding = {}
+        plastic_yielding['cohesion'] = sz_cohesion
+        plastic_yielding['friction'] = sz_friction
+        plastic_yielding['type'] = 'Coulumb'
+        Operator = RHEOLOGY_OPR()
+        rheology_experiment_dislocation = ConvertFromAspectInput(rheology['dislocation_creep'])
+        Operator.SetRheology(disl=rheology_experiment_dislocation, plastic=plastic_yielding)
+        Sigs, Zs, fig_path = Operator.PlotStrengthProfile(creep_type='disl')
+        self.output_imgs.append(fig_path)
 
         # Include peierls rheology
         if if_peierls:

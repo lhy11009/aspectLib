@@ -304,7 +304,8 @@ class RHEOLOGY_PRM():
             "friction" : 0.05,
             "cohesion": 1e6, # pa
             "n": 30.0,
-            "ref strain rate" : 1.0e-14
+            "ref strain rate" : 1.0e-14,
+            "type": "stress dependent"
         }
 
         
@@ -316,7 +317,6 @@ class RHEOLOGY_PRM():
                 "V" : 10.6e-6                     # m^3/mol+/-1
             }
 
-# todo_basalt
     def get_rheology(self, _name, _type):
         '''
         read rheology parameters, and account for effects of water if it is a wet rheology
@@ -356,7 +356,6 @@ class RHEOLOGY_OPR():
         self.output_profile = None # for the figure plotted
         self.output_json = None
         self.output_aspect_json = None
-        # todo_basalt
         self.diff = None
         self.disl = None
         self.plastic = None
@@ -1175,6 +1174,7 @@ class RHEOLOGY_OPR():
         plastic = self.plastic
         assert(creep != None)
         assert(plastic != None)
+        averaging = kwargs.get('averaging', 'harmonic')
         # rheology_prm = RHEOLOGY_PRM()
         # self.plastic = rheology_prm.ARCAY17_plastic
         # self.dislocation_creep = rheology_prm.ARCAY17_disl
@@ -1184,17 +1184,27 @@ class RHEOLOGY_OPR():
         Ps = pressure_from_lithostatic(Zs, Tliths)
         strain_rate = 1e-14
         # plastic self.plastic
-        Sigs_plastic = StressDependentYielding(Ps, plastic["cohesion"], plastic["friction"], plastic["ref strain rate"], plastic["n"], strain_rate)
+        if plastic["type"] == "stress dependent":
+            Sigs_plastic = StressDependentYielding(Ps, plastic["cohesion"], plastic["friction"], plastic["ref strain rate"], plastic["n"], strain_rate)
+        elif plastic["type"] == "Coulumb":
+            Sigs_plastic = CoulumbYielding(Ps, plastic["cohesion"], plastic["friction"])
+        eta_plastic = Sigs_plastic / 2.0 / strain_rate
         # viscous stress
         Sigs_viscous_wet_olivine = CreepStress(creep, strain_rate, Ps, Ts, 1e4, 1000)
+        eta_viscous = Sigs_viscous_wet_olivine / 2.0 / strain_rate
         Sigs = np.minimum(Sigs_plastic, Sigs_viscous_wet_olivine)
+        if averaging == 'harmonic':
+            eta = eta_plastic * eta_viscous / (eta_viscous + eta_plastic)
+        else:
+            raise NotImplementedError()
         # viscous stress with smaller activation energy
         creep_wet_olivine_70 = creep.copy()
         creep_wet_olivine_70['E'] -= 70e3
         Sigs_viscous_wet_olivine_70 = CreepStress(creep_wet_olivine_70, strain_rate, Ps, Ts, 1e4, 1000)
         Sigs_70 = np.minimum(Sigs_plastic, Sigs_viscous_wet_olivine_70)
         # make plots
-        fig, ax = plt.subplots()
+        fig = plt.figure(figsize=(10, 5))
+        ax = fig.add_subplot(1,2,1)
         ax.plot(Sigs/1e6, Zs/1e3, 'b')
         ax.plot(Sigs_viscous_wet_olivine/1e6, Zs/1e3, 'b--', label="Wet Olivine")
         ax.plot(Sigs_70/1e6, Zs/1e3, 'g')
@@ -1204,10 +1214,17 @@ class RHEOLOGY_OPR():
         ax.set_xlabel("Second invariant of the stress tensor (MPa)")
         ax.set_ylabel("Depth (km)")
         ax.legend()
-        file_path = './strength_profile.png'
+        # plot viscosity
+        ax = fig.add_subplot(1,2,2)
+        ax.semilogx(eta, Zs/1e3, 'r')
+        ax.invert_yaxis()
+        ax.set_xlabel("Viscosity (Pa * s)")
+        ax.set_ylabel("Depth (km)")
+        fig.tight_layout()
+        file_path = './results/strength_profile.png'
         plt.savefig(file_path)
         print("figure saved: ", file_path)
-        return Sigs, Zs
+        return Sigs, Zs, file_path
 
 
 
@@ -1552,6 +1569,48 @@ def Convert2AspectInput_v1(creep, **kwargs):
     return aspect_creep
 
 
+def ConvertFromAspectInput(aspect_creep, **kwargs):
+    """
+    Viscosity is calculated by flow law in form of (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T)) * 1e6
+    while in aspect, flow law in form of 0.5 * A**(-1.0 / n) * d**(m / n) * (strain_rate)**(1.0 / n - 1) * np.exp((E + P * V) / (n * R * T)).
+    Here I convert backward from the flow law used in aspect
+    Original Units:
+     - P: Pa
+     - T: K
+     - d: mm
+     - Coh: H / 10^6 Si
+    Original Units:
+     - P: Pa
+     - T: K
+     - d: m
+    """
+    # read in initial value
+    A = aspect_creep['A']
+    m = aspect_creep['m']
+    n = aspect_creep['n']
+    E = aspect_creep['E']
+    V = aspect_creep['V']
+    d = aspect_creep['d']
+    # compute value of F(pre factor)
+    use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
+    if use_effective_strain_rate:
+        F = 1 / (2**((n-1)/n)*3**((n+1)/2/n))
+    else:
+        F = 1.0
+    # prepare values for aspect
+    creep = {}
+    # stress in the original equation is in Mpa, grain size is in um
+    creep['A'] = 1e6**m * 1e6**n * A * F**n  # F term: use effective strain rate
+    creep['d'] = d * 1e6
+    creep['n'] = n
+    creep['p'] = m
+    creep['E'] = E
+    creep['V'] = V
+    creep['r'] = 0.0  # assume this is not dependent on Coh
+    creep['Coh'] = 1000.0
+    return creep
+
+
 def GetLowerMantleRheology(upper_mantle_creep_method, jump, T, P, **kwargs):
     """
     get flow law parameters in lower mantle based on upper mantle viscosity and jump in viscosity
@@ -1865,6 +1924,14 @@ def StressDependentYielding(P, cohesion, friction, strain_rate_ref, n, strain_ra
     tau = tau_y * (strain_rate / strain_rate_ref) ** (1.0/n)
     return tau
 
+def CoulumbYielding(P, cohesion, friction):
+    '''
+    a yielding criteria that include a stress dependence on strain rate
+    '''
+    tau = cohesion + friction * P
+    return tau
+
+
 def pressure_from_lithostatic(z,Tad):
     '''
     A lithostatic pressure profile
@@ -2026,7 +2093,6 @@ def main():
         DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version)
 
     elif _commend == 'plot_strength_profile':
-        # todo_basalt
         Operator = RHEOLOGY_OPR()
         Operator.SetRheologyByName(disl='ARCAY17', plastic='ARCAY17')
         Sigs, Zs = Operator.PlotStrengthProfile(creep_type='disl')

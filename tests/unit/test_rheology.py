@@ -256,7 +256,7 @@ def test_Convert2AspectInputLowerMantle():
 def test_PlotStrengthProfile():
     Operator = RHEOLOGY_OPR()
     Operator.SetRheologyByName(disl='ARCAY17', plastic='ARCAY17')
-    Sigs, Zs = Operator.PlotStrengthProfile(creep_type='disl')
+    Sigs, Zs, _ = Operator.PlotStrengthProfile(creep_type='disl')
     assert((Sigs[-1] - 6420880.603595899)/6420880.603595899 < 1e-6)
 
 

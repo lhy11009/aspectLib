@@ -240,6 +240,8 @@ def test_mantle_rheology():
     prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
     prm_path = os.path.join(output_dir, 'case.prm')
     assert(filecmp.cmp(prm_path, prm_std_path))
+    sp_plot_path = os.path.join(output_dir, 'img/initial_condition/strength_profile.png')
+    assert(os.path.isfile(sp_plot_path))
 
     
 # to check for error message
