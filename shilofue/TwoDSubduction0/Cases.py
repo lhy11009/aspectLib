@@ -32,10 +32,11 @@ import numpy as np
 from copy import deepcopy
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from matplotlib import gridspec
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 import shilofue.FlowLaws as flf
-from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput
+from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput, STRENGTH_PROFILE
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -353,10 +354,11 @@ class CASE(CasesP.CASE):
         plastic_yielding['cohesion'] = sz_cohesion
         plastic_yielding['friction'] = sz_friction
         plastic_yielding['type'] = 'Coulumb'
-        Operator = RHEOLOGY_OPR()
+        Operator = STRENGTH_PROFILE()
         rheology_experiment_dislocation = ConvertFromAspectInput(rheology['dislocation_creep'])
         Operator.SetRheology(disl=rheology_experiment_dislocation, plastic=plastic_yielding)
-        Sigs, Zs, fig_path = Operator.PlotStrengthProfile(creep_type='disl')
+        fig_path = os.path.join(ASPECT_LAB_DIR, "results", "shear_zone_strength.png")
+        PlotShearZoneStrengh(Operator, fig_path)
         self.output_imgs.append(fig_path)
 
         # Include peierls rheology
@@ -986,9 +988,30 @@ spharz: %.4e|%.4e|%.4e|%.4e|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,\
 opcrust: %.4e, opharz: %.4e" % (disl_V, disl_V, disl_V, disl_V,\
 disl_crust_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V)
 
-def PlotStrengthProfileCrust():
-    # todo_basalt
-    pass
+# todo_basalt
+def PlotShearZoneStrengh(Operator, fig_path):
+    fig = plt.figure(tight_layout=True, figsize=[5, 10])
+    gs = gridspec.GridSpec(2, 1)
+    ax0 = fig.add_subplot(gs[0, 0])
+    ax1 = fig.add_subplot(gs[1, 0])
+    strain_rates = [1e-13, 1e-14, 1e-15]
+    colors = ['b', 'g', 'r']
+    # 1e-13 
+    i = 0
+    for strain_rate in strain_rates:
+        _color = colors[i]
+        Operator.Execute(creep_type='disl', strain_rate=strain_rate)
+        # plot stress
+        label = "Strain Rate = %.1e" % strain_rate
+        Operator.PlotStress(ax=ax0, color=_color, label_viscous=label)
+        # plot viscosity
+        Operator.PlotViscosity(ax=ax1, color=_color)
+        i += 1
+    ax0.invert_yaxis()
+    ax0.legend()
+    ax1.invert_yaxis()
+    ax1.legend()
+    fig.savefig(fig_path)
 
 
 def Usage():

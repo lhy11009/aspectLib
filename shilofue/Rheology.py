@@ -1164,7 +1164,17 @@ class RHEOLOGY_OPR():
                 plt.close()
             i = i + 1
 
-    def PlotStrengthProfile(self, **kwargs):
+class STRENGTH_PROFILE(RHEOLOGY_OPR):
+
+    def __init__(self):
+        RHEOLOGY_OPR.__init__(self)
+        self.Sigs = None
+        self.Sigs_viscous = None
+        self.Zs = None
+        self.Etas = None
+        self.Computed = False
+
+    def Execute(self, **kwargs):
         '''
         todo_basalt
         '''
@@ -1175,6 +1185,7 @@ class RHEOLOGY_OPR():
         assert(creep != None)
         assert(plastic != None)
         averaging = kwargs.get('averaging', 'harmonic')
+        strain_rate = kwargs.get('strain_rate', 1e-14)
         # rheology_prm = RHEOLOGY_PRM()
         # self.plastic = rheology_prm.ARCAY17_plastic
         # self.dislocation_creep = rheology_prm.ARCAY17_disl
@@ -1182,7 +1193,6 @@ class RHEOLOGY_OPR():
         Tliths = temperature_halfspace(Zs, 40e6*year, Tm=1573.0) # adiabatic temperature
         Ts = 713 * Zs / 78.245e3  + 273.14# geotherm from Arcay 2017 pepi, figure 3d 2
         Ps = pressure_from_lithostatic(Zs, Tliths)
-        strain_rate = 1e-14
         # plastic self.plastic
         if plastic["type"] == "stress dependent":
             Sigs_plastic = StressDependentYielding(Ps, plastic["cohesion"], plastic["friction"], plastic["ref strain rate"], plastic["n"], strain_rate)
@@ -1190,41 +1200,44 @@ class RHEOLOGY_OPR():
             Sigs_plastic = CoulumbYielding(Ps, plastic["cohesion"], plastic["friction"])
         eta_plastic = Sigs_plastic / 2.0 / strain_rate
         # viscous stress
-        Sigs_viscous_wet_olivine = CreepStress(creep, strain_rate, Ps, Ts, 1e4, 1000)
-        eta_viscous = Sigs_viscous_wet_olivine / 2.0 / strain_rate
-        Sigs = np.minimum(Sigs_plastic, Sigs_viscous_wet_olivine)
+        Sigs_viscous = CreepStress(creep, strain_rate, Ps, Ts, 1e4, 1000)
+        eta_viscous = Sigs_viscous / 2.0 / strain_rate
+        Sigs = np.minimum(Sigs_plastic, Sigs_viscous)
         if averaging == 'harmonic':
-            eta = eta_plastic * eta_viscous / (eta_viscous + eta_plastic)
+            Etas = eta_plastic * eta_viscous / (eta_viscous + eta_plastic)
         else:
             raise NotImplementedError()
-        # viscous stress with smaller activation energy
-        creep_wet_olivine_70 = creep.copy()
-        creep_wet_olivine_70['E'] -= 70e3
-        Sigs_viscous_wet_olivine_70 = CreepStress(creep_wet_olivine_70, strain_rate, Ps, Ts, 1e4, 1000)
-        Sigs_70 = np.minimum(Sigs_plastic, Sigs_viscous_wet_olivine_70)
+        self.Sigs = Sigs
+        self.Sigs_viscous = Sigs_viscous
+        self.Etas = Etas
+        self.Zs = Zs
+        self.computed = True
+
+    def PlotStress(self, **kwargs):
+        ax = kwargs.get('ax', None)
+        label = kwargs.get('label', None)
+        label_viscous = kwargs.get('label_viscous', None)
+        _color = kwargs.get('color', 'b')
+        if ax == None:
+            raise NotImplementedError()
         # make plots
-        fig = plt.figure(figsize=(10, 5))
-        ax = fig.add_subplot(1,2,1)
-        ax.plot(Sigs/1e6, Zs/1e3, 'b')
-        ax.plot(Sigs_viscous_wet_olivine/1e6, Zs/1e3, 'b--', label="Wet Olivine")
-        ax.plot(Sigs_70/1e6, Zs/1e3, 'g')
-        ax.plot(Sigs_viscous_wet_olivine_70/1e6, Zs/1e3, 'g--', label="Wet Olivine, dEa = 70 kJ/mol")
+        ax.plot(self.Sigs/1e6, self.Zs/1e3, color=_color, label=label)
+        ax.plot(self.Sigs_viscous/1e6, self.Zs/1e3, '--', color=_color, label=label_viscous)
         ax.set_xlim([0.0, 100.0])
-        ax.invert_yaxis()
         ax.set_xlabel("Second invariant of the stress tensor (MPa)")
         ax.set_ylabel("Depth (km)")
-        ax.legend()
+    
+    def PlotViscosity(self, **kwargs):
+        ax = kwargs.get('ax', None)
+        label = kwargs.get('label', None)
+        _color = kwargs.get('color', 'b')
+        if ax == None:
+            raise NotImplementedError()
         # plot viscosity
-        ax = fig.add_subplot(1,2,2)
-        ax.semilogx(eta, Zs/1e3, 'r')
-        ax.invert_yaxis()
+        ax.semilogx(self.Etas, self.Zs/1e3, color=_color, label=label)
         ax.set_xlabel("Viscosity (Pa * s)")
         ax.set_ylabel("Depth (km)")
-        fig.tight_layout()
-        file_path = './results/strength_profile.png'
-        plt.savefig(file_path)
-        print("figure saved: ", file_path)
-        return Sigs, Zs, file_path
+        
 
 
 
