@@ -109,7 +109,6 @@ different age will be adjusted.",\
 intiation stage causes the slab to break in the middle",\
          float, ['peierls creep', 'two stage intial time'], -1.0, nick='peierls_two_stage_time')
         self.add_key("mantle rheology", str, ['mantle rheology', 'scheme'], "HK03_wet_mod", nick='mantle_rheology_scheme')
-        # todo_basalt
         self.add_key("Scheme for shear zone viscosity", str, ["shear zone", 'viscous scheme'], "constant", nick='sz_viscous_scheme')
         self.add_key("cohesion", float, ['mantle rheology', 'cohesion'], 50e6, nick='cohesion')
         self.add_key("friction", float, ['mantle rheology', 'friction'], 25.0, nick='friction')
@@ -370,7 +369,7 @@ class CASE(CasesP.CASE):
             CDPT_assign_yielding(o_dict, cohesion, friction, crust_cohesion=crust_cohesion, crust_friction=crust_friction)
         else:
             CDPT_assign_yielding(o_dict, cohesion, friction)
-        # todo_basalt, append to initial condition outputa
+        # append to initial condition output
         if sz_viscous_scheme == "stress dependent":
             plastic_yielding = {}
             plastic_yielding['cohesion'] = crust_cohesion
@@ -927,7 +926,6 @@ def CDPT_assign_mantle_rheology(o_dict, rheology, **kwargs):
     diffusion_creep = rheology['diffusion_creep']
     dislocation_creep = rheology['dislocation_creep']
     diffusion_creep_lm = rheology['diffusion_lm']
-    # todo_basalt
     sz_viscous_scheme = kwargs.get("sz_viscous_scheme", "constant")
     if sz_viscous_scheme == "constant":
         diff_crust_A = 5e-21
@@ -1027,7 +1025,6 @@ def CDPT_assign_yielding(o_dict, cohesion, friction, **kwargs):
     '''
     Assign mantle rheology in the CDPT model
     ''' 
-    # todo_basalt
     crust_cohesion = kwargs.get("crust_cohesion", cohesion)
     crust_friction = kwargs.get("crust_friction", friction)
     if abs(cohesion  - 50e6)/50e6 < 1e-6 and abs(friction - 25.0)/25.0 < 1e-6\
@@ -1040,8 +1037,10 @@ def CDPT_assign_yielding(o_dict, cohesion, friction, **kwargs):
         % (cohesion, crust_cohesion, cohesion, cohesion, cohesion)
 
 
-# todo_basalt
 def PlotShearZoneStrengh(Operator, fig_path):
+    '''
+    Plot the shear zone strenght profile
+    '''
     fig = plt.figure(tight_layout=True, figsize=[5, 10])
     gs = gridspec.GridSpec(2, 1)
     ax0 = fig.add_subplot(gs[0, 0])

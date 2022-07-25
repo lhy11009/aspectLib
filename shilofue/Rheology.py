@@ -1176,7 +1176,7 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
 
     def Execute(self, **kwargs):
         '''
-        todo_basalt
+        Compute the strength profile
         '''
         year = 365 * 24 * 3600.0
         creep_type = kwargs.get('creep_type', 'diff')
