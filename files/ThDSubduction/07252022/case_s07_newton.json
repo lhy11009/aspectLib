@@ -1,8 +1,8 @@
 {
   "_comments": "This case is modified from the Schellart 2007 paper, but include newtonian T-dependent rheology",
-  "base directory": "${ASPECT_LAB_DIR}/files/ThDSubduction/07252022",
-  "output directory": "${ASPECT_LAB_DIR}/.test/",
-  "name": "test_schellart_07_newtonian",
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/07152022",
+  "output directory": "/mnt/lochy0/ASPECT_DATA/ThDSubduction/s07_Newtonian_4",
+  "name": "s07T_slabl530.0_slabd70.0_OA5.0",
   "type": "s07_newton",
   "use world builder": 1,
   "include fast first step": 1,
