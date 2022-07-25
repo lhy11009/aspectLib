@@ -240,6 +240,21 @@ def test_mantle_rheology():
     prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
     prm_path = os.path.join(output_dir, 'case.prm')
     assert(filecmp.cmp(prm_path, prm_std_path))
+
+def test_shear_zone_strength():
+    '''
+    Use a stress dependent rheology in the shear zone
+    '''
+    source_case_dir = os.path.join(source_dir, "basalt_strengh_profile")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'basalt_strengh_profile')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)  # create case
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    assert(filecmp.cmp(prm_path, prm_std_path))
     sp_plot_path = os.path.join(output_dir, 'img/initial_condition/shear_zone_strength.png')
     assert(os.path.isfile(sp_plot_path))
 

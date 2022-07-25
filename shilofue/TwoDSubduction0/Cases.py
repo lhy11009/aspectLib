@@ -109,6 +109,12 @@ different age will be adjusted.",\
 intiation stage causes the slab to break in the middle",\
          float, ['peierls creep', 'two stage intial time'], -1.0, nick='peierls_two_stage_time')
         self.add_key("mantle rheology", str, ['mantle rheology', 'scheme'], "HK03_wet_mod", nick='mantle_rheology_scheme')
+        # todo_basalt
+        self.add_key("Scheme for shear zone viscosity", str, ["shear zone", 'viscous scheme'], "constant", nick='sz_viscous_scheme')
+        self.add_key("cohesion", float, ['mantle rheology', 'cohesion'], 50e6, nick='cohesion')
+        self.add_key("friction", float, ['mantle rheology', 'friction'], 25.0, nick='friction')
+        self.add_key("cohesion in the shear zone", float, ['shear zone', 'cohesion'], 50e6, nick='crust_cohesion')
+        self.add_key("friction in the shear zone", float, ['shear zone', 'friction'], 25.0, nick='crust_friction')
 
         pass
     
@@ -162,6 +168,13 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         # assert scheme of peierls creep to use
         peierls_scheme = self.values[self.start + 18]
         assert(peierls_scheme in ['MK10', "MK10p"])
+        # assert viscous scheme to use
+        sz_viscous_scheme = self.values[self.start + 21]
+        assert(sz_viscous_scheme in ["stress dependent", "constant"])
+        friction = self.values[self.start + 23]
+        assert(friction >= 0.0 and friction < 90.0)  # an angle between 0.0 and 90.0
+        crust_friction = self.values[self.start + 25]
+        assert(crust_friction >= 0.0 and crust_friction < 90.0)  # an angle between 0.0 and 90.0
 
     def to_configure_prm(self):
         if_wb = self.values[8]
@@ -193,11 +206,16 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         end_time = self.values[12]
         refinement_level = self.values[15]
         case_o_dir = self.values[16]
+        sz_viscous_scheme = self.values[self.start + 21]
+        cohesion = self.values[self.start + 22]
+        friction = self.values[self.start + 23]
+        crust_cohesion = self.values[self.start + 24]
+        crust_friction = self.values[self.start + 25]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
-        refinement_level, case_o_dir
+        refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction
 
     def to_configure_wb(self):
         '''
@@ -249,7 +267,7 @@ class CASE(CasesP.CASE):
     sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
     HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme,\
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
-    refinement_level, case_o_dir):
+    refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction):
         Ro = 6371e3
         # velocity boundaries
         if type_of_bd == "all free slip":  # boundary conditions
@@ -338,28 +356,29 @@ class CASE(CasesP.CASE):
         da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
         assert(os.path.isfile(da_file))
         Operator = RHEOLOGY_OPR()
-        # read profile
+        # mantle rheology
         Operator.ReadProfile(da_file)
-        if mantle_rheology_scheme == "HK03_wet_mod":
+        if mantle_rheology_scheme == "HK03_wet_mod" and sz_viscous_scheme == "constant":
             rheology = Operator.MantleRheology_v1(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
     dVdiff=-5.5e-6, dVdisl=0.0, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.73205080757)
             pass # this is just the default, so skip
         else:
             rheology = Operator.MantleRheology_v0(rheology=mantle_rheology_scheme)
-            CDPT_assign_mantle_rheology(o_dict, rheology)
-        # todo_basalt, append to initial condition outputs
-        sz_cohesion = 10e6
-        sz_friction = 0.05
-        plastic_yielding = {}
-        plastic_yielding['cohesion'] = sz_cohesion
-        plastic_yielding['friction'] = sz_friction
-        plastic_yielding['type'] = 'Coulumb'
-        Operator = STRENGTH_PROFILE()
-        rheology_experiment_dislocation = ConvertFromAspectInput(rheology['dislocation_creep'])
-        Operator.SetRheology(disl=rheology_experiment_dislocation, plastic=plastic_yielding)
-        fig_path = os.path.join(ASPECT_LAB_DIR, "results", "shear_zone_strength.png")
-        PlotShearZoneStrengh(Operator, fig_path)
-        self.output_imgs.append(fig_path)
+            CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme)
+        # yielding criteria
+        CDPT_assign_yielding(o_dict, cohesion, friction, crust_cohesion=crust_cohesion, crust_friction=crust_friction)
+        # todo_basalt, append to initial condition outputa
+        if sz_viscous_scheme == "stress dependent":
+            plastic_yielding = {}
+            plastic_yielding['cohesion'] = crust_cohesion
+            plastic_yielding['friction'] = crust_friction
+            plastic_yielding['type'] = 'Coulumb'
+            Operator = STRENGTH_PROFILE()
+            rheology_experiment_dislocation = ConvertFromAspectInput(rheology['dislocation_creep'])
+            Operator.SetRheology(disl=rheology_experiment_dislocation, plastic=plastic_yielding)
+            fig_path = os.path.join(ASPECT_LAB_DIR, "results", "shear_zone_strength.png")
+            PlotShearZoneStrengh(Operator, fig_path)
+            self.output_imgs.append(fig_path)
 
         # Include peierls rheology
         if if_peierls:
@@ -898,21 +917,33 @@ def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_
     return box_width
 
 
-def CDPT_assign_mantle_rheology(o_dict, rheology):
+def CDPT_assign_mantle_rheology(o_dict, rheology, **kwargs):
     '''
     Assign mantle rheology in the CDPT model
     ''' 
-    diff_crust_A = 5e-21
-    diff_crust_m = 0.0
-    diff_crust_E = 0.0
-    diff_crust_V = 0.0
-    disl_crust_A = 5e-32
-    disl_crust_n = 1.0
-    disl_crust_E = 0.0
-    disl_crust_V = 0.0
     diffusion_creep = rheology['diffusion_creep']
     dislocation_creep = rheology['dislocation_creep']
     diffusion_creep_lm = rheology['diffusion_lm']
+    # todo_basalt
+    sz_viscous_scheme = kwargs.get("sz_viscous_scheme", "constant")
+    if sz_viscous_scheme == "constant":
+        diff_crust_A = 5e-21
+        diff_crust_m = 0.0
+        diff_crust_E = 0.0
+        diff_crust_V = 0.0
+        disl_crust_A = 5e-32
+        disl_crust_n = 1.0
+        disl_crust_E = 0.0
+        disl_crust_V = 0.0
+    elif sz_viscous_scheme == "stress dependent":
+        diff_crust_A = 5e-32
+        diff_crust_m = 0.0
+        diff_crust_E = 0.0
+        diff_crust_V = 0.0
+        disl_crust_A = dislocation_creep['A']
+        disl_crust_n = dislocation_creep['n']
+        disl_crust_E = dislocation_creep['E']
+        disl_crust_V = dislocation_creep['V']
     diff_A = diffusion_creep['A']
     diff_m = diffusion_creep['m']
     diff_n = diffusion_creep['n']
@@ -987,6 +1018,24 @@ spcrust: %.4e|%.4e|0.0000e+00|0.0000e+00,\
 spharz: %.4e|%.4e|%.4e|%.4e|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,\
 opcrust: %.4e, opharz: %.4e" % (disl_V, disl_V, disl_V, disl_V,\
 disl_crust_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V)
+
+
+def CDPT_assign_yielding(o_dict, cohesion, friction, **kwargs):
+    '''
+    Assign mantle rheology in the CDPT model
+    ''' 
+    # todo_basalt
+    crust_cohesion = kwargs.get("crust_cohesion", cohesion)
+    crust_friction = kwargs.get("crust_friction", friction)
+    if abs(cohesion  - 50e6)/50e6 < 1e-6 and abs(friction - 25.0)/25.0 < 1e-6\
+    and abs(crust_cohesion  - 50e6)/50e6 < 1e-6 and  abs(crust_friction - 25.0)/25.0 < 1e-6:
+        pass  # default conditions
+    else:
+        o_dict['Material model']['Visco Plastic TwoD']["Angles of internal friction"] = "background: %.4e, spcrust: %.4e, spharz: %.4e, opcrust: %.4e, opharz: %.4e" \
+        % (friction, crust_friction, friction, friction, friction)
+        o_dict['Material model']['Visco Plastic TwoD']["Cohesions"] = "background: %.4e, spcrust: %.4e, spharz: %.4e, opcrust: %.4e, opharz: %.4e" \
+        % (cohesion, crust_cohesion, cohesion, cohesion, cohesion)
+
 
 # todo_basalt
 def PlotShearZoneStrengh(Operator, fig_path):
