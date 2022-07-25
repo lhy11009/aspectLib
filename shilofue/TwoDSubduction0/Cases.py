@@ -113,8 +113,8 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("Scheme for shear zone viscosity", str, ["shear zone", 'viscous scheme'], "constant", nick='sz_viscous_scheme')
         self.add_key("cohesion", float, ['mantle rheology', 'cohesion'], 50e6, nick='cohesion')
         self.add_key("friction", float, ['mantle rheology', 'friction'], 25.0, nick='friction')
-        self.add_key("cohesion in the shear zone", float, ['shear zone', 'cohesion'], 50e6, nick='crust_cohesion')
-        self.add_key("friction in the shear zone", float, ['shear zone', 'friction'], 25.0, nick='crust_friction')
+        self.add_key("cohesion in the shear zone", float, ['shear zone', 'cohesion'], 10e6, nick='crust_cohesion')
+        self.add_key("friction in the shear zone", float, ['shear zone', 'friction'], 2.8624, nick='crust_friction')
 
         pass
     
@@ -366,12 +366,15 @@ class CASE(CasesP.CASE):
             rheology = Operator.MantleRheology_v0(rheology=mantle_rheology_scheme)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme)
         # yielding criteria
-        CDPT_assign_yielding(o_dict, cohesion, friction, crust_cohesion=crust_cohesion, crust_friction=crust_friction)
+        if sz_viscous_scheme == "stress dependent":
+            CDPT_assign_yielding(o_dict, cohesion, friction, crust_cohesion=crust_cohesion, crust_friction=crust_friction)
+        else:
+            CDPT_assign_yielding(o_dict, cohesion, friction)
         # todo_basalt, append to initial condition outputa
         if sz_viscous_scheme == "stress dependent":
             plastic_yielding = {}
             plastic_yielding['cohesion'] = crust_cohesion
-            plastic_yielding['friction'] = crust_friction
+            plastic_yielding['friction'] = np.tan(crust_friction * np.pi / 180.0)
             plastic_yielding['type'] = 'Coulumb'
             Operator = STRENGTH_PROFILE()
             rheology_experiment_dislocation = ConvertFromAspectInput(rheology['dislocation_creep'])

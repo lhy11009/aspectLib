@@ -11,6 +11,7 @@
 #SBATCH --switches=1
 
 module unload openmpi/4.0.1
+module unload slurm/20.11.8
 module load openmpi/4.1.0-mpi-io
 >&2 echo "list of modules:"
 >&2 module list
