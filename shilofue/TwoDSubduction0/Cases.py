@@ -357,12 +357,14 @@ class CASE(CasesP.CASE):
         Operator = RHEOLOGY_OPR()
         # mantle rheology
         Operator.ReadProfile(da_file)
-        if mantle_rheology_scheme == "HK03_wet_mod" and sz_viscous_scheme == "constant":
+        if mantle_rheology_scheme == "HK03_wet_mod":  # get the type of rheology
             rheology = Operator.MantleRheology_v1(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
     dVdiff=-5.5e-6, dVdisl=0.0, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.73205080757)
-            pass # this is just the default, so skip
         else:
             rheology = Operator.MantleRheology_v0(rheology=mantle_rheology_scheme)
+        if mantle_rheology_scheme == "HK03_wet_mod" and sz_viscous_scheme == "constant":  # assign the rheology
+            pass # this is just the default, so skip
+        else:
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme)
         # yielding criteria
         if sz_viscous_scheme == "stress dependent":
