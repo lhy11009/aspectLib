@@ -1,16 +1,14 @@
 #!/bin/bash -l
 #SBATCH -J task
 #SBATCH -N 4
-#SBATCH -n 512
+#SBATCH -n 128
 #SBATCH --threads-per-core=1
-#SBATCH --tasks-per-node=128
+#SBATCH --tasks-per-node=32
 #SBATCH -o task-%j.stdout
 #SBATCH -e task-%j.stderr
 #SBATCH -t 300:00:00
-#SBATCH --partition=p-billen
+#SBATCH --partition=high2
 #SBATCH --switches=1
-#SBATCH --mem-per-cpu=4G
-#SBATCH -A billen
 
 module unload openmpi/4.0.1
 module load openmpi/4.1.0-mpi-io

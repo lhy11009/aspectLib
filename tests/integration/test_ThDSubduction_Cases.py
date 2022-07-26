@@ -105,6 +105,27 @@ def test_schellart07_newtonian():
     assert(filecmp.cmp(wb_path, wb_std_path))
 
 
+def test_2d_consistent():
+    '''
+    test for generating consistent inputs with the 2d cases
+    Asserts:
+    '''
+    # test 0
+    source_case_dir = os.path.join(source_dir, "test_2d_consistent")
+    json_path = os.path.join(source_case_dir, 'case.json')
+    output_dir = os.path.join(test_dir,'test_2d_consistent')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_std.prm')
+    wb_std_path = os.path.join(source_case_dir, 'case_std.wb')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    wb_path = os.path.join(output_dir, 'case.wb')
+    # assert(filecmp.cmp(prm_path, prm_std_path))
+    # assert(filecmp.cmp(wb_path, wb_std_path))
+
+
     
 # notes
     

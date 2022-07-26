@@ -487,7 +487,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             else:
                 max_sph = 180.0
             Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
-            # todo_sz_thickness
+            # sz_thickness
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag,Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz)
@@ -511,7 +511,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     Xmax = kwargs.get('Xmax', 7e6)
     max_sph = kwargs.get("max_sph", 180.0)
     geometry = kwargs.get('geometry', 'chunk')
-    Dsz = kwargs.get("sz_thickness", None)  # todo_sz_thickness
+    Dsz = kwargs.get("sz_thickness", None)
     o_dict = wb_dict.copy()
     trench_sph = (sp_age_trench * sp_rate / Ro) * 180.0 / np.pi
     trench_cart = sp_age_trench * sp_rate
