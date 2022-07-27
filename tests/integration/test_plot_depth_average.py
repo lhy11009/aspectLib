@@ -82,6 +82,21 @@ def test_plot_depth_average():
     assert(abs(DepthAverage.time_step_times[0]-0.0) < 1e-6)
     assert(abs(DepthAverage.time_step_times[-1]-2.63571e+06)/2.63571e+06 < 1e-6)
 
+
+def test_get_interpolate_func():
+    '''
+    a test for GetInterpolateFunc
+    '''
+    test_file = os.path.join(source_dir, 'depth_average.txt')
+    assert(os.access(test_file, os.R_OK))
+    DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
+    DepthAverage.Import(test_file)
+    itp_func = DepthAverage.GetInterpolateFunc(2.26782e+06, "temperature")
+    value = itp_func(1e6)  # 1000 km
+    assert(abs(value - 1663.8482698961939)/1663.8482698961939 < 1e-6)
+
+    
+
     
 # notes
     

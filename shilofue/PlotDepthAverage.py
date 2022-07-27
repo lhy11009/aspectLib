@@ -30,6 +30,7 @@ import json
 # import pathlib
 # import subprocess
 import numpy as np
+from scipy.interpolate import interp1d
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 import shilofue.Plot as Plot
@@ -185,6 +186,17 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
             _texts = fin.readlines()  # read the text of the file header
         self.header = ReadHeader2(_texts)
 
+
+    def Import(self, _filename):
+        '''
+        Combine a few functions to read data, header, as well as split
+        data to steps
+        '''
+        self.ReadHeader(_filename)
+        self.ReadData(_filename)
+        self.SplitTimeStep()
+
+
     def SplitTimeStep(self):
         '''
         split time steps, since the data is a big chunck
@@ -267,6 +279,13 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
             self.header['vertical_heat_flux']['unit'] = 'mw/m'
         elif self.dim == 3:
             self.header['vertical_heat_flux']['unit'] = 'mw/m^2'
+
+    # todo_dp
+    def GetInterpolateFunc(self, time, field_name):
+        names = ["depth", field_name]
+        odata, _ = self.ExportDataByTime(time, names)
+        _func = interp1d(odata[:, 0], odata[:, 1], assume_sorted=True, fill_value="extrapolate")
+        return _func
 
 
 def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):

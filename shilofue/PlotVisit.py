@@ -91,7 +91,6 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         self.options["VISIT_FILE"] = self.visit_file
         self.options["PARAVIEW_FILE"] = self.paraview_file
         # data types
-        # todo_dp
         self.options["HAS_DYNAMIC_PRESSURE"] = '0'
         try:
             visualization_output_variables = self.idict['Postprocess']['Visualization']['List of output variables']

@@ -27,6 +27,7 @@ from matplotlib import pyplot as plt
 import vtk
 import scipy.interpolate
 from vtk.util.numpy_support import vtk_to_numpy
+from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -69,7 +70,7 @@ class VERTICAL_PROFILE():
         for i in range(len(field_names)):
             field_name = field_names[i]
             field_data = field_datas[i]
-            field_func = scipy.interpolate.interp1d(rs, field_data, assume_sorted=True)
+            field_func = scipy.interpolate.interp1d(rs, field_data, assume_sorted=True, fill_value="extrapolate")
             self.field_funcs[field_name] = field_func
         pass
 
@@ -105,6 +106,16 @@ class VTKP():
         self.geometry = kwargs.get('geometry', 'chunk')
         self.Ro = kwargs.get('Ro', 6371e3)
         self.Xmax = kwargs.get('Xmax', 61.0 * np.pi / 180.0)
+        self.time = kwargs.get('time', None)
+        try:
+            ha_file = kwargs["ha_file"]
+        except KeyError:
+            self.Tref_func = None
+        else:
+            DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
+            DepthAverage.Import(ha_file)
+            Utilities.my_assert(self.time != None, ValueError, "\"time\" is a requried input if \"ha_file\" is presented")
+            self.Tref_func = DepthAverage.GetInterpolateFunc(self.time, "temperature")
         pass
 
     def ReadFile(self, filein):
@@ -132,6 +143,7 @@ class VTKP():
         '''
         include_cell_center = kwargs.get('include_cell_center', False)
         quiet = kwargs.get('quiet', False)
+        construct_Tdiff = kwargs.get("construct_Tdiff", False)
         assert(type(field_names) == list and len(field_names) > 0)
         noP = 0
         noC = 0
@@ -151,17 +163,22 @@ class VTKP():
             else:
                 self.i_poly_data.GetPointData().AddArray(point_data.GetArray(field_name))  # put T into cell data
             noP = self.i_poly_data.GetNumberOfPoints()
+        if construct_Tdiff:
+            assert(self.Tref_func != None)
+            self.ConstructTemperatureDifference()
         if include_cell_center:
             centers = vtk.vtkCellCenters()  # test the utilities of centers
             centers.SetInputData(self.i_poly_data)
             centers.Update()
             probeFilter = vtk.vtkProbeFilter()
+            # probeFilter = vtk.vtkCompositeDataProbeFilter() # debug
             probeFilter.SetSourceData(self.i_poly_data)  # use the polydata
             probeFilter.SetInputData(centers.GetOutput()) # Interpolate 'Source' at these points
             probeFilter.Update()
             self.c_poly_data = probeFilter.GetOutput()  # poly data at the center of the point
             self.include_cell_center = True
             noC = self.c_poly_data.GetNumberOfPoints() 
+            # self.c_poly_data.GetPointData().GetArray('T') = numpy_to_vtk(T_field)
             # cell sizes
             cell_size_filter = vtk.vtkCellSizeFilter()
             cell_size_filter.SetInputDataObject(grid)
@@ -171,11 +188,49 @@ class VTKP():
                 self.cell_sizes = vtk_to_numpy(cz_cell_data.GetArray('Area'))
             else:
                 raise ValueError("Not implemented")
+            # fix values of T
+            tolerance = 1.0
+            T_field = vtk_to_numpy(self.c_poly_data.GetPointData().GetArray('T'))
+            for i in range(noC):
+                if T_field[i] - 0.0 < tolerance:
+                    xs = self.c_poly_data.GetPoint(i)
+                    j = 1
+                    dist_max = 3*(self.cell_sizes[i]**0.5)  # compare to the cell size
+                    while True:
+                        xs1 = self.c_poly_data.GetPoint(i+j)
+                        dist = ((xs1[0] - xs[0])**2.0 + (xs1[1] - xs[1])**2.0)**0.5
+                        if i+j < noC and T_field[i+j] - 0.0 > tolerance and dist < dist_max:
+                            T_field[i] = T_field[i+j]
+                            break
+                        xs1 = self.c_poly_data.GetPoint(i-j)
+                        dist = ((xs1[0] - xs[0])**2.0 + (xs1[1] - xs[1])**2.0)**0.5
+                        if i-j >= 0 and T_field[i-j] - 0.0 > tolerance and dist < dist_max:
+                            T_field[i] = T_field[i-j]
+                            break
+                        j += 1
         # send out message
         message = "ConstructPolyData: %d * (%d + %d) entries in the polydata imported and %d * (%d + %d) points in the data at cell center"\
         % (noP, self.dim, len(field_names), noC, self.dim, len(field_names))
         if not quiet:
             print(message)
+
+
+    def ConstructTemperatureDifference(self):
+        '''
+        Construct a dT field of temperature differences
+        '''
+        T_field = vtk_to_numpy(self.i_poly_data.GetPointData().GetArray("T"))
+        Tdiffs = vtk.vtkFloatArray()
+        Tdiffs.SetName("dT")
+        for i in range(self.i_poly_data.GetNumberOfPoints()):
+            xs = self.i_poly_data.GetPoint(i)
+            x =  xs[0]
+            y =  xs[1]
+            r = get_r(x, y, self.geometry)
+            Tref = self.Tref_func(self.Ro - r)
+            T = T_field[i]
+            Tdiffs.InsertNextValue(T - Tref)
+        self.i_poly_data.GetPointData().AddArray(Tdiffs)
 
     def VerticalProfile2D(self, x0_range, x1, n, **kwargs):
         '''
@@ -376,6 +431,33 @@ def ExportPolyDataAscii(poly_data, field_names, file_out):
     print("\tWrite ascii data file: %s" % file_out)
 
 
+def ExportPolyDataFromRaw(Xs, Ys, Zs, Fs, fileout, **kwargs):
+    '''
+    Export poly data from raw data
+    '''
+    i_points = vtk.vtkPoints()
+    field_name = kwargs.get("field_name", "foo")
+    assert(Xs.size == Ys.size)
+    if Zs != None:
+        assert(Xs.size == Zs.size)
+    for i in range(Xs.size):
+        x = Xs[i]
+        y = Ys[i]
+        if Zs is not None:
+            z = Zs[i]
+        else:
+            z = 0.0
+        i_points.InsertNextPoint(x, y, z)
+    i_poly_data = vtk.vtkPolyData()  # initiate poly daa
+    i_poly_data.SetPoints(i_points) # insert points
+    if Fs != None:
+        # insert field data
+        assert(Xs.size == Fs.size)
+        fvalues.SetName(field_name)
+        i_poly_data.GetPointData().SetScalars(numpy_to_vtk(Fs, deep=1))
+    ExportPolyData(i_poly_data, fileout, **kwargs)
+
+
 def InterpolateGrid(poly_data, points, **kwargs):
     '''
     Inputs:
@@ -449,6 +531,23 @@ def OperateDataArrays(poly_data, names, operations):
                 raise ValueError('operation for %d is not implemented.' % operations[i])
             i += 1
     return o_array
+
+
+def get_r(x, y, geometry): 
+    '''
+    Get r (the first coordinate)
+    Inputs:
+        x - x coordinate
+        y - y coordinate
+        geometry - 'chunk' or 'box'
+    '''
+    if geometry == 'chunk':
+        r = (x*x + y*y)**0.5
+    elif geometry == 'box':
+        r = y
+    else:
+        raise ValueError("not implemented")
+    return r
 
 
 def get_r3(x, y, z, geometry):

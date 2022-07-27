@@ -28,10 +28,12 @@ from matplotlib import pyplot as plt
 from matplotlib import gridspec
 from matplotlib import colors as mcolors
 import shilofue.VtkPp as VtkPp
+from shilofue.VtkPp import get_r
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 from numpy import linalg as LA 
 import multiprocessing
 #### self
+from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
 from shilofue.PlotCombine import PLOT_COMBINE, PlotCombineExecute, PlotColorLabels, PC_OPT_BASE
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
@@ -112,7 +114,7 @@ class VTKP(VtkPp.VTKP):
         self.vsp = None
         self.vov = None
         self.slab_shallow_cutoff = 50e3  # depth limit to slab
-        self.slab_envelop_interval = 5e3
+        self.slab_envelop_interval = kwargs.get("slab_envelop_interval", 5e3)
         self.velocity_query_depth = 5e3  # depth to look up plate velocities
         self.velocity_query_disl_to_trench = 500e3  # distance to trench to look up plate velocities
         default_gravity_file = os.path.join(Utilities.var_subs('${ASPECT_SOURCE_DIR}'),\
@@ -205,6 +207,98 @@ class VTKP(VtkPp.VTKP):
         theta100 = get_theta(x100, y100, self.geometry)
         self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
         pass
+    
+
+    def PrepareSlabByDT(self, **kwargs):
+        '''
+        prepare slab composition by temperature difference to the reference adiabat
+        Inputs:
+            Tref_func: a function for the reference T profile.
+        '''
+        assert(self.include_cell_center)
+        assert(self.Tref_func != None)
+        slab_threshold = kwargs.get('slab_threshold', -100.0)
+        points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
+        centers = vtk_to_numpy(self.c_poly_data.GetPoints().GetData())
+        point_data = self.i_poly_data.GetPointData()
+        cell_point_data = self.c_poly_data.GetPointData()
+        # the temperature field
+        T_field = vtk_to_numpy(cell_point_data.GetArray("T"))
+        # add cells by composition
+        min_r = self.Ro
+        for i in range(self.i_poly_data.GetNumberOfCells()):
+            cell = self.i_poly_data.GetCell(i)
+            id_list = cell.GetPointIds()  # list of point ids in this cell
+            x = centers[i][0]
+            y = centers[i][1]
+            r = get_r(x, y, self.geometry)
+            Tref = self.Tref_func(self.Ro - r)
+            T = T_field[i]
+            if T - Tref < slab_threshold and ((self.Ro - r) > self.slab_shallow_cutoff):
+                # note on the "<": slab internal is cold
+                self.slab_cells.append(i)
+                if r < min_r:
+                    min_r = r
+        self.slab_depth = self.Ro - min_r  # cart
+        # get slab envelops
+        total_en_interval = int((self.slab_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval + 1)
+        slab_en_cell_lists = [ [] for i in range(total_en_interval) ]
+        for id in self.slab_cells:
+            x = centers[id][0]  # first, separate cells into intervals
+            y = centers[id][1]
+            r = get_r(x, y, self.geometry)
+            id_en =  int(np.floor(
+                                  (self.Ro - r - self.slab_shallow_cutoff)/
+                                  self.slab_envelop_interval))# id in the envelop list
+            slab_en_cell_lists[id_en].append(id)
+        for id_en in range(len(slab_en_cell_lists)):
+            theta_min = 0.0  # then, loop again by intervals to look for a
+            theta_max = 0.0  # max theta and a min theta for each interval
+            cell_list = slab_en_cell_lists[id_en]
+            if len(cell_list) == 0:
+                continue  # make sure we have some point
+            is_first = True
+            id_min = -1
+            id_max = -1
+            for id in cell_list:
+                x = centers[id][0]
+                y = centers[id][1]
+                theta = get_theta(x, y, self.geometry)  # cart
+                if is_first:
+                    id_min = id
+                    id_max = id
+                    theta_min = theta
+                    theta_max = theta
+                    is_first = False
+                else:
+                    if theta < theta_min:
+                        id_min = id
+                        theta_min = theta
+                    if theta > theta_max:
+                        id_max = id
+                        theta_max = theta
+            self.slab_envelop_cell_list0.append(id_min)  # first half of the envelop
+            self.slab_envelop_cell_list1.append(id_max)  # second half of the envelop
+        # trench
+        id_tr = self.slab_envelop_cell_list1[0] # point of the trench
+        x_tr = centers[id_tr][0]  # first, separate cells into intervals
+        y_tr = centers[id_tr][1]
+        self.trench = get_theta(x_tr, y_tr, self.geometry)
+        # 100 km dip angle
+        depth_lookup = 100e3
+        self.coord_100 = self.SlabSurfDepthLookup(depth_lookup)
+        if self.geometry == "chunk":
+            x100 = (self.Ro - depth_lookup) * np.cos(self.coord_100)
+            y100 = (self.Ro - depth_lookup) * np.sin(self.coord_100)
+        elif self.geometry == "box":
+            x100 = self.coord_100
+            y100 = self.Ro - depth_lookup
+        r100 = get_r(x100, y100, self.geometry)
+        theta100 = get_theta(x100, y100, self.geometry)
+        self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
+        pass
+
+    
     
     def ExportSlabInfo(self):
         '''
@@ -359,21 +453,6 @@ class VTKP(VtkPp.VTKP):
 ####
 # Utilities functions
 ####
-def get_r(x, y, geometry): 
-    '''
-    Get r (the first coordinate)
-    Inputs:
-        x - x coordinate
-        y - y coordinate
-        geometry - 'chunk' or 'box'
-    '''
-    if geometry == 'chunk':
-        r = (x*x + y*y)**0.5
-    elif geometry == 'box':
-        r = y
-    else:
-        raise ValueError("not implemented")
-    return r
 
 
 def get_theta(x, y, geometry):
@@ -580,6 +659,12 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
     indent = kwargs.get("indent", 0)  # indentation for outputs
     print("%s%s: Start" % (indent*" ", Utilities.func_name()))
     output_slab = kwargs.get('output_slab', False)
+    output_poly_data = kwargs.get('output_poly_data', True)
+    use_dT = kwargs.get('use_dT', False)
+    dT = kwargs.get('dT', -100.0)
+    slab_envelop_interval = kwargs.get("slab_envelop_interval", 5e3)
+    ha_file = os.path.join(case_dir, "output", "depth_average.txt")
+    assert(os.path.isfile(ha_file))
     output_path = os.path.join(case_dir, "vtk_outputs")
     if not os.path.isdir(output_path):
         os.mkdir(output_path)
@@ -591,38 +676,51 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
     Visit_Options.Interpret()
     geometry = Visit_Options.options['GEOMETRY']
     vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    _time, step = Visit_Options.get_time_and_step(vtu_step)
     # initiate class
-    VtkP = VTKP()
+    VtkP = VTKP(ha_file=ha_file, time=_time, slab_envelop_interval=slab_envelop_interval)
     VtkP.ReadFile(filein)
-    # todo_dp
+    # fields to load
     field_names = ['T', 'p', 'density', 'spcrust', 'spharz']
     has_dynamic_pressure = int(Visit_Options.options['HAS_DYNAMIC_PRESSURE']) 
     if has_dynamic_pressure == 1:
         field_names += ['nonadiabatic_pressure']
-    VtkP.ConstructPolyData(field_names, include_cell_center=True)
-    VtkP.PrepareSlab(['spcrust', 'spharz'])
-    # output slab profile
-    if output_slab:
-        slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
-        slab_internal = VtkP.ExportSlabInternal(output_xy=True)
-        o_slab_env0 = os.path.join(case_dir,\
-            "vtk_outputs", "slab_env0_%05d.txt" % (vtu_step)) # envelop 0
-        o_slab_env1 = os.path.join(case_dir,\
-            "vtk_outputs", "slab_env1_%05d.txt" % (vtu_step)) # envelop 1
-        o_slab_in = os.path.join(case_dir,\
-            "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
-        np.savetxt(o_slab_env0, slab_envelop0)
-        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env0))
-        np.savetxt(o_slab_env1, slab_envelop1)
-        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env1))
-        np.savetxt(o_slab_in, slab_internal)
-        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
-    # buoyancy
+    VtkP.ConstructPolyData(field_names, include_cell_center=True, construct_Tdiff=True)
+    # include a v_profile
     r0_range = [6371e3 - 2890e3, 6371e3]
     Ro = 6371e3
     x1 = 0.01 
     n = 100
     v_profile = VtkP.VerticalProfile2D(r0_range, x1, n)
+    # output poly data, debug
+    if output_poly_data:
+        file_out = os.path.join(output_path, "processed-%05d.vtp" % vtu_snapshot)
+        VtkPp.ExportPolyData(VtkP.i_poly_data, file_out)
+        file_out_1 = os.path.join(output_path, "processed_center-%05d.vtp" % vtu_snapshot)
+        VtkPp.ExportPolyData(VtkP.c_poly_data, file_out_1)
+    # slab envelop
+    if use_dT:
+        VtkP.PrepareSlabByDT(slab_threshold=dT)  # slab: differential temperature
+    else:
+        VtkP.PrepareSlab(['spcrust', 'spharz'])  # slab: composition
+    # output slab profile
+    if output_slab:
+        slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
+        slab_internal = VtkP.ExportSlabInternal(output_xy=True)
+        o_slab_env0 = os.path.join(case_dir,\
+            "vtk_outputs", "slab_env0_%05d.vtp" % (vtu_step)) # envelop 0
+        o_slab_env1 = os.path.join(case_dir,\
+            "vtk_outputs", "slab_env1_%05d.vtp" % (vtu_step)) # envelop 1
+        o_slab_in = os.path.join(case_dir,\
+            "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
+        VtkPp.ExportPolyDataFromRaw(slab_envelop0[:, 0], slab_envelop0[:, 1], None, None, o_slab_env0) # write the polydata
+        # np.savetxt(o_slab_env0, slab_envelop0)
+        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env0))
+        VtkPp.ExportPolyDataFromRaw(slab_envelop1[:, 0], slab_envelop1[:, 1], None, None, o_slab_env1) # write the polydata
+        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env1))
+        np.savetxt(o_slab_in, slab_internal)
+        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
+    # buoyancy
     total_buoyancy, b_profile = VtkP.SlabBuoyancy(v_profile, 5e3)  # test 5e3, 50e3
     depths_o = b_profile[:, 0]  # use these depths to generate outputs
     buoyancies = b_profile[:, 1]
@@ -680,7 +778,7 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
         ps: pressures
     '''
     Ro = 6371e3
-    fileout = kwargs.get('fileout', None)  # debug
+    fileout = kwargs.get('fileout', None)
     indent = kwargs.get('indent', 0)
     has_dynamic_pressure = kwargs.get('has_dynamic_pressure', 0)
     rs_n = 5 # resample interval
@@ -692,11 +790,12 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
     slab_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, slab_envelop_rs, quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
     temp_vtk_array = slab_env_polydata.GetPointData().GetArray('p')
     env_ps  = vtk_to_numpy(temp_vtk_array)
-    # todo_dp
+    # dynamic pressure is outputed -> read in
+    # dynamic pressure is not outputed -> use pressure - static_pressure as an estimation
     if has_dynamic_pressure == 1:
         temp_vtk_array = slab_env_polydata.GetPointData().GetArray('nonadiabatic_pressure')
         env_dps  = vtk_to_numpy(temp_vtk_array)
-        print("Read in the dynamic pressures")  # debug
+        print("Read in the dynamic pressures")
     else:
         env_dps = None
     # import data onto selected points
@@ -712,7 +811,6 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
         depth = Ro - r  # depth of this point
         p = env_ps[i]  # pressure of this point
         p_static = VtkP.StaticPressure([r, VtkP.Ro], theta_xy, 2000)
-        # todo_dp
         if env_dps is not None:
             p_d = env_dps[i]
         else:
