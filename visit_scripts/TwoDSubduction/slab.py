@@ -27,6 +27,8 @@
 #   GEOMETRY
 # Upper mantle view for box geometry
 #   GLOBAL_UPPER_MANTLE_VIEW_BOX
+# Has dynamic pressure field
+#   HAS_DYNAMIC_PRESSURE
 
 geometry = "GEOMETRY"
 
@@ -101,6 +103,9 @@ class SLAB_SPH(VISIT_PLOT):
         """
         plot_types = ["Mesh", "Pseudocolor", "Pseudocolor", "Pseudocolor", "Pseudocolor", "Vector"]
         vars_ = ["mesh", "spcrust", "spharz", "T", "viscosity", "velocity"]
+        if HAS_DYNAMIC_PRESSURE==1:
+            plot_types.append("Pseudocolor")
+            vars_.append("nonadiabatic_pressure")
         return plot_types, vars_
 
     def plot_time_snap(self):
@@ -259,6 +264,23 @@ class SLAB_SPH(VISIT_PLOT):
 
         # save plot 
         self.save_window('um_temperature')
+        HideActivePlots()
+    
+    def plot_nonadiabatic_pressure_upper_mantle(self):
+        '''
+        plot deform mechanism in upper mantle
+        '''
+        # set camera
+        self.set_view_attrs(global_upper_mantle_view)
+        
+        # set up temperature
+        self.set_pseudo_color('nonadiabatic_pressure', color_table='SCM_berlin', limits=[-1e8, 1e8])
+       
+        SetActivePlots((self.idxs['nonadiabatic_pressure']))
+        HideActivePlots()
+
+        # save plot 
+        self.save_window('um_nonadiabatic_pressure')
         HideActivePlots()
         
 
