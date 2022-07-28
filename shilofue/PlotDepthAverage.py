@@ -280,7 +280,6 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
         elif self.dim == 3:
             self.header['vertical_heat_flux']['unit'] = 'mw/m^2'
 
-    # todo_dp
     def GetInterpolateFunc(self, time, field_name):
         names = ["depth", field_name]
         odata, _ = self.ExportDataByTime(time, names)
