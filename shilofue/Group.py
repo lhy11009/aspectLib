@@ -333,6 +333,71 @@ def CreateGroup(json_path, CASE, CASE_OPT):
     
     group.create_group(*group_opt.to_create_group(), update=is_update_existing)
 
+# todo_doc
+####
+# classes and functions for documenting
+####
+class GDOC_OPT(Utilities.JSON_OPT):
+    '''
+    Define a class to work with DOC
+    List of keys:
+    '''
+    def __init__(self):
+        self.add_key("Base directory to document", str, ["base directory"], ".", nick='base_dir')
+        pass
+
+    def to_execute():
+        base_dir = self.values["base_dir"]
+        return base_dir
+        pass
+
+
+
+class GDOC():
+    '''
+    generate documentation
+    '''
+    def __init__(self):
+        pass
+
+    def execute(self, base_dir):
+        # first find all groups and seperate cases
+        groups = FindGroupsInDir(base_dir)
+        cases = FindCasesInDir(base_dir)
+
+
+####
+# Utility fucntions
+####
+def FindCasesInDir(dir_path):
+    '''
+    Find cases within a directory
+    '''
+    cases = []
+    for subdir, dirs, _ in os.walk(dir_path):
+        for _dir in dirs:
+            dir_path = os.path.join(subdir, _dir)
+            prm_path = os.path.join(dir_path, "case.prm")
+            json_path = os.path.join(dir_path, "case.json")
+            if os.path.isfile(prm_path) and os.path.isfile(json_path):
+                cases.append(dir_path)
+    return cases
+
+
+def FindGroupsInDir(dir_path):
+    '''
+    Find groups within a directory
+    '''
+    groups = []
+    for subdir, dirs, _ in os.walk(dir_path):
+        for _dir in dirs:
+            dir_path = os.path.join(subdir, _dir)
+            json_path = os.path.join(dir_path, "group.json")
+            if os.path.isfile(json_path):
+                groups.append(dir_path)
+    return groups
+
+
 
 def main():
     '''

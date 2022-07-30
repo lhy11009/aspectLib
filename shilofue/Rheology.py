@@ -63,7 +63,7 @@ Examples of usage:
 
   - hand modify the rheology parameters and see the plotting
 
-        python -m shilofue.Rheology derive_mantle_rheology -i files/TwoDSubduction/reference/depth_average.txt  -v 0 --save_profile 1
+        python -m shilofue.Rheology derive_mantle_rheology -i files/TwoDSubduction/reference/depth_average.txt  -v 1 --save_profile 1 -r HK03_wet_mod --diff "0.33333333333,-40e3,-5.5e-6,1.73205080757,20e3,0.0"
 
 descriptions
 """ 
@@ -540,12 +540,12 @@ class RHEOLOGY_OPR():
         eta_disl13 = np.ones(self.depths.size)
         eta13 = np.ones(self.depths.size)
         eta = np.ones(self.depths.size)
-        dEdiff = kwargs.get('dEdiff', 0.0)  # numbers for the variation in the rheology
-        dVdiff = kwargs.get('dVdiff', 0.0)
-        dAdiff_ratio = kwargs.get("dAdiff_ratio", 1.0)
-        dAdisl_ratio = kwargs.get("dAdisl_ratio", 1.0)
-        dEdisl = kwargs.get('dEdisl', 0.0)
-        dVdisl = kwargs.get('dVdisl', 0.0)
+        dEdiff = float(kwargs.get('dEdiff', 0.0))  # numbers for the variation in the rheology
+        dVdiff = float(kwargs.get('dVdiff', 0.0))
+        dAdiff_ratio = float(kwargs.get("dAdiff_ratio", 1.0))
+        dAdisl_ratio = float(kwargs.get("dAdisl_ratio", 1.0))
+        dEdisl = float(kwargs.get('dEdisl', 0.0))
+        dVdisl = float(kwargs.get('dVdisl', 0.0))
         rheology = kwargs.get('rheology', 'HK03_wet_mod')
         save_profile = kwargs.get('save_profile', 0)
         save_json = kwargs.get('save_json', 0)
@@ -1893,6 +1893,15 @@ def DeriveMantleRheology(file_path, **kwargs):
     Inputs:
         file_path(str): a profile from ASPECT
     '''
+    mantle_rheology_scheme = kwargs.get("rheology", "HK03_wet_mod")
+    diff = kwargs.get("diff", [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+    assert(type(diff) == list)
+    dAdiff_ratio = diff[0]
+    dEdiff = diff[1]
+    dVdiff = diff[2]
+    dAdisl_ratio = diff[3]
+    dEdisl = diff[4]
+    dVdisl = diff[5]
     Operator = RHEOLOGY_OPR()
     # read profile
     Operator.ReadProfile(file_path)
@@ -1901,7 +1910,11 @@ def DeriveMantleRheology(file_path, **kwargs):
     include_lower_mantle = kwargs.get('include_lower_mantle', None)
     version = kwargs.get('version', 0)
     if version == 0:
-        Operator.MantleRheology_v0(save_profile=save_profile)
+        Operator.MantleRheology_v0(rheology=mantle_rheology_scheme,save_profile=save_profile)
+    elif version == 1:
+        Operator.MantleRheology_v1(rheology=mantle_rheology_scheme,save_profile=save_profile,\
+            dEdiff=dEdiff, dEdisl=dEdisl, dVdiff=dVdiff, dVdisl=dVdisl,\
+                dAdiff_ratio=dAdiff_ratio, dAdisl_ratio=dAdisl_ratio)
     else:
         raise CheckValueError('%d is not a valid version of Mantle Rheology' % version)
 
@@ -2032,6 +2045,9 @@ def main():
     parser.add_argument('-v', '--version', type=int,
                         default=0,
                         help='Version')
+    parser.add_argument('-df', '--diff', type=str,
+                        default="1.0,0.0,0.0,1.0,0.0,0.0",
+                        help='Differences from the default values in a rheology')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -2103,7 +2119,9 @@ def main():
         ConstrainASPECT(arg.inputs, save_profile=arg.save_profile, include_lower_mantle=arg.include_lower_mantle, version=arg.version)
 
     elif _commend == 'derive_mantle_rheology':
-        DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version)
+        diff_str = arg.diff.split(',')
+        diff = [float(entry) for entry in diff_str]
+        DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version, rheology=arg.rheology, diff=diff)
 
     elif _commend == 'plot_strength_profile':
         Operator = RHEOLOGY_OPR()

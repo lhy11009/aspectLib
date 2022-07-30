@@ -33,6 +33,7 @@ from copy import deepcopy
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 import shilofue.ParsePrm as ParsePrm
+from shilofue.Rheology import RHEOLOGY_OPR
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -84,6 +85,7 @@ class CASE_OPT(Utilities.JSON_OPT):
 it only takes effect if the input is positiveh",\
             int, ["refinement level"], -1, nick="refinement_level")
         self.add_key("Case Output directory", str, ["case output directory"], "output", nick='case_o_dir')
+        self.add_key("mantle rheology", str, ['mantle rheology', 'scheme'], "HK03_wet_mod", nick='mantle_rheology_scheme')
         pass
     
     def check(self):
@@ -261,6 +263,8 @@ class CASE():
                 pass
             else:
                 raise TypeError("CASE:%s: wb_inputs must be a dictionary or a string" % Utilities.func_name())
+        # operator of rheology
+        self.Rheology_Opr = RHEOLOGY_OPR()
     
     def create(self, _root, **kwargs):
         '''
