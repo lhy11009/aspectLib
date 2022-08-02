@@ -1956,14 +1956,18 @@ def PlotShearZoneStrengh(Operator, fig_path_base):
     ax1.legend()
     # figure path
     fig_path = fig_path_base.split('.')[0]
-    if Operator.creep_type == 'diff':
-        fig_path += ("_diff_" + Operator.diff_type)
-    elif Operator.creep_type == 'disl':
-        fig_path += ("_disl_" + Operator.disl_type)
-    elif Operator.creep_type == 'comp':
-        fig_path += (("_diff_" + Operator.diff_type) + ("_disl_" + Operator.disl_type))
-    else:
-        raise TypeError("Wrong type of creep type %s" % Operator.creep_type)
+    try:
+        if Operator.creep_type == 'diff':
+            fig_path += ("_diff_" + Operator.diff_type)
+        elif Operator.creep_type == 'disl':
+            fig_path += ("_disl_" + Operator.disl_type)
+        elif Operator.creep_type == 'comp':
+            fig_path += (("_diff_" + Operator.diff_type) + ("_disl_" + Operator.disl_type))
+        else:
+            raise TypeError("Wrong type of creep type %s" % Operator.creep_type)
+    except TypeError:
+        # there is no "disl_type" for the operator
+        fig_path = fig_path_base
     fig_path += '.' + fig_path_base.split('.')[1]
     fig.savefig(fig_path)
     print("figure saved: ", fig_path)
