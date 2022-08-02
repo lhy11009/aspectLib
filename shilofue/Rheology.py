@@ -76,6 +76,7 @@ import argparse
 import numpy as np
 from scipy.special import erf
 from matplotlib import pyplot as plt
+from matplotlib import gridspec
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.FlowLaws import visc_diff_HK
 from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic
@@ -358,6 +359,8 @@ class RHEOLOGY_OPR():
         self.output_aspect_json = None
         self.diff = None
         self.disl = None
+        self.diff_type = None
+        self.disl_type = None
         self.plastic = None
         pass
 
@@ -376,6 +379,8 @@ class RHEOLOGY_OPR():
         '''
         diff_type = kwargs.get('diff', None)
         disl_type = kwargs.get('disl', None)
+        self.diff_type = diff_type
+        self.disl_type = disl_type
         plastic_type = kwargs.get('plastic', None)
         if diff_type != None:
             self.diff = self.RheologyPrm.get_rheology(diff_type, 'diff')
@@ -1164,80 +1169,6 @@ class RHEOLOGY_OPR():
                 plt.close()
             i = i + 1
 
-class STRENGTH_PROFILE(RHEOLOGY_OPR):
-
-    def __init__(self):
-        RHEOLOGY_OPR.__init__(self)
-        self.Sigs = None
-        self.Sigs_viscous = None
-        self.Zs = None
-        self.Etas = None
-        self.Computed = False
-
-    def Execute(self, **kwargs):
-        '''
-        Compute the strength profile
-        '''
-        year = 365 * 24 * 3600.0
-        creep_type = kwargs.get('creep_type', 'diff')
-        creep = getattr(self, creep_type)
-        plastic = self.plastic
-        assert(creep != None)
-        assert(plastic != None)
-        averaging = kwargs.get('averaging', 'harmonic')
-        strain_rate = kwargs.get('strain_rate', 1e-14)
-        # rheology_prm = RHEOLOGY_PRM()
-        # self.plastic = rheology_prm.ARCAY17_plastic
-        # self.dislocation_creep = rheology_prm.ARCAY17_disl
-        Zs = np.linspace(0.0, 40e3, 100)
-        Tliths = temperature_halfspace(Zs, 40e6*year, Tm=1573.0) # adiabatic temperature
-        Ts = 713 * Zs / 78.245e3  + 273.14# geotherm from Arcay 2017 pepi, figure 3d 2
-        Ps = pressure_from_lithostatic(Zs, Tliths)
-        # plastic self.plastic
-        if plastic["type"] == "stress dependent":
-            Sigs_plastic = StressDependentYielding(Ps, plastic["cohesion"], plastic["friction"], plastic["ref strain rate"], plastic["n"], strain_rate)
-        elif plastic["type"] == "Coulumb":
-            Sigs_plastic = CoulumbYielding(Ps, plastic["cohesion"], plastic["friction"])
-        eta_plastic = Sigs_plastic / 2.0 / strain_rate
-        # viscous stress
-        Sigs_viscous = CreepStress(creep, strain_rate, Ps, Ts, 1e4, 1000)
-        eta_viscous = Sigs_viscous / 2.0 / strain_rate
-        Sigs = np.minimum(Sigs_plastic, Sigs_viscous)
-        if averaging == 'harmonic':
-            Etas = eta_plastic * eta_viscous / (eta_viscous + eta_plastic)
-        else:
-            raise NotImplementedError()
-        self.Sigs = Sigs
-        self.Sigs_viscous = Sigs_viscous
-        self.Etas = Etas
-        self.Zs = Zs
-        self.computed = True
-
-    def PlotStress(self, **kwargs):
-        ax = kwargs.get('ax', None)
-        label = kwargs.get('label', None)
-        label_viscous = kwargs.get('label_viscous', None)
-        _color = kwargs.get('color', 'b')
-        if ax == None:
-            raise NotImplementedError()
-        # make plots
-        ax.plot(self.Sigs/1e6, self.Zs/1e3, color=_color, label=label)
-        ax.plot(self.Sigs_viscous/1e6, self.Zs/1e3, '--', color=_color, label=label_viscous)
-        ax.set_xlim([0.0, 100.0])
-        ax.set_xlabel("Second invariant of the stress tensor (MPa)")
-        ax.set_ylabel("Depth (km)")
-    
-    def PlotViscosity(self, **kwargs):
-        ax = kwargs.get('ax', None)
-        label = kwargs.get('label', None)
-        _color = kwargs.get('color', 'b')
-        if ax == None:
-            raise NotImplementedError()
-        # plot viscosity
-        ax.semilogx(self.Etas, self.Zs/1e3, color=_color, label=label)
-        ax.set_xlabel("Viscosity (Pa * s)")
-        ax.set_ylabel("Depth (km)")
-        
 
 
 
@@ -1918,6 +1849,125 @@ def DeriveMantleRheology(file_path, **kwargs):
     else:
         raise CheckValueError('%d is not a valid version of Mantle Rheology' % version)
 
+###
+# functions for deriving the strenght profile
+###
+class STRENGTH_PROFILE(RHEOLOGY_OPR):
+
+    def __init__(self):
+        RHEOLOGY_OPR.__init__(self)
+        self.Sigs = None
+        self.Sigs_viscous = None
+        self.Zs = None
+        self.Etas = None
+        self.Computed = False
+        self.creep_type = None
+        self.creep = None
+
+    def Execute(self, **kwargs):
+        '''
+        Compute the strength profile
+        '''
+        year = 365 * 24 * 3600.0
+        self.creep_type = kwargs.get('creep_type', 'diff')
+        self.creep = getattr(self, self.creep_type)
+        plastic = self.plastic
+        assert(self.creep != None)
+        assert(plastic != None)
+        averaging = kwargs.get('averaging', 'harmonic')
+        strain_rate = kwargs.get('strain_rate', 1e-14)
+        # rheology_prm = RHEOLOGY_PRM()
+        # self.plastic = rheology_prm.ARCAY17_plastic
+        # self.dislocation_creep = rheology_prm.ARCAY17_disl
+        Zs = np.linspace(0.0, 40e3, 100)
+        Tliths = temperature_halfspace(Zs, 40e6*year, Tm=1573.0) # adiabatic temperature
+        Ts = 713 * Zs / 78.245e3  + 273.14# geotherm from Arcay 2017 pepi, figure 3d 2
+        Ps = pressure_from_lithostatic(Zs, Tliths)
+        # plastic self.plastic
+        if plastic["type"] == "stress dependent":
+            Sigs_plastic = StressDependentYielding(Ps, plastic["cohesion"], plastic["friction"], plastic["ref strain rate"], plastic["n"], strain_rate)
+        elif plastic["type"] == "Coulumb":
+            Sigs_plastic = CoulumbYielding(Ps, plastic["cohesion"], plastic["friction"])
+        eta_plastic = Sigs_plastic / 2.0 / strain_rate
+        # viscous stress
+        Sigs_viscous = CreepStress(self.creep, strain_rate, Ps, Ts, 1e4, 1000)
+        eta_viscous = Sigs_viscous / 2.0 / strain_rate
+        Sigs = np.minimum(Sigs_plastic, Sigs_viscous)
+        if averaging == 'harmonic':
+            Etas = eta_plastic * eta_viscous / (eta_viscous + eta_plastic)
+        else:
+            raise NotImplementedError()
+        self.Sigs = Sigs
+        self.Sigs_viscous = Sigs_viscous
+        self.Etas = Etas
+        self.Zs = Zs
+        self.computed = True
+
+    def PlotStress(self, **kwargs):
+        ax = kwargs.get('ax', None)
+        label = kwargs.get('label', None)
+        label_viscous = kwargs.get('label_viscous', None)
+        _color = kwargs.get('color', 'b')
+        if ax == None:
+            raise NotImplementedError()
+        # make plots
+        ax.plot(self.Sigs/1e6, self.Zs/1e3, color=_color, label=label)
+        ax.plot(self.Sigs_viscous/1e6, self.Zs/1e3, '--', color=_color, label=label_viscous)
+        ax.set_xlim([0.0, 100.0])
+        ax.set_xlabel("Second invariant of the stress tensor (MPa)")
+        ax.set_ylabel("Depth (km)")
+    
+    def PlotViscosity(self, **kwargs):
+        ax = kwargs.get('ax', None)
+        label = kwargs.get('label', None)
+        _color = kwargs.get('color', 'b')
+        if ax == None:
+            raise NotImplementedError()
+        # plot viscosity
+        ax.semilogx(self.Etas, self.Zs/1e3, color=_color, label=label)
+        ax.set_xlabel("Viscosity (Pa * s)")
+        ax.set_ylabel("Depth (km)")
+        
+
+def PlotShearZoneStrengh(Operator, fig_path_base):
+    '''
+    Plot the shear zone strenght profile
+    '''
+    fig = plt.figure(tight_layout=True, figsize=[5, 10])
+    gs = gridspec.GridSpec(2, 1)
+    ax0 = fig.add_subplot(gs[0, 0])
+    ax1 = fig.add_subplot(gs[1, 0])
+    strain_rates = [1e-13, 1e-14, 1e-15]
+    colors = ['b', 'g', 'r']
+    # 1e-13 
+    i = 0
+    for strain_rate in strain_rates:
+        _color = colors[i]
+        Operator.Execute(creep_type='disl', strain_rate=strain_rate)
+        # plot stress
+        label = "Strain Rate = %.1e" % strain_rate
+        Operator.PlotStress(ax=ax0, color=_color, label_viscous=label)
+        # plot viscosity
+        Operator.PlotViscosity(ax=ax1, color=_color)
+        i += 1
+    ax0.invert_yaxis()
+    ax0.legend()
+    ax1.invert_yaxis()
+    ax1.legend()
+    # figure path
+    fig_path = fig_path_base.split('.')[0]
+    if Operator.creep_type == 'diff':
+        fig_path += ("_diff_" + Operator.diff_type)
+    elif Operator.creep_type == 'disl':
+        fig_path += ("_disl_" + Operator.disl_type)
+    elif Operator.creep_type == 'comp':
+        fig_path += (("_diff_" + Operator.diff_type) + ("_disl_" + Operator.disl_type))
+    else:
+        raise TypeError("Wrong type of creep type %s" % Operator.creep_type)
+    fig_path += '.' + fig_path_base.split('.')[1]
+    fig.savefig(fig_path)
+    print("figure saved: ", fig_path)
+
 
 # yielding criteria
 def Byerlee(P):
@@ -2124,10 +2174,13 @@ def main():
         DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version, rheology=arg.rheology, diff=diff)
 
     elif _commend == 'plot_strength_profile':
-        Operator = RHEOLOGY_OPR()
+        Operator = STRENGTH_PROFILE()
         Operator.SetRheologyByName(disl='ARCAY17', plastic='ARCAY17')
-        Sigs, Zs = Operator.PlotStrengthProfile(creep_type='disl')
-    
+        Operator.Execute(creep_type='disl')
+        Sigs = Operator.Sigs
+        Zs = Operator.Zs
+        fig_path = os.path.join(ASPECT_LAB_DIR, "results", "strength_profile.png")
+        PlotShearZoneStrengh(Operator, fig_path)
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)
 

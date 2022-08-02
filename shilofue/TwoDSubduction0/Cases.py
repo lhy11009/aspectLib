@@ -36,7 +36,7 @@ from matplotlib import gridspec
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 import shilofue.FlowLaws as flf
-from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput, STRENGTH_PROFILE
+from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput, STRENGTH_PROFILE, PlotShearZoneStrengh
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -114,6 +114,7 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("friction", float, ['mantle rheology', 'friction'], 25.0, nick='friction')
         self.add_key("cohesion in the shear zone", float, ['shear zone', 'cohesion'], 10e6, nick='crust_cohesion')
         self.add_key("friction in the shear zone", float, ['shear zone', 'friction'], 2.8624, nick='crust_friction')
+        self.add_key("constant viscosity in the shear zone", float, ['shear zone', 'constant viscosity'], 1e20, nick='sz_constant_viscosity')
 
         pass
     
@@ -174,6 +175,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         assert(friction >= 0.0 and friction < 90.0)  # an angle between 0.0 and 90.0
         crust_friction = self.values[self.start + 25]
         assert(crust_friction >= 0.0 and crust_friction < 90.0)  # an angle between 0.0 and 90.0
+        sz_constant_viscosity = self.values[self.start + 26]
+        assert(sz_constant_viscosity > 0.0)
 
     def to_configure_prm(self):
         if_wb = self.values[8]
@@ -210,11 +213,12 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         friction = self.values[self.start + 23]
         crust_cohesion = self.values[self.start + 24]
         crust_friction = self.values[self.start + 25]
+        sz_constant_viscosity = self.values[self.start + 26]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
-        refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction
+        refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity
 
     def to_configure_wb(self):
         '''
@@ -266,7 +270,8 @@ class CASE(CasesP.CASE):
     sp_rate, ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
     HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme,\
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
-    refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction):
+    refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
+    sz_constant_viscosity):
         Ro = 6371e3
         # velocity boundaries
         if type_of_bd == "all free slip":  # boundary conditions
@@ -362,10 +367,11 @@ class CASE(CasesP.CASE):
     dVdiff=-5.5e-6, dVdisl=0.0, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.73205080757)
         else:
             rheology = Operator.MantleRheology_v0(rheology=mantle_rheology_scheme)
-        if mantle_rheology_scheme == "HK03_wet_mod" and sz_viscous_scheme == "constant":  # assign the rheology
+        if mantle_rheology_scheme == "HK03_wet_mod" and sz_viscous_scheme == "constant" and\
+            abs(sz_constant_viscosity - 1e20)/1e20 < 1e-6:  # assign the rheology
             pass # this is just the default, so skip
         else:
-            CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme)
+            CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity)
         # yielding criteria
         if sz_viscous_scheme == "stress dependent":
             CDPT_assign_yielding(o_dict, cohesion, friction, crust_cohesion=crust_cohesion, crust_friction=crust_friction)
@@ -929,8 +935,9 @@ def CDPT_assign_mantle_rheology(o_dict, rheology, **kwargs):
     dislocation_creep = rheology['dislocation_creep']
     diffusion_creep_lm = rheology['diffusion_lm']
     sz_viscous_scheme = kwargs.get("sz_viscous_scheme", "constant")
+    sz_constant_viscosity = kwargs.get("sz_constant_viscosity", 1e20)
     if sz_viscous_scheme == "constant":
-        diff_crust_A = 5e-21
+        diff_crust_A = 1.0 / 2.0 / sz_constant_viscosity
         diff_crust_m = 0.0
         diff_crust_E = 0.0
         diff_crust_V = 0.0
@@ -1039,32 +1046,6 @@ def CDPT_assign_yielding(o_dict, cohesion, friction, **kwargs):
         % (cohesion, crust_cohesion, cohesion, cohesion, cohesion)
 
 
-def PlotShearZoneStrengh(Operator, fig_path):
-    '''
-    Plot the shear zone strenght profile
-    '''
-    fig = plt.figure(tight_layout=True, figsize=[5, 10])
-    gs = gridspec.GridSpec(2, 1)
-    ax0 = fig.add_subplot(gs[0, 0])
-    ax1 = fig.add_subplot(gs[1, 0])
-    strain_rates = [1e-13, 1e-14, 1e-15]
-    colors = ['b', 'g', 'r']
-    # 1e-13 
-    i = 0
-    for strain_rate in strain_rates:
-        _color = colors[i]
-        Operator.Execute(creep_type='disl', strain_rate=strain_rate)
-        # plot stress
-        label = "Strain Rate = %.1e" % strain_rate
-        Operator.PlotStress(ax=ax0, color=_color, label_viscous=label)
-        # plot viscosity
-        Operator.PlotViscosity(ax=ax1, color=_color)
-        i += 1
-    ax0.invert_yaxis()
-    ax0.legend()
-    ax1.invert_yaxis()
-    ax1.legend()
-    fig.savefig(fig_path)
 
 
 def Usage():

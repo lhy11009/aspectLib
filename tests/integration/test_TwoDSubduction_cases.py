@@ -258,6 +258,21 @@ def test_shear_zone_strength():
     sp_plot_path = os.path.join(output_dir, 'img/initial_condition/shear_zone_strength.png')
     assert(os.path.isfile(sp_plot_path))
 
+def test_shear_zone_constant_viscosity():
+    '''
+    Use a constant viscosity in the shear zone
+    '''
+    source_case_dir = os.path.join(source_dir, "sz_constant_viscosity")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'sz_constant_viscosity')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)  # create case
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    assert(filecmp.cmp(prm_path, prm_std_path))
+
     
 # to check for error message
     # with pytest.raises(SomeError) as _excinfo:
