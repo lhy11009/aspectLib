@@ -346,10 +346,9 @@ class GDOC_OPT(Utilities.JSON_OPT):
         self.add_key("Base directory to document", str, ["base directory"], ".", nick='base_dir')
         pass
 
-    def to_execute():
+    def to_execute(self):
         base_dir = self.values["base_dir"]
         return base_dir
-        pass
 
 
 

@@ -122,8 +122,8 @@ def test_2d_consistent():
     wb_std_path = os.path.join(source_case_dir, 'case_std.wb')
     prm_path = os.path.join(output_dir, 'case.prm')
     wb_path = os.path.join(output_dir, 'case.wb')
-    # assert(filecmp.cmp(prm_path, prm_std_path))
-    # assert(filecmp.cmp(wb_path, wb_std_path))
+    assert(filecmp.cmp(prm_path, prm_std_path))
+    assert(filecmp.cmp(wb_path, wb_std_path))
 
 
     
