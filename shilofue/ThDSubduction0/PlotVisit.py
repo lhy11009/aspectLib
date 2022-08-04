@@ -69,11 +69,14 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         # call function from parent
         PlotVisit.VISIT_OPTIONS.Interpret(self, **kwargs)
         idx = ParsePrm.FindWBFeatures(self.wb_dict, "Subducting plate")
+        idx1 = ParsePrm.FindWBFeatures(self.wb_dict, "Slab")
         sub_plate_feature = self.wb_dict["features"][idx]
+        slab_feature = self.wb_dict["features"][idx1]
         sub_plate_extends = sub_plate_feature['coordinates'][1]
         self.options['TRENCH_EDGE_Y'] = sub_plate_extends[1] * 0.75
         self.options['ETA_MIN'] = self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']
         self.options['ETA_MAX'] = self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity']
+        self.options['TRENCH_INITIAL'] = slab_feature['coordinates'][1][0] 
 
 
     def vtk_options(self, **kwargs):
