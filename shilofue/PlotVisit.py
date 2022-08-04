@@ -81,6 +81,7 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         steps = kwargs.get('steps', None)
         last_step = kwargs.get('last_step', None)
         time_interval = kwargs.get('time_interval', None)
+        print('time_interval in Interpret: ', kwargs['time_interval'])  # debug
         # call function from parent
         CASE_OPTIONS.Interpret(self)
         # particle file
@@ -370,6 +371,7 @@ class PREPARE_RESULT_OPTIONS(CASE_OPTIONS):
         time = visual_step * time_between_graphical_output
         step = self.Statistics.GetStep(time)
         self.options['STEP_TIME_STAMP'] = "step %d, %.4e yrs" % (step, time)
+        self.options['NUMERICAL_TIME_4E'] = "%.4e" % time
 
  
 def GetSnapsSteps(case_dir, type_='graphical'):

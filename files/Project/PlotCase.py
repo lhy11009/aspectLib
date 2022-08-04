@@ -87,15 +87,15 @@ def PlotCaseRun(case_path, **kwargs):
     print("PlotCaseRun in FOO: operating")
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
-
+    time_interval = kwargs.get('time_interval', None)
     # # plot visit
     # Visit_Options = VISIT_OPTIONS(case_path)
     # # provide steps to plot and interpret
     # step = kwargs.get('step', None)
     # if type(step) == int:
-    #     Visit_Options.Interpret(steps=[step])  # only plot a single step
+    #     Visit_Options.Interpret(steps=[step], time_interval=time_interval)  # only plot a single step
     # else:
-    #     Visit_Options.Interpret(last_step=3)  # by default, plot the last 3 steps
+    #     Visit_Options.Interpret(last_step=3, time_interval=time_interval)  # by default, plot the last 3 steps
     # odir = os.path.join(case_path, 'visit_scripts')
     # if not os.path.isdir(odir):
     #     os.mkdir(odir)
@@ -160,6 +160,9 @@ def main():
     parser.add_argument('-r', '--rewrite', type=int,
                         default=0,
                         help='If rewrite previous result')
+    parser.add_argument('-ti', '--time_interval', type=float,
+                        default=None,
+                        help='Time interval, affecting the time steps to visualize')
     
     _options = []
     try:
@@ -178,9 +181,9 @@ def main():
         assert(type(arg.time) == float and type(arg.time1) == float)
         time_range = [arg.time, arg.time1]
     if _commend == 'plot_case':
-        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range)
+        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, time_interval=arg.time_interval)
     elif _commend == 'plot_case_in_dir':
-        PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range)
+        PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, time_interval=arg.time_interval)
         pass
     elif _commend == 'prepare_result_step':
         pr_script = PrScriptToUse(arg.inputs, default)

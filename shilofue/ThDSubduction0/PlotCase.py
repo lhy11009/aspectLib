@@ -50,10 +50,11 @@ This scripts generate plots for a single case in TwoDSubduction project\n\
 \n\
 Examples of usage: \n\
 \n\
-  - default usage: plot case running results, -t option deals with a time range, default is a whole range\n\
+  - default usage: plot case running results, -t option deals with a time range, default is a whole range.\
+-ti option deals with a time interval and is useful for animation.\n\
 \n\
         Lib_FOO0_PlotCase plot_case -i  `pwd`\
- -t 0.0 -t1 0.5e6\n\
+ -t 0.0 -t1 0.5e6 -ti 0.1e6\n\
 \n\
   - plot cases in a directory (loop), same options as before:\n\
         Lib_FOO0_PlotCase  plot_case_in_dir -i `pwd`\n\
@@ -84,14 +85,15 @@ def PlotCaseRun(case_path, **kwargs):
     Returns:
         -
     '''
-    print("PlotCaseRun in FOO: operating")
+    print("PlotCaseRun in ThDSubduction: operating")
+    time_interval = kwargs.get('time_interval', None)
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
     # plot with paraview
     # initiate class object
     Paraview_Options = VISIT_OPTIONS(case_path)
     # call function
-    Paraview_Options.Interpret()
+    Paraview_Options.Interpret(time_interval=time_interval)
     # ofile = os.path.join('visit_scripts', 'slab_sph.py')
     ofile = os.path.join(case_path, 'paraview_scripts', 'slab.py')
     paraview_script = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts',"ThDSubduction", 'slab.py')
@@ -152,6 +154,9 @@ def main():
     parser.add_argument('-r', '--rewrite', type=int,
                         default=0,
                         help='If rewrite previous result')
+    parser.add_argument('-ti', '--time_interval', type=float,
+                        default=None,
+                        help='Time interval, affecting the time steps to visualize')
     
     _options = []
     try:
@@ -160,7 +165,7 @@ def main():
         pass
     arg = parser.parse_args(_options)
 
-    default = os.path.join(ASPECT_LAB_DIR, "files", "FOO", "figure_step_template.json")
+    default = os.path.join(ASPECT_LAB_DIR, "files", "ThDSubduction", "figure_step_template.json")
 
     # commands
     # rearrange the time_range entry
@@ -170,7 +175,7 @@ def main():
         assert(type(arg.time) == float and type(arg.time1) == float)
         time_range = [arg.time, arg.time1]
     if _commend == 'plot_case':
-        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range)
+        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, time_interval=arg.time_interval)
     elif _commend == 'plot_case_in_dir':
         PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range)
         pass
@@ -185,7 +190,7 @@ def main():
     elif _commend == 'animate_case':
         pr_script = PrScriptToUse(arg.inputs, default)
         Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, [PlotCase.PlotCaseRun, PlotCaseRun])
-        PlotCase.AnimateCaseResults(Plotter.PlotPrepareResultStep, arg.inputs, pr_script)
+        PlotCase.AnimateCaseResults(Plotter.PlotPrepareResultStep, arg.inputs, pr_script, time_interval=arg.time_interval)
     elif _commend == 'animate_case_in_dir':
         pr_script = PrScriptToUse(arg.inputs, default)
         Plotter = PLOTTER(PREPARE_RESULT_OPTIONS, [PlotCase.PlotCaseRun, PlotCaseRun])

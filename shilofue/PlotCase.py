@@ -81,7 +81,7 @@ class PLOTTER():
         ofile = os.path.join(odir, 'figure_step.json')
         Prepare_Result = self.module(case_path)
         Prepare_Result.Interpret(step=step)
-        assert(os.path.isfile(pr_script)) # check script to use
+        Utilities.my_assert(os.path.isfile(pr_script), AssertionError, "%s doesn't exist." % pr_script) # check script to use
         Prepare_Result.read_contents(pr_script)
         Prepare_Result.substitute()
         ofile_path = Prepare_Result.save(ofile, relative=True)
@@ -228,6 +228,7 @@ def PlotCaseCombined(modules, inputs, **kwargs):
     # call functions to plot
     for module in modules:
         module(inputs, **kwargs)
+    print('time_interval: ', kwargs['time_interval'])  # debug
 
 
 def PlotCaseCombinedDir(modules, dir, **kwargs):
