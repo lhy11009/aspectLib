@@ -228,7 +228,6 @@ def PlotCaseCombined(modules, inputs, **kwargs):
     # call functions to plot
     for module in modules:
         module(inputs, **kwargs)
-    print('time_interval: ', kwargs['time_interval'])  # debug
 
 
 def PlotCaseCombinedDir(modules, dir, **kwargs):

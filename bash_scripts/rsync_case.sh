@@ -32,8 +32,8 @@ Dependencies:
        ASPECT_SOURCE_DIR
 
 Example Usage:
-   sync from remote:
-       ./bash_scripts/rsync_case.sh peloton TwoDSubduction non_linear30/eba_re
+   sync from remote (add skip_restart would skip restart files):
+       ./bash_scripts/rsync_case.sh peloton TwoDSubduction non_linear30/eba_re --skip_restart 1
    sync to remote:
        ./bash_scripts/rsync_case.sh peloton TwoDSubduction non_linear30/eba_re -f true
 

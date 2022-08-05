@@ -184,6 +184,7 @@ class SLAB(PARAVIEW_PLOT):
         # show the slice
         slice1 = FindSource(_source1)
         SetActiveSource(slice1)
+        renderView1 = GetActiveViewOrCreate('RenderView')
         _display = Show(slice1, renderView1, 'GeometryRepresentation')
         slice_Display = GetDisplayProperties(slice1, view=renderView1)
         # adjust the field to plot for the slice

@@ -71,10 +71,16 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         self.options['IF_PLOT_SHALLOW'] = kwargs.get('if_plot_shallow', "False") # plot the shallow part of the slab.
         self.options['IF_EXPORT_SLAB_MORPH'] = 'False'
         self.options['IF_PLOT_SLAB'] = 'True'
-        self.options['ETA_MIN'] = self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']
         self.options['GLOBAL_UPPER_MANTLE_VIEW_BOX'] = 0.0
         self.options['ROTATION_ANGLE'] = 0.0
         # try using the value for the background
+        try:
+            self.options['ETA_MIN'] =\
+                Utilities.string2list(self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity'], float)[0]
+        except ValueError:
+            eta_min_inputs =\
+                ParsePrm.COMPOSITION(self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']) 
+            self.options['ETA_MIN'] = eta_min_inputs.data['background'][0] # use phases
         try:
             self.options['ETA_MAX'] =\
                 Utilities.string2list(self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity'], float)[0]
