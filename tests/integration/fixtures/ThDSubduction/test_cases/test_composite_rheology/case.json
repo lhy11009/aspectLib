@@ -1,0 +1,39 @@
+{
+  "_comments": "This case is modified from the Schellart 2007 paper, but include composite rheology",
+  "base directory": "${ASPECT_LAB_DIR}/files/ThDSubduction/08052022",
+  "output directory": "${ASPECT_LAB_DIR}/.test/",
+  "name": "test_composite_rheology",
+  "type": "s07_newton",
+  "use world builder": 1,
+  "include fast first step": 1,
+  "setup method": "2d_consistent",
+  "geometry setup": {
+    "box width": 4000000.0,
+    "box length": 4000000.0,
+    "box depth": 1000000.0
+  },
+  "plate setup": {
+    "sp width": 1000000.0,
+    "sp length": 3000000.0,
+    "trailing length": 275000.0,
+    "reset trailing morb": 1,
+    "sp depth refining": 300000.0,
+    "ov age": 50e6,
+    "sp age": 100e6
+  },
+  "additional files": [
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ],
+  "mantle rheology": {
+    "scheme": "HK03_wet_mod_2d",
+    "flow law": "composite"
+  },
+  "apply reference density": 1,
+  "shear zone": {
+    "thickness": 15000.0
+  },
+  "refinement": {
+    "global refinement": 5
+  }
+}

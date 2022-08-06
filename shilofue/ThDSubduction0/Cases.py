@@ -95,6 +95,7 @@ This value is the width of box for a default age (i.e. 80Myr), while the width o
 different age will be adjusted.",\
           float, ["geometry setup", "box length before adjusting"], 6.783e6, nick='box_length_pre_adjust')
         self.add_key("Reset viscosity for the trailing tail of the overiding plate", int, ['rheology', 'reset trailing ov viscosity'], 0, nick='reset_trailing_ov_viscosity')
+        self.add_key("viscous flow law for mantle rheology", str, ['mantle rheology', 'flow law'], "diffusion", nick='mantle_rheology_flow_law')
 
     
     def check(self):
@@ -142,11 +143,13 @@ different age will be adjusted.",\
         Ddl = self.values[self.start+20]
         apply_reference_density = self.values[self.start+21]
         reset_trailing_ov_viscosity = self.values[self.start+29]
+        mantle_rheology_flow_law = self.values[self.start+30]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
             sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
-            adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl, reset_trailing_ov_viscosity
+            adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
+            reset_trailing_ov_viscosity, mantle_rheology_flow_law
         
     def to_configure_wb(self):
         '''
@@ -188,7 +191,7 @@ class CASE(CasesP.CASE):
     sp_width, trailing_length, reset_trailing_morb, ref_visc, relative_visc_plate, friction_angle,\
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
-    reset_trailing_ov_viscosity):
+    reset_trailing_ov_viscosity, mantle_rheology_flow_law):
         '''
         Configure prm file
         '''
@@ -262,6 +265,10 @@ class CASE(CasesP.CASE):
             self.output_files.append(Operator.output_json)
             self.output_files.append(Operator.output_json_aspect)
             self.output_imgs.append(Operator.output_profile) # append plot of initial conition to figures
+            # twick the type of flow law
+            if mantle_rheology_flow_law == "composite":
+                o_dict['Material model'][material_model_subsection]["Viscous flow law"] = "composite"
+                o_dict = CasesP.SetNewtonSolver(o_dict)
         # 2. Yielding criteria
         if _type == 's07':
             prefactor_ref = 1.0 / 2.0 / ref_visc  # prefactors for diffusion creep
@@ -306,6 +313,7 @@ class CASE(CasesP.CASE):
                 o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'false'
 
         o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries
+        self.idict = o_dict
         pass
 
 

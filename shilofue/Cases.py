@@ -449,6 +449,35 @@ velocity boundary (%s) is not implemented yet." % (dimension, type_bc_v))
             _ = bc_dict.pop("Zero velocity boundary indicators")
     return bc_dict
     pass
+
+
+def SetNewtonSolver(o_dict):
+    '''
+    Settings for the newton solver, starting from a combination that works
+    '''
+    o_dict["Nonlinear solver scheme"] = "single Advection, iterated Newton Stokes"
+    o_dict["Max nonlinear iterations"] = "100"
+    o_dict["Max nonlinear iterations in pre-refinement"] = "0"
+    o_dict["Nonlinear solver tolerance"] = "1e-6"
+    o_dict["Solver parameters"] = {}
+    o_dict["Solver parameters"]["Newton solver parameters"] = {
+        "Max pre-Newton nonlinear iterations" :"20",\
+        "Nonlinear Newton solver switch tolerance": "1e-3",\
+        "Max Newton line search iterations": "0",\
+        "Maximum linear Stokes solver tolerance": "0.9",\
+        "Use Newton residual scaling method": "true",\
+        "Use Newton failsafe": "true",\
+        "Stabilization preconditioner": "SPD",\
+        "Stabilization velocity block": "SPD",\
+        "Use Eisenstat Walker method for Picard iterations": "true"
+    }
+    o_dict["Solver parameters"]["Stokes solver parameters"] = {
+        "Maximum number of expensive Stokes solver steps": "5000",\
+        "Number of cheap Stokes solver steps": "500",\
+        "Linear solver tolerance": "1e-1",\
+        "GMRES solver restart length": "100"
+    }
+    return o_dict
     
 
 
