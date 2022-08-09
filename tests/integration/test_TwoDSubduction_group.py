@@ -88,9 +88,6 @@ def test_create_group():
     out_path = os.path.join(group_opt.get_output_dir(), 'eba_cdpt_SA80.0_OA40.0', 'case.wb')
     std_path = os.path.join(source_dir, 'eba_cdpt_SA80.0_OA40.0.wb')
     assert(filecmp.cmp(out_path, std_path))
-    # test3: document group
-    # todo_doc
-
 
     
 # notes

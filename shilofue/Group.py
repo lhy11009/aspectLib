@@ -45,7 +45,10 @@ Examples of usage: \n\
 \n\
   - default usage: \n\
 \n\
-        python -m \
+        python -m \n\
+\n\
+  - Generate group documentation: \n\
+    python -m shilofue.Group document -i /mnt/lochy0/ASPECT_DATA/ThDSubduction \n\
         ")
 
 
@@ -333,7 +336,6 @@ def CreateGroup(json_path, CASE, CASE_OPT):
     
     group.create_group(*group_opt.to_create_group(), update=is_update_existing)
 
-# todo_doc
 ####
 # classes and functions for documenting
 ####
@@ -357,12 +359,82 @@ class GDOC():
     generate documentation
     '''
     def __init__(self):
+        self.groups = []
+        self.group_names = []
+        self.cases = []
+        self.case_names = []
         pass
 
     def execute(self, base_dir):
-        # first find all groups and seperate cases
-        groups = FindGroupsInDir(base_dir)
-        cases = FindCasesInDir(base_dir)
+        # create a documentation directory
+        doc_dir = os.path.join(base_dir, "documentation")
+        if not os.path.isdir(doc_dir):
+            os.mkdir(doc_dir)
+        # find all groups and seperate cases
+        self.groups = Utilities.SortByCreationTime(FindGroupsInDir(base_dir))
+        self.group_names = [os.path.basename(_path) for _path in self.groups]  # group names
+        self.cases = Utilities.SortByCreationTime(FindCasesInDir(base_dir))
+        self.case_names = [os.path.basename(_path) for _path in self.cases]  # group names
+        outputs = self.create_markdown()
+        o_path = os.path.join(doc_dir, "group_doc.mkd")
+        with open(o_path, 'w') as fout:
+            fout.write(outputs)
+        print("File %s generated." % o_path)
+
+    def create_markdown(self):
+        outputs = ""
+        # outputs = "| Groups\t| Cases\t|\n"
+        # outputs += "| -----------\t| -----------\t|\n"
+        for i in range(len(self.groups)):
+            group = self.groups[i]
+            group_name = self.group_names[i]
+            outputs += "### %s\n\n" % group_name
+            outputs += self.create_case_table(group) + "\n"
+        return outputs
+
+    
+    def create_case_table(self, group):
+        json_path = os.path.join(group, 'group.json')
+        group_opt = GROUP_OPT()
+        group_opt.read_json(json_path)
+        features = group_opt.get_features()
+        n_features = len(features)
+        cases = FindCasesInDir(group)  # cases
+        # generate outputs
+        outputs = ""
+        outputs += "| Cases\t|"
+        for feature in features :
+            outputs += "%s \t|" % feature.get_keys()[-1]
+        outputs += "\n"
+        outputs += "|" # generate line devider
+        for i in range(n_features + 1):
+            outputs += " -----------\t|"
+        outputs += "\n"
+        # append case options
+        for case in cases:
+            outputs += "| %s\t|" % os.path.basename(case)
+            case_json_path = os.path.join(case, 'case.json')
+            assert(os.path.isfile(case_json_path))
+            with open(case_json_path, 'r') as fin:
+                case_options = json.load(fin)
+            for feature in features:
+                keys = feature.get_keys()
+                value = Utilities.read_dict_recursive(case_options, keys)
+                outputs += str(value) + "\t|"
+            outputs += "\n"
+        return outputs
+        
+
+
+def DocumentGroupsInDir(_dir):
+    '''
+    generate documentation for groups in a directory
+    '''
+    assert(os.path.isdir(_dir))
+    GDoc = GDOC()
+    GDoc.execute(_dir)
+    print("Groups: ", GDoc.group_names) # debug
+    pass
 
 
 ####
@@ -429,6 +501,9 @@ def main():
         Usage()
     elif _commend == 'create_group':
         CreateGroup(arg.json, CASE, CASE_OPT)
+    elif _commend == 'document':
+        DocumentGroupsInDir(arg.inputs)
+        pass
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
