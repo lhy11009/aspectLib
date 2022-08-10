@@ -540,6 +540,7 @@ class RHEOLOGY_OPR():
         where the factor of F is dealt with correctly.
         '''
         strain_rate = kwargs.get('strain_rate', 1e-15)
+        use_effective_strain_rate = kwargs.get('use_effective_strain_rate', True)
         eta_diff = np.ones(self.depths.size)
         eta_disl = np.ones(self.depths.size)
         eta_disl13 = np.ones(self.depths.size)
@@ -572,9 +573,9 @@ class RHEOLOGY_OPR():
         depth_up = 410e3
         depth_low = 660e3
         mask_up = (self.depths < depth_up)
-        eta_diff[mask_up] = CreepRheology_v1(diffusion_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up], use_effective_strain_rate=True)
-        eta_disl[mask_up] = CreepRheology_v1(dislocation_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up], use_effective_strain_rate=True)
-        eta_disl13[mask_up] = CreepRheology_v1(dislocation_creep, 1e-13, self.pressures[mask_up], self.temperatures[mask_up], use_effective_strain_rate=True)
+        eta_diff[mask_up] = CreepRheology_v1(diffusion_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up], use_effective_strain_rate=use_effective_strain_rate)
+        eta_disl[mask_up] = CreepRheology_v1(dislocation_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up], use_effective_strain_rate=use_effective_strain_rate)
+        eta_disl13[mask_up] = CreepRheology_v1(dislocation_creep, 1e-13, self.pressures[mask_up], self.temperatures[mask_up], use_effective_strain_rate=use_effective_strain_rate)
         eta[mask_up] = ComputeComposite(eta_diff[mask_up], eta_disl[mask_up])
         eta13[mask_up] = ComputeComposite(eta_diff[mask_up], eta_disl13[mask_up])
 
@@ -583,9 +584,9 @@ class RHEOLOGY_OPR():
         mask_mtz = (self.depths > depth_up) & (self.depths < depth_low)
         if True:
             # MTZ from olivine rheology
-            eta_diff[mask_mtz] = CreepRheology_v1(diffusion_creep, strain_rate, self.pressures[mask_mtz], self.temperatures[mask_mtz], use_effective_strain_rate=True)
-            eta_disl[mask_mtz] = CreepRheology_v1(dislocation_creep, strain_rate, self.pressures[mask_mtz], self.temperatures[mask_mtz], use_effective_strain_rate=True)
-            eta_disl13[mask_mtz] = CreepRheology_v1(dislocation_creep, 1e-13, self.pressures[mask_mtz], self.temperatures[mask_mtz], use_effective_strain_rate=True)
+            eta_diff[mask_mtz] = CreepRheology_v1(diffusion_creep, strain_rate, self.pressures[mask_mtz], self.temperatures[mask_mtz], use_effective_strain_rate=use_effective_strain_rate)
+            eta_disl[mask_mtz] = CreepRheology_v1(dislocation_creep, strain_rate, self.pressures[mask_mtz], self.temperatures[mask_mtz], use_effective_strain_rate=use_effective_strain_rate)
+            eta_disl13[mask_mtz] = CreepRheology_v1(dislocation_creep, 1e-13, self.pressures[mask_mtz], self.temperatures[mask_mtz], use_effective_strain_rate=use_effective_strain_rate)
             eta[mask_mtz] = ComputeComposite(eta_diff[mask_mtz], eta_disl[mask_mtz])
             eta13[mask_mtz] = ComputeComposite(eta_diff[mask_mtz], eta_disl13[mask_mtz])
         
@@ -602,21 +603,27 @@ class RHEOLOGY_OPR():
         lm_grad_P = (P_func(depth_max) - P_func(depth_lm)) / (depth_max - depth_lm)
         T660 = T_func(depth_lm)
         P660 = P_func(depth_lm)
-        eta_diff660 = CreepRheology_v1(diffusion_creep, strain_rate, P660, T660, use_effective_strain_rate=True)
+        eta_diff660 = CreepRheology_v1(diffusion_creep, strain_rate, P660, T660, use_effective_strain_rate=use_effective_strain_rate)
         # dislocation creep
-        eta_disl660 = CreepRheology_v1(dislocation_creep, strain_rate, P660, T660, use_effective_strain_rate=True)
+        eta_disl660 = CreepRheology_v1(dislocation_creep, strain_rate, P660, T660, use_effective_strain_rate=use_effective_strain_rate)
         eta660 = ComputeComposite(eta_diff660, eta_disl660)
         diff_lm = diffusion_creep.copy()
         # diff_lm['V'] = LowerMantleV(diffusion_creep['E'], T_lm_mean, P_lm_mean, lm_grad_T, lm_grad_P) # compute from less variation criteria
         diff_lm['V'] = 3e-6  # assign a value
-        diff_lm['A'] = CreepComputeA_v1(diff_lm, strain_rate, P660, T660, eta660*jump_lower_mantle, use_effective_strain_rate=True)
-        # print('diff_lm: ', diff_lm) # print additional information
-        eta_diff[mask_low] = CreepRheology_v1(diff_lm, strain_rate, self.pressures[mask_low], self.temperatures[mask_low], use_effective_strain_rate=True)
+        diff_lm['A'] = CreepComputeA_v1(diff_lm, strain_rate, P660, T660, eta660*jump_lower_mantle, use_effective_strain_rate=use_effective_strain_rate)
+        # dump json file 
+        constrained_rheology = {'diffusion_creep': diffusion_creep, 'dislocation_creep': dislocation_creep, 'diffusion_lm': diff_lm}
+        # convert aspect rheology
+        diffusion_creep_aspect = Convert2AspectInput_v1(diffusion_creep, use_effective_strain_rate=use_effective_strain_rate)
+        diffusion_lm_aspect = Convert2AspectInput_v1(diff_lm, use_effective_strain_rate=use_effective_strain_rate)
+        dislocation_creep_aspect = Convert2AspectInput_v1(dislocation_creep, use_effective_strain_rate=use_effective_strain_rate)
+        constrained_rheology_aspect = {'diffusion_creep': diffusion_creep_aspect, 'dislocation_creep': dislocation_creep_aspect, 'diffusion_lm': diffusion_lm_aspect}
+        # lower mnatle rheology
+        eta_diff[mask_low] = CreepRheologyInAspectViscoPlastic(diffusion_lm_aspect, strain_rate, self.pressures[mask_low], self.temperatures[mask_low])
         eta_disl[mask_low] = None  # this is just for visualization
         eta_disl13[mask_low] = None  # this is just for visualization
         eta[mask_low] = eta_diff[mask_low]  # diffusion creep is activated in lower mantle
         eta13[mask_low] = eta_diff[mask_low]  # diffusion creep is activated in lower mantle
-
         # haskel constraint
         radius = 6371e3
         lith_depth = 100e3
@@ -629,13 +636,6 @@ class RHEOLOGY_OPR():
         integral = np.trapz(integral_cores[mask_integral] * np.log10(eta[mask_integral]), self.depths[mask_integral])
         volume = np.trapz(integral_cores[mask_integral], self.depths[mask_integral])
         average_log_eta = integral / volume
-        # dump json file 
-        constrained_rheology = {'diffusion_creep': diffusion_creep, 'dislocation_creep': dislocation_creep, 'diffusion_lm': diff_lm}
-        # convert aspect rheology
-        diffusion_creep_aspect = Convert2AspectInput_v1(diffusion_creep, use_effective_strain_rate=True)
-        diffusion_lm_aspect = Convert2AspectInput_v1(diff_lm, use_effective_strain_rate=True)
-        dislocation_creep_aspect = Convert2AspectInput_v1(dislocation_creep, use_effective_strain_rate=True)
-        constrained_rheology_aspect = {'diffusion_creep': diffusion_creep_aspect, 'dislocation_creep': dislocation_creep_aspect, 'diffusion_lm': diffusion_lm_aspect}
         if save_json == 1:
             json_path = os.path.join(RESULT_DIR, "mantle_profile_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
             json_path_aspect = os.path.join(RESULT_DIR, "mantle_profile_aspect_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
@@ -645,6 +645,8 @@ class RHEOLOGY_OPR():
                 json.dump(constrained_rheology_aspect, fout)
             print("New json: %s" % json_path)
             print("New json: %s" % json_path_aspect)
+            self.output_json = json_path
+            self.output_json_aspect = json_path_aspect
         # plot
         if save_profile == 1:
             # plots
@@ -672,7 +674,7 @@ class RHEOLOGY_OPR():
             axs[1].grid()
             axs[1].set_ylabel('Depth [km]')
             axs[1].legend()
-            axs[1].set_title('%s_lowerV_%.4e_haskell%.2f' % (rheology, diff_lm['V'], average_log_eta))
+            axs[1].set_title('%s_lowerV_%.4e_haskell%.2f' % (rheology, diffusion_lm_aspect['V'], average_log_eta))
             # third, viscosity at 1e-13 /s strain rate
             axs[2].semilogx(eta_diff, self.depths/1e3, 'c', label='diffusion creep')
             axs[2].semilogx(eta_disl13, self.depths/1e3, 'g', label='dislocation creep(%.2e)' % 1e-13)
@@ -688,6 +690,7 @@ class RHEOLOGY_OPR():
             fig.savefig(fig_path)
             print("New figure: %s" % fig_path)
             plt.close()
+            self.output_profile = fig_path
             pass
         return constrained_rheology_aspect
     

@@ -369,14 +369,21 @@ class CASE(CasesP.CASE):
         Operator.ReadProfile(da_file)
         if mantle_rheology_scheme == "HK03_wet_mod":  # get the type of rheology
             rheology = Operator.MantleRheology_v1(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
-    dVdiff=-5.5e-6, dVdisl=0.0, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.73205080757)
+    dVdiff=-5.5e-6, dVdisl=0.0, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.73205080757, save_json=1)
+        elif mantle_rheology_scheme == "HK03":
+            # in this one, I don't include F because of the issue related to pressure calibration
+            rheology = Operator.MantleRheology_v1(rheology=mantle_rheology_scheme, use_effective_strain_rate=False, save_profile=1, save_json=1)
         else:
-            rheology = Operator.MantleRheology_v0(rheology=mantle_rheology_scheme)
+            # default is to fix F
+            rheology = Operator.MantleRheology_v1(rheology=mantle_rheology_scheme, save_profile=1, save_json=1)
         if mantle_rheology_scheme == "HK03_wet_mod" and sz_viscous_scheme == "constant" and\
             abs(sz_constant_viscosity - 1e20)/1e20 < 1e-6:  # assign the rheology
-            pass # this is just the default, so skip
+            pass # this is just the default, so skip. Note here we just skip assigning the mantle rheology in the prm
         else:
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity)
+        self.output_files.append(Operator.output_json)
+        self.output_files.append(Operator.output_json_aspect)
+        self.output_imgs.append(Operator.output_profile) # append plot of initial conition to figures
         # yielding criteria
         if sz_viscous_scheme == "stress dependent":
             CDPT_assign_yielding(o_dict, cohesion, friction, crust_cohesion=crust_cohesion, crust_friction=crust_friction)
@@ -388,11 +395,11 @@ class CASE(CasesP.CASE):
             plastic_yielding['cohesion'] = crust_cohesion
             plastic_yielding['friction'] = np.tan(crust_friction * np.pi / 180.0)
             plastic_yielding['type'] = 'Coulumb'
-            Operator = STRENGTH_PROFILE()
+            Operator_Sp = STRENGTH_PROFILE()
             rheology_experiment_dislocation = ConvertFromAspectInput(rheology['dislocation_creep'])
-            Operator.SetRheology(disl=rheology_experiment_dislocation, plastic=plastic_yielding)
+            Operator_Sp.SetRheology(disl=rheology_experiment_dislocation, plastic=plastic_yielding)
             fig_path = os.path.join(ASPECT_LAB_DIR, "results", "shear_zone_strength.png")
-            PlotShearZoneStrengh(Operator, fig_path)
+            PlotShearZoneStrengh(Operator_Sp, fig_path)
             self.output_imgs.append(fig_path)
 
         # Include peierls rheology
