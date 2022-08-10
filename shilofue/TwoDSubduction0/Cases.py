@@ -115,6 +115,8 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("cohesion in the shear zone", float, ['shear zone', 'cohesion'], 10e6, nick='crust_cohesion')
         self.add_key("friction in the shear zone", float, ['shear zone', 'friction'], 2.8624, nick='crust_friction')
         self.add_key("constant viscosity in the shear zone", float, ['shear zone', 'constant viscosity'], 1e20, nick='sz_constant_viscosity')
+        self.add_key("use WB new ridge implementation", int, ['world builder', 'use new ridge implementation'], 0, nick='wb_new_ridge')
+        
 
         pass
     
@@ -177,6 +179,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         assert(crust_friction >= 0.0 and crust_friction < 90.0)  # an angle between 0.0 and 90.0
         sz_constant_viscosity = self.values[self.start + 26]
         assert(sz_constant_viscosity > 0.0)
+        wb_new_ridge = self.values[self.start + 27]
+        assert(wb_new_ridge in [0, 1])  # use the new ridge implementation or not
 
     def to_configure_prm(self):
         if_wb = self.values[8]
@@ -238,8 +242,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             if_ov_trans = True
         is_box_wider = self.is_box_wider()
         Dsz = self.values[self.start + 16]
+        wb_new_ridge = self.values[self.start + 27]
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
-            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz
+            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge
     
     def to_re_write_geometry_pa(self):
         box_width_pre_adjust = self.values[self.start+11]
@@ -460,7 +465,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             pass 
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
-        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz):
+        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge):
         '''
         Configure world builder file
         Inputs:
@@ -495,7 +500,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
             # sz_thickness
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
-            sp_rate, ov_ag,Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+            sp_rate, ov_ag, wb_new_ridge, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz)
         elif geometry == 'box':
             if is_box_wider:
@@ -503,13 +508,13 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             else:
                 Xmax = 1e7  # lateral extent of the box
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
-            sp_rate, ov_ag, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+            sp_rate, ov_ag, wb_new_ridge, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry, sz_thickness=Dsz) # plates
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
 
 
-def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
+def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, **kwargs):
     '''
     configure plate in world builder
     '''
@@ -533,14 +538,17 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
         _max = max_cart
         trench = trench_cart
         pass
-    sp_ridge_coords = [[0, -_side], [0, _side]]
+    if wb_new_ridge == 1:
+        sp_ridge_coords = [[[0, -_side], [0, _side]]]
+    else:
+        sp_ridge_coords = [[0, -_side], [0, _side]]
     # Overiding plate
     if_ov_trans = kwargs.get('if_ov_trans', False)  # transit to another age
     if if_ov_trans and ov_age > (1e6 + kwargs['ov_trans_age']):  # only transfer to younger age
         i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate 1')
         ov_trans_feature, ov =\
             wb_configure_transit_ov_plates(wb_dict['features'][i0], trench,\
-                ov_age, kwargs['ov_trans_age'], kwargs['ov_trans_length'],\
+                ov_age, kwargs['ov_trans_age'], kwargs['ov_trans_length'], wb_new_ridge,\
                 Ro=Ro, geometry=geometry)
         o_dict['features'][i0] = ov_trans_feature
     else:
@@ -586,7 +594,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, **kwargs):
     return o_dict
 
 def wb_configure_transit_ov_plates(i_feature, trench, ov_age,\
-    ov_trans_age, ov_trans_length, **kwargs):
+    ov_trans_age, ov_trans_length, wb_new_ridge, **kwargs):
     '''
     Transit overiding plate to a younger age at the trench
     See descriptions of the interface to_configure_wb
@@ -611,8 +619,12 @@ def wb_configure_transit_ov_plates(i_feature, trench, ov_age,\
     o_feature["temperature models"][0]["spreading velocity"] = v
     o_feature["coordinates"] = [[trench, -side], [trench, side],\
         [ov, side], [ov, -side]]
-    o_feature["temperature models"][0]["ridge coordinates"] =\
-        [[ridge, -side], [ridge, side]]
+    if wb_new_ridge == 1:
+        o_feature["temperature models"][0]["ridge coordinates"] =\
+            [[[ridge, -side], [ridge, side]]]
+    else:
+        o_feature["temperature models"][0]["ridge coordinates"] =\
+            [[ridge, -side], [ridge, side]]
     return o_feature, ov
 
 

@@ -96,6 +96,7 @@ different age will be adjusted.",\
           float, ["geometry setup", "box length before adjusting"], 6.783e6, nick='box_length_pre_adjust')
         self.add_key("Reset viscosity for the trailing tail of the overiding plate", int, ['rheology', 'reset trailing ov viscosity'], 0, nick='reset_trailing_ov_viscosity')
         self.add_key("viscous flow law for mantle rheology", str, ['mantle rheology', 'flow law'], "diffusion", nick='mantle_rheology_flow_law')
+        self.add_key("use WB new ridge implementation", int, ['world builder', 'use new ridge implementation'], 0, nick='wb_new_ridge')
 
     
     def check(self):
@@ -169,7 +170,8 @@ different age will be adjusted.",\
         ov_age = self.values[self.start+25]
         setup_method = self.values[self.start+26] # method of seting up slabs
         sp_rate = self.values[self.start+27] # method of seting up slabs
-        return _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age, setup_method, sp_rate
+        wb_new_ridge = self.values[self.start+31]
+        return _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age, setup_method, sp_rate, wb_new_ridge
     
     def to_re_write_geometry_pa(self):
         '''
@@ -318,7 +320,7 @@ class CASE(CasesP.CASE):
 
 
     def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length,\
-    dip_angle, sp_age_trench, ov_age, setup_method, sp_rate):
+    dip_angle, sp_age_trench, ov_age, setup_method, sp_rate, wb_new_ridge):
         '''
         Configure wb file
         '''
@@ -334,7 +336,7 @@ class CASE(CasesP.CASE):
             else:
                 raise ValueError("Wrong value for \"type\"")
         elif setup_method == '2d_consistent':
-            self.wb_dict = wb_configure_plate_2d_consistent(self.wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age)
+            self.wb_dict = wb_configure_plate_2d_consistent(self.wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge)
             pass
     
 
@@ -428,7 +430,7 @@ def wb_configure_plate_schellart07_Tdependent(wb_dict, sp_width, sp_length, Dsz,
     o_dict['features'][i0] = sdict
 
 
-def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age):
+def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge):
     '''
     World builder configuration of plates in Schellart etal 2007
     '''
@@ -481,8 +483,12 @@ def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_
         segment["composition models"][1]["min distance slab top"] = Dsz
         segment["composition models"][1]["max distance slab top"] = Dsz + Ddl
         sdict["segments"][i] = segment
-    sdict["temperature models"][0]["ridge coordinates"] = \
-        [[0,-10000000.0], [0, 10000000.0]]
+    if wb_new_ridge == 1:
+        sdict["temperature models"][0]["ridge coordinates"] = \
+            [[[0,-10000000.0], [0, 10000000.0]]]
+    else:
+        sdict["temperature models"][0]["ridge coordinates"] = \
+            [[0,-10000000.0], [0, 10000000.0]]
     sdict["temperature models"][0]["plate velocity"] = sp_rate
     return o_dict
 
