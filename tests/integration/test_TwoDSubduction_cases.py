@@ -292,6 +292,41 @@ def test_wb_new_ridge_implementation():
     wb_path = os.path.join(output_dir, 'case.wb')
     assert(filecmp.cmp(wb_path, wb_std_path))
 
+
+def test_wb_new_ridge_implementation_update():
+    '''
+    Use the new implemnetation for ridge coordinates in the world builder;
+    also test the update file functionality of the create_case_with_json function.
+    '''
+    source_case_dir = os.path.join(source_dir, "new_ridge_implementation_update")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'new_ridge_implementation_update')
+    output_dir_tmp = os.path.join(test_dir,'new_ridge_implementation_update_tmp')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    if os.path.isdir(output_dir_tmp):
+        rmtree(output_dir_tmp)
+    create_case_with_json(json_path, CASE, CASE_OPT)  # create case
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    assert(filecmp.cmp(prm_path, prm_std_path))
+    wb_std_path = os.path.join(source_case_dir, 'case_0_std.wb')
+    wb_path = os.path.join(output_dir, 'case.wb')
+    assert(filecmp.cmp(wb_path, wb_std_path))
+    # now update on this existing case
+    json_path = os.path.join(source_case_dir, 'case1.json')
+    create_case_with_json(json_path, CASE, CASE_OPT, update=True)  # create case
+    assert(os.path.isdir(os.path.join(output_dir, "update_00")))  # assert the update catalog is generated
+    wb_std_path = os.path.join(source_case_dir, 'case_1_std.wb')
+    wb_path = os.path.join(output_dir, 'case.wb')
+    assert(filecmp.cmp(prm_path, prm_std_path)) # case.prm is unchanged
+    assert(filecmp.cmp(wb_path, wb_std_path)) # case.wb is updated
+    change_log_path = os.path.join(output_dir, "update_00", "change_log")
+    assert(os.path.isfile(change_log_path))
+    change_log_path_std = os.path.join(source_case_dir, "change_log")
+    assert(filecmp.cmp(change_log_path, change_log_path_std)) # case.wb is updated
+
     
 # to check for error message
     # with pytest.raises(SomeError) as _excinfo:

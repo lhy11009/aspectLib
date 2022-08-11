@@ -25,10 +25,13 @@ descriptions
 import numpy as np
 import sys, os, argparse
 import json, re
+import filecmp  # for compare file contents
 # import pathlib
 # import subprocess
 import numpy as np
-from shutil import copy2, rmtree
+import time
+from shutil import copy2, rmtree, copytree
+from difflib import unified_diff
 from copy import deepcopy
 # from matplotlib import cm
 from matplotlib import pyplot as plt
@@ -277,7 +280,11 @@ class CASE():
             case_dir(str): path to created case.
         '''
         # folder
-        case_dir = os.path.join(_root, self.case_name)
+        is_tmp = kwargs.get("is_tmp", False)
+        if is_tmp:
+            case_dir = os.path.join(_root, "%s_tmp" % self.case_name)
+        else:
+            case_dir = os.path.join(_root, self.case_name)
         if os.path.isdir(case_dir):
            # remove old ones 
            rmtree(case_dir)
@@ -367,7 +374,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
         case_dir: return case directory
     '''
     print("%s: Creating case" % Utilities.func_name())
-    is_update = kwargs.get('update', True)
+    is_update = kwargs.get('update', True)  # this controls whether we want to update
+    update_flag = False # this marks whether there is impending update.
     fix_case_name = kwargs.get('fix_case_name', None)
     fix_base_dir = kwargs.get('fix_base_dir', None)
     fix_output_dir = kwargs.get('fix_output_dir', None)
@@ -400,6 +408,7 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     if os.path.isdir(case_dir_to_check):
         if is_update:
             print("Case %s already exists, updating" % case_dir_to_check)
+            update_flag = True
         else:
             print("Case %s already exists, aborting" % case_dir_to_check)
             return case_dir_to_check
@@ -411,7 +420,71 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     for _path in Case_Opt.get_additional_files():
         Case.add_extra_file(_path)
     # create new case
-    case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step())
+    if update_flag:
+        # update a previous case:
+        # a. put new case into a dir - "case_tmp"
+        # b. figure whether to update: if prm or wb files are different from the original case
+        case_dir = os.path.join(Case_Opt.o_dir(), Case_Opt.case_name())
+        case_dir_tmp = os.path.join(Case_Opt.o_dir(), "%s_tmp" % Case_Opt.case_name())
+        if os.path.isdir(case_dir_tmp):
+            rmtree(case_dir_tmp)
+        Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(), is_tmp=True)
+        assert(os.path.isdir(case_dir_tmp))
+        do_update = False # a flag to perform update, only true if the parameters are different
+        prm_ori = os.path.join(case_dir, 'case.prm')
+        prm_new = os.path.join(case_dir_tmp, 'case.prm')
+        do_update = (do_update or (not filecmp.cmp(prm_ori, prm_new)))
+        wb_ori = os.path.join(case_dir, 'case.wb')
+        if os.path.isfile(wb_ori):
+            wb_new = os.path.join(case_dir_tmp, 'case.wb')
+            do_update = (do_update or (not filecmp.cmp(wb_ori, wb_new)))
+        if do_update:
+            # document older files
+            index = 0
+            while os.path.isdir(os.path.join(case_dir, "update_%02d" % index)):
+                index += 1
+            older_dir = os.path.join(case_dir, "update_%02d" % index)
+            if os.path.isdir(older_dir):
+                rmtree(older_dir)
+            os.mkdir(older_dir)
+            prm_older = os.path.join(older_dir, 'case.prm')
+            copy2(prm_ori, older_dir)
+            if os.path.isfile(wb_ori):
+                wb_older = os.path.join(older_dir, 'case.wb')
+                copy2(wb_ori, older_dir)
+            ini_img_dir = os.path.join(case_dir, "img", "initial_condition")
+            if os.path.isdir(ini_img_dir):
+                copytree(ini_img_dir, os.path.join(older_dir, os.path.basename(ini_img_dir)))
+            # create new files
+            copy2(prm_new, prm_ori)
+            if os.path.isfile(wb_ori):
+                copy2(wb_new, wb_ori)
+                img_dir = os.path.join(case_dir_tmp, "img")
+                img_dir_ori = os.path.join(case_dir, "img")
+                if os.path.isdir(img_dir_ori):
+                    rmtree(img_dir_ori)
+                if os.path.isdir(img_dir):
+                    copytree(img_dir, img_dir_ori)
+            # generate catalog
+            contents = ""
+            with open(prm_older, 'r') as fin0:
+                prm_older_text = fin0.readlines()
+            with open(prm_new, 'r') as fin1:
+                prm_new_text = fin1.readlines()
+            for line in unified_diff(prm_older_text, prm_new_text, fromfile=prm_older, tofile=prm_new, lineterm=''):
+                contents += line
+            if os.path.isfile(wb_older):
+                with open(wb_older, 'r') as fin0:
+                    wb_older_text = fin0.readlines()
+                with open(wb_new, 'r') as fin1:
+                    wb_new_text = fin1.readlines()
+                for line in unified_diff(wb_older_text, wb_new_text, fromfile=wb_ori, tofile=wb_new, lineterm=''):
+                    contents += line
+            cat_file = os.path.join(older_dir, 'change_log')
+            with open(cat_file, 'w') as fout:
+                fout.write(contents)
+    else:
+        case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step())
     return case_dir
 
 def SetBcVelocity(bc_dict, dimension, type_bc_v):
