@@ -61,7 +61,7 @@ def test_prepare_slab():
     VtkP = VTKP(geometry=geometry, Ro=Ro)
     VtkP.ReadFile(filein)
     field_names = ['T', 'density', 'sp_upper', 'sp_lower']
-    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.ConstructPolyData(field_names, include_cell_center=True, fix_cell_value=False)
     VtkP.PrepareSlabByPoints(['sp_upper', 'sp_lower'])
     assert(abs(VtkP.slab_depth - 125e3)/125e3 < 1e-6)
     print("slab depth: ", VtkP.slab_depth)  # debug

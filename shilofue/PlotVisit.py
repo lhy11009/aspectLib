@@ -81,7 +81,6 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         steps = kwargs.get('steps', None)
         last_step = kwargs.get('last_step', None)
         time_interval = kwargs.get('time_interval', None)
-        print('time_interval in Interpret: ', kwargs['time_interval'])  # debug
         # call function from parent
         CASE_OPTIONS.Interpret(self)
         # particle file
