@@ -439,7 +439,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             wb_new = os.path.join(case_dir_tmp, 'case.wb')
             do_update = (do_update or (not filecmp.cmp(wb_ori, wb_new)))
         if do_update:
-            # document older files
+            # document older files: a. files in the directory.
+            # b. the img/initial_condition folder.
             index = 0
             while os.path.isdir(os.path.join(case_dir, "update_%02d" % index)):
                 index += 1
@@ -447,11 +448,10 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             if os.path.isdir(older_dir):
                 rmtree(older_dir)
             os.mkdir(older_dir)
-            prm_older = os.path.join(older_dir, 'case.prm')
-            copy2(prm_ori, older_dir)
-            if os.path.isfile(wb_ori):
-                wb_older = os.path.join(older_dir, 'case.wb')
-                copy2(wb_ori, older_dir)
+            for subdir, _, files in os.walk(case_dir):
+                for filename in files:
+                    file_ori = os.path.join(subdir, filename)
+                    copy2(file_ori, older_dir)
             ini_img_dir = os.path.join(case_dir, "img", "initial_condition")
             if os.path.isdir(ini_img_dir):
                 copytree(ini_img_dir, os.path.join(older_dir, os.path.basename(ini_img_dir)))
@@ -465,21 +465,21 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
                     rmtree(img_dir_ori)
                 if os.path.isdir(img_dir):
                     copytree(img_dir, img_dir_ori)
-            # generate catalog
+            # generate catalog: loop over files in the new folder and output the differences from
+            # older files
             contents = ""
-            with open(prm_older, 'r') as fin0:
-                prm_older_text = fin0.readlines()
-            with open(prm_new, 'r') as fin1:
-                prm_new_text = fin1.readlines()
-            for line in unified_diff(prm_older_text, prm_new_text, fromfile=prm_older, tofile=prm_new, lineterm=''):
-                contents += line
-            if os.path.isfile(wb_older):
-                with open(wb_older, 'r') as fin0:
-                    wb_older_text = fin0.readlines()
-                with open(wb_new, 'r') as fin1:
-                    wb_new_text = fin1.readlines()
-                for line in unified_diff(wb_older_text, wb_new_text, fromfile=wb_ori, tofile=wb_new, lineterm=''):
-                    contents += line
+            for subdir, _, files in os.walk(case_dir_tmp):
+                for filename in files:
+                    file_newer = os.path.join(subdir, filename)
+                    file_older = os.path.join(case_dir, filename)
+                    older_text = "" # if no older files are present, the text is vacant.
+                    if os.path.isfile(file_older):
+                        with open(file_older, 'r') as fin0:
+                            older_text = fin0.readlines()
+                    with open(file_newer, 'r') as fin1:
+                        newer_text = fin1.readlines()
+                    for line in unified_diff(older_text, newer_text, fromfile=file_older, tofile=file_newer, lineterm=''):
+                        contents += line
             cat_file = os.path.join(older_dir, 'change_log')
             with open(cat_file, 'w') as fout:
                 fout.write(contents)
