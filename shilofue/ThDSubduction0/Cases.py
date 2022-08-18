@@ -145,12 +145,13 @@ different age will be adjusted.",\
         apply_reference_density = self.values[self.start+21]
         reset_trailing_ov_viscosity = self.values[self.start+29]
         mantle_rheology_flow_law = self.values[self.start+30]
+        stokes_solver_type = self.values[18]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
             sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
             adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
-            reset_trailing_ov_viscosity, mantle_rheology_flow_law
+            reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type
         
     def to_configure_wb(self):
         '''
@@ -193,7 +194,7 @@ class CASE(CasesP.CASE):
     sp_width, trailing_length, reset_trailing_morb, ref_visc, relative_visc_plate, friction_angle,\
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
-    reset_trailing_ov_viscosity, mantle_rheology_flow_law):
+    reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type):
         '''
         Configure prm file
         '''
@@ -315,6 +316,20 @@ class CASE(CasesP.CASE):
                 o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'false'
 
         o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries
+
+        # solver options
+        if stokes_solver_type == "block AMG":
+            # here the default value is AMG, if not present, don't change anything
+            try:
+                if "Stokes solver type" in o_dict['Solver parameters']["Stokes solver parameters"]:
+                    o_dict['Solver parameters']['Stokes solver parameters']["Stokes solver type"] = "block AMG"
+            except KeyError:
+                pass
+        elif stokes_solver_type == "block GMG":
+            o_dict['Solver parameters']['Stokes solver parameters']["Stokes solver type"] = "block GMG"
+        else:
+            raise ValueError("stokes_solver_type must be in [block AMG, block GMG].")
+
         self.idict = o_dict
         pass
 

@@ -192,9 +192,13 @@ class VTKP():
                 self.cell_sizes = vtk_to_numpy(cz_cell_data.GetArray('Area'))
             else:
                 raise ValueError("Not implemented")
-            # fix values of fields. I am usign the 'T' field as an indicator:
+            # fix values of fields. This is needed because the interpolation is not correct where 
+            # the mesh refines or coarsens. 
+            # I am usign the 'T' field as an indicator:
             # every cell center with T = 0.0 is to be fixed (assuming a realistic T > 273.0)
             # the strategy is to take a nearby cell center and check its value.
+            # Note: this will look into the adjacent cells until it finds one with a sufficently 
+            # approximate location and a non-zero value of T.
             tolerance = 1.0
             T_field = vtk_to_numpy(self.c_poly_data.GetPointData().GetArray('T'))
             fields = []
@@ -202,31 +206,35 @@ class VTKP():
                 fields.append(vtk_to_numpy(self.c_poly_data.GetPointData().GetArray(field_name)))
             # density_field =  vtk_to_numpy(self.c_poly_data_raw.GetPointData().GetArray('density'))
             if fix_cell_value:
-               for i in range(noC):
-                   if T_field[i] - 0.0 < tolerance:
-                       xs = self.c_poly_data.GetPoint(i)
-                       found = False
-                       i1 = 0
-                       j = 1
-                       dist_max = 3*(self.cell_sizes[i]**0.5)  # compare to the cell size
-                       while True:   # find a adjacent point
-                           xs1 = self.c_poly_data.GetPoint(i+j)
-                           dist = ((xs1[0] - xs[0])**2.0 + (xs1[1] - xs[1])**2.0)**0.5
-                           if i+j < noC and T_field[i+j] - 0.0 > tolerance and dist < dist_max:
-                               i1 = i + j
-                               found = True
-                               break
-                           xs1 = self.c_poly_data.GetPoint(i-j)
-                           dist = ((xs1[0] - xs[0])**2.0 + (xs1[1] - xs[1])**2.0)**0.5
-                           if i-j >= 0 and T_field[i-j] - 0.0 > tolerance and dist < dist_max:
-                               i1 = i - j
-                               found = True
-                               break
-                           j += 1
-                       if not found:
-                           raise ValueError("A cell center (%.4e, %.4e, %.4e) is not in mesh, and the adjacent cells are not found" % (xs[0], xs[1], xs[2]))
-                       for n in range(len(fields)):
-                           fields[n][i] = fields[n][i1]
+                for i in range(noC):
+                    if T_field[i] - 0.0 < tolerance:
+                        xs = self.c_poly_data.GetPoint(i)
+                        found = False
+                        i1 = 0
+                        j = 1
+                        dist_max = 3*(self.cell_sizes[i]**0.5)  # compare to the cell size
+                        while True:   # find a adjacent point
+                            if i+j >= noC and i-j < 0:
+                                break # end is reached
+                            if i+j < noC:
+                                xs1 = self.c_poly_data.GetPoint(i+j)
+                                dist = ((xs1[0] - xs[0])**2.0 + (xs1[1] - xs[1])**2.0)**0.5
+                                if T_field[i+j] - 0.0 > tolerance and dist < dist_max:
+                                    i1 = i + j
+                                    found = True
+                                    break
+                            if i-j >= 0:
+                                xs1 = self.c_poly_data.GetPoint(i-j)
+                                dist = ((xs1[0] - xs[0])**2.0 + (xs1[1] - xs[1])**2.0)**0.5
+                                if i-j >= 0 and T_field[i-j] - 0.0 > tolerance and dist < dist_max:
+                                    i1 = i - j
+                                    found = True
+                                    break
+                            j += 1
+                        if not found:
+                            raise ValueError("A cell center (%.4e, %.4e, %.4e) is not in mesh, and the adjacent cells are not found" % (xs[0], xs[1], xs[2]))
+                        for n in range(len(fields)):
+                            fields[n][i] = fields[n][i1]
         time_center = time.time()
         # send out message
         message = "ConstructPolyData: %d * (%d + %d) entries in the polydata imported and %d * (%d + %d) points in the data at cell center. \

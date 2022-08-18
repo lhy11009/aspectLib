@@ -89,6 +89,8 @@ it only takes effect if the input is positiveh",\
             int, ["refinement level"], -1, nick="refinement_level")
         self.add_key("Case Output directory", str, ["case output directory"], "output", nick='case_o_dir')
         self.add_key("mantle rheology", str, ['mantle rheology', 'scheme'], "HK03_wet_mod", nick='mantle_rheology_scheme')
+        self.add_key("Stokes solver type", str,\
+         ["stokes solver", "type"], "block AMG", nick="stokes_solver_type")
         pass
     
     def check(self):
@@ -101,6 +103,9 @@ it only takes effect if the input is positiveh",\
         Utilities.my_assert(os.path.isdir(base_dir), FileNotFoundError, "No such directory: %s" % base_dir)
         # in case this is "", we'll fix that later.
         Utilities.my_assert(o_dir=="" or os.path.isdir(o_dir), FileNotFoundError, "No such directory: %s" % o_dir)
+        # type of the stokes solver
+        stokes_solver_type = self.values[18]
+        assert (stokes_solver_type in ["block AMG", "block GMG"])
         pass
 
     def to_init(self):
@@ -451,7 +456,9 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             for subdir, _, files in os.walk(case_dir):
                 for filename in files:
                     file_ori = os.path.join(subdir, filename)
-                    copy2(file_ori, older_dir)
+                    if os.path.dirname(file_ori) == case_dir:
+                        # only choose the files on the toppest level
+                        copy2(file_ori, older_dir)
             ini_img_dir = os.path.join(case_dir, "img", "initial_condition")
             if os.path.isdir(ini_img_dir):
                 copytree(ini_img_dir, os.path.join(older_dir, os.path.basename(ini_img_dir)))
@@ -477,7 +484,10 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
                         with open(file_older, 'r') as fin0:
                             older_text = fin0.readlines()
                     with open(file_newer, 'r') as fin1:
-                        newer_text = fin1.readlines()
+                        try:
+                            newer_text = fin1.readlines()
+                        except Exception:
+                            continue
                     for line in unified_diff(older_text, newer_text, fromfile=file_older, tofile=file_newer, lineterm=''):
                         contents += line
             cat_file = os.path.join(older_dir, 'change_log')
