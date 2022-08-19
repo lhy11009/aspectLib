@@ -63,6 +63,7 @@ def RunTimeInfo(log_path, **kwargs):
         log_path(str) - path to log file
     '''
     save_temp_file_local = kwargs.get('save_temp_file_local', False)
+    quiet = kwargs.get("quiet")
     if save_temp_file_local:
         temp_dir = os.path.join(os.path.dirname(log_path), 'py_outputs')
         if not os.path.isdir(temp_dir):
@@ -73,7 +74,8 @@ def RunTimeInfo(log_path, **kwargs):
     trailer = None # add this to filename
     hr = 3600.0  # hr to s
     # read log file
-    print("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
+    if not quiet:
+        print("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
     os.system("awk -f %s/bash_scripts/awk_states/parse_block_output %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
 
     Plotter = Plot.LINEARPLOT('RunTime', {})
@@ -99,10 +101,11 @@ def RunTimeInfo(log_path, **kwargs):
     
     # last step info
     # todo
-    last_step = Plotter.data[-1, col_step]
-    last_time = Plotter.data[-1, col_time]
-    last_wallclock
-    print("")
+    last_step = steps[-1]
+    last_time = times[-1] 
+    last_wallclock = wallclocks[-1]
+    if not quiet:
+        print("step: %d, time: %.4e, wallclock: %.4e" % (last_step, last_time, last_wallclock))
     return last_step, last_time, last_wallclock
 
 def PlotFigure(log_path, fig_path, **kwargs):
@@ -483,7 +486,7 @@ def main():
         log_file = os.path.join(arg.inputs, 'output', 'log.txt')
         assert(log_file)
         # todo
-        RunTimeInfo(log_path)
+        RunTimeInfo(log_file)
 
     elif _commend == "plot_newton_solver_step":
         # plot newton solver output

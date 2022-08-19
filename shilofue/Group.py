@@ -21,6 +21,7 @@ import numpy as np
 import sys, os, argparse
 import json, re
 from shilofue.Cases import create_case_with_json
+from shilofue.PlotRunTime import RunTimeInfo
 # import pathlib
 # import subprocess
 import numpy as np
@@ -376,6 +377,7 @@ class GDOC():
         self.group_names = [os.path.basename(_path) for _path in self.groups]  # group names
         self.cases = Utilities.SortByCreationTime(FindCasesInDir(base_dir))
         self.case_names = [os.path.basename(_path) for _path in self.cases]  # group names
+        # generate markdown files
         outputs = self.create_markdown()
         o_path = os.path.join(doc_dir, "group_doc.mkd")
         with open(o_path, 'w') as fout:
@@ -409,19 +411,35 @@ class GDOC():
         # generate outputs
         # 1. generate the header
         outputs = ""
-        outputs += "<style>\n.table-%s {\n\toverflow-x: scroll;\n}\n</style>\n\n" % os.path.basename(group) # css rule for scrolling
+        outputs += "<style>\n.table-%s {\n\toverflow-x: scroll;\n\twidth: 100%%;\n}\n</style>\n\n" % os.path.basename(group) # css rule for scrolling
         outputs += "<div class=\"table-%s\" markdown=\"block\">\n\n" % os.path.basename(group) # css block marks starting
-        outputs += "| Cases\t|"
+        outputs += "| cases\t|"
+        outputs += "<span style=\"color:blue\">" + " steps\t" + "</span>" + "|"
+        outputs += "<span style=\"color:blue\">" + " time\t" + "</span>" + "|"
+        outputs += "<span style=\"color:blue\">" + " wall clock\t" + "</span>" + "|"
         for feature in features :
             outputs += "%s \t|" % feature.get_keys()[-1]
         outputs += "\n"
         outputs += "|" # generate line devider
-        for i in range(n_features + 1):
-            outputs += " -----------\t|"
+        for i in range(n_features + 4):
+            outputs += " :-----------:\t|"
         outputs += "\n"
         # 2. append case options as contents
+        i = 0
         for case in cases:
             outputs += "| %s\t|" % os.path.basename(case)
+            # pull out information
+            log_file = os.path.join(case, 'output', 'log.txt')
+            assert(log_file)
+            try:
+                last_step, last_time, last_wallclock = RunTimeInfo(log_file, quiet=True)
+            except TypeError:
+                last_step = -1
+                last_time = -1.0
+                last_wallclock = -1.0
+            outputs += "<span style=\"color:blue\">" + " %d\t" % last_step + "</span>" +  "|"
+            outputs += "<span style=\"color:blue\">" + " %.4e\t" % last_time + "</span>" + "|"
+            outputs += "<span style=\"color:blue\">" + " %.4e\t" % last_wallclock + "</span>" + "|"
             case_json_path = os.path.join(case, 'case.json')
             assert(os.path.isfile(case_json_path))
             with open(case_json_path, 'r') as fin:
@@ -431,6 +449,7 @@ class GDOC():
                 value = Utilities.read_dict_recursive(case_options, keys)
                 outputs += str(value) + "\t|"
             outputs += "\n"
+            i += 1
         outputs += "\n</div>\n"  # css block marks ending
         return outputs
         
@@ -455,13 +474,13 @@ def FindCasesInDir(dir_path):
     Find cases within a directory
     '''
     cases = []
-    for subdir, dirs, _ in os.walk(dir_path):
-        for _dir in dirs:
-            dir_path = os.path.join(subdir, _dir)
-            prm_path = os.path.join(dir_path, "case.prm")
-            json_path = os.path.join(dir_path, "case.json")
+    for _name in os.listdir(dir_path):
+        sub_dir_path = os.path.join(dir_path, _name)
+        if os.path.isdir(sub_dir_path):
+            prm_path = os.path.join(sub_dir_path, "case.prm")
+            json_path = os.path.join(sub_dir_path, "case.json")
             if os.path.isfile(prm_path) and os.path.isfile(json_path):
-                cases.append(dir_path)
+                cases.append(sub_dir_path)
     return cases
 
 
