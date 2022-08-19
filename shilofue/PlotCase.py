@@ -230,19 +230,19 @@ def PlotCaseCombined(modules, inputs, **kwargs):
         module(inputs, **kwargs)
 
 
-def PlotCaseCombinedDir(modules, dir, **kwargs):
+def PlotCaseCombinedDir(modules, pdir, **kwargs):
     '''
     combine several modules in plotting
     inputs:
         modules (list of function)
-        dir (str): path to a directory
+        pdir (str): path to a directory
         **kwargs:
             time_range ([None, None] or [double, double]): range of time to plot
     '''
-    assert(os.path.isdir(dir))
-    for subdir, dirs, _ in os.walk(dir):
-        for _dir in dirs:
-            _path = os.path.join(subdir, _dir)
+    assert(os.path.isdir(pdir))
+    for _name in os.listdir(pdir):
+        _path = os.path.join(pdir, _name)
+        if os.path.isdir(_path):
             case_prm = os.path.join(_path, 'case.prm')
             if os.path.isfile(case_prm):
                 print("\nFind case %s" % _path)

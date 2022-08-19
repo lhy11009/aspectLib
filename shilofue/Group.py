@@ -24,6 +24,7 @@ from shilofue.Cases import create_case_with_json
 # import pathlib
 # import subprocess
 import numpy as np
+import subprocess
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 from shutil import rmtree, copy, SameFileError
@@ -380,11 +381,14 @@ class GDOC():
         with open(o_path, 'w') as fout:
             fout.write(outputs)
         print("File %s generated." % o_path)
+        o_path_html = o_path.rsplit('.')[0] + "." + 'html'
+        # convert to html
+        subprocess.run("pandoc %s -t html -o %s" % (o_path, o_path_html), shell=True)
+        assert(os.path.isfile(o_path_html))
+        print("Html file %s generated" % o_path_html)
 
     def create_markdown(self):
         outputs = ""
-        # outputs = "| Groups\t| Cases\t|\n"
-        # outputs += "| -----------\t| -----------\t|\n"
         for i in range(len(self.groups)):
             group = self.groups[i]
             group_name = self.group_names[i]
@@ -395,13 +399,18 @@ class GDOC():
     
     def create_case_table(self, group):
         json_path = os.path.join(group, 'group.json')
+        # read group options from the json file
         group_opt = GROUP_OPT()
         group_opt.read_json(json_path)
         features = group_opt.get_features()
         n_features = len(features)
-        cases = FindCasesInDir(group)  # cases
+        # find all cases
+        cases = FindCasesInDir(group)
         # generate outputs
+        # 1. generate the header
         outputs = ""
+        outputs += "<style>\n.table-%s {\n\toverflow-x: scroll;\n}\n</style>\n\n" % os.path.basename(group) # css rule for scrolling
+        outputs += "<div class=\"table-%s\" markdown=\"block\">\n\n" % os.path.basename(group) # css block marks starting
         outputs += "| Cases\t|"
         for feature in features :
             outputs += "%s \t|" % feature.get_keys()[-1]
@@ -410,7 +419,7 @@ class GDOC():
         for i in range(n_features + 1):
             outputs += " -----------\t|"
         outputs += "\n"
-        # append case options
+        # 2. append case options as contents
         for case in cases:
             outputs += "| %s\t|" % os.path.basename(case)
             case_json_path = os.path.join(case, 'case.json')
@@ -422,6 +431,7 @@ class GDOC():
                 value = Utilities.read_dict_recursive(case_options, keys)
                 outputs += str(value) + "\t|"
             outputs += "\n"
+        outputs += "\n</div>\n"  # css block marks ending
         return outputs
         
 
