@@ -530,6 +530,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, *
     max_sph = kwargs.get("max_sph", 180.0)
     geometry = kwargs.get('geometry', 'chunk')
     Dsz = kwargs.get("sz_thickness", None)
+    D2C_ratio = 35.2e3 / 7.5e3 # ratio of depleted / crust layer
     o_dict = wb_dict.copy()
     trench_sph = (sp_age_trench * sp_rate / Ro) * 180.0 / np.pi
     trench_cart = sp_age_trench * sp_rate
@@ -556,6 +557,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, *
         ov_trans_feature, ov =\
             wb_configure_transit_ov_plates(wb_dict['features'][i0], trench,\
                 ov_age, kwargs['ov_trans_age'], kwargs['ov_trans_length'], wb_new_ridge,\
+                Dsz, D2C_ratio,\
                 Ro=Ro, geometry=geometry)
         o_dict['features'][i0] = ov_trans_feature
     else:
@@ -571,6 +573,9 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, *
     op_dict["coordinates"] = [[ov, -_side], [ov, _side],\
         [_max, _side], [_max, -_side]] # trench position
     op_dict["temperature models"][0]["plate age"] = ov_age  # age of overiding plate
+    op_dict["composition models"][0]["max depth"] = Dsz
+    op_dict["composition models"][1]["min depth"] = Dsz
+    op_dict["composition models"][1]["max depth"] = Dsz * D2C_ratio
     o_dict['features'][i0] = op_dict
     # Subducting plate
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Subducting plate')
@@ -579,6 +584,9 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, *
         [trench, _side], [trench, -_side]] # trench position
     sp_dict["temperature models"][0]["spreading velocity"] = sp_rate
     sp_dict["temperature models"][0]["ridge coordinates"] = sp_ridge_coords
+    sp_dict["composition models"][0]["max depth"] = Dsz
+    sp_dict["composition models"][1]["min depth"] = Dsz
+    sp_dict["composition models"][1]["max depth"] = Dsz * D2C_ratio
     o_dict['features'][i0] = sp_dict
     # Slab
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Slab')
@@ -591,6 +599,12 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, *
         # in this case, I'll use the plate model
         s_dict["temperature models"][0]["use plate model as reference"] = True
         s_dict["temperature models"][0]["max distance slab top"] = 150e3
+    for i in range(len(s_dict["segments"])-1):
+        # thickness of crust, last segment is a ghost, so skip
+        s_dict["segments"][i]["composition models"][0]["max distance slab top"] = Dsz
+        s_dict["segments"][i]["composition models"][1]["min distance slab top"] = Dsz
+        s_dict["segments"][i]["composition models"][1]["max distance slab top"] = Dsz * D2C_ratio
+        pass
     o_dict['features'][i0] = s_dict
     # mantle for substracting adiabat
     i0 = ParsePrm.FindWBFeatures(o_dict, 'mantle to substract')
@@ -601,7 +615,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, *
     return o_dict
 
 def wb_configure_transit_ov_plates(i_feature, trench, ov_age,\
-    ov_trans_age, ov_trans_length, wb_new_ridge, **kwargs):
+    ov_trans_age, ov_trans_length, wb_new_ridge, Dsz, D2C_ratio, **kwargs):
     '''
     Transit overiding plate to a younger age at the trench
     See descriptions of the interface to_configure_wb
@@ -632,6 +646,9 @@ def wb_configure_transit_ov_plates(i_feature, trench, ov_age,\
     else:
         o_feature["temperature models"][0]["ridge coordinates"] =\
             [[ridge, -side], [ridge, side]]
+    o_feature["composition models"][0]["max depth"] = Dsz
+    o_feature["composition models"][1]["min depth"] = Dsz
+    o_feature["composition models"][1]["max depth"] = Dsz * D2C_ratio
     return o_feature, ov
 
 
