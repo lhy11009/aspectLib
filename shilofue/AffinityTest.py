@@ -15,6 +15,7 @@ import numpy as np
 import math
 import shilofue.Cases as CasesP
 import shilofue.TwoDSubduction0.Cases as CasesTwoDSubduction
+import shilofue.ParsePrm as ParsePrm
 try:
     import pathlib
     import subprocess
@@ -43,6 +44,8 @@ Examples of usage: \n\
     example:\n\
 \n\
         (substitute -i and -o options with your own prm file and output directory)\n\
+        (-t option gives the number of tasks per node, check this with the set ups of server)\n\
+        (-m is a manual upper limit of the cpus to use)\n\
         python shilofue/AffinityTest.py run_tests -s peloton-rome -t 128\
  -i /home/lochy/ASPECT_PROJECT/aspectLib/files/AffinityTest/spherical_shell_expensive_solver.prm\
  -o $TwoDSubduction_DIR/rene_affinity_test\
@@ -95,6 +98,18 @@ def generate_input_file(base_file_name,output_file_name,dictionary):
         ofh.write(line)
     fh.close()
     ofh.close()
+
+def generate_input_file_1(base_file_name, output_file_name, output_path, global_refinement):
+    """Read the 'base' input file from base_file_name, replace strings 
+    using functions defined in ParsePrm.py, and write new output file to output_file_name"""
+    with open(base_file_name,'r') as fh:
+        idict = ParsePrm.ParseFromDealiiInput(fh)
+    idict['Mesh refinement']["Initial global refinement"] = str(global_refinement)
+    idict["Output directory"] = output_path
+    if os.path.isfile(output_file_name):
+        os.remove(output_file_name)  # haoyuan: run module isn't imported correctly
+    with open(output_file_name,'w') as ofh:
+        ParsePrm.ParseToDealiiInput(ofh, idict)
 
 
 def generate_slurm_file_peloton(slurm_file_name,ncpu,tasks_per_node,job_name,prmfile,**kwargs):
@@ -255,6 +270,104 @@ def generate_slurm_file_stempede2(slurm_file_name,ncpu,tasks_per_node,job_name,p
     #fh.write("mpirun -n {:d} ./aspect-impi {:s}\n".format(ncpu,prmfile))
     fh.close()
 
+class AFFINITY():
+    '''
+    class for running affinity tests
+    Attributes:
+        server(str): options for server
+        test_dir(str): directory to hold test files, pull path
+        tasks_per_node (int): number of tasks to run on each node.
+        base_prm_path: The 'base' input file that gets modified, if project is None,
+            this option points to a json file to import the settings
+        branch (str): branch to use, default is master
+        nodelist: (list of str) - list of node to run on
+        debug (int) : debug mode (1), normal (0)
+        max_core_count (int): maximum number for core count
+    '''
+    def __init__(self, test_dir, base_prm_path, server, tasks_per_node, refinement_levels, **kwargs):
+        self.test_dir = test_dir
+        self.base_prm_path = base_prm_path
+        self.core_counts = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 768, 1024]
+        openmpi = kwargs.get("openmpi", None)
+        self.server = server
+        self.tasks_per_node = tasks_per_node
+        self.cluster_label = "%s-%stasks-socket" % (self.server, tasks_per_node)
+        self.cluster_label += ("-openmpi-" + openmpi) # ?
+        self.refinement_levels = refinement_levels
+        self.setups = [1, ] # unused
+        try:
+            self.min_cores_for_refinement = kwargs["min_cores_for_refinement"]
+            assert(len(self.min_cores_for_refinement) == len(self.refinement_levels))
+        except KeyError:
+            self.min_cores_for_refinement = [0 for i in range(len(self.refinement_levels))]
+        try:
+            self.max_cores_for_refinement = kwargs["max_cores_for_refinement"]
+            assert(len(self.max_cores_for_refinement) == len(self.refinement_levels))
+        except KeyError:
+            self.max_cores_for_refinement = [1e31 for i in range(len(self.refinement_levels))]
+        self.project = kwargs.get("project", None)
+        self.branch = kwargs.get("branch", "master")
+        self.nodelist= kwargs.get('nodelist', [])  # list of nodes
+        pass
+
+    def __call__(self):
+        # create a directory to hold test results
+        tmp_dir = os.path.join(self.test_dir, 'tmp')
+        if not os.path.isdir(tmp_dir):
+            # make a new directory every time
+            # shutil.retree(tmp_dir)
+            # make a new directory if old one doesn't exist
+            os.mkdir(tmp_dir)
+        # make a subdirectory with the name of the cluster
+        cluster_dir = os.path.join(tmp_dir, self.cluster_label)
+        if not os.path.isdir(cluster_dir):
+            os.mkdir(cluster_dir)
+        # generate test files
+        for core_count in self.core_counts:
+            for i in range(len(self.refinement_levels)):
+                refinement = self.refinement_levels[i]
+                if( core_count >= self.min_cores_for_refinement[i]
+                    and
+                    core_count <= self.max_cores_for_refinement[i]):
+                    for setup in self.setups:
+                        jobname = "run_{:d}_{:d}_{:d}".format(core_count,refinement,setup)
+                        output_file = "{:s}/tmp/{:s}/output_{:d}_{:d}_{:d}".format(self.test_dir, self.cluster_label,core_count,refinement,setup)
+                        input_file = "{:s}/tmp/{:s}/input_{:d}_{:d}_{:d}".format(self.test_dir, self.cluster_label,core_count,refinement,setup)
+                        print(output_file)
+                        
+                        # do string replacement on the base input file
+                        # todo_affinity
+                        if self.project is not None:
+                            assert(os.path.isfile(self.base_prm_path))
+                            if not os.path.isdir(os.path.dirname(input_file)):
+                                os.mkdir(os.path.dirname(input_file))
+                            if self.project == "TwoDSubduction":
+                                CASE = CasesTwoDSubduction.CASE
+                                CASE_OPT = CasesTwoDSubduction.CASE_OPT
+                            else:
+                                NotImplementedError("Options for project %s is not implemented." % self.project)
+                            print("go to generate case") # debug
+                            CasesP.create_case_with_json(self.base_prm_path, CASE, CASE_OPT, reset_refinement_level=refinement,\
+                                fix_output_dir=os.path.dirname(input_file), fix_case_name=os.path.basename(input_file),\
+                                fix_case_output_dir="../%s" % os.path.basename(output_file))
+                            prm_file = os.path.join(input_file, "case.prm")
+                        else:
+                            generate_input_file_1(self.base_prm_path,input_file, output_file, refinement)
+                            # change the refinement level in the prm file
+                            prm_file = input_file
+                        slurm_file = input_file + ".slurm"
+                        # haoyuan: calls function to generate slurm file for one job
+                        if self.server == "peloton-ii":
+                            generate_slurm_file_peloton(slurm_file,core_count, self.tasks_per_node,jobname,prm_file, branch=self.branch)
+                            command_line="sbatch " + slurm_file
+                        elif self.server == "stampede2":
+                            generate_slurm_file(slurm_file,core_count,self.tasks_per_node,jobname,prm_file, branch=self.branch)
+                            command_line="sbatch " + slurm_file
+                        if self.server == "peloton-rome":
+                            generate_slurm_file_peloton_roma(slurm_file,core_count, self.tasks_per_node,jobname,prm_file, branch=self.branch, nodelist=self.nodelist)
+                            command_line="sbatch " + "-A billen " + slurm_file
+                        print(command_line)
+                        os.system(command_line)
 
 def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
     '''
