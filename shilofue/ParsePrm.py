@@ -498,6 +498,52 @@ def DumpToJson(filein, fileout):
     with open(fileout, 'w') as fout:
         json.dump(i_dict, fout, indent=2)
 
+#######
+# functions and classes for parsing slurm files
+#######
+
+def ParseFromSlurmBatchFile(fin):
+    '''
+    read options from a slurm batch file.
+    Note I allow multiple " " in front of each line, this may or may not be a good option.
+    '''
+    inputs = {}
+    inputs["header"] = []
+    inputs["config"] = {}
+    inputs["load"] = []
+    inputs["unload"] = []
+    inputs["command"] = []
+    line = fin.readline()
+    while line is not "":
+        if re.match('^(\t| )*#!', line):
+            line1 = re.sub('(\t| )*\n$', '', line)  # eliminate the \n at the end
+            inputs["header"].append(line1)
+        elif re.match('^(\t| )*#(\t| )*SBATCH', line):
+            line1 = re.sub('^(\t| )*#(\t| )*SBATCH ', '', line, count=1)
+            key, value = Utilities.ReadDashOptions(line1)
+            inputs["config"][key] = value
+        elif re.match('(\t| )*module(\t| )*load', line):
+            line1 = re.sub('(\t| )*module(\t| )*load(\t| )*', '', line, count=1)
+            value = re.sub('(\t| )*\n$', '', line1) 
+            inputs["load"].append(value)
+        elif re.match('(\t| )*module(\t| )*unload', line):
+            line1 = re.sub('(\t| )*module(\t| )*unload(\t| )*', '', line, count=1)
+            value = re.sub('(\t| )*\n$', '', line1) 
+            inputs["unload"].append(value)
+        elif re.match('(\t| )*srun', line):
+            temp = re.sub('(\t| )*srun(\t| )*', '', line, count=1)
+            line1 = re.sub('(\t| )*\n$', '',temp)  # eliminate the \n at the end
+            for temp in line1.split(' '):
+                if not re.match("^(\t| )*$", temp):
+                    # not ' '
+                    temp1 = re.sub('^(\t| )*', '', temp) # eliminate ' '
+                    value = re.sub('^(\t| )$', '', temp1)
+                    inputs["command"].append(value)
+        else:
+            pass
+        line = fin.readline()
+    return inputs
+
 
 def main():
     '''

@@ -82,3 +82,25 @@ def test_UpperMantleRheologyViscoPlastic():
     b = str(dislocation_creep)
     assert(a == "{'A': 8.1787e-17, 'd': 0.01, 'n': 1.0, 'm': 3.0, 'E': 300000.0, 'V': 6.9e-06}")
     assert(b == "{'A': 5.9076e-16, 'd': 0.01, 'n': 3.5, 'm': 0.0, 'E': 510000.0, 'V': 1.74e-05}")
+
+def test_ParseFromSlurmBatchFile():
+    '''
+    test function ParseFromSlurmBatchFile
+    Asserts:
+        options from reading the file, respectively
+    '''
+    source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse_prm')
+    _path = os.path.join(source_dir, 'job_p-billen.sh')
+    assert(os.path.isfile(_path))
+    with open(_path, 'r') as fin:
+        i_dict = ParsePrm.ParseFromSlurmBatchFile(fin)
+    # assertion
+    # 1. header
+    assert(len(i_dict["header"]) == 1 and i_dict["header"][0] == "#!/bin/bash -l")
+    # 2. configuration
+    assert(i_dict["config"]["--threads-per-core"] == '2')
+    # 3. load
+    assert(len(i_dict["load"]) == 2 and 'openmpi/4.1.0-mpi-io' in i_dict["load"])
+    # 4. command
+    assert(len(i_dict["command"]) == 2 and i_dict["command"][1] == "case.prm")
+    pass
