@@ -29,6 +29,7 @@ import re
 # import subprocess
 import numpy as np
 import json
+import copy
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -575,6 +576,50 @@ def ParseToSlurmBatchFile(fout, outputs):
     pass
 
 
+class SLURM_OPERATOR():
+    '''
+    Class for modifying slurm operation files
+    Attributes:
+        i_dict (dict): input options
+        o_dict (dict): output options
+    '''
+    def __init__(self, slurm_base_file_path):
+        assert(os.path.isfile(slurm_base_file_path))
+        with open(slurm_base_file_path, 'r') as fin:
+            self.i_dict = ParseFromSlurmBatchFile(fin)
+        self.check() # call the check function to check the contents of the file
+        self.o_dict = {}
+    
+    def check(self):
+        '''
+        check the options in inputs
+        '''
+        assert('-N' in self.i_dict['config'])
+        assert('-n' in self.i_dict['config'])
+        assert('--threads-per-core' in self.i_dict['config'])
+        assert('--tasks-per-node' in self.i_dict['config'])
+        assert('--partition' in self.i_dict['config'])
+
+
+    def SetAffinity(self, nnode, nthread, nthreads_per_cpu, **kwargs):
+        '''
+        set options for affinities
+        '''
+        partition = kwargs.get('partition', None)
+        self.o_dict = copy.deepcopy(self.i_dict)
+        self.o_dict['config']['-N'] = str(nnode)
+        self.o_dict['config']['-n'] = str(nthread)
+        self.o_dict['config']['--threads-per-core'] = str(nthreads_per_cpu)
+        self.o_dict['config']['--tasks-per-node'] = str(nthread//nnode)
+        if partition is not None:
+             self.o_dict['config']['--partition'] = partition
+
+
+    def __call__(self, slurm_file_path):
+        with open(slurm_file_path, 'w') as fout:
+            ParseToSlurmBatchFile(fout, self.o_dict)
+
+    pass
 
 def main():
     '''

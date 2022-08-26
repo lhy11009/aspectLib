@@ -110,13 +110,28 @@ def test_ParseToSlurmBatchFile():
     '''
     test function ParseToSlurmBatchFile
     '''
+    # test 1 read and write
     source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse_prm')
     _path = os.path.join(source_dir, 'job_p-billen.sh')
     o_path = os.path.join(test_dir, "slurm.sh")
+    if os.path.isfile(o_path):
+        os.remove(o_path)
     o_std_path = os.path.join(source_dir, "slurm_std.sh")
     with open(_path, 'r') as fin:
         i_dict = ParsePrm.ParseFromSlurmBatchFile(fin)
     with open(o_path, 'w') as fout:
         ParsePrm.ParseToSlurmBatchFile(fout, i_dict)
+    assert(os.path.isfile(o_path))  # compare outputs
+    assert(filecmp.cmp(o_path, o_std_path))
+    # test 2: use class, read, change affinity and write
+    source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse_prm')
+    _path = os.path.join(source_dir, 'job_p-billen.sh')
+    o_path = os.path.join(test_dir, "slurm_test2.sh")
+    if os.path.isfile(o_path):
+        os.remove(o_path)
+    o_std_path = os.path.join(source_dir, "slurm_std_test2.sh")
+    SlurmOperator = ParsePrm.SLURM_OPERATOR(_path)
+    SlurmOperator.SetAffinity(2, 64, 1, partition="high2")
+    SlurmOperator(o_path)
     assert(os.path.isfile(o_path))  # compare outputs
     assert(filecmp.cmp(o_path, o_std_path))
