@@ -104,3 +104,19 @@ def test_ParseFromSlurmBatchFile():
     # 4. command
     assert(len(i_dict["command"]) == 2 and i_dict["command"][1] == "case.prm")
     pass
+
+
+def test_ParseToSlurmBatchFile():
+    '''
+    test function ParseToSlurmBatchFile
+    '''
+    source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse_prm')
+    _path = os.path.join(source_dir, 'job_p-billen.sh')
+    o_path = os.path.join(test_dir, "slurm.sh")
+    o_std_path = os.path.join(source_dir, "slurm_std.sh")
+    with open(_path, 'r') as fin:
+        i_dict = ParsePrm.ParseFromSlurmBatchFile(fin)
+    with open(o_path, 'w') as fout:
+        ParsePrm.ParseToSlurmBatchFile(fout, i_dict)
+    assert(os.path.isfile(o_path))  # compare outputs
+    assert(filecmp.cmp(o_path, o_std_path))

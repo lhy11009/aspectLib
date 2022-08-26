@@ -21,6 +21,7 @@ Examples of usage:
 descriptions:
     copy and pasted all the function in the origin PARSE_OPERATION class
 """
+from multiprocessing.sharedctypes import Value
 import numpy as np
 import sys, os, argparse
 import re
@@ -543,6 +544,36 @@ def ParseFromSlurmBatchFile(fin):
             pass
         line = fin.readline()
     return inputs
+
+
+def ParseToSlurmBatchFile(fout, outputs):
+    '''
+    export options to a slurm batch file.
+    '''
+    contents = ""
+    # write header
+    for header in outputs["header"]:
+        contents += ("#" + header + "\n")
+    # write config
+    for key, value in outputs["config"].items():
+        if re.match('^--', key):
+            contents += ("#SBATCH" + " " + key + "=" + value + "\n")
+        elif re.match('^-', key):
+            contents += ("#SBATCH" + " " + key + " " + value + "\n")
+        else:
+            raise ValueError("The format of key (%s) is incorrect" % key)
+    # load and unload 
+    for module in outputs["load"]:
+        contents += ("module load %s\n" % module)
+    for module in outputs["unload"]:
+        contents += ("module unload %s\n" % module)
+    # command
+    contents += "srun"
+    for component in outputs["command"]:
+        contents += (" " + component)
+    fout.write(contents)
+    pass
+
 
 
 def main():
