@@ -554,7 +554,7 @@ def ParseToSlurmBatchFile(fout, outputs):
     contents = ""
     # write header
     for header in outputs["header"]:
-        contents += ("#" + header + "\n")
+        contents += (header + "\n")
     # write config
     for key, value in outputs["config"].items():
         if re.match('^--', key):
@@ -564,10 +564,10 @@ def ParseToSlurmBatchFile(fout, outputs):
         else:
             raise ValueError("The format of key (%s) is incorrect" % key)
     # load and unload 
-    for module in outputs["load"]:
-        contents += ("module load %s\n" % module)
     for module in outputs["unload"]:
         contents += ("module unload %s\n" % module)
+    for module in outputs["load"]:
+        contents += ("module load %s\n" % module)
     # command
     contents += "srun"
     for component in outputs["command"]:
@@ -600,20 +600,31 @@ class SLURM_OPERATOR():
         assert('--tasks-per-node' in self.i_dict['config'])
         assert('--partition' in self.i_dict['config'])
 
-
     def SetAffinity(self, nnode, nthread, nthreads_per_cpu, **kwargs):
         '''
         set options for affinities
         '''
         partition = kwargs.get('partition', None)
         self.o_dict = copy.deepcopy(self.i_dict)
-        self.o_dict['config']['-N'] = str(nnode)
+        self.o_dict['config']['-N'] = str(int(nnode))
         self.o_dict['config']['-n'] = str(nthread)
         self.o_dict['config']['--threads-per-core'] = str(nthreads_per_cpu)
-        self.o_dict['config']['--tasks-per-node'] = str(nthread//nnode)
+        self.o_dict['config']['--tasks-per-node'] = str(int(nthread//nnode))
         if partition is not None:
-             self.o_dict['config']['--partition'] = partition
+             self.o_dict['config']['--partition'] = partition 
 
+    def SetName(self, _name):
+        '''
+        set the name of the job
+        '''
+        self.o_dict['config']['--job-name'] = _name
+
+    def SetCommand(self, branch, prm_file):
+        '''
+        Set the command to use
+        '''
+        self.o_dict['command'][0] = "${ASPECT_SOURCE_DIR}/build_%s/aspect" % branch
+        self.o_dict['command'][1] = prm_file
 
     def __call__(self, slurm_file_path):
         with open(slurm_file_path, 'w') as fout:

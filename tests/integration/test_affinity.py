@@ -55,20 +55,21 @@ def test_affinity_base():
     branch = "master_TwoD"
     prm_path = os.path.join(ASPECT_LAB_DIR, "files/AffinityTest/spherical_shell_expensive_solver.prm")
     assert(os.path.isfile(prm_path))
+    slurm_base_path = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "220810", "job_p-billen.sh")
     # test 1: rene's affinity test 
-    Affinity = AFFINITY(o_dir, prm_path, server, tasks_per_node, refinement_levels, openmpi=openmpi, branch=branch)
+    Affinity = AFFINITY(o_dir, prm_path, slurm_base_path, server, tasks_per_node, refinement_levels, openmpi=openmpi, branch=branch)
     Affinity()
     # check the parent
     case_parent_dir = os.path.join(o_dir, "tmp", "peloton-rome-128tasks-socket-openmpi-4.1.0")
     assert(os.path.isdir(case_parent_dir))
     # check one child - 128 cpus, refinement level 4
-    prm_128_4_path = os.path.join(case_parent_dir, "input_128_4_1")
+    prm_128_4_path = os.path.join(case_parent_dir, "input_128_4_1.prm")
     assert(os.path.isfile(prm_128_4_path))
-    prm_128_4_path_std = os.path.join(test_source_dir, "input_128_4_1_std")
+    prm_128_4_path_std = os.path.join(test_source_dir, "input_128_4_1_std.prm")
     assert(filecmp.cmp(prm_128_4_path, prm_128_4_path_std))
-    prm_128_4_slurm_path = os.path.join(case_parent_dir, "input_128_4_1.slurm")
+    prm_128_4_slurm_path = os.path.join(case_parent_dir, "input_128_4_1.sh")
     assert(os.path.isfile(prm_128_4_slurm_path))
-    prm_128_4_slurm_path_std = os.path.join(test_source_dir, "input_128_4_1_std.slurm")
+    prm_128_4_slurm_path_std = os.path.join(test_source_dir, "input_128_4_1_std.sh")
     assert(filecmp.cmp(prm_128_4_slurm_path, prm_128_4_slurm_path_std))
 
 

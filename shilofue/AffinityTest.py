@@ -7,6 +7,7 @@ This outputs:
 
   - a figure of results
 """ 
+from sre_constants import SRE_FLAG_UNICODE
 import numpy as np
 import sys, os, argparse
 # on peloton,this is no such modules
@@ -46,11 +47,15 @@ Examples of usage: \n\
         (substitute -i and -o options with your own prm file and output directory)\n\
         (-t option gives the number of tasks per node, check this with the set ups of server)\n\
         (-m is a manual upper limit of the cpus to use)\n\
-        python shilofue/AffinityTest.py run_tests -s peloton-rome -t 128\
+        (-rf is a list of refinment level to test)\n\
+        (minc and maxc are lists of the minimum cores and maximum cores to run on, for each level of refinement, respectively.)\n\
+        python -m shilofue.AffinityTest run_tests -s peloton-rome -t 128\
  -i /home/lochy/ASPECT_PROJECT/aspectLib/files/AffinityTest/spherical_shell_expensive_solver.prm\
  -o $TwoDSubduction_DIR/rene_affinity_test\
  -nl topaz-0 topaz-2 topaz-3\
- -m 385\n\
+ -m 385\
+ -rf 2 3\
+ -minc 1 1 -maxc 16 16\n\
 \n\
         (for running affinity tests for a research project: -i is the json for the project cases instead, -p is the name\
 of the project.\n\
@@ -284,9 +289,10 @@ class AFFINITY():
         debug (int) : debug mode (1), normal (0)
         max_core_count (int): maximum number for core count
     '''
-    def __init__(self, test_dir, base_prm_path, server, tasks_per_node, refinement_levels, **kwargs):
+    def __init__(self, test_dir, base_prm_path, slurm_base_path, server, tasks_per_node, refinement_levels, **kwargs):
         self.test_dir = test_dir
         self.base_prm_path = base_prm_path
+        self.slurm_base_path = slurm_base_path
         self.core_counts = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 768, 1024]
         openmpi = kwargs.get("openmpi", None)
         self.server = server
@@ -322,7 +328,12 @@ class AFFINITY():
         cluster_dir = os.path.join(tmp_dir, self.cluster_label)
         if not os.path.isdir(cluster_dir):
             os.mkdir(cluster_dir)
+        # scripts outputs
+        bash_output_path = os.path.join(cluster_dir, 'run_tests.sh')
+        bash_contents = "#!/bin/bash" # scripts for running all the tests
         # generate test files
+        print(self.core_counts)  # debug
+        print(self.refinement_levels)
         for core_count in self.core_counts:
             for i in range(len(self.refinement_levels)):
                 refinement = self.refinement_levels[i]
@@ -331,43 +342,43 @@ class AFFINITY():
                     core_count <= self.max_cores_for_refinement[i]):
                     for setup in self.setups:
                         jobname = "run_{:d}_{:d}_{:d}".format(core_count,refinement,setup)
-                        output_file = "{:s}/tmp/{:s}/output_{:d}_{:d}_{:d}".format(self.test_dir, self.cluster_label,core_count,refinement,setup)
-                        input_file = "{:s}/tmp/{:s}/input_{:d}_{:d}_{:d}".format(self.test_dir, self.cluster_label,core_count,refinement,setup)
-                        print(output_file)
+                        output_dir = "{:s}/tmp/{:s}/output_{:d}_{:d}_{:d}".format(self.test_dir, self.cluster_label,core_count,refinement,setup)
+                        input_dir = "{:s}/tmp/{:s}/input_{:d}_{:d}_{:d}".format(self.test_dir, self.cluster_label,core_count,refinement,setup)
+                        slurm_file_output_path = os.path.join(input_dir, "job.sh")
+                        prm_file = os.path.join(input_dir, "case.prm")
+                        if not os.path.isdir(os.path.dirname(input_dir)):
+                            os.mkdir(os.path.dirname(input_dir))
                         
                         # do string replacement on the base input file
-                        # todo_affinity
                         if self.project is not None:
                             assert(os.path.isfile(self.base_prm_path))
-                            if not os.path.isdir(os.path.dirname(input_file)):
-                                os.mkdir(os.path.dirname(input_file))
                             if self.project == "TwoDSubduction":
                                 CASE = CasesTwoDSubduction.CASE
                                 CASE_OPT = CasesTwoDSubduction.CASE_OPT
                             else:
                                 NotImplementedError("Options for project %s is not implemented." % self.project)
-                            print("go to generate case") # debug
                             CasesP.create_case_with_json(self.base_prm_path, CASE, CASE_OPT, reset_refinement_level=refinement,\
-                                fix_output_dir=os.path.dirname(input_file), fix_case_name=os.path.basename(input_file),\
-                                fix_case_output_dir="../%s" % os.path.basename(output_file))
-                            prm_file = os.path.join(input_file, "case.prm")
+                                fix_output_dir=os.path.dirname(input_dir), fix_case_name=os.path.basename(input_dir),\
+                                fix_case_output_dir="../%s" % os.path.basename(output_dir))
+                            print("case generated: %s" % prm_file)
                         else:
-                            generate_input_file_1(self.base_prm_path,input_file, output_file, refinement)
+                            generate_input_file_1(self.base_prm_path, prm_file, os.path.basename(output_dir), refinement)
+                            print("case generated: %s" % input_dir)
                             # change the refinement level in the prm file
-                            prm_file = input_file
-                        slurm_file = input_file + ".slurm"
                         # haoyuan: calls function to generate slurm file for one job
-                        if self.server == "peloton-ii":
-                            generate_slurm_file_peloton(slurm_file,core_count, self.tasks_per_node,jobname,prm_file, branch=self.branch)
-                            command_line="sbatch " + slurm_file
-                        elif self.server == "stampede2":
-                            generate_slurm_file(slurm_file,core_count,self.tasks_per_node,jobname,prm_file, branch=self.branch)
-                            command_line="sbatch " + slurm_file
-                        if self.server == "peloton-rome":
-                            generate_slurm_file_peloton_roma(slurm_file,core_count, self.tasks_per_node,jobname,prm_file, branch=self.branch, nodelist=self.nodelist)
-                            command_line="sbatch " + "-A billen " + slurm_file
-                        print(command_line)
-                        os.system(command_line)
+                        SlurmOperator = ParsePrm.SLURM_OPERATOR(self.slurm_base_path)
+                        SlurmOperator.SetAffinity(np.ceil(core_count/self.tasks_per_node), core_count, 1)
+                        SlurmOperator.SetCommand(self.branch, os.path.basename(prm_file))
+                        SlurmOperator.SetName(jobname)
+                        SlurmOperator(slurm_file_output_path)
+                        # contents in the scripts: sbatch cases
+                        bash_contents += "\ncd %s" % os.path.basename(input_dir)
+                        bash_contents += "\nsbatch job.sh"
+                        if self.project is not None:
+                            bash_contents += "\ncd .."
+        with open(bash_output_path, 'w') as fout:
+            fout.write(bash_contents)
+
 
 def do_tests(server, _path, tasks_per_node, base_input_path, **kwargs):
     '''
@@ -663,6 +674,9 @@ def main():
     parser.add_argument('-b', '--branch', type=str, default=None, help='The branch of aspect to test')
     parser.add_argument('-t', '--tasks_per_node', type=int, default=32, help='Number of task to run on each node')
     parser.add_argument('-nl', '--nodelist', nargs="+", default=[], help='list of nodes to run on, separate with blank in inputs')
+    parser.add_argument('-rf', '--refinement_levels', nargs="+", default=[], help='list of refinement level to run on, separate with blank in inputs')
+    parser.add_argument('-minc', '--min_cores_for_refinement', nargs="+", default=[], help='list of minimum cores to run on, separate with blank in inputs')
+    parser.add_argument('-maxc', '--max_cores_for_refinement', nargs="+", default=[], help='list of maximum cores to run on, separate with blank in inputs')
     parser.add_argument('-d', '--debug', type=int, default=0,\
             help='Run in debug mode by only deploying\
             a few cases with low number of nodes')
@@ -681,10 +695,20 @@ def main():
 
     # commands
     if commend == 'run_tests':
-        # base_input_path = os.path.join(ASPECT_LAB_DIR, 'files', 'AffinityTest', 'spherical_shell_expensive_solver.prm')
         assert(os.path.isdir(arg.outputs))  # check output dir exists
-        do_tests(arg.server, arg.outputs, arg.tasks_per_node, arg.inputs, branch=arg.branch, nodelist=arg.nodelist,\
-            debug=arg.debug, max_core_count=arg.max_cpu, project=arg.project)  # create and submit jobs
+        # do_tests(arg.server, arg.outputs, arg.tasks_per_node, arg.inputs, branch=arg.branch, nodelist=arg.nodelist,\
+        #    debug=arg.debug, max_core_count=arg.max_cpu, project=arg.project)  # create and submit jobs
+        openmpi =  "4.1.0"
+        branch = "master_TwoD"
+        slurm_base_path = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "220810", "job_p-billen.sh")
+        refinement_levels = [int(rf) for rf in arg.refinement_levels]
+        min_cores_for_refinement = [int(mc) for mc in arg.min_cores_for_refinement]
+        max_cores_for_refinement = [int(mc) for mc in arg.max_cores_for_refinement]
+        Affinity = AFFINITY(arg.outputs, arg.inputs, slurm_base_path, arg.server, arg.tasks_per_node,\
+            refinement_levels, openmpi=openmpi, branch=branch, min_cores_for_refinement=min_cores_for_refinement,\
+            max_cores_for_refinement=max_cores_for_refinement, project=arg.project)
+        Affinity()
+
     elif commend == 'analyze_results':
         # example:
         # python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results
