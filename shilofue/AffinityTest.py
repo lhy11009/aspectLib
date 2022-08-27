@@ -111,6 +111,9 @@ def generate_input_file_1(base_file_name, output_file_name, output_path, global_
         idict = ParsePrm.ParseFromDealiiInput(fh)
     idict['Mesh refinement']["Initial global refinement"] = str(global_refinement)
     idict["Output directory"] = output_path
+    output_dir = os.path.dirname(output_file_name)
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
     if os.path.isfile(output_file_name):
         os.remove(output_file_name)  # haoyuan: run module isn't imported correctly
     with open(output_file_name,'w') as ofh:
