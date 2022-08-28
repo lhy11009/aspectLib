@@ -1,4 +1,4 @@
-##!/bin/bash -l
+#!/bin/bash -l
 #SBATCH -J task
 #SBATCH -N 1
 #SBATCH -n 64

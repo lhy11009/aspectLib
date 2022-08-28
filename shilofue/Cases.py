@@ -122,6 +122,13 @@ it only takes effect if the input is positiveh",\
         if_wb = self.values[8]
         return self.values[0], inputs, if_wb
 
+    def to_configure_prm(self):
+        '''
+        Interface to configure_prm
+        '''
+        refinement_level = self.values[15]
+        return refinement_level
+
     def wb_inputs_path(self):
         '''
         Interface to wb_inputs
@@ -351,6 +358,15 @@ class CASE():
         else:
             # just apply the configuration
             self.idict = func(self.idict, config)
+ 
+    def configure_prm(self, refinement_level):
+        '''
+        configure the prm file
+        '''
+        o_dict = self.idict.copy()
+        o_dict["Mesh refinement"]["Initial global refinement"] = str(refinement_level)
+        self.idict = o_dict
+        pass
     
     def configure_wb(self):
         '''
