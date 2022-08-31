@@ -147,12 +147,17 @@ main(){
         # Innputs:
         # Terninal Outputs
         ##
-        shift; shift
+        shift;
+        project="$1" 
+        shift;
         case_dir="$1"; shift
         parse_options $@
-        local_dir=${TwoDSubduction_DIR}
+        local query="${project}_DIR"
+        local_dir=${!query}
         stampede2_dir=`awk '{if ($2 ~ /'"${project}_DIR"'/){split($2, array, "="); gsub("\"", "", array[2]) ;print array[2]}}' "${ASPECT_LAB_DIR}/env/enable_stampede2.sh"`
+        echo "stampede2_dir: ${stampede2_dir}"  # debug
         local stampede2_addr=$(eval "awk '{ if(\$1 == \"stampede2\") print \$2;}' $SERVER_LIST")
+        echo "stampede2_addr: ${stampede2_addr}"  # debug
         rsync_server "${case_dir}" "${local_dir}" "${stampede2_dir}" "${stampede2_addr}"
     elif [[ "$1" = "ucd" && "$2" = "TwoDSubduction" ]]; then
         # TODO
