@@ -16,6 +16,7 @@ import numpy as np
 import math
 import shilofue.Cases as CasesP
 import shilofue.TwoDSubduction0.Cases as CasesTwoDSubduction
+import shilofue.ThDSubduction0.Cases as CasesThDSubduction
 import shilofue.ParsePrm as ParsePrm
 try:
     import pathlib
@@ -48,12 +49,14 @@ Examples of usage: \n\
     example:\n\
 \n\
         (substitute -i and -o options with your own prm file and output directory)\n\
+        (-sl is a slurm file to read)\n\
         (-t option gives the number of tasks per node, check this with the set ups of server)\n\
         (-m is a manual upper limit of the cpus to use)\n\
         (-rf is a list of refinment level to test)\n\
         (minc and maxc are lists of the minimum cores and maximum cores to run on, for each level of refinement, respectively.)\n\
-        python -m shilofue.AffinityTest run_tests -s peloton-rome -t 128\
- -i /home/lochy/ASPECT_PROJECT/aspectLib/files/AffinityTest/spherical_shell_expensive_solver.prm\
+        python -m shilofue.AffinityTest run_tests -s peloton-rome -t 128\n\
+ -i /home/lochy/ASPECT_PROJECT/aspectLib/files/AffinityTest/spherical_shell_expensive_solver.prm\n\
+ -sl /home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/08282022/job_skx-normal.sh -o $ThDSubduction_DIR/stampede2_affinity_test\
  -o $TwoDSubduction_DIR/rene_affinity_test\
  -nl topaz-0 topaz-2 topaz-3\
  -m 385\
@@ -111,7 +114,6 @@ class AFFINITY():
         self.test_dir = test_dir
         self.base_prm_path = base_prm_path
         self.slurm_base_path = slurm_base_path
-        self.core_counts = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 768, 1024]
         openmpi = kwargs.get("openmpi", None)
         self.server = server
         self.tasks_per_node = tasks_per_node
@@ -119,15 +121,24 @@ class AFFINITY():
         self.cluster_label += ("-openmpi-" + openmpi) # ?
         self.refinement_levels = refinement_levels
         self.setups = [1, ] # unused
-        try:
-            self.min_cores_for_refinement = kwargs["min_cores_for_refinement"]
+        self.core_counts = []
+        for i in range(30):
+            core_raw = 2.0**(i/2.0)
+            if core_raw <= tasks_per_node:
+                core = int(core_raw)
+            else:
+                core = int(core_raw//tasks_per_node * tasks_per_node)
+            if not core in self.core_counts:
+                self.core_counts.append(core)
+        self.min_cores_for_refinement = kwargs.get("min_cores_for_refinement", [])
+        if len(self.min_cores_for_refinement) > 0:
             assert(len(self.min_cores_for_refinement) == len(self.refinement_levels))
-        except KeyError:
+        else:
             self.min_cores_for_refinement = [0 for i in range(len(self.refinement_levels))]
-        try:
-            self.max_cores_for_refinement = kwargs["max_cores_for_refinement"]
+        self.max_cores_for_refinement = kwargs.get("max_cores_for_refinement", [])
+        if len(self.max_cores_for_refinement) > 0:
             assert(len(self.max_cores_for_refinement) == len(self.refinement_levels))
-        except KeyError:
+        else:
             self.max_cores_for_refinement = [1e31 for i in range(len(self.refinement_levels))]
         self.project = kwargs.get("project", None)
         self.branch = kwargs.get("branch", "master")
@@ -149,13 +160,18 @@ class AFFINITY():
             if self.project == "TwoDSubduction":
                 CASE = CasesTwoDSubduction.CASE
                 CASE_OPT = CasesTwoDSubduction.CASE_OPT
+            if self.project == "ThDSubduction":
+                CASE = CasesThDSubduction.CASE
+                CASE_OPT = CasesThDSubduction.CASE_OPT
             else:
-                NotImplementedError("Options for project %s is not implemented." % self.project)
+                raise NotImplementedError("Options for project %s is not implemented." % self.project)
+            # Call this in order to include all the related files
             CasesP.create_case_with_json(self.base_prm_path, CASE, CASE_OPT, reset_refinement_level=refinement,\
                 fix_output_dir=os.path.dirname(input_dir), fix_case_name=os.path.basename(input_dir),\
                 fix_case_output_dir="../%s" % os.path.basename(output_dir))
             print("case generated: %s" % prm_file)
         else:
+            # There is only a prm file to take care of.
             generate_input_file_1(self.base_prm_path, prm_file, os.path.basename(output_dir), refinement)
             print("case generated: %s" % input_dir)
             # change the refinement level in the prm file
@@ -181,15 +197,29 @@ class AFFINITY():
         # scripts outputs
         bash_output_path = os.path.join(cluster_dir, 'run_tests.sh')
         bash_contents = "#!/bin/bash" # scripts for running all the tests
+        # print information of refinements and core counts
+        for i in range(len(self.refinement_levels)):
+            refinement = self.refinement_levels[i]
+            print("refinement: ", refinement)
+            is_first = True
+            for core_count in self.core_counts:
+                if( core_count >= self.min_cores_for_refinement[i]
+                    and
+                    core_count <= self.max_cores_for_refinement[i]):
+                    if is_first:
+                        print("core: ")
+                        is_first = False
+                    print(" %d" % core_count)
+            print("\n")
         # generate test files
-        print(self.core_counts)  # debug
-        print(self.refinement_levels)
         for core_count in self.core_counts:
             for i in range(len(self.refinement_levels)):
                 refinement = self.refinement_levels[i]
                 if( core_count >= self.min_cores_for_refinement[i]
                     and
                     core_count <= self.max_cores_for_refinement[i]):
+                    if is_first:
+                        is_first = False
                     for setup in self.setups:
                         jobname = "run_{:d}_{:d}_{:d}".format(core_count,refinement,setup)
                         output_dir = "{:s}/tmp/{:s}/output_{:d}_{:d}_{:d}".format(self.test_dir, self.cluster_label,core_count,refinement,setup)
@@ -381,6 +411,7 @@ def main():
             but meant to manually put a limit on that.\
             This doesn't work with the debug mode.")
     parser.add_argument('-p', '--project', type=str, default=None, help='A specific project to test, for default tests, leave this blank')
+    parser.add_argument('-sl', '--slurm_base_path', type=str, default='', help='the slurm file to read')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -390,16 +421,21 @@ def main():
 
     # commands
     if commend == 'run_tests':
-        assert(os.path.isdir(arg.outputs))  # check output dir exists
+        if os.path.isdir(arg.outputs):
+            proceed = input("Target exists, Delete older directory? (y/n)")  # check output dir exists
+            if not proceed == 'y':
+                exit(0)
+            else:
+                shutil.rmtree(arg.outputs)
+        os.mkdir(arg.outputs)
         # do_tests(arg.server, arg.outputs, arg.tasks_per_node, arg.inputs, branch=arg.branch, nodelist=arg.nodelist,\
         #    debug=arg.debug, max_core_count=arg.max_cpu, project=arg.project)  # create and submit jobs
         openmpi =  "4.1.0"
         branch = "master_TwoD"
-        slurm_base_path = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "220810", "job_p-billen.sh")
         refinement_levels = [int(rf) for rf in arg.refinement_levels]
         min_cores_for_refinement = [int(mc) for mc in arg.min_cores_for_refinement]
         max_cores_for_refinement = [int(mc) for mc in arg.max_cores_for_refinement]
-        Affinity = AFFINITY(arg.outputs, arg.inputs, slurm_base_path, arg.server, arg.tasks_per_node,\
+        Affinity = AFFINITY(arg.outputs, arg.inputs, arg.slurm_base_path, arg.server, arg.tasks_per_node,\
             refinement_levels, openmpi=openmpi, branch=branch, min_cores_for_refinement=min_cores_for_refinement,\
             max_cores_for_refinement=max_cores_for_refinement, project=arg.project)
         Affinity()

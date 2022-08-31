@@ -109,6 +109,12 @@ different age will be adjusted.",\
         setup_method = self.values[self.start+26] # method of seting up slabs
         assert(setup_method in ['manual', '2d_consistent'])
 
+    def reset_refinement(self, refinement_level):
+        '''
+        Note:
+            reload function from base class
+        '''
+        self.values[self.start+16] = refinement_level
 
     def to_configure_prm(self):
         '''

@@ -515,6 +515,7 @@ def ParseFromSlurmBatchFile(fin):
     inputs["load"] = []
     inputs["unload"] = []
     inputs["command"] = []
+    inputs["others"] = []
     line = fin.readline()
     while line is not "":
         if re.match('^(\t| )*#!', line):
@@ -534,6 +535,17 @@ def ParseFromSlurmBatchFile(fin):
             inputs["unload"].append(value)
         elif re.match('(\t| )*srun', line):
             temp = re.sub('(\t| )*srun(\t| )*', '', line, count=1)
+            inputs["command"].append("srun")
+            line1 = re.sub('(\t| )*\n$', '',temp)  # eliminate the \n at the end
+            for temp in line1.split(' '):
+                if not re.match("^(\t| )*$", temp):
+                    # not ' '
+                    temp1 = re.sub('^(\t| )*', '', temp) # eliminate ' '
+                    value = re.sub('^(\t| )$', '', temp1)
+                    inputs["command"].append(value)
+        elif re.match('(\t| )*ibrun', line):
+            temp = re.sub('(\t| )*ibrun(\t| )*', '', line, count=1)
+            inputs["command"].append("ibrun")
             line1 = re.sub('(\t| )*\n$', '',temp)  # eliminate the \n at the end
             for temp in line1.split(' '):
                 if not re.match("^(\t| )*$", temp):
@@ -542,6 +554,7 @@ def ParseFromSlurmBatchFile(fin):
                     value = re.sub('^(\t| )$', '', temp1)
                     inputs["command"].append(value)
         else:
+            inputs["others"].append(re.sub('(\t| )*\n$', '', line))
             pass
         line = fin.readline()
     return inputs
@@ -568,10 +581,17 @@ def ParseToSlurmBatchFile(fout, outputs):
         contents += ("module unload %s\n" % module)
     for module in outputs["load"]:
         contents += ("module load %s\n" % module)
+    # others
+    for line in outputs['others']:
+        contents += (line + '\n')
     # command
-    contents += "srun"
+    is_first = True
     for component in outputs["command"]:
-        contents += (" " + component)
+        if is_first:
+            is_first = False
+        else:
+            contents += " "
+        contents += component
     fout.write(contents)
     pass
 
@@ -623,8 +643,8 @@ class SLURM_OPERATOR():
         '''
         Set the command to use
         '''
-        self.o_dict['command'][0] = "${ASPECT_SOURCE_DIR}/build_%s/aspect" % branch
-        self.o_dict['command'][1] = prm_file
+        self.o_dict['command'][1] = "${ASPECT_SOURCE_DIR}/build_%s/aspect" % branch
+        self.o_dict['command'][2] = prm_file
 
     def __call__(self, slurm_file_path):
         with open(slurm_file_path, 'w') as fout:

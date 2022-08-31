@@ -102,7 +102,7 @@ def test_ParseFromSlurmBatchFile():
     # 3. load
     assert(len(i_dict["load"]) == 2 and 'openmpi/4.1.0-mpi-io' in i_dict["load"])
     # 4. command
-    assert(len(i_dict["command"]) == 2 and i_dict["command"][1] == "case.prm")
+    assert(len(i_dict["command"]) == 3 and i_dict["command"][2] == "case.prm")
     pass
 
 
