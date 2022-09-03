@@ -597,8 +597,9 @@ def SetEndStep(o_dict, end_step):
             # pop option for "End time"
             _ = o_dict["Termination criteria"].pop("End time")
         o_dict["Termination criteria"]["End step"] = str(end_step)
+        o_dict["Termination criteria"]["Termination criteria"] = "end step"
     else:
-        o_dict["Termination criteria"] = {"End step": str(end_step)}
+        o_dict["Termination criteria"] = {"End step": str(end_step), "Termination criteria": "end step"}
     return o_dict
     
 

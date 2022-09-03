@@ -80,13 +80,13 @@ of the project.\n\
         ")
 
     
-def generate_input_file_1(base_file_name, output_file_name, output_path, global_refinement):
+def generate_input_file_1(base_file_name, output_file_name, output_dir, global_refinement):
     """Read the 'base' input file from base_file_name, replace strings 
     using functions defined in ParsePrm.py, and write new output file to output_file_name"""
     with open(base_file_name,'r') as fh:
         idict = ParsePrm.ParseFromDealiiInput(fh)
     idict['Mesh refinement']["Initial global refinement"] = str(global_refinement)
-    idict["Output directory"] = output_path
+    idict["Output directory"] = os.path.join("..", output_dir)
     output_dir = os.path.dirname(output_file_name)
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
@@ -275,6 +275,9 @@ class AFFINITY():
         SlurmOperator.SetCommand(self.branch, os.path.basename(prm_file))
         SlurmOperator.SetName(jobname)
         SlurmOperator(slurm_file_output_path)
+    
+    def get_cluster_label(self):
+        return self.cluster_label
 
     def __call__(self):
         # create a directory to hold test results
@@ -322,6 +325,7 @@ class AFFINITY():
                         # contents in the scripts: sbatch cases
                         bash_contents += "\ncd %s" % os.path.basename(input_dir)
                         bash_contents += "\nsbatch job.sh"
+                        bash_contents += "\ncd .."
                         if self.project is not None:
                             bash_contents += "\ncd .."
         with open(bash_output_path, 'w') as fout:
@@ -497,6 +501,15 @@ def create_tests_with_json(json_opt, AFFINITY, AFFINITY_OPT, **kwargs):
                         project=Affinity_Opt.get_project(), branch=Affinity_Opt.get_branch(),\
                         nodelist=Affinity_Opt.get_node_list())
     Affinity()
+    # save a copy of the json file
+    json_output_path = os.path.join(Affinity_Opt.get_test_dir(),\
+                                    "affinity_test_" + Affinity.get_cluster_label() + ".json")
+    if type(json_opt) == str:
+        shutil.copy2(json_opt, json_output_path)
+    elif type(json_opt) == dict:
+        with open(json_output_path, 'w') as fout:
+            json.dump(fout, json_opt)
+    print("Json file saved: %s" % json_output_path)
 
 def main():
     '''

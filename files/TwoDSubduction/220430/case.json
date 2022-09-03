@@ -1,0 +1,41 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220324",
+  "output directory": "/home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT_peierls",
+  "name": "eba_cdpt_SA80.0_OA40.0",
+  "include fast first step": 1,
+  "geometry": "chunk",
+  "potential temperature": 1573.0,
+  "boundary condition": {
+    "model": "all free slip"
+  },
+  "use world builder": 1,
+  "world builder": {
+    "plate age method": "adjust box width",
+    "box width before adjusting": 15570000.0,
+    "adjust mesh with box width": 1,
+    "subducting plate": {
+      "age trench": 80000000.0,
+      "sp rate": 0.05
+    },
+    "overiding plate": {
+      "age": 40000000.0,
+      "transit": {
+        "age": 20000000.0,
+        "length": 700000.0
+      }
+    }
+  },
+  "include peierls creep": 0,
+  "peierls creep": {
+    "scheme": "MK10",
+    "two stage intial time": -1.0
+  },
+  "shear zone": {
+    "coupling the eclogite phase to shear zone viscosity": 1
+  },
+  "additional files": [
+    "job_rome.sh",
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ]
+}
