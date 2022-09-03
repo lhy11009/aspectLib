@@ -95,7 +95,7 @@ def ParseFromDealiiInput(fin):
     """
     inputs = {}
     line = fin.readline()
-    while line is not "":
+    while line != "":
         # Inputs formats are
         # comment: "# some comment"
         # start and end of new section:
@@ -517,7 +517,7 @@ def ParseFromSlurmBatchFile(fin):
     inputs["command"] = []
     inputs["others"] = []
     line = fin.readline()
-    while line is not "":
+    while line != "":
         if re.match('^(\t| )*#!', line):
             line1 = re.sub('(\t| )*\n$', '', line)  # eliminate the \n at the end
             inputs["header"].append(line1)

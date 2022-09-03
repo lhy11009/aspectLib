@@ -96,6 +96,101 @@ def generate_input_file_1(base_file_name, output_file_name, output_path, global_
         ParsePrm.ParseToDealiiInput(ofh, idict)
 
 
+class AFFINITY_OPT(Utilities.JSON_OPT):
+    '''
+    Define a class to work with AFFINITY
+    List of keys:
+    '''
+    def __init__(self):
+        '''
+        Initiation, first perform parental class's initiation,
+        then perform daughter class's initiation.
+        '''
+        # todo_json
+        Utilities.JSON_OPT.__init__(self)
+        self.add_key("Test directory", str, ["test directory"], ".", nick='test_dir')
+        self.add_key("Base prm/json file (inputs)", str, ["base file"], "./test.prm", nick='base_file')
+        self.add_key("Slurm file (inputs)", str, ["slurm file"], "./slurm.sh", nick='slurm_base_path')
+        self.add_key("Server", str, ["server"], "peloton", nick='server')
+        self.add_key("Tasks per node", int, ["tasks per node"], 32, nick='tasks_per_node')
+        self.add_key("Refinement level, note this is a summarized parameter of the refinement scheme assigned,\
+it only takes effect if the input is positiveh",\
+            list, ["refinement levels"], [1], nick="refinement_levels")
+        self.add_key("Openmpi version", str, ["openmpi version"], "", nick='openmpi')
+        self.add_key("Minimum cpus for each refinement level, repectively", list, ["minimum cores for refinement"], [], nick="min_cores_for_refinement")
+        self.add_key("Maximum cpus for each refinement level, repectively", list, ["maximum cores for refinement"], [], nick="max_cores_for_refinement")
+        self.add_key("project", str, ["project"], "", nick="project")
+        self.add_key("branch", str, ["branch"], "master", nick="branch")
+        self.add_key("List of nodes to test", list, ["node list"], [], nick="nodelist")
+    
+    def check(self):
+        base_file = Utilities.var_subs(self.values[1])
+        assert(os.path.isfile(base_file))
+        assert(base_file.split('.')[-1] in ["json", "prm"])
+        slurm_base_path = Utilities.var_subs(self.values[2])
+        server = self.values[3]
+        assert(server in ['peloton-rome', 'peloton-high2', 'stampede2'])
+        refinement_levels = self.values[5]  # assert refinement levels are integers
+        for refinement_level in refinement_levels:
+            assert(type(refinement_level) == int) 
+        min_cores_for_refinement = self.values[7]
+        for core_count in min_cores_for_refinement:
+            assert(type(core_count) == int)
+        max_cores_for_refinement = self.values[8]
+        for core_count in max_cores_for_refinement:
+            assert(type(core_count) == int)
+    
+    def to_init(self):
+        '''
+        interface to the init function of class AFFINITY
+        '''
+        test_dir = Utilities.var_subs(self.values[0])
+        base_file = Utilities.var_subs(self.values[1])
+        slurm_base_path = Utilities.var_subs(self.values[2])
+        server = self.values[3]
+        tasks_per_node = self.values[4]
+        refinement_levels = self.values[5]
+        return test_dir, base_file, slurm_base_path, server, tasks_per_node, refinement_levels
+    
+    def get_openmpi_version(self):
+        openmpi = self.values[6]
+        if openmpi != "":
+            return openmpi
+        else:
+            return None
+    
+    def get_min_cores_for_refinement(self):
+        min_cores_for_refinement = self.values[7]
+        return min_cores_for_refinement
+    
+    def get_max_cores_for_refinement(self):
+        max_cores_for_refinement = self.values[8]
+        return max_cores_for_refinement
+    
+    def get_project(self):
+        project = self.values[9]
+        if project != "":
+            return project
+        else:
+            return None
+    
+    def get_branch(self):
+        branch = self.values[10]
+        return branch
+    
+    def get_node_list(self):
+        nodelist = self.values[11]
+        return nodelist
+
+    def get_test_dir(self):
+        test_dir = Utilities.var_subs(self.values[0])
+        return test_dir
+
+    
+
+        
+
+
 class AFFINITY():
     '''
     class for running affinity tests
@@ -118,7 +213,8 @@ class AFFINITY():
         self.server = server
         self.tasks_per_node = tasks_per_node
         self.cluster_label = "%s-%stasks-socket" % (self.server, tasks_per_node)
-        self.cluster_label += ("-openmpi-" + openmpi) # ?
+        if openmpi is not None:
+            self.cluster_label += ("-openmpi-" + openmpi) # ?
         self.refinement_levels = refinement_levels
         self.setups = [1, ] # unused
         self.core_counts = []
@@ -160,7 +256,7 @@ class AFFINITY():
             if self.project == "TwoDSubduction":
                 CASE = CasesTwoDSubduction.CASE
                 CASE_OPT = CasesTwoDSubduction.CASE_OPT
-            if self.project == "ThDSubduction":
+            elif self.project == "ThDSubduction":
                 CASE = CasesThDSubduction.CASE
                 CASE_OPT = CasesThDSubduction.CASE_OPT
             else:
@@ -366,7 +462,43 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
     print("output file generated: ", filepath)
     plt.savefig(filepath)
 
-    pass
+
+def create_tests_with_json(json_opt, AFFINITY, AFFINITY_OPT, **kwargs):
+    '''
+    A wrapper for the CASES class
+    Inputs:
+        json_opt(str, dict): path or dict a json file
+        kwargs (dict):
+            update (bool): update existing cases?
+    Returns:
+        case_dir: return case directory
+    '''
+    # todo_json
+    Affinity_Opt = AFFINITY_OPT()
+    if type(json_opt) == str:
+        if not os.access(json_opt, os.R_OK):
+            raise FileNotFoundError("%s doesn't exist" % json_opt)
+        Affinity_Opt.read_json(json_opt)
+    elif type(json_opt) == dict:
+        Affinity_Opt.import_options(json_opt)
+    else:
+        raise TypeError("Type of json_opt must by str or dict")
+    # check variables
+    Affinity_Opt.check()
+    test_dir = Affinity_Opt.get_test_dir()
+    if os.path.isdir(test_dir):
+        proceed = input("Target exists, Delete older directory? (y/n)")  # check output dir exists
+        if not proceed == 'y':
+            exit(0)
+        else:
+            shutil.rmtree(test_dir)
+    os.mkdir(test_dir)
+    Affinity = AFFINITY(*Affinity_Opt.to_init(), openmpi=Affinity_Opt.get_openmpi_version(),\
+                        min_cores_for_refinement=Affinity_Opt.get_min_cores_for_refinement(),\
+                        max_cores_for_refinement=Affinity_Opt.get_max_cores_for_refinement(),\
+                        project=Affinity_Opt.get_project(), branch=Affinity_Opt.get_branch(),\
+                        nodelist=Affinity_Opt.get_node_list())
+    Affinity()
 
 def main():
     '''
@@ -380,38 +512,9 @@ def main():
     commend = sys.argv[1]
     # parse options
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-i', '--inputs', type=str, default='.',\
-            help='Path of input.\n\
-            In case of running the test, this is the path to the prm file\n\
-            In case of analyze the results, this is the path of the directory for testing results')
-    parser.add_argument('-o', '--outputs', type=str, default='.',\
-            help='Path of output.\n\
-            In case of running the test, this is the place to save results\n\
-            In case of analyze the results, this is the place to save images')
-    parser.add_argument('-c', '--cluster', type=str, default='peloton-ii-32tasks-core-openmpi-4.0.1',\
-            help='name of the cluster.\n\
-            This information is only needed when doing analysis.\n\
-            At that time, you need to look into the data directory for the testing results.\n\
-            This variable is the name of the subdirectory in there')
-    parser.add_argument('-s', '--server', type=str, default='peloton-rome',\
-            help='server and partition to run tests on.\n\
-            one in (peloton-ii, peloton-rome, stampede2)')
-    parser.add_argument('-b', '--branch', type=str, default=None, help='The branch of aspect to test')
-    parser.add_argument('-t', '--tasks_per_node', type=int, default=32, help='Number of task to run on each node')
-    parser.add_argument('-nl', '--nodelist', nargs="+", default=[], help='list of nodes to run on, separate with blank in inputs')
-    parser.add_argument('-rf', '--refinement_levels', nargs="+", default=[], help='list of refinement level to run on, separate with blank in inputs')
-    parser.add_argument('-minc', '--min_cores_for_refinement', nargs="+", default=[], help='list of minimum cores to run on, separate with blank in inputs')
-    parser.add_argument('-maxc', '--max_cores_for_refinement', nargs="+", default=[], help='list of maximum cores to run on, separate with blank in inputs')
-    parser.add_argument('-d', '--debug', type=int, default=0,\
-            help='Run in debug mode by only deploying\
-            a few cases with low number of nodes')
-    parser.add_argument('-m', '--max_cpu', type=int, default=1e10,\
-            help="Maximum number of cpu assigned.\
-            This is not the real maximum number of cpus to be run on,\
-            but meant to manually put a limit on that.\
-            This doesn't work with the debug mode.")
-    parser.add_argument('-p', '--project', type=str, default=None, help='A specific project to test, for default tests, leave this blank')
-    parser.add_argument('-sl', '--slurm_base_path', type=str, default='', help='the slurm file to read')
+    parser.add_argument('-j', '--json', type=str,
+                        default='',
+                        help='path to a json file')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -420,25 +523,9 @@ def main():
     arg = parser.parse_args(_options)
 
     # commands
-    if commend == 'run_tests':
-        if os.path.isdir(arg.outputs):
-            proceed = input("Target exists, Delete older directory? (y/n)")  # check output dir exists
-            if not proceed == 'y':
-                exit(0)
-            else:
-                shutil.rmtree(arg.outputs)
-        os.mkdir(arg.outputs)
-        # do_tests(arg.server, arg.outputs, arg.tasks_per_node, arg.inputs, branch=arg.branch, nodelist=arg.nodelist,\
-        #    debug=arg.debug, max_core_count=arg.max_cpu, project=arg.project)  # create and submit jobs
-        openmpi =  "4.1.0"
-        branch = "master_TwoD"
-        refinement_levels = [int(rf) for rf in arg.refinement_levels]
-        min_cores_for_refinement = [int(mc) for mc in arg.min_cores_for_refinement]
-        max_cores_for_refinement = [int(mc) for mc in arg.max_cores_for_refinement]
-        Affinity = AFFINITY(arg.outputs, arg.inputs, arg.slurm_base_path, arg.server, arg.tasks_per_node,\
-            refinement_levels, openmpi=openmpi, branch=branch, min_cores_for_refinement=min_cores_for_refinement,\
-            max_cores_for_refinement=max_cores_for_refinement, project=arg.project)
-        Affinity()
+    if commend == 'create_tests':
+        # todo_json
+        create_tests_with_json(arg.json, AFFINITY, AFFINITY_OPT)
 
     elif commend == 'analyze_results':
         # example:
