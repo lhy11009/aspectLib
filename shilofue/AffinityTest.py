@@ -122,6 +122,7 @@ it only takes effect if the input is positiveh",\
         self.add_key("project", str, ["project"], "", nick="project")
         self.add_key("branch", str, ["branch"], "master", nick="branch")
         self.add_key("List of nodes to test", list, ["node list"], [], nick="nodelist")
+        self.add_key("End step", int, ["end step"], -1, nick="end_step")
     
     def check(self):
         base_file = Utilities.var_subs(self.values[1])
@@ -150,7 +151,8 @@ it only takes effect if the input is positiveh",\
         server = self.values[3]
         tasks_per_node = self.values[4]
         refinement_levels = self.values[5]
-        return test_dir, base_file, slurm_base_path, server, tasks_per_node, refinement_levels
+        end_step = self.values[12]
+        return test_dir, base_file, slurm_base_path, server, tasks_per_node, refinement_levels, end_step
     
     def get_openmpi_version(self):
         openmpi = self.values[6]
@@ -186,11 +188,6 @@ it only takes effect if the input is positiveh",\
         test_dir = Utilities.var_subs(self.values[0])
         return test_dir
 
-    
-
-        
-
-
 class AFFINITY():
     '''
     class for running affinity tests
@@ -205,7 +202,7 @@ class AFFINITY():
         debug (int) : debug mode (1), normal (0)
         max_core_count (int): maximum number for core count
     '''
-    def __init__(self, test_dir, base_prm_path, slurm_base_path, server, tasks_per_node, refinement_levels, **kwargs):
+    def __init__(self, test_dir, base_prm_path, slurm_base_path, server, tasks_per_node, refinement_levels, end_step, **kwargs):
         self.test_dir = test_dir
         self.base_prm_path = base_prm_path
         self.slurm_base_path = slurm_base_path
@@ -216,6 +213,7 @@ class AFFINITY():
         if openmpi is not None:
             self.cluster_label += ("-openmpi-" + openmpi) # ?
         self.refinement_levels = refinement_levels
+        self.end_step = end_step
         self.setups = [1, ] # unused
         self.core_counts = []
         for i in range(30):
@@ -264,7 +262,7 @@ class AFFINITY():
             # Call this in order to include all the related files
             CasesP.create_case_with_json(self.base_prm_path, CASE, CASE_OPT, reset_refinement_level=refinement,\
                 fix_output_dir=os.path.dirname(input_dir), fix_case_name=os.path.basename(input_dir),\
-                fix_case_output_dir="../%s" % os.path.basename(output_dir))
+                fix_case_output_dir="../%s" % os.path.basename(output_dir), end_step=self.end_step)
             print("case generated: %s" % prm_file)
         else:
             # There is only a prm file to take care of.

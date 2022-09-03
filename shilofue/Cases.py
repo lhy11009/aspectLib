@@ -381,7 +381,12 @@ class CASE():
             path(str): an extra file
         '''
         self.extra_files.append(path)
-    
+
+    def set_end_step(self, end_step): 
+        '''
+        set the step to end the computation
+        '''
+        self.idict = SetEndStep(self.idict, end_step)
 
 
 def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
@@ -402,6 +407,7 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     fix_output_dir = kwargs.get('fix_output_dir', None)
     reset_refinement_level = kwargs.get('reset_refinement_level', None)
     fix_case_output_dir = kwargs.get('fix_case_output_dir', None)
+    end_step = kwargs.get("end_step", -1)
     Case_Opt = CASE_OPT()
     if type(json_opt) == str:
         if not os.access(json_opt, os.R_OK):
@@ -435,6 +441,9 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             return case_dir_to_check
     # Manage case files
     Case = CASE(*Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())
+    if end_step > 0:
+        # set end step
+        Case.set_end_step(end_step)
     Case.configure_prm(*Case_Opt.to_configure_prm())
     if Case_Opt.if_use_world_builder():
         Case.configure_wb(*Case_Opt.to_configure_wb())
@@ -577,8 +586,21 @@ def SetNewtonSolver(o_dict):
         "GMRES solver restart length": "100"
     }
     return o_dict
-    
 
+
+def SetEndStep(o_dict, end_step):
+    '''
+    set termination criteria by "End step"
+    '''
+    if "Termination criteria" in o_dict:
+        if "End time" in o_dict["Termination criteria"]:
+            # pop option for "End time"
+            _ = o_dict["Termination criteria"].pop("End time")
+        o_dict["Termination criteria"]["End step"] = str(end_step)
+    else:
+        o_dict["Termination criteria"] = {"End step": str(end_step)}
+    return o_dict
+    
 
 def GROUP():
     '''
