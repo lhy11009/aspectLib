@@ -214,6 +214,13 @@ it only takes effect if the input is positiveh",\
         '''
         # todo_affinity
         self.values[16] = case_o_dir
+
+    def reset_stokes_solver_type(self, stokes_solver_type):
+        '''
+        reset stokes solver type
+        '''
+        assert(stokes_solver_type in ["block AMG", "block GMG"])
+        self.values[18] = stokes_solver_type
     
 
 class CASE():

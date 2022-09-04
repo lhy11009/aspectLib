@@ -80,12 +80,17 @@ of the project.\n\
         ")
 
     
-def generate_input_file_1(base_file_name, output_file_name, output_dir, global_refinement):
+def generate_input_file_1(base_file_name, output_file_name, output_dir, global_refinement, stokes_solver_type):
     """Read the 'base' input file from base_file_name, replace strings 
     using functions defined in ParsePrm.py, and write new output file to output_file_name"""
     with open(base_file_name,'r') as fh:
         idict = ParsePrm.ParseFromDealiiInput(fh)
     idict['Mesh refinement']["Initial global refinement"] = str(global_refinement)
+    if "Stokes solver type" in idict['Solver parameters']['Stokes solver parameters'] or stokes_solver_type == "block GMG":
+        # do this so that if the option is default, no need to create an entry
+        idict['Solver parameters']['Stokes solver parameters']['Stokes solver type'] = stokes_solver_type
+        if "Material averaging" not in idict["Material model"]:
+            idict["Material model"]["Material averaging"] = "harmonic average"
     idict["Output directory"] = os.path.join("..", output_dir)
     output_dir = os.path.dirname(output_file_name)
     if not os.path.isdir(output_dir):
@@ -123,6 +128,7 @@ it only takes effect if the input is positiveh",\
         self.add_key("branch", str, ["branch"], "master", nick="branch")
         self.add_key("List of nodes to test", list, ["node list"], [], nick="nodelist")
         self.add_key("End step", int, ["end step"], -1, nick="end_step")
+        self.add_key("Stokes solver type", str, ["stokes solver type"], "block AMG", nick="stokes_type")
     
     def check(self):
         base_file = Utilities.var_subs(self.values[1])
@@ -140,6 +146,8 @@ it only takes effect if the input is positiveh",\
         max_cores_for_refinement = self.values[8]
         for core_count in max_cores_for_refinement:
             assert(type(core_count) == int)
+        stokes_type = self.values[13]
+        assert(stokes_type in ["block AMG", "block GMG"])
     
     def to_init(self):
         '''
@@ -152,7 +160,8 @@ it only takes effect if the input is positiveh",\
         tasks_per_node = self.values[4]
         refinement_levels = self.values[5]
         end_step = self.values[12]
-        return test_dir, base_file, slurm_base_path, server, tasks_per_node, refinement_levels, end_step
+        stokes_type = self.values[13]
+        return test_dir, base_file, slurm_base_path, server, tasks_per_node, refinement_levels, end_step, stokes_type
     
     def get_openmpi_version(self):
         openmpi = self.values[6]
@@ -188,6 +197,7 @@ it only takes effect if the input is positiveh",\
         test_dir = Utilities.var_subs(self.values[0])
         return test_dir
 
+
 class AFFINITY():
     '''
     class for running affinity tests
@@ -202,16 +212,20 @@ class AFFINITY():
         debug (int) : debug mode (1), normal (0)
         max_core_count (int): maximum number for core count
     '''
-    def __init__(self, test_dir, base_prm_path, slurm_base_path, server, tasks_per_node, refinement_levels, end_step, **kwargs):
+    def __init__(self, test_dir, base_prm_path, slurm_base_path, server, tasks_per_node,\
+                 refinement_levels, end_step, stokes_type, **kwargs):
         self.test_dir = test_dir
         self.base_prm_path = base_prm_path
         self.slurm_base_path = slurm_base_path
         openmpi = kwargs.get("openmpi", None)
         self.server = server
         self.tasks_per_node = tasks_per_node
+        self.stokes_type = stokes_type
         self.cluster_label = "%s-%stasks-socket" % (self.server, tasks_per_node)
         if openmpi is not None:
             self.cluster_label += ("-openmpi-" + openmpi) # ?
+        if self.stokes_type == "block GMG":
+            self.cluster_label += "-bGMG"
         self.refinement_levels = refinement_levels
         self.end_step = end_step
         self.setups = [1, ] # unused
@@ -259,6 +273,7 @@ class AFFINITY():
                 CASE_OPT = CasesThDSubduction.CASE_OPT
             else:
                 raise NotImplementedError("Options for project %s is not implemented." % self.project)
+            CASE_OPT.reset_stokes_solver_type(self.stokes_type)  # reset the stokes solver scheme
             # Call this in order to include all the related files
             CasesP.create_case_with_json(self.base_prm_path, CASE, CASE_OPT, reset_refinement_level=refinement,\
                 fix_output_dir=os.path.dirname(input_dir), fix_case_name=os.path.basename(input_dir),\
@@ -266,7 +281,7 @@ class AFFINITY():
             print("case generated: %s" % prm_file)
         else:
             # There is only a prm file to take care of.
-            generate_input_file_1(self.base_prm_path, prm_file, os.path.basename(output_dir), refinement)
+            generate_input_file_1(self.base_prm_path, prm_file, os.path.basename(output_dir), refinement, self.stokes_type)
             print("case generated: %s" % input_dir)
             # change the refinement level in the prm file
         # haoyuan: calls function to generate slurm file for one job
@@ -278,6 +293,10 @@ class AFFINITY():
     
     def get_cluster_label(self):
         return self.cluster_label
+    
+    def get_test_inputs_dir(self):
+        test_inputs_dir = "{:s}/tmp/{:s}".format(self.test_dir, self.cluster_label)
+        return test_inputs_dir
 
     def __call__(self):
         # create a directory to hold test results
@@ -488,18 +507,22 @@ def create_tests_with_json(json_opt, AFFINITY, AFFINITY_OPT, **kwargs):
     # check variables
     Affinity_Opt.check()
     test_dir = Affinity_Opt.get_test_dir()
-    if os.path.isdir(test_dir):
-        proceed = input("Target exists, Delete older directory? (y/n)")  # check output dir exists
-        if not proceed == 'y':
-            exit(0)
-        else:
-            shutil.rmtree(test_dir)
-    os.mkdir(test_dir)
+    if not os.path.isdir(test_dir):
+        os.mkdir(test_dir)
     Affinity = AFFINITY(*Affinity_Opt.to_init(), openmpi=Affinity_Opt.get_openmpi_version(),\
                         min_cores_for_refinement=Affinity_Opt.get_min_cores_for_refinement(),\
                         max_cores_for_refinement=Affinity_Opt.get_max_cores_for_refinement(),\
                         project=Affinity_Opt.get_project(), branch=Affinity_Opt.get_branch(),\
                         nodelist=Affinity_Opt.get_node_list())
+    # remove older files
+    inputs_dir = Affinity.get_test_inputs_dir()
+    if os.path.isdir(inputs_dir):
+        proceed = input("Target exists (%s), Delete older directory? (y/n)" % inputs_dir)  # check output dir exists
+        if not proceed == 'y':
+            exit(0)
+        else:
+            shutil.rmtree(inputs_dir)
+    # generate test files
     Affinity()
     # save a copy of the json file
     json_output_path = os.path.join(Affinity_Opt.get_test_dir(),\
@@ -523,9 +546,18 @@ def main():
     commend = sys.argv[1]
     # parse options
     parser = argparse.ArgumentParser(description='')
+    parser.add_argument('-i', '--inputs', type=str,
+                        default='',
+                        help='path to input file/directory')
+    parser.add_argument('-o', '--outputs', type=str,
+                        default='',
+                        help='path to an output file/directory')
     parser.add_argument('-j', '--json', type=str,
                         default='',
                         help='path to a json file')
+    parser.add_argument('-c', '--cluster', type=str,
+                        default='',
+                        help='name of the cluster')
     _options = []
     try:
         _options = sys.argv[2: ]

@@ -1,6 +1,6 @@
 set Dimension = 3
 set Timing output frequency = 1
-set Output directory = output_128_4_1
+set Output directory = ../output_128_4_1
 
 subsection Termination criteria
     set End step = 1
