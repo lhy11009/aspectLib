@@ -102,7 +102,14 @@ main(){
     if [[ "$1" = "analyze_affinity_test_results" ]]; then
         local log_file="$2"
         local ofile="$3"
-        parse_block_output_to_file "${log_file}" "${ofile}" "Assemble Stokes system" "Solve Stokes system"
+        local key1
+        if [[ -n $4 && "$4" = "gmg" ]]; then
+            key1="Assemble Stokes system rhs" 
+        else
+            key1="Assemble Stokes system" 
+        fi
+        local key2="Solve Stokes system"
+        parse_block_output_to_file "${log_file}" "${ofile}" "${key1}" "${key2}"
     fi
 }
 

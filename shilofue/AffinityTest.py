@@ -74,7 +74,7 @@ of the project.\n\
 \n\
     example:\n\
 \n\
-        python shilofue/AffinityTest.py analyze_results\
+        python -m shilofue.AffinityTest analyze_results\
  -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_example\
  -c peloton-rome-128tasks-socket-openmpi-4.1.0 -o .\n\
         ")
@@ -376,6 +376,10 @@ def organize_result(test_root_dir, cluster):
                 target_path = os.path.join(results_dir, 'output_' + case_name)
                 print("copy %s to %s" % (log_path, target_path))
                 shutil.copy(log_path, target_path)
+                prm_path = os.path.join(subdir, _dir, 'original.prm')
+                target_path = os.path.join(results_dir, case_name + '.prm')
+                print("copy %s to %s" % (prm_path, target_path))
+                shutil.copy(prm_path, target_path)
             else:
                 continue
 
@@ -399,12 +403,20 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
     for _path in path_obj:
         i += 1
         output_file = str(_path)
-        output_path = os.path.join(test_results_dir, output_file)
+        input_file = os.path.basename(output_file).split("_", maxsplit=1)[1] + ".prm"
+        input_path = os.path.join(test_results_dir,  input_file)
+        stokes_solver_type = ParsePrm.GetStokesSolverTypeFromPrm(input_path) 
         patterns = output_file.split('_')
-        print("Output file found: %s" % output_path)
+        print("Output file found: %s" % output_file)
         # append data
-        subprocess.run("%s/bash_scripts/parse_block_output.sh  analyze_affinity_test_results %s %s" 
-                       % (ASPECT_LAB_DIR, output_file, temp_file), shell=True)
+        if stokes_solver_type == "block AMG":
+            subprocess.run("%s/bash_scripts/parse_block_output.sh  analyze_affinity_test_results %s %s" 
+                            % (ASPECT_LAB_DIR, output_file, temp_file), shell=True)
+        elif stokes_solver_type == "block GMG":
+            subprocess.run("%s/bash_scripts/parse_block_output.sh  analyze_affinity_test_results %s %s gmg" 
+                            % (ASPECT_LAB_DIR, output_file, temp_file), shell=True)
+        else:
+            raise ValueError("stokes_solver_type must be block AMG or block GMG")
         try:
             data = np.genfromtxt(temp_file)
             total_wall_clock.append(data[0, -1])

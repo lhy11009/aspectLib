@@ -375,6 +375,26 @@ def Solver(Inputs, _config):
             newton_solver['Max Newton line search iterations'] = str(max_line_search)
 
 
+def GetStokesSolverTypeFromPrm(_path):
+    '''
+    read the type of the stokes solver from a file
+    '''
+    inputs = ReadPrmFile(_path)
+    stokes_solver_type = GetStokesSolverType(inputs)
+    return stokes_solver_type
+
+
+def GetStokesSolverType(inputs):
+    '''
+    read the type of the stokes solver from a dictionary
+    '''
+    try:
+        stokes_solver_type = inputs["Solver parameters"]["Stokes solver parameters"]["Stokes solver type"]
+    except KeyError:
+        stokes_solver_type = "block AMG"
+    return stokes_solver_type
+
+
 def MaterialModel(Inputs, _config):
     """
     properties in the material model
