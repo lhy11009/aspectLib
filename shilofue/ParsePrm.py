@@ -666,7 +666,7 @@ class SLURM_OPERATOR():
         if build_directory != "":
             self.o_dict['command'][1] = "${ASPECT_SOURCE_DIR}/build_%s/aspect" % build_directory
         else:
-            self.o_dict['command'][1] = "${ASPECT_SOURCE_DIR}/build/aspect" % build_directory
+            self.o_dict['command'][1] = "${ASPECT_SOURCE_DIR}/build/aspect"
         self.o_dict['command'][2] = prm_file
 
     def __call__(self, slurm_file_path):

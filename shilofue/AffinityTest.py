@@ -566,7 +566,6 @@ def main():
         analyze_affinity_test_results(test_results_dir, arg.outputs)
     elif commend in ['help', '-h']:
         Usage()
-        arg = parser.parse_args(['-h'])
     else:
         raise ValueError("No such command (%s), see Usage (run with help or -h)" % commend)
 

@@ -6,7 +6,7 @@
 #SBATCH --tasks-per-node=68
 #SBATCH -o task-%j.stdout
 #SBATCH -e task-%j.stderr
-#SBATCH -t 68
+#SBATCH -t 48:00:00
 #SBATCH --partition=normal
 #SBATCH --switches=1
 
