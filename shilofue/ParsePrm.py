@@ -659,11 +659,14 @@ class SLURM_OPERATOR():
         '''
         self.o_dict['config']['--job-name'] = _name
 
-    def SetCommand(self, branch, prm_file):
+    def SetCommand(self, build_directory, prm_file):
         '''
         Set the command to use
         '''
-        self.o_dict['command'][1] = "${ASPECT_SOURCE_DIR}/build_%s/aspect" % branch
+        if build_directory != "":
+            self.o_dict['command'][1] = "${ASPECT_SOURCE_DIR}/build_%s/aspect" % build_directory
+        else:
+            self.o_dict['command'][1] = "${ASPECT_SOURCE_DIR}/build/aspect" % build_directory
         self.o_dict['command'][2] = prm_file
 
     def __call__(self, slurm_file_path):

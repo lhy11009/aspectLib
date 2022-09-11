@@ -52,12 +52,12 @@ def test_affinity_base():
     tasks_per_node = 128
     refinement_levels = [2, 3, 4, 5]
     openmpi = "4.1.0"
-    branch = "master_TwoD"
+    build_directory = "master_TwoD"
     prm_path = os.path.join(ASPECT_LAB_DIR, "files/AffinityTest/spherical_shell_expensive_solver.prm")
     assert(os.path.isfile(prm_path))
     slurm_base_path = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "220810", "job_p-billen.sh")
     # test 1: rene's affinity test 
-    Affinity = AFFINITY(o_dir, prm_path, slurm_base_path, server, tasks_per_node, refinement_levels, -1, "block AMG", openmpi=openmpi, branch=branch)
+    Affinity = AFFINITY(o_dir, prm_path, slurm_base_path, server, tasks_per_node, refinement_levels, -1, "block AMG", openmpi=openmpi, build_directory=build_directory)
     Affinity()
     # check the parent
     case_parent_dir = os.path.join(o_dir, "tmp", "peloton-rome-128tasks-socket-openmpi-4.1.0")

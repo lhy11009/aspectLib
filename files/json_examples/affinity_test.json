@@ -10,6 +10,6 @@
     "minimum cores for refinement": [336, 528, 720],
     "maximum cores for refinement": [2048, 2048, 2048],
     "project": "ThDSubduction",
-    "branch": "master_TwoD",
+    "build directory": "master_TwoD",
     "node list": []
 }

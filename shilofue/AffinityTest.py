@@ -102,7 +102,7 @@ it only takes effect if the input is positiveh",\
         self.add_key("Minimum cpus for each refinement level, repectively", list, ["minimum cores for refinement"], [], nick="min_cores_for_refinement")
         self.add_key("Maximum cpus for each refinement level, repectively", list, ["maximum cores for refinement"], [], nick="max_cores_for_refinement")
         self.add_key("project", str, ["project"], "", nick="project")
-        self.add_key("branch", str, ["branch"], "master", nick="branch")
+        self.add_key("build directory", str, ["build directory"], "", nick="build_directory")
         self.add_key("List of nodes to test", list, ["node list"], [], nick="nodelist")
         self.add_key("End step", int, ["end step"], -1, nick="end_step")
         self.add_key("Stokes solver type", str, ["stokes solver type"], "block AMG", nick="stokes_type")
@@ -162,9 +162,9 @@ it only takes effect if the input is positiveh",\
         else:
             return None
     
-    def get_branch(self):
-        branch = self.values[10]
-        return branch
+    def get_build_directory(self):
+        build_directory = self.values[10]
+        return build_directory
     
     def get_node_list(self):
         nodelist = self.values[11]
@@ -184,7 +184,7 @@ class AFFINITY():
         tasks_per_node (int): number of tasks to run on each node.
         base_prm_path: The 'base' input file that gets modified, if project is None,
             this option points to a json file to import the settings
-        branch (str): branch to use, default is master
+        build_directory (str): build_directory to use, default is master
         nodelist: (list of str) - list of node to run on
         debug (int) : debug mode (1), normal (0)
         max_core_count (int): maximum number for core count
@@ -226,7 +226,7 @@ class AFFINITY():
         else:
             self.max_cores_for_refinement = [1e31 for i in range(len(self.refinement_levels))]
         self.project = kwargs.get("project", None)
-        self.branch = kwargs.get("branch", "master")
+        self.build_directory = kwargs.get("build_directory", "")
         self.nodelist= kwargs.get('nodelist', [])  # list of nodes
         pass
 
@@ -263,7 +263,7 @@ class AFFINITY():
         # haoyuan: calls function to generate slurm file for one job
         SlurmOperator = ParsePrm.SLURM_OPERATOR(self.slurm_base_path)
         SlurmOperator.SetAffinity(np.ceil(core_count/self.tasks_per_node), core_count, 1)
-        SlurmOperator.SetCommand(self.branch, os.path.basename(prm_file))
+        SlurmOperator.SetCommand(self.build_directory, os.path.basename(prm_file))
         SlurmOperator.SetName(jobname)
         SlurmOperator(slurm_file_output_path)
     
@@ -321,8 +321,6 @@ class AFFINITY():
                         bash_contents += "\ncd %s" % os.path.basename(input_dir)
                         bash_contents += "\nsbatch job.sh"
                         bash_contents += "\ncd .."
-                        if self.project is not None:
-                            bash_contents += "\ncd .."
         with open(bash_output_path, 'w') as fout:
             fout.write(bash_contents)
 
@@ -500,7 +498,7 @@ def create_tests_with_json(json_opt, AFFINITY, AFFINITY_OPT, **kwargs):
     Affinity = AFFINITY(*Affinity_Opt.to_init(), openmpi=Affinity_Opt.get_openmpi_version(),\
                         min_cores_for_refinement=Affinity_Opt.get_min_cores_for_refinement(),\
                         max_cores_for_refinement=Affinity_Opt.get_max_cores_for_refinement(),\
-                        project=Affinity_Opt.get_project(), branch=Affinity_Opt.get_branch(),\
+                        project=Affinity_Opt.get_project(), build_directory=Affinity_Opt.get_build_directory(),\
                         nodelist=Affinity_Opt.get_node_list())
     # remove older files
     inputs_dir = Affinity.get_test_inputs_dir()

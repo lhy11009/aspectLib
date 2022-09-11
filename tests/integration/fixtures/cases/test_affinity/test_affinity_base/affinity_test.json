@@ -9,6 +9,6 @@
     "minimum cores for refinement": [],
     "maximum cores for refinement": [],
     "project": "",
-    "branch": "master_TwoD",
+    "build directory": "master_TwoD",
     "node list": []
 }
