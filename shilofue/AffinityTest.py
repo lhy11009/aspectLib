@@ -47,13 +47,13 @@ Examples of usage: \n\
     (run this part on server)\n\
 \n\
     example:\n\
-        python -m shilofue.AffinityTest create_tests -j `pwd`/affinity_test.json\n\
+        Lib_AffinityTest create_tests -j `pwd`/affinity_test.json\n\
 \n\
     analyze the results\n\
 \n\
-        python -m shilofue.AffinityTest analyze_results\
+        Lib_AffinityTest analyze_results\
  -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_example\
- -c peloton-rome-128tasks-socket-openmpi-4.1.0 -o .\n\
+ -c peloton-rome-128tasks-socket-openmpi-4.1.0\n\
         ")
 
     
@@ -535,9 +535,6 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='path to input file/directory')
-    parser.add_argument('-o', '--outputs', type=str,
-                        default='',
-                        help='path to an output file/directory')
     parser.add_argument('-j', '--json', type=str,
                         default='',
                         help='path to a json file')
@@ -561,9 +558,12 @@ def main():
         # python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results
         # -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_20211025 -c peloton-rome-128tasks-socket-openmpi-4.1.0
         # todo
-        assert(os.path.isdir(arg.outputs))  # check output dir exists
+        assert(os.path.isdir(arg.inputs))  # check output dir exists
         test_results_dir = organize_result(arg.inputs, arg.cluster)
-        analyze_affinity_test_results(test_results_dir, arg.outputs)
+        img_dir = os.path.join(arg.inputs, "img")
+        if not os.path.isdir(img_dir):
+            os.mkdir(img_dir)
+        analyze_affinity_test_results(test_results_dir, img_dir)
     elif commend in ['help', '-h']:
         Usage()
     else:
