@@ -47,32 +47,9 @@ Examples of usage: \n\
     (run this part on server)\n\
 \n\
     example:\n\
+        python -m shilofue.AffinityTest create_tests -j `pwd`/affinity_test.json\n\
 \n\
-        (substitute -i and -o options with your own prm file and output directory)\n\
-        (-sl is a slurm file to read)\n\
-        (-t option gives the number of tasks per node, check this with the set ups of server)\n\
-        (-m is a manual upper limit of the cpus to use)\n\
-        (-rf is a list of refinment level to test)\n\
-        (minc and maxc are lists of the minimum cores and maximum cores to run on, for each level of refinement, respectively.)\n\
-        python -m shilofue.AffinityTest run_tests -s peloton-rome -t 128\n\
- -i /home/lochy/ASPECT_PROJECT/aspectLib/files/AffinityTest/spherical_shell_expensive_solver.prm\n\
- -sl /home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/08282022/job_skx-normal.sh -o $ThDSubduction_DIR/stampede2_affinity_test\
- -o $TwoDSubduction_DIR/rene_affinity_test\
- -nl topaz-0 topaz-2 topaz-3\
- -m 385\
- -rf 2 3\
- -minc 1 1 -maxc 16 16\n\
-\n\
-        (for running affinity tests for a research project: -i is the json for the project cases instead, -p is the name\
-of the project.\n\
-        Note on doing this for a new project: search for \"project\" in this script and apply changes)\n\
-        python -m shilofue.AffinityTest run_tests -i /home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220708/case.json\
- -o /home/lochy/ASPECT_PROJECT/aspectLib/results -p TwoDSubduction\n\
-\n\
-  - Analyze results: \n\
-    (run this part on a laptop)\n\
-\n\
-    example:\n\
+    analyze the results\n\
 \n\
         python -m shilofue.AffinityTest analyze_results\
  -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_example\
@@ -116,7 +93,7 @@ class AFFINITY_OPT(Utilities.JSON_OPT):
         self.add_key("Test directory", str, ["test directory"], ".", nick='test_dir')
         self.add_key("Base prm/json file (inputs)", str, ["base file"], "./test.prm", nick='base_file')
         self.add_key("Slurm file (inputs)", str, ["slurm file"], "./slurm.sh", nick='slurm_base_path')
-        self.add_key("Server", str, ["server"], "peloton", nick='server')
+        self.add_key("Server", str, ["server"], "peloton-high2", nick='server')
         self.add_key("Tasks per node", int, ["tasks per node"], 32, nick='tasks_per_node')
         self.add_key("Refinement level, note this is a summarized parameter of the refinement scheme assigned,\
 it only takes effect if the input is positiveh",\
@@ -273,11 +250,10 @@ class AFFINITY():
                 CASE_OPT = CasesThDSubduction.CASE_OPT
             else:
                 raise NotImplementedError("Options for project %s is not implemented." % self.project)
-            CASE_OPT.reset_stokes_solver_type(self.stokes_type)  # reset the stokes solver scheme
             # Call this in order to include all the related files
             CasesP.create_case_with_json(self.base_prm_path, CASE, CASE_OPT, reset_refinement_level=refinement,\
                 fix_output_dir=os.path.dirname(input_dir), fix_case_name=os.path.basename(input_dir),\
-                fix_case_output_dir="../%s" % os.path.basename(output_dir), end_step=self.end_step)
+                fix_case_output_dir="../%s" % os.path.basename(output_dir), end_step=self.end_step, reset_stokes_solver_type=self.stokes_type)
             print("case generated: %s" % prm_file)
         else:
             # There is only a prm file to take care of.

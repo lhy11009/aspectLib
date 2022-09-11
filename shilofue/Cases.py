@@ -414,6 +414,7 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     fix_output_dir = kwargs.get('fix_output_dir', None)
     reset_refinement_level = kwargs.get('reset_refinement_level', None)
     fix_case_output_dir = kwargs.get('fix_case_output_dir', None)
+    reset_stokes_solver_type = kwargs.get("reset_stokes_solver_type", None)
     end_step = kwargs.get("end_step", -1)
     Case_Opt = CASE_OPT()
     if type(json_opt) == str:
@@ -435,6 +436,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
         Case_Opt.reset_refinement(reset_refinement_level)
     if fix_case_output_dir != None:
         Case_Opt.fix_case_output_dir(fix_case_output_dir)
+    if reset_stokes_solver_type != None:
+        Case_Opt.reset_stokes_solver_type(reset_stokes_solver_type)
     Case_Opt.check()
     # check if the case already exists. If so, only update if it is explicitly 
     # required

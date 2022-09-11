@@ -1,6 +1,6 @@
 {
   "_comments": "This case is modified from the Schellart 2007 paper, but include newtonian T-dependent rheology",
-  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/08182022",
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/08282022",
   "output directory": "/mnt/lochy0/ASPECT_DATA/ThDSubduction/EBA_test1",
   "name": "eba3d_SA80.0_OA40.0_width61_GR5",
   "type": "s07_newton",
