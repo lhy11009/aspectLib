@@ -153,7 +153,6 @@ different age will be adjusted.",\
         mantle_rheology_flow_law = self.values[self.start+30]
         stokes_solver_type = self.values[18]
         case_o_dir = self.values[16]
-        print("case_o_dir: ", case_o_dir)  # debug
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
