@@ -72,6 +72,7 @@ def test_affinity_base():
     prm_128_4_slurm_path_std = os.path.join(test_source_dir, "input_128_4_1_std.sh")
     assert(filecmp.cmp(prm_128_4_slurm_path, prm_128_4_slurm_path_std))
 
+
 def test_affinity_json():
     '''
     same tests as before, input from a json file
@@ -95,9 +96,24 @@ def test_affinity_json():
     assert(filecmp.cmp(prm_128_4_slurm_path, prm_128_4_slurm_path_std))
 
 
+def test_affinity_json_project():
+    '''
+    same tests as before, input from a json file
+    This time from a project configureation
+    '''
+    test_source_dir = os.path.join(source_dir, "test_affinity_project")
+    json_path = os.path.join(test_source_dir, "affinity_test.json")
+    assert(os.path.isfile(json_path))
+    create_tests_with_json(json_path, AFFINITY, AFFINITY_OPT)
+    o_dir = os.path.join(test_dir, "test_affinity_project")
+    # check the parent
+    case_parent_dir = os.path.join(o_dir, "tmp", "stampede2-48tasks-socket-bGMG")
+    assert(os.path.isdir(case_parent_dir))
+    # check the prm file
+    prm_file_1008_5_1 = os.path.join(case_parent_dir, "input_1008_5_1", "case.prm")
+    prm_file_1008_5_1_std = os.path.join(test_source_dir, "case_1008_5_1_std.prm")
+    assert(filecmp.cmp(prm_file_1008_5_1, prm_file_1008_5_1_std))
 
-    # assert something 
-    assert(True)
 
     
 # notes

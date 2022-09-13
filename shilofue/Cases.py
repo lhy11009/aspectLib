@@ -199,7 +199,7 @@ it only takes effect if the input is positiveh",\
         fix directory to output
         '''
         self.values[2] = o_dir
-        
+
     def reset_refinement(self, reset_refinement_level):
         '''
         reset refinement level
@@ -365,7 +365,7 @@ class CASE():
         else:
             # just apply the configuration
             self.idict = func(self.idict, config)
- 
+
     def configure_prm(self, refinement_level):
         '''
         configure the prm file
@@ -374,6 +374,15 @@ class CASE():
         o_dict["Mesh refinement"]["Initial global refinement"] = str(refinement_level)
         self.idict = o_dict
         pass
+
+    def configure_case_output_dir(self, case_o_dir):
+        '''
+        configure the output directory of the case
+        '''
+        o_dict = self.idict.copy()
+        # directory to put outputs
+        o_dict["Output directory"] = case_o_dir
+        self.idict = o_dict
     
     def configure_wb(self):
         '''

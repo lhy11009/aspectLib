@@ -152,12 +152,14 @@ different age will be adjusted.",\
         reset_trailing_ov_viscosity = self.values[self.start+29]
         mantle_rheology_flow_law = self.values[self.start+30]
         stokes_solver_type = self.values[18]
+        case_o_dir = self.values[16]
+        print("case_o_dir: ", case_o_dir)  # debug
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
             sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
             adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
-            reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type
+            reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir
         
     def to_configure_wb(self):
         '''
@@ -200,10 +202,11 @@ class CASE(CasesP.CASE):
     sp_width, trailing_length, reset_trailing_morb, ref_visc, relative_visc_plate, friction_angle,\
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
-    reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type):
+    reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir):
         '''
         Configure prm file
         '''
+        self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
         # geometry options
         # repitition, figure this out by deviding the dimensions with a unit value of repitition_slice

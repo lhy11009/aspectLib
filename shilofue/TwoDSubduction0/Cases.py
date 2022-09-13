@@ -283,9 +283,9 @@ class CASE(CasesP.CASE):
             if_fs_sides = True  # use free slip on both sides
         else:
             if_fs_sides = False
+        self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
         # directory to put outputs
-        o_dict["Output directory"] = case_o_dir
         # solver schemes
         if abs((stokes_linear_tolerance-0.1)/0.1) > 1e-6:
             # default is negative, thus do nothing
