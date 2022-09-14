@@ -342,20 +342,19 @@ def organize_result(test_root_dir, cluster):
     results_dir = _dir
     results_tmp_dir = os.path.join(test_root_dir, 'tmp', cluster)
     assert(os.path.isdir(results_tmp_dir))
-    for subdir, dirs, _ in os.walk(results_tmp_dir):
-        for _dir in dirs:
-            if _dir.startswith('output'):
-                case_name = _dir.split('_', 1)[1]
-                log_path = os.path.join(subdir, _dir, 'log.txt')
-                target_path = os.path.join(results_dir, 'output_' + case_name)
-                print("copy %s to %s" % (log_path, target_path))
-                shutil.copy(log_path, target_path)
-                prm_path = os.path.join(subdir, _dir, 'original.prm')
-                target_path = os.path.join(results_dir, case_name + '.prm')
-                print("copy %s to %s" % (prm_path, target_path))
-                shutil.copy(prm_path, target_path)
-            else:
-                continue
+    for _dir in os.listdir(results_tmp_dir):
+        if _dir.startswith('output'):
+            case_name = _dir.split('_', 1)[1]
+            log_path = os.path.join(results_tmp_dir, _dir, 'log.txt')
+            target_path = os.path.join(results_dir, 'output_' + case_name)
+            print("copy %s to %s" % (log_path, target_path))
+            shutil.copy(log_path, target_path)
+            prm_path = os.path.join(results_tmp_dir, _dir, 'original.prm')
+            target_path = os.path.join(results_dir, case_name + '.prm')
+            print("copy %s to %s" % (prm_path, target_path))
+            shutil.copy(prm_path, target_path)
+        else:
+            continue
 
     return results_dir
 
@@ -393,9 +392,14 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
             raise ValueError("stokes_solver_type must be block AMG or block GMG")
         try:
             data = np.genfromtxt(temp_file)
-            total_wall_clock.append(data[0, -1])
-            assemble_stokes_system.append(data[1, -1])
-            solve_stokes_system.append(data[2, -1])
+            if data.ndim == 1:
+                total_wall_clock.append(data[0])
+                assemble_stokes_system.append(data[1])
+                solve_stokes_system.append(data[2])
+            elif data.ndim == 2:
+                total_wall_clock.append(data[0, -1])
+                assemble_stokes_system.append(data[1, -1])
+                solve_stokes_system.append(data[2, -1])
         except Exception:
             pass
         else:
