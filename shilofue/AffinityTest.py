@@ -106,6 +106,7 @@ it only takes effect if the input is positiveh",\
         self.add_key("List of nodes to test", list, ["node list"], [], nick="nodelist")
         self.add_key("End step", int, ["end step"], -1, nick="end_step")
         self.add_key("Stokes solver type", str, ["stokes solver type"], "block AMG", nick="stokes_type")
+        self.add_key("Flag", str, ["flag"], "", nick="flag")
     
     def check(self):
         base_file = Utilities.var_subs(self.values[1])
@@ -138,7 +139,8 @@ it only takes effect if the input is positiveh",\
         refinement_levels = self.values[5]
         end_step = self.values[12]
         stokes_type = self.values[13]
-        return test_dir, base_file, slurm_base_path, server, tasks_per_node, refinement_levels, end_step, stokes_type
+        flag = self.values[14]
+        return test_dir, base_file, slurm_base_path, server, tasks_per_node, refinement_levels, end_step, stokes_type, flag
     
     def get_openmpi_version(self):
         openmpi = self.values[6]
@@ -190,7 +192,7 @@ class AFFINITY():
         max_core_count (int): maximum number for core count
     '''
     def __init__(self, test_dir, base_prm_path, slurm_base_path, server, tasks_per_node,\
-                 refinement_levels, end_step, stokes_type, **kwargs):
+                 refinement_levels, end_step, stokes_type, flag, **kwargs):
         self.test_dir = test_dir
         self.base_prm_path = base_prm_path
         self.slurm_base_path = slurm_base_path
@@ -200,9 +202,11 @@ class AFFINITY():
         self.stokes_type = stokes_type
         self.cluster_label = "%s-%stasks-socket" % (self.server, tasks_per_node)
         if openmpi is not None:
-            self.cluster_label += ("-openmpi-" + openmpi) # ?
+            self.cluster_label += ("-openmpi-" + openmpi) # add version of openmpi
         if self.stokes_type == "block GMG":
-            self.cluster_label += "-bGMG"
+            self.cluster_label += "-bGMG"  # add the type of Stokes solver
+        if flag != "":
+            self.cluster_label += "-%s" % flag  # add an assigned flag
         self.refinement_levels = refinement_levels
         self.end_step = end_step
         self.setups = [1, ] # unused
