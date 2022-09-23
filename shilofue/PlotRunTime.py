@@ -48,12 +48,14 @@ This scripts generate plots\n\
 Examples of usage: \n\
 \n\
   - plot newton solver results\n\
+    -s: assign a minimum step; \n\
+    -s1: assign a maximum step \n\
 \n\
-        Lib_PlotRunTime plot_newton_solver_history ~/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 -s 350 -s1 450\n\
+        Lib_PlotRunTime plot_newton_solver_history -i `pwd` -s 350 -s1 450\n\
 \n\
   - plot newton solver step\n\
 \n\
-        Lib_PlotRunTime plot_newton_solver_step -i ~/ASPECT_PROJECT/TwoDSubduction/non_linear34/eba_low_tol_newton_shift_CFL0.8 -s 390\n\
+        Lib_PlotRunTime plot_newton_solver_step -i `pwd` -s 390\n\
         ")
 
 def RunTimeInfo(log_path, **kwargs):
@@ -508,7 +510,9 @@ def main():
             o_path = PlotNewtonSolverHistory(log_file, fig_path, step_range=[arg.step, arg.step1])
         else:
             o_path = PlotNewtonSolverHistory(log_file, fig_path)
-
+    elif (_commend in ['-h', '--help']):
+        # example:
+        Usage()
     else:
         # commend not right
         raise ValueError('%s is not a valid commend' % _commend)
