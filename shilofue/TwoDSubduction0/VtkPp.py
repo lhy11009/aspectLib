@@ -622,6 +622,8 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
     if not os.path.isfile(filein):
         raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
+    else:
+        print("SlabMorphology: processing %s" % filein)
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
     # vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis',\
@@ -875,7 +877,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
     Visit_Options.Interpret()
     # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
     available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
-    available_pvtu_steps = [i - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) for i in available_pvtu_snapshots]
+    print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # debug
+    # available_pvtu_steps = [i - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) for i in available_pvtu_snapshots]
     # get where previous session ends
     vtk_output_dir = os.path.join(case_dir, 'vtk_outputs')
     if not os.path.isdir(vtk_output_dir):
@@ -889,14 +892,14 @@ def SlabMorphologyCase(case_dir, **kwargs):
         if os.path.isfile(slab_morph_file):
             print("%s: Delete old slab_morph.txt file." % Utilities.func_name())
             os.remove(slab_morph_file)  # delete slab morph file
-        ParallelWrapper.delete_temp_files(available_pvtu_steps)  # delete intermediate file if rewrite
+        ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
     num_cores = multiprocessing.cpu_count()
     # loop for all the steps to plot
     # Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
     # for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
     ParallelWrapper.clear()
-    for pvtu_step in available_pvtu_steps:  # then run in on cpu to assemble these results
-        ParallelWrapper(pvtu_step)
+    for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
+        ParallelWrapper(pvtu_snapshot)
     pvtu_steps_o, outputs = ParallelWrapper.assemble()
     # last, output
     # header
