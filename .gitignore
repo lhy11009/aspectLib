@@ -148,6 +148,7 @@ __pycache__/
 *.pdf
 
 # sub-folders
+# this is a seperate git folder
 Subduction-Dynamics-Tools/
 large_data_files/
 
