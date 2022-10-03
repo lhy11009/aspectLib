@@ -345,6 +345,24 @@ def test_sz_thickness():
     wb_path = os.path.join(output_dir, 'case.wb')
     assert(filecmp.cmp(wb_path, wb_std_path))
 
+
+def test_slurm_options():
+    '''
+    Use the implementation for slurm options
+    '''
+    source_case_dir = os.path.join(source_dir, "slurm_options")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'slurm_options')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)  # create case
+    assert(os.path.isdir(output_dir))  # check case generation
+    slurm_std_path = os.path.join(source_case_dir, 'job_p-billen_std.sh')
+    slurm_path = os.path.join(output_dir, 'job_p-billen.sh')
+    assert(filecmp.cmp(slurm_path, slurm_std_path))
+    slurm_std_path_1 = os.path.join(source_case_dir, 'job_high2_std.sh')
+    slurm_path_1 = os.path.join(output_dir, 'job_high2.sh')
+    assert(filecmp.cmp(slurm_path_1, slurm_std_path_1))
     
 # to check for error message
     # with pytest.raises(SomeError) as _excinfo:

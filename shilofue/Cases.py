@@ -83,7 +83,6 @@ class CASE_OPT(Utilities.JSON_OPT):
             available options in [all fs, bt fs side ns]", str,\
             ["boundary condition", "velocity", "type"], "all fs", nick='type_bd_v')
         self.add_key("Dimension", int, ['dimension'], 2, nick='dimension')
-        # todo_affinity
         self.add_key("Refinement level, note this is a summarized parameter of the refinement scheme assigned,\
 it only takes effect if the input is positiveh",\
             int, ["refinement level"], -1, nick="refinement_level")
@@ -91,6 +90,8 @@ it only takes effect if the input is positiveh",\
         self.add_key("mantle rheology", str, ['mantle rheology', 'scheme'], "HK03_wet_mod", nick='mantle_rheology_scheme')
         self.add_key("Stokes solver type", str,\
          ["stokes solver", "type"], "block AMG", nick="stokes_solver_type")
+        self.add_features('Slurm options', ['slurm'], ParsePrm.SLURM_OPT)
+
         pass
     
     def check(self):
@@ -222,6 +223,15 @@ it only takes effect if the input is positiveh",\
         assert(stokes_solver_type in ["block AMG", "block GMG"])
         self.values[18] = stokes_solver_type
     
+    def get_slurm_opts(self):
+        slurm_opts = self.values[19]
+        o_dir = Utilities.var_subs(self.values[2])
+        _name = self.values[0]
+        output_directory = os.path.join(o_dir, _name)
+        for slurm_opt in slurm_opts:
+            slurm_opt.fix_output_dir(output_directory)
+        return slurm_opts
+    
 
 class CASE():
     '''
@@ -295,6 +305,7 @@ class CASE():
             _root(str): a directory to put the new case
             **kwargs:
                 "fast_first_step": generate another file for fast running the 0th step
+                "slurm_opts": options for slurm files
         Return:
             case_dir(str): path to created case.
         '''
@@ -339,6 +350,18 @@ class CASE():
             with open(wb_out_path, 'w') as fout:
                 json.dump(self.wb_dict, fout, indent=2)
         print("New case created: %s" % case_dir)
+        # generate slurm files if options are included
+        slurm_opts = kwargs.get("slurm_opts", [])
+        if len(slurm_opts) > 0:
+            for slurm_opt in slurm_opts:
+                # SlurmOperator = ParsePrm.SLURM_OPERATOR(self.slurm_base_path)
+                SlurmOperator = ParsePrm.SLURM_OPERATOR(slurm_opt.get_base_path())
+                # SlurmOperator.SetAffinity(np.ceil(core_count/self.tasks_per_node), core_count, 1)
+                SlurmOperator.SetAffinity(*slurm_opt.to_set_affinity())
+                SlurmOperator.SetCommand(*slurm_opt.to_set_command())
+                SlurmOperator.SetName(slurm_opt.get_job_name())
+                SlurmOperator(slurm_opt.get_output_path())
+                pass
         # copy paste files and figures generated
         for path in self.output_files:
             base_name = os.path.basename(path)
@@ -426,6 +449,7 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     reset_stokes_solver_type = kwargs.get("reset_stokes_solver_type", None)
     end_step = kwargs.get("end_step", -1)
     Case_Opt = CASE_OPT()
+    # read in json options
     if type(json_opt) == str:
         if not os.access(json_opt, os.R_OK):
             raise FileNotFoundError("%s doesn't exist" % json_opt)
@@ -434,19 +458,20 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
         Case_Opt.import_options(json_opt)
     else:
         raise TypeError("Type of json_opt must by str or dict")
+    # reset case properties
     if fix_case_name != None:
         Case_Opt.fix_case_name(fix_case_name)  # fix base dir, useful when creating a group of case from a folder
     if fix_base_dir != None:
         Case_Opt.fix_base_dir(fix_base_dir)  # fix base dir, useful when creating a group of case from a folder
     if fix_output_dir != None:
         Case_Opt.fix_output_dir(fix_output_dir)  # fix output dir, useful when doing tests
-    # todo_affinity
     if reset_refinement_level != None:
         Case_Opt.reset_refinement(reset_refinement_level)
     if fix_case_output_dir != None:
         Case_Opt.fix_case_output_dir(fix_case_output_dir)
     if reset_stokes_solver_type != None:
         Case_Opt.reset_stokes_solver_type(reset_stokes_solver_type)
+    # check if the options make sense
     Case_Opt.check()
     # check if the case already exists. If so, only update if it is explicitly 
     # required
@@ -466,8 +491,6 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     Case.configure_prm(*Case_Opt.to_configure_prm())
     if Case_Opt.if_use_world_builder():
         Case.configure_wb(*Case_Opt.to_configure_wb())
-    for _path in Case_Opt.get_additional_files():
-        Case.add_extra_file(_path)
     # create new case
     if update_flag:
         # update a previous case:
@@ -477,7 +500,7 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
         case_dir_tmp = os.path.join(Case_Opt.o_dir(), "%s_tmp" % Case_Opt.case_name())
         if os.path.isdir(case_dir_tmp):
             rmtree(case_dir_tmp)
-        Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(), is_tmp=True)
+        Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(), is_tmp=True, slurm_opts=Case_Opt.get_slurm_opts())
         assert(os.path.isdir(case_dir_tmp))
         do_update = False # a flag to perform update, only true if the parameters are different
         prm_ori = os.path.join(case_dir, 'case.prm')
@@ -538,7 +561,7 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             with open(cat_file, 'w') as fout:
                 fout.write(contents)
     else:
-        case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step())
+        case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(), slurm_opts=Case_Opt.get_slurm_opts())
     return case_dir
 
 def SetBcVelocity(bc_dict, dimension, type_bc_v):

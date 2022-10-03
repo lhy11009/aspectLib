@@ -672,8 +672,86 @@ class SLURM_OPERATOR():
     def __call__(self, slurm_file_path):
         with open(slurm_file_path, 'w') as fout:
             ParseToSlurmBatchFile(fout, self.o_dict)
+        print("Slurm file created: ", slurm_file_path)
 
     pass
+
+
+class SLURM_OPT(Utilities.JSON_OPT):
+    def __init__(self):
+        '''
+        Initiation, first perform parental class's initiation,
+        then perform daughter class's initiation.
+        '''
+        Utilities.JSON_OPT.__init__(self)
+        self.add_key("Slurm file (inputs)", str, ["slurm file"], "slurm.sh", nick='slurm_file')
+        self.add_key("Openmpi version", str, ["openmpi version"], "", nick='openmpi')
+        self.add_key("build directory", str, ["build directory"], "", nick="build_directory")
+        self.add_key("Flag", str, ["flag"], "", nick="flag")
+        self.add_key("Tasks per node", int, ["tasks per node"], 32, nick='tasks_per_node')
+        self.add_key("cpus", int, ["cpus"], 1, nick="cpus")
+        self.add_key("Threads per cpu", int, ["threads per cpu"], 1, nick='threads_per_cpu')
+        self.add_key("List of nodes", list, ["node list"], [], nick="nodelist")
+        self.add_key("Path to the prm file", str, ["prm path"], "./case.prm", nick="prm_path")
+        self.add_key("Output directory", str, ["output directory"], ".", nick="output_directory")
+        self.add_key("Base directory", str, ["base directory"], ".", nick="base_directory")
+
+    def check(self):
+        slurm_base_path = self.values[0]
+        os.path.isfile(slurm_base_path)
+        prm_path = self.values[8]
+        os.path.isfile(prm_path)
+        base_directory = self.values[10]
+        assert(os.path.isdir(base_directory))
+        output_directory = self.values[9]
+        if not os.path.isdir(output_directory):
+            os.mkdir(output_directory)
+
+    def get_base_path(self):
+        '''
+        get the path to the base file (i.e job_p-billen.sh)
+        '''
+        base_directory = self.values[10]
+        slurm_base_file = self.values[0]
+        slurm_base_path = os.path.join(base_directory, slurm_base_file)
+        return slurm_base_path
+
+    def to_set_affinity(self):
+        tasks_per_node = self.values[4]
+        cpus = self.values[5]
+        threads_per_cpu = self.values[6]
+        threads = int(cpus * threads_per_cpu)
+        nnode = int(np.ceil(threads / tasks_per_node))
+        return nnode, threads, threads_per_cpu
+
+    def to_set_command(self):
+        build_directory = self.values[2]
+        prm_path = self.values[8]
+        return build_directory, prm_path
+
+    def get_job_name(self):
+        '''
+        use the basename of the output directory as the job name
+        '''
+        output_directory = self.values[9]
+        job_name = os.path.basename(output_directory)
+        return job_name
+        pass
+
+    def get_output_path(self):
+        '''
+        get the path of the output file (i.e. job_p-billen.sh)
+        '''
+        slurm_base_path = self.values[0]
+        output_directory = self.values[9]
+        output_path = os.path.join(output_directory, os.path.basename(slurm_base_path))
+        return output_path
+
+    def fix_base_dir(self, base_directory):
+        self.values[10] = base_directory
+    
+    def fix_output_dir(self, output_directory):
+        self.values[9] = output_directory
 
 def main():
     '''
