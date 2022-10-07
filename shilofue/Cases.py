@@ -439,7 +439,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
         case_dir: return case directory
     '''
     print("%s: Creating case" % Utilities.func_name())
-    is_update = kwargs.get('update', True)  # this controls whether we want to update
+    is_update = kwargs.get('update', True)  # this controls whether we update
+    is_force_update = kwargs.get('force_update', False)  # when this is false, inputs is required to continue.
     update_flag = False # this marks whether there is impending update.
     fix_case_name = kwargs.get('fix_case_name', None)
     fix_base_dir = kwargs.get('fix_base_dir', None)
@@ -478,7 +479,6 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     case_dir_to_check = os.path.join(Case_Opt.o_dir(), Case_Opt.case_name())
     if os.path.isdir(case_dir_to_check):
         if is_update:
-            print("Case %s already exists, updating" % case_dir_to_check)
             update_flag = True
         else:
             print("Case %s already exists, aborting" % case_dir_to_check)
@@ -491,6 +491,9 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     Case.configure_prm(*Case_Opt.to_configure_prm())
     if Case_Opt.if_use_world_builder():
         Case.configure_wb(*Case_Opt.to_configure_wb())
+    # add extra files
+    for _path in Case_Opt.get_additional_files():
+        Case.add_extra_file(_path)
     # create new case
     if update_flag:
         # update a previous case:
@@ -511,6 +514,7 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             wb_new = os.path.join(case_dir_tmp, 'case.wb')
             do_update = (do_update or (not filecmp.cmp(wb_ori, wb_new)))
         if do_update:
+            print("Case %s already exists and there are changes, updating" % case_dir_to_check)
             # document older files: a. files in the directory.
             # b. the img/initial_condition folder.
             index = 0
@@ -546,6 +550,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
                             newer_text = fin1.readlines()
                         except Exception:
                             continue
+                    print("file_newer: ", file_newer)
+                    print("file_older: ", file_older)  # debug
                     diff_results = unified_diff(older_text, newer_text, fromfile=file_older, tofile=file_newer, lineterm='')
                     for line in diff_results:
                         contents += line
@@ -556,6 +562,15 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             cat_file = os.path.join(older_dir, 'change_log')
             with open(cat_file, 'w') as fout:
                 fout.write(contents)
+            if is_force_update:
+                print("Force update")  # debug
+                pass
+            else:
+                print("Please check the change log first before continue: %s" % cat_file)
+                entry = inputs("Proceed? (y/n)")
+                if entry != "y":
+                    print("Not updating, removing tmp files")
+                    exit(0)
             # create new files
             copy2(prm_new, prm_ori)
             if os.path.isfile(wb_ori):
@@ -566,6 +581,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
                     rmtree(img_dir_ori)
                 if os.path.isdir(img_dir):
                     copytree(img_dir, img_dir_ori)
+        else:
+            print("Case %s already exists but there is no change, aborting" % case_dir_to_check)
     else:
         case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(), slurm_opts=Case_Opt.get_slurm_opts())
     return case_dir
