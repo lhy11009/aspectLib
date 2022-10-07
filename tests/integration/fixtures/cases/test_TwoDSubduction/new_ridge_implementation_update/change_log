@@ -1,4 +1,7 @@
---- /home/lochy/ASPECT_PROJECT/aspectLib/.test/TwoDSubduction_cases/new_ridge_implementation_update/case.wb+++ /home/lochy/ASPECT_PROJECT/aspectLib/.test/TwoDSubduction_cases/new_ridge_implementation_update_tmp/case.wb@@ -98,12 +98,14 @@           "spreading velocity": 0.035,
+--- /home/lochy/ASPECT_PROJECT/aspectLib/.test/TwoDSubduction_cases/new_ridge_implementation_update/case.wb
++++ /home/lochy/ASPECT_PROJECT/aspectLib/.test/TwoDSubduction_cases/new_ridge_implementation_update_tmp/case.wb
+@@ -98,12 +98,14 @@
+           "spreading velocity": 0.035,
            "ridge coordinates": [
              [
 -              29.67761299531811,
@@ -18,7 +21,8 @@
              ]
            ]
          }
-@@ -158,12 +160,14 @@           "spreading velocity": 0.05,
+@@ -158,12 +160,14 @@
+           "spreading velocity": 0.05,
            "ridge coordinates": [
              [
 -              0,
@@ -38,7 +42,8 @@
              ]
            ]
          }
-@@ -258,12 +262,14 @@           "plate velocity": 0.05,
+@@ -258,12 +262,14 @@
+           "plate velocity": 0.05,
            "ridge coordinates": [
              [
 -              0,
@@ -58,3 +63,11 @@
              ]
            ],
            "coupling depth": 50000.0,
+--- /home/lochy/ASPECT_PROJECT/aspectLib/.test/TwoDSubduction_cases/new_ridge_implementation_update/mantle_profile_v1_HK03_wet_mod_dEdiff-4.0000e+04_dEdisl2.0000e+04_dVdiff-5.500000e-06_dVdisl0.0000e+00.json
++++ /home/lochy/ASPECT_PROJECT/aspectLib/.test/TwoDSubduction_cases/new_ridge_implementation_update_tmp/configurations/mantle_profile_v1_HK03_wet_mod_dEdiff-4.0000e+04_dEdisl2.0000e+04_dVdiff-5.500000e-06_dVdisl0.0000e+00.json
+@@ -0,0 +1 @@
++{"diffusion_creep": {"A": 27262.298195358904, "p": 3.0, "r": 1.0, "n": 1.0, "E": 285000.0, "V": 6.9e-06, "d": 10000.0, "Coh": 1000.0, "wet": 1.0}, "dislocation_creep": {"A": 8.816851014397084, "p": 0.0, "r": 1.0, "n": 3.5, "E": 490000.0, "V": 1.34e-05, "d": 10000.0, "Coh": 1000.0, "wet": 1.0}, "diffusion_lm": {"A": 83.34526606478113, "p": 3.0, "r": 1.0, "n": 1.0, "E": 285000.0, "V": 3e-06, "d": 10000.0, "Coh": 1000.0, "wet": 1.0}}
+--- /home/lochy/ASPECT_PROJECT/aspectLib/.test/TwoDSubduction_cases/new_ridge_implementation_update/mantle_profile_aspect_v1_HK03_wet_mod_dEdiff-4.0000e+04_dEdisl2.0000e+04_dVdiff-5.500000e-06_dVdisl0.0000e+00.json
++++ /home/lochy/ASPECT_PROJECT/aspectLib/.test/TwoDSubduction_cases/new_ridge_implementation_update_tmp/configurations/mantle_profile_aspect_v1_HK03_wet_mod_dEdiff-4.0000e+04_dEdisl2.0000e+04_dVdiff-5.500000e-06_dVdisl0.0000e+00.json
+@@ -0,0 +1 @@
++{"diffusion_creep": {"A": 8.178689458607673e-17, "d": 0.01, "n": 1.0, "m": 3.0, "E": 285000.0, "V": 6.9e-06}, "dislocation_creep": {"A": 5.907603165103584e-16, "d": 0.01, "n": 3.5, "m": 0.0, "E": 490000.0, "V": 1.34e-05}, "diffusion_lm": {"A": 2.5003579819434343e-19, "d": 0.01, "n": 1.0, "m": 3.0, "E": 285000.0, "V": 3e-06}}

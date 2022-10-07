@@ -515,6 +515,7 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             # b. the img/initial_condition folder.
             index = 0
             while os.path.isdir(os.path.join(case_dir, "update_%02d" % index)):
+                # figure out how many previous updates have been there.
                 index += 1
             older_dir = os.path.join(case_dir, "update_%02d" % index)
             if os.path.isdir(older_dir):
@@ -529,16 +530,6 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             ini_img_dir = os.path.join(case_dir, "img", "initial_condition")
             if os.path.isdir(ini_img_dir):
                 copytree(ini_img_dir, os.path.join(older_dir, os.path.basename(ini_img_dir)))
-            # create new files
-            copy2(prm_new, prm_ori)
-            if os.path.isfile(wb_ori):
-                copy2(wb_new, wb_ori)
-                img_dir = os.path.join(case_dir_tmp, "img")
-                img_dir_ori = os.path.join(case_dir, "img")
-                if os.path.isdir(img_dir_ori):
-                    rmtree(img_dir_ori)
-                if os.path.isdir(img_dir):
-                    copytree(img_dir, img_dir_ori)
             # generate catalog: loop over files in the new folder and output the differences from
             # older files
             contents = ""
@@ -555,11 +546,26 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
                             newer_text = fin1.readlines()
                         except Exception:
                             continue
-                    for line in unified_diff(older_text, newer_text, fromfile=file_older, tofile=file_newer, lineterm=''):
+                    diff_results = unified_diff(older_text, newer_text, fromfile=file_older, tofile=file_newer, lineterm='')
+                    for line in diff_results:
                         contents += line
+                        if line[-1] == "\n":
+                            pass
+                        else:
+                            contents += "\n"
             cat_file = os.path.join(older_dir, 'change_log')
             with open(cat_file, 'w') as fout:
                 fout.write(contents)
+            # create new files
+            copy2(prm_new, prm_ori)
+            if os.path.isfile(wb_ori):
+                copy2(wb_new, wb_ori)
+                img_dir = os.path.join(case_dir_tmp, "img")
+                img_dir_ori = os.path.join(case_dir, "img")
+                if os.path.isdir(img_dir_ori):
+                    rmtree(img_dir_ori)
+                if os.path.isdir(img_dir):
+                    copytree(img_dir, img_dir_ori)
     else:
         case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(), slurm_opts=Case_Opt.get_slurm_opts())
     return case_dir
