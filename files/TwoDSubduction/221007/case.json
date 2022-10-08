@@ -1,0 +1,45 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220708",
+  "output directory": "",
+  "name": "eba_cdpt_SA80.0_OA40.0",
+  "include fast first step": 1,
+  "geometry": "chunk",
+  "potential temperature": 1573.0,
+  "boundary condition": {
+    "model": "all free slip"
+  },
+  "use world builder": 1,
+  "world builder": {
+    "use new ridge implementation": 1,
+    "plate age method": "adjust box width",
+    "box width before adjusting": 15570000.0,
+    "adjust mesh with box width": 1,
+    "subducting plate": {
+      "age trench": 80000000.0,
+      "sp rate": 0.05
+    },
+    "overiding plate": {
+      "age": 40000000.0,
+      "transit": {
+        "age": 20000000.0,
+        "length": 700000.0
+      }
+    }
+  },
+  "Include peierls creep": 0,
+  "coupling the eclogite phase to shear zone viscosity": 0,
+  "slurm": [
+    {
+      "slurm file": "./files/slurm_files/221002/job_p-billen.sh",
+      "build directory": "master_TwoD",
+      "tasks per node": 128,
+      "cpus": 64
+    },
+    {
+      "slurm file": "./files/slurm_files/221002/job_high2.sh",
+      "build directory": "master_TwoD",
+      "tasks per node": 32,
+      "cpus": 64
+    }
+  ]
+}
