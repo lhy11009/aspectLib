@@ -684,7 +684,7 @@ class SLURM_OPT(Utilities.JSON_OPT):
         then perform daughter class's initiation.
         '''
         Utilities.JSON_OPT.__init__(self)
-        self.add_key("Slurm file (inputs)", str, ["slurm file"], "slurm.sh", nick='slurm_file')
+        self.add_key("Slurm file (inputs)", str, ["slurm file"], "slurm.sh", nick='slurm_base_file')
         self.add_key("Openmpi version", str, ["openmpi version"], "", nick='openmpi')
         self.add_key("build directory", str, ["build directory"], "", nick="build_directory")
         self.add_key("Flag", str, ["flag"], "", nick="flag")
@@ -752,6 +752,10 @@ class SLURM_OPT(Utilities.JSON_OPT):
     
     def fix_output_dir(self, output_directory):
         self.values[9] = output_directory
+    
+    def get_output_dir(self):
+        output_directory = self.values[9]
+        return output_directory
 
 def main():
     '''

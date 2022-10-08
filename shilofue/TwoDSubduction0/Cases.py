@@ -116,9 +116,6 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("friction in the shear zone", float, ['shear zone', 'friction'], 2.8624, nick='crust_friction')
         self.add_key("constant viscosity in the shear zone", float, ['shear zone', 'constant viscosity'], 1e20, nick='sz_constant_viscosity')
         self.add_key("use WB new ridge implementation", int, ['world builder', 'use new ridge implementation'], 0, nick='wb_new_ridge')
-        
-
-        pass
     
     def check(self):
         '''
@@ -521,6 +518,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
 
 
+
 def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, **kwargs):
     '''
     configure plate in world builder
@@ -599,6 +597,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, *
         # in this case, I'll use the plate model
         s_dict["temperature models"][0]["use plate model as reference"] = True
         s_dict["temperature models"][0]["max distance slab top"] = 150e3
+        s_dict["temperature models"][0]["artificial heat factor"] = 0.5
     for i in range(len(s_dict["segments"])-1):
         # thickness of crust, last segment is a ghost, so skip
         s_dict["segments"][i]["composition models"][0]["max distance slab top"] = Dsz

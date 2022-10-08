@@ -326,6 +326,15 @@ def test_wb_new_ridge_implementation_update():
     assert(os.path.isfile(change_log_path))
     change_log_path_std = os.path.join(source_case_dir, "change_log")
     assert(filecmp.cmp(change_log_path, change_log_path_std)) # case.wb is updated
+    # update again, with changes in the slurm file
+    json_path = os.path.join(source_case_dir, 'case2.json')
+    create_case_with_json(json_path, CASE, CASE_OPT, update=True, force_update=True)  # create case
+    assert(os.path.isdir(os.path.join(output_dir, "update_01")))  # assert the update catalog is generated
+    change_log_path = os.path.join(output_dir, "update_01", "change_log")
+    assert(os.path.isfile(change_log_path))
+    change_log_path_std = os.path.join(source_case_dir, "change_log_1")
+    assert(filecmp.cmp(change_log_path, change_log_path_std)) # case.wb is updated
+
 
 def test_sz_thickness():
     '''

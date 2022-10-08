@@ -360,7 +360,11 @@ class CASE():
                 SlurmOperator.SetAffinity(*slurm_opt.to_set_affinity())
                 SlurmOperator.SetCommand(*slurm_opt.to_set_command())
                 SlurmOperator.SetName(slurm_opt.get_job_name())
-                SlurmOperator(slurm_opt.get_output_path())
+                appendix = ""
+                if is_tmp:
+                    # append a marker if this is a tmp case
+                    appendix = "_tmp"
+                SlurmOperator(os.path.join(os.path.dirname(slurm_opt.get_output_path()) + appendix, os.path.basename(slurm_opt.get_output_path())))
                 pass
         # copy paste files and figures generated
         for path in self.output_files:
@@ -532,6 +536,9 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
                     pass
                 else:
                     contents += "\n"
+        cat_file = os.path.join(case_dir_tmp, 'change_log')
+        with open(cat_file, 'w') as fout:
+            fout.write(contents)
         do_update = (contents != "")  # if there are differences, do update
         # execute the changes
         if do_update:
