@@ -316,7 +316,7 @@ def test_wb_new_ridge_implementation_update():
     assert(filecmp.cmp(wb_path, wb_std_path))
     # now update on this existing case
     json_path = os.path.join(source_case_dir, 'case1.json')
-    create_case_with_json(json_path, CASE, CASE_OPT, update=True)  # create case
+    create_case_with_json(json_path, CASE, CASE_OPT, update=True, force_update=True)  # create case
     assert(os.path.isdir(os.path.join(output_dir, "update_00")))  # assert the update catalog is generated
     wb_std_path = os.path.join(source_case_dir, 'case_1_std.wb')
     wb_path = os.path.join(output_dir, 'case.wb')

@@ -506,17 +506,51 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
         Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(), is_tmp=True, slurm_opts=Case_Opt.get_slurm_opts())
         assert(os.path.isdir(case_dir_tmp))
         do_update = False # a flag to perform update, only true if the parameters are different
-        prm_ori = os.path.join(case_dir, 'case.prm')
-        prm_new = os.path.join(case_dir_tmp, 'case.prm')
-        do_update = (do_update or (not filecmp.cmp(prm_ori, prm_new)))
-        wb_ori = os.path.join(case_dir, 'case.wb')
-        if os.path.isfile(wb_ori):
-            wb_new = os.path.join(case_dir_tmp, 'case.wb')
-            do_update = (do_update or (not filecmp.cmp(wb_ori, wb_new)))
+        # generate catalog: loop over files in the new folder and output the differences from
+        contents = ""
+        for _name in os.listdir(case_dir_tmp):
+            file_newer = os.path.join(case_dir_tmp, _name)
+            if not os.path.isfile(file_newer):
+                continue
+            file_older = os.path.join(case_dir, _name)
+            older_text = "" # if no older files are present, the text is vacant.
+            if os.path.isfile(file_older):
+                with open(file_older, 'r') as fin0:
+                    try:
+                        older_text = fin0.readlines()
+                    except UnicodeDecodeError:
+                        continue
+            with open(file_newer, 'r') as fin1:
+                try:
+                    newer_text = fin1.readlines()
+                except Exception:
+                    continue
+            diff_results = unified_diff(older_text, newer_text, fromfile=file_older, tofile=file_newer, lineterm='')
+            for line in diff_results:
+                contents += line
+                if line[-1] == "\n":
+                    pass
+                else:
+                    contents += "\n"
+        do_update = (contents != "")  # if there are differences, do update
+        # execute the changes
         if do_update:
             print("Case %s already exists and there are changes, updating" % case_dir_to_check)
-            # document older files: a. files in the directory.
+            if is_force_update:
+                print("Force update")
+                pass
+            else:
+                print("Please check the change log first before continue: %s" % cat_file)
+                entry = input("Proceed? (y/n)")
+                if entry != "y":
+                    print("Not updating, removing tmp files")
+                    rmtree(case_dir_tmp)
+                    exit(0)
+            # document older files: 
+            # 0. change_log file
+            # a. files in the directory.
             # b. the img/initial_condition folder.
+            # c. the configurations folder
             index = 0
             while os.path.isdir(os.path.join(case_dir, "update_%02d" % index)):
                 # figure out how many previous updates have been there.
@@ -525,6 +559,9 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             if os.path.isdir(older_dir):
                 rmtree(older_dir)
             os.mkdir(older_dir)
+            cat_file = os.path.join(older_dir, 'change_log')
+            with open(cat_file, 'w') as fout:
+                fout.write(contents)
             for subdir, _, files in os.walk(case_dir):
                 for filename in files:
                     file_ori = os.path.join(subdir, filename)
@@ -534,55 +571,35 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             ini_img_dir = os.path.join(case_dir, "img", "initial_condition")
             if os.path.isdir(ini_img_dir):
                 copytree(ini_img_dir, os.path.join(older_dir, os.path.basename(ini_img_dir)))
-            # generate catalog: loop over files in the new folder and output the differences from
-            # older files
-            contents = ""
+                rmtree(ini_img_dir) # remove images
+            configure_dir = os.path.join(case_dir, "configurations")
+            if os.path.isdir(configure_dir):
+                # c. remove old configuration files
+                rmtree(configure_dir)
+            # copy new file
+            # a. files directly in the folder
+            # b. the img/initial_condition folder
+            # c. the configuration folder
             for subdir, _, files in os.walk(case_dir_tmp):
                 for filename in files:
-                    file_newer = os.path.join(subdir, filename)
-                    file_older = os.path.join(case_dir, filename)
-                    older_text = "" # if no older files are present, the text is vacant.
-                    if os.path.isfile(file_older):
-                        with open(file_older, 'r') as fin0:
-                            older_text = fin0.readlines()
-                    with open(file_newer, 'r') as fin1:
-                        try:
-                            newer_text = fin1.readlines()
-                        except Exception:
-                            continue
-                    print("file_newer: ", file_newer)
-                    print("file_older: ", file_older)  # debug
-                    diff_results = unified_diff(older_text, newer_text, fromfile=file_older, tofile=file_newer, lineterm='')
-                    for line in diff_results:
-                        contents += line
-                        if line[-1] == "\n":
-                            pass
-                        else:
-                            contents += "\n"
-            cat_file = os.path.join(older_dir, 'change_log')
-            with open(cat_file, 'w') as fout:
-                fout.write(contents)
-            if is_force_update:
-                print("Force update")  # debug
-                pass
-            else:
-                print("Please check the change log first before continue: %s" % cat_file)
-                entry = inputs("Proceed? (y/n)")
-                if entry != "y":
-                    print("Not updating, removing tmp files")
-                    exit(0)
-            # create new files
-            copy2(prm_new, prm_ori)
-            if os.path.isfile(wb_ori):
-                copy2(wb_new, wb_ori)
-                img_dir = os.path.join(case_dir_tmp, "img")
-                img_dir_ori = os.path.join(case_dir, "img")
-                if os.path.isdir(img_dir_ori):
-                    rmtree(img_dir_ori)
-                if os.path.isdir(img_dir):
-                    copytree(img_dir, img_dir_ori)
+                    if filename == "change_log":
+                        # skip the log file
+                        continue
+                    file_tmp = os.path.join(subdir, filename)
+                    file_to = os.path.join(case_dir, filename)
+                    if os.path.dirname(file_tmp) == case_dir_tmp:
+                        if os.path.isfile(file_to):
+                            os.remove(file_to)
+                        copy2(file_tmp, file_to)
+            ini_img_tmp_dir = os.path.join(case_dir_tmp, "img", "initial_condition")
+            if os.path.isdir(ini_img_tmp_dir):
+                copytree(ini_img_tmp_dir, ini_img_dir)
+            configure_dir_tmp = os.path.join(case_dir_tmp, "configurations")
+            if os.path.isdir(configure_dir_tmp):
+                copytree(configure_dir_tmp, configure_dir)
         else:
             print("Case %s already exists but there is no change, aborting" % case_dir_to_check)
+        rmtree(case_dir_tmp)
     else:
         case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(), slurm_opts=Case_Opt.get_slurm_opts())
     return case_dir
