@@ -116,6 +116,8 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("friction in the shear zone", float, ['shear zone', 'friction'], 2.8624, nick='crust_friction')
         self.add_key("constant viscosity in the shear zone", float, ['shear zone', 'constant viscosity'], 1e20, nick='sz_constant_viscosity')
         self.add_key("use WB new ridge implementation", int, ['world builder', 'use new ridge implementation'], 0, nick='wb_new_ridge')
+        # todo_branch
+        self.add_key("branch", str, ['branch'], "", nick='branch')
     
     def check(self):
         '''
@@ -215,11 +217,14 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         crust_cohesion = self.values[self.start + 24]
         crust_friction = self.values[self.start + 25]
         sz_constant_viscosity = self.values[self.start + 26]
+        # todo_branch
+        branch = self.values[self.start + 28]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
-        refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity
+        refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
+        branch
 
     def to_configure_wb(self):
         '''
@@ -273,7 +278,7 @@ class CASE(CasesP.CASE):
     HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme,\
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
-    sz_constant_viscosity):
+    sz_constant_viscosity, branch):
         Ro = 6371e3
         # velocity boundaries
         if type_of_bd == "all free slip":  # boundary conditions
@@ -283,6 +288,15 @@ class CASE(CasesP.CASE):
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
         # directory to put outputs
+        # todo_branch
+        if branch != "":
+            if branch == "master":
+                branch_str = ""
+            else:
+                branch_str = "_%s" % branch
+            o_dict["Additional shared libraries"] =  "$ASPECT_SOURCE_DIR/build%s/prescribe_field/libprescribed_temperature.so, \
+$ASPECT_SOURCE_DIR/build%s/visco_plastic_TwoD/libvisco_plastic_TwoD.so, \
+$ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_str, branch_str, branch_str)
         # solver schemes
         if abs((stokes_linear_tolerance-0.1)/0.1) > 1e-6:
             # default is negative, thus do nothing
