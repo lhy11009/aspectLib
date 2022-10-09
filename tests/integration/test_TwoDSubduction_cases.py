@@ -378,7 +378,6 @@ def test_branch():
     '''
     Use the implementation for slurm options
     '''
-    # todo_branch
     source_case_dir = os.path.join(source_dir, "test_branch")
     json_path = os.path.join(source_case_dir, 'case0.json')
     output_dir = os.path.join(test_dir,'test_branch')
