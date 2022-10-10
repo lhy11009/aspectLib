@@ -217,12 +217,14 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         crust_friction = self.values[self.start + 25]
         sz_constant_viscosity = self.values[self.start + 26]
         branch = self.values[self.start + 28]
+        # todo_branch
+        partitions = self.values[20]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
-        branch
+        branch, partitions
 
     def to_configure_wb(self):
         '''
@@ -276,7 +278,7 @@ class CASE(CasesP.CASE):
     HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme,\
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
-    sz_constant_viscosity, branch):
+    sz_constant_viscosity, branch, partitions):
         Ro = 6371e3
         # velocity boundaries
         if type_of_bd == "all free slip":  # boundary conditions

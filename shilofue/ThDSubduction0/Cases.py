@@ -25,6 +25,7 @@ import sys, os, argparse
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from copy import deepcopy
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 from shilofue.Rheology import RHEOLOGY_OPR
@@ -97,6 +98,8 @@ different age will be adjusted.",\
         self.add_key("Reset viscosity for the trailing tail of the overiding plate", int, ['rheology', 'reset trailing ov viscosity'], 0, nick='reset_trailing_ov_viscosity')
         self.add_key("viscous flow law for mantle rheology", str, ['mantle rheology', 'flow law'], "diffusion", nick='mantle_rheology_flow_law')
         self.add_key("use WB new ridge implementation", int, ['world builder', 'use new ridge implementation'], 0, nick='wb_new_ridge')
+        # todo_side
+        self.add_key("Assign a side plate", int, ['plate setup', 'assign side plate'], 0, nick='assign_side_plate')
 
     
     def check(self):
@@ -179,7 +182,10 @@ different age will be adjusted.",\
         setup_method = self.values[self.start+26] # method of seting up slabs
         sp_rate = self.values[self.start+27] # method of seting up slabs
         wb_new_ridge = self.values[self.start+31]
-        return _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age, setup_method, sp_rate, wb_new_ridge
+        assign_side_plate = self.values[self.start+32]
+        return _type, if_wb, geometry, sp_width, sp_length, trailing_length,\
+        Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age,\
+        setup_method, sp_rate, wb_new_ridge, assign_side_plate
     
     def to_re_write_geometry_pa(self):
         '''
@@ -343,7 +349,7 @@ class CASE(CasesP.CASE):
 
 
     def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length,\
-    dip_angle, sp_age_trench, ov_age, setup_method, sp_rate, wb_new_ridge):
+    dip_angle, sp_age_trench, ov_age, setup_method, sp_rate, wb_new_ridge, assign_side_plate):
         '''
         Configure wb file
         '''
@@ -359,7 +365,8 @@ class CASE(CasesP.CASE):
             else:
                 raise ValueError("Wrong value for \"type\"")
         elif setup_method == '2d_consistent':
-            self.wb_dict = wb_configure_plate_2d_consistent(self.wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge)
+            self.wb_dict = wb_configure_plate_2d_consistent(self.wb_dict, sp_width, sp_rate, Dsz, Ddl,\
+            slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate)
             pass
     
 
@@ -453,11 +460,13 @@ def wb_configure_plate_schellart07_Tdependent(wb_dict, sp_width, sp_length, Dsz,
     o_dict['features'][i0] = sdict
 
 
-def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge):
+def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_length,\
+    dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate):
     '''
     World builder configuration of plates in Schellart etal 2007
     '''
-    Xmax = 40000e3
+    Xmax = 40000e3  # some big values that are not ever reached
+    Ymax = 20000e3
     pe_width = 55e3 # width of the plate edges
     sp_length = sp_rate * sp_age_trench
     o_dict = wb_dict.copy()
@@ -489,7 +498,14 @@ def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_
     spe_dict = o_dict['features'][i0]
     spe_dict["coordinates"] = [[0.0, sp_width], [0.0, sp_width + pe_width], [sp_length, sp_width + pe_width] ,[sp_length, sp_width]]
     spe_dict["temperature models"][0]["spreading velocity"] = sp_rate
-    o_dict['features'][i0] = spe_dict
+    # side plate
+    # todo_side
+    if assign_side_plate == 1:
+        sdp_dict = deepcopy(ov_dict)
+        sdp_dict["name"] = "side plate"
+        sdp_dict["coordinates"] = [[0.0, sp_width+pe_width], [0.0, Ymax], [Xmax, Ymax] ,[Xmax, sp_width+pe_width]]
+        i0 = ParsePrm.FindWBFeatures(o_dict, "Subducting plate edge")
+        o_dict['features'].insert(i0 + 1, sdp_dict)
     # slab
     with open(twod_default_wb_file, 'r') as fin:
         twod_default_dict = json.load(fin)

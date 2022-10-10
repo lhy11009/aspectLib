@@ -91,6 +91,8 @@ it only takes effect if the input is positiveh",\
         self.add_key("Stokes solver type", str,\
          ["stokes solver", "type"], "block AMG", nick="stokes_solver_type")
         self.add_features('Slurm options', ['slurm'], ParsePrm.SLURM_OPT)
+        # todo_branch
+        self.add_key("partitions", list, ["partitions"], [], nick='partitions')
 
         pass
     
