@@ -372,6 +372,30 @@ submit_case_peloton_high2(){
     return 0
 }
 
+submit_case_stampede2_normal(){
+    ####
+    # submit case to slurm
+    # Inputs:
+    #   $1: case directory
+    now=$(pwd)
+    cd "$1"
+    eval "sbatch job_normal.sh"
+    cd "${now}"
+    return 0
+}
+
+submit_case_stampede2_skx-normal(){
+    ####
+    # submit case to slurm
+    # Inputs:
+    #   $1: case directory
+    now=$(pwd)
+    cd "$1"
+    eval "sbatch job_skx-normal.sh"
+    cd "${now}"
+    return 0
+}
+
 restart_case(){
     ####
     # restart a case
@@ -436,6 +460,10 @@ check_time_restart_case(){
             submit_case_peloton_high2 "${case_dir}"
     	elif [[ ${partition} == "p-billen" ]]; then
             submit_case_peloton_p-billen "${case_dir}"
+    	elif [[ ${partition} == "normal" ]]; then
+            submit_case_stampede2_normal "${case_dir}"
+    	elif [[ ${partition} == "skx-normal" ]]; then
+            submit_case_stampede2_skx-normal "${case_dir}"
         fi
     fi
     return 0

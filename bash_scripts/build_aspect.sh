@@ -117,7 +117,7 @@ build_aspect_project(){
     # Here we pick nproc - 1, this make sure that we don't use up all resources.
     # But this will cause problem when nproc = 1
     # local nproc=$(nproc)
-    local nproc=$(nproc)
+    local nproc=6
     (( ${nproc} > 6 )) && nproc=6
     # local nproc=8
     cd ${build_dir}
