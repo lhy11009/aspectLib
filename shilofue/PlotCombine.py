@@ -400,7 +400,7 @@ class PLOT_COMBINE():
         '''
         Initiate options for combining plots
         '''
-        n_color_max = 10
+        n_color_max = 5
         ni = shape[0]
         nj = shape[1]
         fig = plt.figure(tight_layout=True, figsize=[5*nj, 5*ni])
