@@ -580,7 +580,7 @@ def ParseFromSlurmBatchFile(fin):
     return inputs
 
 
-def ParseToSlurmBatchFile(fout, outputs):
+def ParseToSlurmBatchFile(fout, outputs, **kwargs):
     '''
     export options to a slurm batch file.
     '''
@@ -609,9 +609,14 @@ def ParseToSlurmBatchFile(fout, outputs):
     for component in outputs["command"]:
         if is_first:
             is_first = False
+            # todo_mpirun
         else:
             contents += " "
         contents += component
+        if component == "mpirun":
+            # append the cpu options after mpirun
+            contents += " "
+            contents += ("-n " + outputs['config']['-n'])
     fout.write(contents)
     pass
 
@@ -645,6 +650,8 @@ class SLURM_OPERATOR():
         set options for affinities
         '''
         partition = kwargs.get('partition', None)
+        use_mpirun = kwargs.get('use_mpirun', False)
+        bind_to = kwargs.get('bind_to', None)
         self.o_dict = copy.deepcopy(self.i_dict)
         self.o_dict['config']['-N'] = str(int(nnode))
         self.o_dict['config']['-n'] = str(nthread)
@@ -652,6 +659,13 @@ class SLURM_OPERATOR():
         self.o_dict['config']['--tasks-per-node'] = str(int(nthread//nnode))
         if partition is not None:
              self.o_dict['config']['--partition'] = partition 
+        # todo_mpirun
+        if use_mpirun:
+            self.o_dict['command'][0] = 'mpirun'
+        if bind_to != None:
+            assert(bind_to in ["socket", 'core'])
+            self.o_dict['command'].insert(1, "--bind-to " + bind_to)
+
 
     def SetName(self, _name):
         '''

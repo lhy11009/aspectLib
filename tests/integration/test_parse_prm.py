@@ -135,3 +135,21 @@ def test_ParseToSlurmBatchFile():
     SlurmOperator(o_path)
     assert(os.path.isfile(o_path))  # compare outputs
     assert(filecmp.cmp(o_path, o_std_path))
+
+def test_ParseToSlurmBatchFile_mpirun():
+    '''
+    test function ParseToSlurmBatchFile, and use the mpirun command
+    for execution
+    '''
+    # todo_mpirun
+    source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse_prm')
+    _path = os.path.join(source_dir, 'job_p-billen.sh')
+    o_path = os.path.join(test_dir, "slurm_test3.sh")
+    if os.path.isfile(o_path):
+        os.remove(o_path)
+    o_std_path = os.path.join(source_dir, "slurm_std_test3.sh")
+    SlurmOperator = ParsePrm.SLURM_OPERATOR(_path)
+    SlurmOperator.SetAffinity(2, 64, 1, partition="high2", use_mpirun=1, bind_to="socket")
+    SlurmOperator(o_path)
+    assert(os.path.isfile(o_path))  # compare outputs
+    assert(filecmp.cmp(o_path, o_std_path))

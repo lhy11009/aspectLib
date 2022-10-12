@@ -1,5 +1,4 @@
 #!/bin/bash -l
-#SBATCH -J task
 #SBATCH -N 4
 #SBATCH -n 512
 #SBATCH --threads-per-core=1
@@ -12,12 +11,10 @@
 #SBATCH --switches=1
 #SBATCH --mem-per-cpu=4G
 
-module unload openmpi/4.0.1
-module load openmpi/4.1.0-mpi-io
-module unload deal.II
-module load /group/billengrp/software/deal.ii/deal.ii-9.3.3-Native-32bit-candi-gcc-11.1.0-openmpi4.1.0-mpi-io-rome-256-512/configuration/modulefiles/default
+source /group/billengrp/software/deal.ii/deal.ii-9.4.0-FullNative-32bit-candi-gcc-11.1.0-openmpi4.1.4-mpi-io-rome-256-512/configuration/enable.sh
+
 >&2 echo "list of modules:"
 >&2 module list
 >&2 echo "aspect source: ${ASPECT_SOURCE_DIR}"
 
-srun  ${ASPECT_SOURCE_DIR}/build_master_TwoD/aspect case.prm
+srun  ${ASPECT_SOURCE_DIR}/build_master_TwoD_p-billen/aspect case.prm
