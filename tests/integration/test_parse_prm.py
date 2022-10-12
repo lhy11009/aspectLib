@@ -141,7 +141,6 @@ def test_ParseToSlurmBatchFile_mpirun():
     test function ParseToSlurmBatchFile, and use the mpirun command
     for execution
     '''
-    # todo_mpirun
     source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse_prm')
     _path = os.path.join(source_dir, 'job_p-billen.sh')
     o_path = os.path.join(test_dir, "slurm_test3.sh")

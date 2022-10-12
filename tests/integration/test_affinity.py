@@ -40,38 +40,6 @@ if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
 
-def test_affinity_base():
-    '''
-    (description)
-    Asserts:
-    '''
-    test_source_dir = os.path.join(source_dir, "test_affinity_base")
-    server = "peloton-rome"
-    o_dir = os.path.join(test_dir, "test_affinity_base")
-    os.mkdir(o_dir)
-    tasks_per_node = 128
-    refinement_levels = [2, 3, 4, 5]
-    openmpi = "4.1.0"
-    build_directory = "master_TwoD"
-    prm_path = os.path.join(ASPECT_LAB_DIR, "files/AffinityTest/spherical_shell_expensive_solver.prm")
-    assert(os.path.isfile(prm_path))
-    slurm_base_path = os.path.join(ASPECT_LAB_DIR, "files", "TwoDSubduction", "220810", "job_p-billen.sh")
-    # test 1: rene's affinity test 
-    Affinity = AFFINITY(o_dir, prm_path, slurm_base_path, server, tasks_per_node, refinement_levels, -1, "block AMG", "", openmpi=openmpi, build_directory=build_directory)
-    Affinity()
-    # check the parent
-    case_parent_dir = os.path.join(o_dir, "tmp", "peloton-rome-128tasks-socket-openmpi-4.1.0")
-    assert(os.path.isdir(case_parent_dir))
-    # check one child - 128 cpus, refinement level 4
-    prm_128_4_path = os.path.join(case_parent_dir, "input_128_4_1", "case.prm")
-    assert(os.path.isfile(prm_128_4_path))
-    prm_128_4_path_std = os.path.join(test_source_dir, "input_128_4_1_std.prm")
-    assert(filecmp.cmp(prm_128_4_path, prm_128_4_path_std))
-    prm_128_4_slurm_path = os.path.join(case_parent_dir, "input_128_4_1", "job.sh")
-    assert(os.path.isfile(prm_128_4_slurm_path))
-    prm_128_4_slurm_path_std = os.path.join(test_source_dir, "input_128_4_1_std.sh")
-    assert(filecmp.cmp(prm_128_4_slurm_path, prm_128_4_slurm_path_std))
-
 
 def test_affinity_json():
     '''
@@ -93,6 +61,29 @@ def test_affinity_json():
     prm_128_4_slurm_path = os.path.join(case_parent_dir, "input_128_4_1", "job.sh")
     assert(os.path.isfile(prm_128_4_slurm_path))
     prm_128_4_slurm_path_std = os.path.join(test_source_dir, "input_128_4_1_std.sh")
+    assert(filecmp.cmp(prm_128_4_slurm_path, prm_128_4_slurm_path_std))
+
+
+def test_affinity_json_mpirun():
+    '''
+    same tests as before, input from a json file
+    '''
+    test_source_dir = os.path.join(source_dir, "test_affinity_base")
+    json_path = os.path.join(test_source_dir, "affinity_test_mpirun.json")
+    assert(os.path.isfile(json_path))
+    create_tests_with_json(json_path, AFFINITY, AFFINITY_OPT)
+    o_dir = os.path.join(test_dir, "test_affinity_base_mpirun")
+    # check the parent
+    case_parent_dir = os.path.join(o_dir, "tmp", "peloton-rome-128tasks-socket-openmpi-4.1.0-mpirun-bind_to_socket")
+    assert(os.path.isdir(case_parent_dir))
+    # check one child - 128 cpus, refinement level 4
+    prm_128_4_path = os.path.join(case_parent_dir, "input_128_4_1", "case.prm")
+    assert(os.path.isfile(prm_128_4_path))
+    prm_128_4_path_std = os.path.join(test_source_dir, "input_128_4_1_std.prm")
+    assert(filecmp.cmp(prm_128_4_path, prm_128_4_path_std))
+    prm_128_4_slurm_path = os.path.join(case_parent_dir, "input_128_4_1", "job.sh")
+    assert(os.path.isfile(prm_128_4_slurm_path))
+    prm_128_4_slurm_path_std = os.path.join(test_source_dir, "input_128_4_1_mpirun_std.sh")
     assert(filecmp.cmp(prm_128_4_slurm_path, prm_128_4_slurm_path_std))
 
 

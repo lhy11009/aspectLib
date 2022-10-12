@@ -609,7 +609,6 @@ def ParseToSlurmBatchFile(fout, outputs, **kwargs):
     for component in outputs["command"]:
         if is_first:
             is_first = False
-            # todo_mpirun
         else:
             contents += " "
         contents += component
@@ -659,7 +658,6 @@ class SLURM_OPERATOR():
         self.o_dict['config']['--tasks-per-node'] = str(int(nthread//nnode))
         if partition is not None:
              self.o_dict['config']['--partition'] = partition 
-        # todo_mpirun
         if use_mpirun:
             self.o_dict['command'][0] = 'mpirun'
         if bind_to != None:
@@ -678,10 +676,10 @@ class SLURM_OPERATOR():
         Set the command to use
         '''
         if build_directory != "":
-            self.o_dict['command'][1] = "${ASPECT_SOURCE_DIR}/build_%s/aspect" % build_directory
+            self.o_dict['command'][-2] = "${ASPECT_SOURCE_DIR}/build_%s/aspect" % build_directory
         else:
-            self.o_dict['command'][1] = "${ASPECT_SOURCE_DIR}/build/aspect"
-        self.o_dict['command'][2] = prm_file
+            self.o_dict['command'][-2] = "${ASPECT_SOURCE_DIR}/build/aspect"
+        self.o_dict['command'][-1] = prm_file
 
     def __call__(self, slurm_file_path):
         with open(slurm_file_path, 'w') as fout:

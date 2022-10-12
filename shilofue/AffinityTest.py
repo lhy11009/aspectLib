@@ -107,6 +107,9 @@ it only takes effect if the input is positiveh",\
         self.add_key("End step", int, ["end step"], -1, nick="end_step")
         self.add_key("Stokes solver type", str, ["stokes solver type"], "block AMG", nick="stokes_type")
         self.add_key("Flag", str, ["flag"], "", nick="flag")
+        # todo_mpirun
+        self.add_key("Use mpirun", int, ["use mpirun"], 0, nick="use_mpirun")
+        self.add_key("Bind to option", str, ["bind to"], "", nick="bind_to")
     
     def check(self):
         base_file = Utilities.var_subs(self.values[1])
@@ -126,6 +129,8 @@ it only takes effect if the input is positiveh",\
             assert(type(core_count) == int)
         stokes_type = self.values[13]
         assert(stokes_type in ["block AMG", "block GMG"])
+        bind_to = self.values[16]
+        assert(bind_to in ["", "socket", "core"])
     
     def to_init(self):
         '''
@@ -140,7 +145,10 @@ it only takes effect if the input is positiveh",\
         end_step = self.values[12]
         stokes_type = self.values[13]
         flag = self.values[14]
-        return test_dir, base_file, slurm_base_path, server, tasks_per_node, refinement_levels, end_step, stokes_type, flag
+        use_mpirun = self.values[15]
+        bind_to = self.values[16]
+        return test_dir, base_file, slurm_base_path, server, tasks_per_node, refinement_levels, end_step,\
+        stokes_type, flag, use_mpirun, bind_to
     
     def get_openmpi_version(self):
         openmpi = self.values[6]
@@ -192,7 +200,7 @@ class AFFINITY():
         max_core_count (int): maximum number for core count
     '''
     def __init__(self, test_dir, base_prm_path, slurm_base_path, server, tasks_per_node,\
-                 refinement_levels, end_step, stokes_type, flag, **kwargs):
+                 refinement_levels, end_step, stokes_type, flag, use_mpirun, bind_to, **kwargs):
         self.test_dir = test_dir
         self.base_prm_path = base_prm_path
         self.slurm_base_path = slurm_base_path
@@ -205,8 +213,6 @@ class AFFINITY():
             self.cluster_label += ("-openmpi-" + openmpi) # add version of openmpi
         if self.stokes_type == "block GMG":
             self.cluster_label += "-bGMG"  # add the type of Stokes solver
-        if flag != "":
-            self.cluster_label += "-%s" % flag  # add an assigned flag
         self.refinement_levels = refinement_levels
         self.end_step = end_step
         self.setups = [1, ] # unused
@@ -232,6 +238,16 @@ class AFFINITY():
         self.project = kwargs.get("project", None)
         self.build_directory = kwargs.get("build_directory", "")
         self.nodelist= kwargs.get('nodelist', [])  # list of nodes
+        self.use_mpirun = use_mpirun
+        if self.use_mpirun:
+            self.cluster_label += "-mpirun"
+        if bind_to == "":
+            self.bind_to = None
+        else:
+            self.bind_to = bind_to
+            self.cluster_label += "-bind_to_%s" % self.bind_to
+        if flag != "":
+            self.cluster_label += "-%s" % flag  # add an assigned flag
         pass
 
     def CreateCase(self, input_dir, output_dir, jobname, core_count, refinement):
@@ -266,7 +282,8 @@ class AFFINITY():
             # change the refinement level in the prm file
         # haoyuan: calls function to generate slurm file for one job
         SlurmOperator = ParsePrm.SLURM_OPERATOR(self.slurm_base_path)
-        SlurmOperator.SetAffinity(np.ceil(core_count/self.tasks_per_node), core_count, 1)
+        # todo_mpirun
+        SlurmOperator.SetAffinity(np.ceil(core_count/self.tasks_per_node), core_count, 1, use_mpirun=self.use_mpirun, bind_to=self.bind_to)
         SlurmOperator.SetCommand(self.build_directory, os.path.basename(prm_file))
         SlurmOperator.SetName(jobname)
         SlurmOperator(slurm_file_output_path)
