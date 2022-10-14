@@ -1,0 +1,26 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/05042022",
+  "output directory": "",
+  "name": "",
+  "type": "s07T",
+  "use world builder": 1,
+  "world builder": {
+    "use new ridge implementation": 1
+  },
+  "include fast first step": 1,
+  "geometry setup":{
+      "box width": 2000e3,
+      "box length": 4000e3,
+      "box depth": 1000e3
+  },
+  "plate setup":{
+      "sp width": 2000e3,
+      "sp length": 3000e3,
+      "trailing length": 275e3,
+      "reset trailing morb": 0
+  },
+  "additional files": [
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ]
+}

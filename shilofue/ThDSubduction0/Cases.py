@@ -100,6 +100,7 @@ different age will be adjusted.",\
         self.add_key("use WB new ridge implementation", int, ['world builder', 'use new ridge implementation'], 0, nick='wb_new_ridge')
         # todo_side
         self.add_key("Assign a side plate", int, ['plate setup', 'assign side plate'], 0, nick='assign_side_plate')
+        self.add_key("branch", str, ['branch'], "", nick='branch')
 
     
     def check(self):
@@ -156,12 +157,14 @@ different age will be adjusted.",\
         mantle_rheology_flow_law = self.values[self.start+30]
         stokes_solver_type = self.values[18]
         case_o_dir = self.values[16]
+        branch = self.values[self.start+33]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
             sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
             adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
-            reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir
+            reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir,\
+            branch
         
     def to_configure_wb(self):
         '''
@@ -207,12 +210,19 @@ class CASE(CasesP.CASE):
     sp_width, trailing_length, reset_trailing_morb, ref_visc, relative_visc_plate, friction_angle,\
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
-    reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir):
+    reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch):
         '''
         Configure prm file
         '''
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
+        # todo_branch
+        if branch != "":
+            if branch == "master":
+                branch_str = ""
+            else:
+                branch_str = "_%s" % branch
+            o_dict["Additional shared libraries"] =  "$ASPECT_SOURCE_DIR/build%s/visco_plastic_TwoD/libvisco_plastic_TwoD.so" % branch_str
         # geometry options
         # repitition, figure this out by deviding the dimensions with a unit value of repitition_slice
         repitition_slice = np.min(np.array([box_length, box_width, box_depth]))  # take the min as the repitition_slice
@@ -340,6 +350,9 @@ class CASE(CasesP.CASE):
             except KeyError:
                 pass
         elif stokes_solver_type == "block GMG":
+            o_dict['Solver parameters']['Stokes solver parameters']["Stokes solver type"] = "block GMG"
+        elif stokes_solver_type == "block GMG with iterated defect correction Stokes":
+            o_dict['Nonlinear solver scheme'] = "single Advection, iterated defect correction Stokes"
             o_dict['Solver parameters']['Stokes solver parameters']["Stokes solver type"] = "block GMG"
         else:
             raise ValueError("stokes_solver_type must be in [block AMG, block GMG].")

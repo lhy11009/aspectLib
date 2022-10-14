@@ -662,8 +662,12 @@ class SLURM_OPERATOR():
             self.o_dict['command'][0] = 'mpirun'
         if bind_to != None:
             assert(bind_to in ["socket", 'core'])
-            self.o_dict['command'].insert(1, "--bind-to " + bind_to)
+            if self.o_dict['command'][0] == "mpirun":
+                self.o_dict['command'].insert(1, "--bind-to " + bind_to)
+            if self.o_dict['command'][0] == "srun":
+                self.o_dict['command'].insert(1, "--cpu-bind=" + bind_to + "s")
 
+            
 
     def SetName(self, _name):
         '''
