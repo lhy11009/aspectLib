@@ -2,7 +2,7 @@
   "_comments": "This case is modified from the Schellart 2007 paper, but include newtonian T-dependent rheology",
   "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/10142022",
   "output directory": "${ASPECT_LAB_DIR}/.test",
-  "name": "test_3d_newton",
+  "name": "test_phase_transition",
   "type": "2d_consistent",
   "use world builder": 1,
   "branch": "master_TwoD_knl",
@@ -30,7 +30,6 @@
     "scheme": "HK03_wet_mod_2d",
     "flow law": "composite"
   },
-  "apply reference density": 1,
   "shear zone": {
     "thickness": 15000.0
   },
@@ -47,5 +46,25 @@
   "setup method": "2d_consistent",
   "stokes solver": {
     "type": "block GMG with iterated defect correction Stokes"
-  }
+  },
+  "slurm": [
+    {
+      "slurm file": "./files/slurm_files/221010/job_p-billen.sh",
+      "build directory": "master_TwoD_p-billen",
+      "tasks per node": 128,
+      "cpus": 512
+    },
+        {
+      "slurm file": "./files/slurm_files/221010/job_skx-normal.sh",
+      "build directory": "master_TwoD",
+      "tasks per node": 48,
+      "cpus": 960
+    },
+    {
+      "slurm file": "./files/slurm_files/221010/job_normal.sh",
+      "build directory": "master_TwoD_knl",
+      "tasks per node": 68,
+      "cpus": 1360
+    }
+  ]
 }
