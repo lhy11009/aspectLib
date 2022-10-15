@@ -47,5 +47,25 @@
   "setup method": "2d_consistent",
   "stokes solver": {
     "type": "block GMG with iterated defect correction Stokes"
-  }
+  },
+  "slurm": [
+    {
+      "slurm file": "./files/slurm_files/221010/job_p-billen.sh",
+      "build directory": "master_TwoD_p-billen",
+      "tasks per node": 128,
+      "cpus": 512
+    },
+    {
+      "slurm file": "./files/slurm_files/221010/job_skx-normal.sh",
+      "build directory": "master_TwoD",
+      "tasks per node": 48,
+      "cpus": 960
+    },
+    {
+      "slurm file": "./files/slurm_files/221010/job_normal.sh",
+      "build directory": "master_TwoD_knl",
+      "tasks per node": 68,
+      "cpus": 1360
+    }
+  ]
 }
