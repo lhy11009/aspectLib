@@ -78,7 +78,6 @@ class CASE_OPT(Utilities.JSON_OPT):
         self.add_key("Linear solver toleracne", float,\
          ["stokes solver", "linear solver tolerance"], 0.1, nick="stokes_linear_tolerance")
         self.add_key("End time", float, ["end time"], 60e6, nick="end_time")
-        # todo_bc
         self.add_key("Type of velocity boundary condition\n\
             available options in [all fs, bt fs side ns]", str,\
             ["boundary condition", "velocity", "type"], "all fs", nick='type_bd_v')
@@ -91,7 +90,6 @@ it only takes effect if the input is positiveh",\
         self.add_key("Stokes solver type", str,\
          ["stokes solver", "type"], "block AMG", nick="stokes_solver_type")
         self.add_features('Slurm options', ['slurm'], ParsePrm.SLURM_OPT)
-        # todo_branch
         self.add_key("partitions", list, ["partitions"], [], nick='partitions')
 
         pass
@@ -207,7 +205,6 @@ it only takes effect if the input is positiveh",\
         '''
         reset refinement level
         '''
-        # todo_affinity
         self.values[15] = reset_refinement_level
         pass
     
@@ -215,7 +212,6 @@ it only takes effect if the input is positiveh",\
         '''
         reset refinement level
         '''
-        # todo_affinity
         self.values[16] = case_o_dir
 
     def reset_stokes_solver_type(self, stokes_solver_type):
@@ -620,7 +616,6 @@ def SetBcVelocity(bc_dict, dimension, type_bc_v):
         bc_dict: an input with entries for Boundary velocity model in a prm file
         type_bc_v: type of velocity bc
     '''
-    # todo_bc
     fs_indicator=[]
     ns_indicator = []
     if dimension == 2 and type_bc_v == 'all fs':

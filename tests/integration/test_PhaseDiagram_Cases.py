@@ -59,7 +59,6 @@ def test_bd_lsolver():
     '''
     test for cases with bd and linear solver
     '''
-    # todo_bc
     # test 1: tangential bc
     source_case_dir = os.path.join(source_dir, "test_bd_lsolver")
     json_path = os.path.join(source_case_dir, 'case.json')

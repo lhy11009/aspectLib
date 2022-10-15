@@ -306,7 +306,6 @@ def main():
         pass
 
     elif _commend == 'update_doc':
-        # todo_future
         pass
 
     elif _commend == 'update':
@@ -318,7 +317,6 @@ def main():
         UpdateProjectDoc(_project_dict, _project_dir, images=['Statistics' ,'DepthAverage', 'visit'])
 
     elif _commend == 'plot':
-        # todo_future
         # plot something
         pass
 

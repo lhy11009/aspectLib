@@ -306,7 +306,6 @@ class VTKP(VtkPp.VTKP):
         '''
         return self.trench, self.slab_depth, self.dip_100
 
-    # todo_export_velo
     def ExportVelocity(self):
         '''
         Output sp and ov plate velocity

@@ -117,6 +117,7 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("constant viscosity in the shear zone", float, ['shear zone', 'constant viscosity'], 1e20, nick='sz_constant_viscosity')
         self.add_key("use WB new ridge implementation", int, ['world builder', 'use new ridge implementation'], 0, nick='wb_new_ridge')
         self.add_key("branch", str, ['branch'], "", nick='branch')
+        self.add_key("minimum viscosity in the shear zone", float, ['shear zone', 'minimum viscosity'], 1e18, nick='sz_minimum_viscosity')
     
     def check(self):
         '''
@@ -146,7 +147,6 @@ intiation stage causes the slab to break in the middle",\
             "For the \"adjust box width\" method to work, the box width before adjusting needs to be wider\
 than the multiplication of the default values of \"sp rate\" and \"age trench\"")
         # check the option for refinement
-        # todo_affinity
         refinement_level = self.values[15]
         assert(refinement_level in [-1, 9, 10, 11])  # it's either not turned on or one of the options for the total refinement levels
         # check the method to use for phase transition
@@ -217,14 +217,14 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         crust_friction = self.values[self.start + 25]
         sz_constant_viscosity = self.values[self.start + 26]
         branch = self.values[self.start + 28]
-        # todo_branch
         partitions = self.values[20]
+        sz_minimum_viscosity = self.values[self.start + 29]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
-        branch, partitions
+        branch, partitions, sz_minimum_viscosity
 
     def to_configure_wb(self):
         '''
@@ -278,7 +278,7 @@ class CASE(CasesP.CASE):
     HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme,\
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
-    sz_constant_viscosity, branch, partitions):
+    sz_constant_viscosity, branch, partitions, sz_minimum_viscosity):
         Ro = 6371e3
         # velocity boundaries
         if type_of_bd == "all free slip":  # boundary conditions
@@ -316,7 +316,6 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             # these options only take effects when refinement level is positive
             if refinement_level == 9:
                 # this is only an option if the input is positive
-                # todo_affinity
                 o_dict["Mesh refinement"]["Initial global refinement"] = "5"
                 o_dict["Mesh refinement"]["Initial adaptive refinement"] = "4"
             elif refinement_level == 10:
@@ -390,7 +389,8 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             abs(sz_constant_viscosity - 1e20)/1e20 < 1e-6:  # assign the rheology
             pass # this is just the default, so skip. Note here we just skip assigning the mantle rheology in the prm
         else:
-            CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity)
+            CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
+            sz_minimum_viscosity=sz_minimum_viscosity)
         self.output_files.append(Operator.output_json)
         self.output_files.append(Operator.output_json_aspect)
         self.output_imgs.append(Operator.output_profile) # append plot of initial conition to figures
@@ -693,7 +693,6 @@ def prm_minimum_refinement_sph(**kwargs):
     minimum refinement function for spherical geometry
     """
     Ro = kwargs.get('Ro', 6371e3)
-    # todo_affinity
     refinement_level = kwargs.get("refinement_level", 10)
     if refinement_level == 9:
         R_UM = 6
@@ -721,7 +720,6 @@ def prm_minimum_refinement_cart(**kwargs):
     minimum refinement function for cartesian geometry
     """
     Do = kwargs.get('Do', 2890e3)
-    # todo_affinity
     refinement_level = kwargs.get("refinement_level", 10)
     if refinement_level == 9:
         R_UM = 6
@@ -984,6 +982,8 @@ def CDPT_assign_mantle_rheology(o_dict, rheology, **kwargs):
     diffusion_creep_lm = rheology['diffusion_lm']
     sz_viscous_scheme = kwargs.get("sz_viscous_scheme", "constant")
     sz_constant_viscosity = kwargs.get("sz_constant_viscosity", 1e20)
+    # todo_sz
+    sz_minimum_viscosity = kwargs.get("sz_minimum_viscosity", 1e18)
     if sz_viscous_scheme == "constant":
         diff_crust_A = 1.0 / 2.0 / sz_constant_viscosity
         diff_crust_m = 0.0
@@ -1076,6 +1076,10 @@ spcrust: %.4e|%.4e|0.0000e+00|0.0000e+00,\
 spharz: %.4e|%.4e|%.4e|%.4e|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,\
 opcrust: %.4e, opharz: %.4e" % (disl_V, disl_V, disl_V, disl_V,\
 disl_crust_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V)
+    if sz_minimum_viscosity > 1e18:
+        # modify the minimum viscosity for non-linear rheology in the shear zone
+        o_dict['Material model']['Visco Plastic TwoD']['Minimum viscosity'] = \
+        'background: 1e18, spcrust: %s, spharz: 1e18, opcrust: 1e18, opharz: 1e18' % sz_minimum_viscosity
 
 
 def CDPT_assign_yielding(o_dict, cohesion, friction, **kwargs):

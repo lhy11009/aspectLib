@@ -172,7 +172,6 @@ class CASE(CasesP.CASE):
         # o_dict['Geometry model']['Box']['Y repetitions'] = str(resolution)
 
         # velocity boundary
-        # todo_bc
         if _type in ["bd_lsolver", "bd_lsolver_test"]:
             o_dict["Boundary velocity model"] = CasesP.SetBcVelocity(o_dict["Boundary velocity model"], dimension, type_bc_v)
         # boundary temperature model

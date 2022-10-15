@@ -98,7 +98,6 @@ different age will be adjusted.",\
         self.add_key("Reset viscosity for the trailing tail of the overiding plate", int, ['rheology', 'reset trailing ov viscosity'], 0, nick='reset_trailing_ov_viscosity')
         self.add_key("viscous flow law for mantle rheology", str, ['mantle rheology', 'flow law'], "diffusion", nick='mantle_rheology_flow_law')
         self.add_key("use WB new ridge implementation", int, ['world builder', 'use new ridge implementation'], 0, nick='wb_new_ridge')
-        # todo_side
         self.add_key("Assign a side plate", int, ['plate setup', 'assign side plate'], 0, nick='assign_side_plate')
         self.add_key("branch", str, ['branch'], "", nick='branch')
 
@@ -216,7 +215,6 @@ class CASE(CasesP.CASE):
         '''
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
-        # todo_branch
         if branch != "":
             if branch == "master":
                 branch_str = ""
@@ -512,7 +510,6 @@ def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_
     spe_dict["coordinates"] = [[0.0, sp_width], [0.0, sp_width + pe_width], [sp_length, sp_width + pe_width] ,[sp_length, sp_width]]
     spe_dict["temperature models"][0]["spreading velocity"] = sp_rate
     # side plate
-    # todo_side
     if assign_side_plate == 1:
         sdp_dict = deepcopy(ov_dict)
         sdp_dict["name"] = "side plate"

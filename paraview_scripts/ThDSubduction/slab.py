@@ -139,7 +139,6 @@ class SLAB(PARAVIEW_PLOT):
         if hide_plot:
             Hide(slice1, renderView1)  # hide data in view
         
-    # todo_ani
     def plot_slab_volume(self, field_name, **kwargs):
         fig_resolution = (974, 793)
         lim = kwargs.get('lim', None)

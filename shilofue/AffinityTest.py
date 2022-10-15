@@ -88,7 +88,6 @@ class AFFINITY_OPT(Utilities.JSON_OPT):
         Initiation, first perform parental class's initiation,
         then perform daughter class's initiation.
         '''
-        # todo_json
         Utilities.JSON_OPT.__init__(self)
         self.add_key("Test directory", str, ["test directory"], ".", nick='test_dir')
         self.add_key("Base prm/json file (inputs)", str, ["base file"], "./test.prm", nick='base_file')
@@ -107,7 +106,6 @@ it only takes effect if the input is positiveh",\
         self.add_key("End step", int, ["end step"], -1, nick="end_step")
         self.add_key("Stokes solver type", str, ["stokes solver type"], "block AMG", nick="stokes_type")
         self.add_key("Flag", str, ["flag"], "", nick="flag")
-        # todo_mpirun
         self.add_key("Use mpirun", int, ["use mpirun"], 0, nick="use_mpirun")
         self.add_key("Bind to option", str, ["bind to"], "", nick="bind_to")
     
@@ -282,7 +280,6 @@ class AFFINITY():
             # change the refinement level in the prm file
         # haoyuan: calls function to generate slurm file for one job
         SlurmOperator = ParsePrm.SLURM_OPERATOR(self.slurm_base_path)
-        # todo_mpirun
         SlurmOperator.SetAffinity(np.ceil(core_count/self.tasks_per_node), core_count, 1, use_mpirun=self.use_mpirun, bind_to=self.bind_to)
         SlurmOperator.SetCommand(self.build_directory, os.path.basename(prm_file))
         SlurmOperator.SetName(jobname)
@@ -505,7 +502,6 @@ def create_tests_with_json(json_opt, AFFINITY, AFFINITY_OPT, **kwargs):
     Returns:
         case_dir: return case directory
     '''
-    # todo_json
     Affinity_Opt = AFFINITY_OPT()
     if type(json_opt) == str:
         if not os.access(json_opt, os.R_OK):
@@ -575,7 +571,6 @@ def main():
 
     # commands
     if commend == 'create_tests':
-        # todo_json
         create_tests_with_json(arg.json, AFFINITY, AFFINITY_OPT)
 
     elif commend == 'analyze_results':
