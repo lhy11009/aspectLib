@@ -3,7 +3,7 @@
   "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/10142022",
   "output directory": "${ASPECT_LAB_DIR}/.test",
   "name": "test_3d_newton",
-  "type": "s07_newton",
+  "type": "2d_consistent",
   "use world builder": 1,
   "branch": "master_TwoD_knl",
   "world builder": {

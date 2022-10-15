@@ -175,7 +175,6 @@ def test_export_velocity():
 def test_slab_analysis():
     ''' 
     test the SlabAnalysis class, only works if the project files are presented
-    todo_dp
     '''
     source_dir1 = os.path.join(source_dir, 'slab_analysis') 
     # test 1: compute dynamic pressure by post-processing
