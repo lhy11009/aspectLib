@@ -8,6 +8,7 @@
 #SBATCH -t 300:00:00
 #SBATCH -A billen
 #SBATCH --partition=p-billen
+#SBATCH --mem-per-cpu=4G
 #SBATCH --switches=1
 
 source /group/billengrp/software/deal.ii/deal.ii-9.4.0-FullNative-32bit-candi-gcc-11.1.0-openmpi4.1.4-mpi-io-rome-256-512/configuration/enable.sh
