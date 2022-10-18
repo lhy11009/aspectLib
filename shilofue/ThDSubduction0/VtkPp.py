@@ -46,7 +46,7 @@ def Usage():
 \n\
 Examples of usage: \n\
     analyze slab morphology, by parsing a pvtu file:\n\
-        python -m shilofue.ThDSubduction0.VtkPp analyze_slab -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -vs 0 \n\
+        python -m shilofue.ThDSubduction0.VtkPp analyze_slab -i /mnt/lochy0/ASPECT_DATA/ThDSubduction/gmg_test_stampede/test_ThD_gmg_mv1e20_picard_correction_side_plate -vs 0 \n\
 \n\
 ")
 
@@ -142,14 +142,14 @@ def SlabAnalysis(case_dir, vtu_snapshot, **kwargs):
     VtkP = VTKP()
     VtkP.ReadFile(filein)
     # call some functions
-    field_names = ['T', 'p', 'density', 'spcrust', 'spharz']
+    field_names = ['T', 'p', 'density', 'sp_upper', 'sp_lower']
     start = time.time() # record time
     VtkP.ConstructPolyData(field_names, include_cell_center=False)
     end = time.time()
     print("Construct polydata, takes %.2f s" % (end - start))
     start = end
     # Analyze slab composiiotn by points
-    VtkP.PrepareSlabByPoints(field_names)
+    VtkP.PrepareSlabByPoints(['sp_upper', 'sp_lower'])
     end = time.time()
     print("Prepare slab composition, takes %.2f s" % (end - start))
     start = end
