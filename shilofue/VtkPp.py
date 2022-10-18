@@ -133,6 +133,7 @@ class VTKP():
             raise TypeError("%s: Wrong type of file" % Utilities.func_name())
         self.reader.SetFileName(filein)
         self.reader.Update()
+        print("ReadFile: %s" % filein)
     
     def ConstructPolyData(self, field_names, **kwargs):
         '''

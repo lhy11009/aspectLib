@@ -45,6 +45,9 @@ def Usage():
 (One liner description\n\
 \n\
 Examples of usage: \n\
+    analyze slab morphology, by parsing a pvtu file:\n\
+        python -m shilofue.ThDSubduction0.VtkPp analyze_slab -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -vs 0 \n\
+\n\
 ")
 
 
@@ -83,8 +86,38 @@ class VTKP(VtkPp.VTKP):
                 if r < min_r:
                     min_r = r
         self.slab_depth = self.Ro - min_r  # cart
+        # todo
+        # export the internal points
 
-    # todo2
+    def ExportSlabInternalPointsToFile(self, fileout):
+        '''
+        Export the coordinates of slab internal points to file
+        '''
+        slab_point_grid = self.ExportSlabInternalPoints()
+        writer = vtk.vtkXMLUnstructuredGridWriter()
+        writer.SetInputData(slab_point_grid)
+        writer.SetFileName(fileout)
+        writer.Update()
+        writer.Write()
+        print("ExportSlabInternalPoints: write file %s" % fileout)
+    
+    def ExportSlabInternalPoints(self, output_xy=False):
+        '''
+        export slab internal points
+        '''
+        assert(self.slab_points is not [])
+        slab_vtk_points = vtk.vtkPoints()
+        for id in self.slab_points:
+            xs = self.i_poly_data.GetPoint(id)
+            slab_vtk_points.InsertNextPoint(xs[0], xs[1], xs[2])
+        slab_point_grid = vtk.vtkUnstructuredGrid()
+        slab_point_grid.SetPoints(slab_vtk_points)
+        if output_xy:
+            coords = vtk_to_numpy(slab_point_grid.GetPoints().GetData())
+            return coords
+        else:
+            return slab_point_grid
+
 
 def SlabAnalysis(case_dir, vtu_snapshot, **kwargs):
     '''
@@ -95,6 +128,10 @@ def SlabAnalysis(case_dir, vtu_snapshot, **kwargs):
     '''
     filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
     assert(os.path.isfile(filein))
+    # output_path
+    output_path = os.path.join(case_dir, 'vtk_outputs')
+    if not os.path.isdir(output_path):
+        os.mkdir(output_path)
     # Initiate an object for the options we use for vtk, also get time and step
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
@@ -109,7 +146,18 @@ def SlabAnalysis(case_dir, vtu_snapshot, **kwargs):
     start = time.time() # record time
     VtkP.ConstructPolyData(field_names, include_cell_center=False)
     end = time.time()
-    print("Complete constructing polydata, takes %.2f s" % (end - start))
+    print("Construct polydata, takes %.2f s" % (end - start))
+    start = end
+    # Analyze slab composiiotn by points
+    VtkP.PrepareSlabByPoints(field_names)
+    end = time.time()
+    print("Prepare slab composition, takes %.2f s" % (end - start))
+    start = end
+    # output the slab internal points
+    fileout = os.path.join(output_path, 'slab.vtu')
+    VtkP.ExportSlabInternalPointsToFile(fileout)
+    end = time.time()
+    print("Write slab points, takes %.2f s" % (end - start))
     start = end
     # generate some outputs
     # outputs = "%-12s%-12d%-14.4e\n"\
