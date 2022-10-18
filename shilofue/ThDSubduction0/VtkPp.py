@@ -29,6 +29,7 @@ from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPE
 from shilofue.ThDSubduction0.PlotVisit import VISIT_OPTIONS
 from shilofue.ParsePrm import ReadPrmFile
 from shilofue.Plot import LINEARPLOT
+from shilofue.TwoDSubduction0.VtkPp import get_theta
 import shilofue.VtkPp as VtkPp
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -60,6 +61,11 @@ class VTKP(VtkPp.VTKP):
         VtkPp.VTKP.__init__(self, **kwargs)  # initiation of parental class
         self.slab_shallow_cutoff = kwargs.get('slab_shallow_cutoff', 100e3)  # depth limit to slab
         self.slab_points = []  # points in the slab
+        self.slab_envelop_interval_z = kwargs.get("slab_envelop_interval_z", 10e3)
+        self.slab_envelop_interval_y = kwargs.get("slab_envelop_interval_y", 10e3)
+        self.slab_envelop_point_list0 = []
+        self.slab_envelop_point_list1 = []
+        self.slab_y_max = 0.0
 
     def PrepareSlabByPoints(self, slab_field_names, **kwargs):
         '''
@@ -85,41 +91,48 @@ class VTKP(VtkPp.VTKP):
                 self.slab_points.append(i)
                 if r < min_r:
                     min_r = r
+                if y > self.slab_y_max:
+                    self.slab_y_max = y
         self.slab_depth = self.Ro - min_r  # cart
-        # todo
-        # export the internal points
-
-    def ExportSlabInternalPointsToFile(self, fileout):
-        '''
-        Export the coordinates of slab internal points to file
-        '''
-        slab_point_grid = self.ExportSlabInternalPoints()
-        writer = vtk.vtkXMLUnstructuredGridWriter()
-        writer.SetInputData(slab_point_grid)
-        writer.SetFileName(fileout)
-        writer.Update()
-        writer.Write()
-        print("ExportSlabInternalPoints: write file %s" % fileout)
-    
-    def ExportSlabInternalPoints(self, output_xy=False):
-        '''
-        export slab internal points
-        '''
-        assert(self.slab_points is not [])
-        slab_vtk_points = vtk.vtkPoints()
+        print("PrepareSlabByPoints: %d points found in the subducting slab" % len(self.slab_points))
+        # prepare the slab internal
+        total_en_interval_z = int((self.slab_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval_z + 1)
+        total_en_interval_y = int((self.slab_y_max) // self.slab_envelop_interval_y + 1)
+        slab_en_point_lists = [ [] for i in range(total_en_interval_z * total_en_interval_y) ]
         for id in self.slab_points:
-            xs = self.i_poly_data.GetPoint(id)
-            slab_vtk_points.InsertNextPoint(xs[0], xs[1], xs[2])
-        slab_point_grid = vtk.vtkUnstructuredGrid()
-        slab_point_grid.SetPoints(slab_vtk_points)
-        if output_xy:
-            coords = vtk_to_numpy(slab_point_grid.GetPoints().GetData())
-            return coords
-        else:
-            return slab_point_grid
+            x = points[id][0] # first, separate cells into intervals
+            y = points[id][1]
+            z = points[id][2]
+            r = VtkPp.get_r3(x, y, z, self.geometry)
+            id_en_z =  int(np.floor(
+                                  (self.Ro - r - self.slab_shallow_cutoff)/
+                                  self.slab_envelop_interval_z))# id in the envelop list
+            id_en_y =  int(np.floor(y / self.slab_envelop_interval_y))
+            id_en = id_en_y * total_en_interval_z + id_en_z
+            slab_en_point_lists[id_en].append(id)
+        for id_en in range(len(slab_en_point_lists)):
+            theta_min = 0.0  # then, loop again by intervals to look for a
+            theta_max = 0.0  # max theta and a min theta for each interval
+            point_list = slab_en_point_lists[id_en]
+            if len(point_list) == 0:
+                continue  # make sure we have some point
+            is_first = True
+            id_min = -1
+            id_max = -1
+            for id in point_list:
+                x = points[id][0]
+                y = points[id][1]
+                theta = get_theta(x, y, self.geometry)  # cart
+                if is_first:
+                    id_min = id
+                    id_max = id
+                    theta_min = theta
+                    theta_max = theta
+            self.slab_envelop_point_list0.append(id_min)  # first half of the envelop
+            self.slab_envelop_point_list1.append(id_max)  # second half of the envelop
 
 
-def SlabAnalysis(case_dir, vtu_snapshot, **kwargs):
+def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     '''
     Wrapper for using PVTK class to analyze one step
     Inputs:
@@ -138,8 +151,12 @@ def SlabAnalysis(case_dir, vtu_snapshot, **kwargs):
     geometry = Visit_Options.options['GEOMETRY']
     vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
     _time, step = Visit_Options.get_time_and_step(vtu_step)
+    geometry = Visit_Options.options['GEOMETRY']
+    Ro =  Visit_Options.options['OUTER_RADIUS']
+    Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
+    print("geometry: %s, Ro: %f, Xmax: %f" % (geometry, Ro, Xmax))
     # Initiate the working class
-    VtkP = VTKP()
+    VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax, slab_shallow_cutoff=70e3)
     VtkP.ReadFile(filein)
     # call some functions
     field_names = ['T', 'p', 'density', 'sp_upper', 'sp_lower']
@@ -154,8 +171,33 @@ def SlabAnalysis(case_dir, vtu_snapshot, **kwargs):
     print("Prepare slab composition, takes %.2f s" % (end - start))
     start = end
     # output the slab internal points
+    # export slab points
+    # 1. slab intervals
     fileout = os.path.join(output_path, 'slab.vtu')
-    VtkP.ExportSlabInternalPointsToFile(fileout)
+    slab_point_grid = VtkPp.ExportPointGridFromPolyData(VtkP.i_poly_data, VtkP.slab_points)
+    writer = vtk.vtkXMLUnstructuredGridWriter()
+    writer.SetInputData(slab_point_grid)
+    writer.SetFileName(fileout)
+    writer.Update()
+    writer.Write()
+    print("File output for slab internal points: %s" % fileout)
+    # 2. slab envelops
+    fileout = os.path.join(output_path, 'slab_env0.vtu')
+    slab_env0_grid = VtkPp.ExportPointGridFromPolyData(VtkP.i_poly_data,VtkP.slab_envelop_point_list0)
+    writer = vtk.vtkXMLUnstructuredGridWriter()
+    writer.SetInputData(slab_env0_grid)
+    writer.SetFileName(fileout)
+    writer.Update()
+    writer.Write()
+    print("File output for slab envelop0 (smaller x) points: %s" % fileout)
+    fileout = os.path.join(output_path, 'slab_env1.vtu')
+    slab_env1_grid = VtkPp.ExportPointGridFromPolyData(VtkP.i_poly_data,VtkP.slab_envelop_point_list1)
+    writer = vtk.vtkXMLUnstructuredGridWriter()
+    writer.SetInputData(slab_env1_grid)
+    writer.SetFileName(fileout)
+    writer.Update()
+    writer.Write()
+    print("File output for slab envelop1 (bigger x) points: %s" % fileout)
     end = time.time()
     print("Write slab points, takes %.2f s" % (end - start))
     start = end
@@ -206,7 +248,7 @@ def main():
         Usage()
     elif _commend == 'analyze_slab':
         # use the wrapper
-        SlabAnalysis(arg.inputs, int(arg.vtu_snapshot), rewrite=1)
+        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1)
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 

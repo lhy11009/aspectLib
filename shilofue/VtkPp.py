@@ -364,6 +364,26 @@ import data takes %f, interpolate cell center data takes %f"\
         return grav_accs
 
 
+# todo_export
+def ExportPointGridFromPolyData(i_poly_data, ids, output_xy=False):
+    '''
+    export point grid from a given vtk poly data by the indexed
+    '''
+    assert(ids is not [])
+    vtk_points = vtk.vtkPoints()
+    for id in ids:
+        xs = i_poly_data.GetPoint(id)
+        vtk_points.InsertNextPoint(xs[0], xs[1], xs[2])
+    point_grid = vtk.vtkUnstructuredGrid()
+    point_grid.SetPoints(vtk_points)
+    if output_xy:
+        coords = vtk_to_numpy(point_grid.GetPoints().GetData())
+        return coords
+    else:
+        return point_grid
+    pass
+
+
 def ExportContour(poly_data, field_name, contour_value, **kwargs):
     '''
     Export contour of a field with a value
