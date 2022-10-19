@@ -66,6 +66,9 @@ class VTKP(VtkPp.VTKP):
         self.slab_envelop_point_list0 = []
         self.slab_envelop_point_list1 = []
         self.slab_y_max = 0.0
+        self.trench_coords_x = []
+        self.trench_coords_y = []
+        self.trench_coords_z = []
 
     def PrepareSlabByPoints(self, slab_field_names, **kwargs):
         '''
@@ -110,6 +113,9 @@ class VTKP(VtkPp.VTKP):
             id_en_y =  int(np.floor(y / self.slab_envelop_interval_y))
             id_en = id_en_y * total_en_interval_z + id_en_z
             slab_en_point_lists[id_en].append(id)
+        trench_coords_x = []
+        trench_coords_y = []
+        trench_coords_z = []
         for id_en in range(len(slab_en_point_lists)):
             theta_min = 0.0  # then, loop again by intervals to look for a
             theta_max = 0.0  # max theta and a min theta for each interval
@@ -128,8 +134,32 @@ class VTKP(VtkPp.VTKP):
                     id_max = id
                     theta_min = theta
                     theta_max = theta
+                    is_first = False
+                else:
+                    if theta < theta_min:
+                        id_min = id
+                        theta_min = theta
+                    if theta > theta_max:
+                        id_max = id
+                        theta_max = theta
             self.slab_envelop_point_list0.append(id_min)  # first half of the envelop
             self.slab_envelop_point_list1.append(id_max)  # second half of the envelop
+            if id_en % total_en_interval_z == 0:
+                # record trench coordinates
+                id_en_y = id_en // total_en_interval_z
+                if id_max > 0:
+                    trench_coords_x.append(points[id_max][0])
+                    trench_coords_y.append(points[id_max][1])
+                    trench_coords_z.append(points[id_max][2])
+        self.trench_coords_x = trench_coords_x
+        self.trench_coords_y = trench_coords_y
+        self.trench_coords_z = trench_coords_z
+    
+    def ExportSlabInfo(self):
+        '''
+        Output slab information
+        '''
+        return self.trench_coords_x, self.trench_coords_y, self.trench_coords_z
 
 
 def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
@@ -201,11 +231,25 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     end = time.time()
     print("Write slab points, takes %.2f s" % (end - start))
     start = end
-    # generate some outputs
+    # prepare outputs
+    trench_coords_x, trench_coords_y, trench_coords_z = VtkP.ExportSlabInfo()
+    outputs = "# trench coordinates: x, y and z\n" + \
+    "# vtu step: %d\n" % vtu_step  + \
+    "# time: %.4e\n" % _time
+    for i in range(len(trench_coords_x)):
+        outputs += str(trench_coords_x[i]) + " " + str(trench_coords_y[i]) + " " + str(trench_coords_z[i]) + "\n"
+    fileout = os.path.join(output_path, "trench_%05d.txt" % vtu_snapshot)
+    with open(fileout, 'w') as fout:
+        fout.write(outputs)
+    print("File output for trench positions: %s" % fileout)
+    end = time.time()
+    print("Write trench positions, takes %.2f s" % (end - start))
+    start = end
+
     # outputs = "%-12s%-12d%-14.4e\n"\
     # % (vtu_step, step, _time)
     # print("Output file generated: ", outputs)
-    # return vtu_step, outputs
+    return vtu_step, outputs
 
 
 def main():
