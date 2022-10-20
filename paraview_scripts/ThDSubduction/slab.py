@@ -84,6 +84,18 @@ class SLAB(PARAVIEW_PLOT):
         self.camera_dict['isoVolume_slab_lower'] = _camera
         Hide(isoVolume1, self.renderView1)  # hide data in view
 
+    def setup_active_clip(self):
+        '''
+        clip the model domain along both the x and y axis.
+        '''
+        clip_active0, active0Display, _ = add_clip(self.solutionpvd, [TRENCH_INITIAL + 3e6, 2e6, 5e5],\
+        [1.0, 0.0, 0.0], name="active_0")
+        Hide(clip_active0, self.renderView1)  # hide data in view
+        clip_active1, active1Display, _ = add_clip(clip_active0, [1e6, TRENCH_EDGE_Y + 5e5 , 5e5],\
+        [0.0, 1.0, 0.0], name="active_1")
+        Hide(clip_active1, self.renderView1)  # hide data in view
+        glyph1, glyph1Display, _ = add_glyph(clip_active1, "velocity", 2e5, 500)
+
     def plot_slice(self, _source, field_name, **kwargs):
         '''
         Plot surface slice
@@ -151,6 +163,7 @@ class SLAB(PARAVIEW_PLOT):
         invert_color_slice = kwargs.get('invert_color_slice', False)
         _source = "isoVolume_slab_lower"
         _source1 = "slice_trench_center_y"
+        _source2 = "glyph_0"
         show_axis = True
         hide_plot = True
         field_name_slice = "viscosity"
@@ -204,6 +217,24 @@ class SLAB(PARAVIEW_PLOT):
         _display.SetScalarBarVisibility(renderView1, True)
         color_bar_slice = [[0.03, 0.03], 0.36285420944558516]  # this doesn't work for now
         adjust_color_bar(fieldLUTslice, renderView1, color_bar_slice)
+        # show the glyph
+        glyph1 = FindSource(_source2)
+        SetActiveSource(glyph1)
+        renderView1 = GetActiveViewOrCreate('RenderView')
+        if show_axis:
+            renderView1.AxesGrid.Visibility = 1 
+        _display = Show(glyph1, renderView1, 'GeometryRepresentation')
+        glyph1Display = GetDisplayProperties(glyph1, view=renderView1)
+        # adjust the colormap for the glyph
+        ColorBy(glyph1Display, ('POINTS', 'velocity', 'Magnitude'))
+        custom_range = [0.01, 0.1]
+        velocityLUT = GetColorTransferFunction('velocity', glyph1Display, separate=True)
+        velocityLUT.ApplyPreset('roma', True) # this doesn't work
+        velocityLUT.InvertTransferFunction()
+        if custom_range != None:
+            assert(len(custom_range) == 2)
+            # Rescale transfer function
+            velocityLUT.RescaleTransferFunction(custom_range[0], custom_range[1])
         # adjust colorbar and camera
         _camera = self.camera_dict[_source]
         adjust_camera(renderView1, _camera[0],_camera[1], _camera[2], _camera[3])
@@ -257,6 +288,7 @@ def main():
     Slab.setup_trench_slice_center()
     Slab.setup_trench_slice_edge()
     Slab.setup_slab_iso_volume_upper()
+    Slab.setup_active_clip()
     # First number is the number of initial adaptive refinements
     # Second one is the snapshot to plot
     # here we prefer to use a series of snapshots.

@@ -106,6 +106,40 @@ def add_slice(solutionpvd, field, Origin, Normal, **kwargs):
     return slice1, slice1Display, renderView1
 
 
+def add_clip(solutionpvd, Origin, Normal, **kwargs):
+    '''
+    create a new 'Clip'
+    Inputs:
+        solutionpvd: a solutionpvd object of paraview
+        field: field to show
+        Origin: the origin point of visualization
+        Normal: the normal direction of the slice
+    '''
+    # get additional variables
+    renderView0 = kwargs.get('renderView', None)
+    _name = kwargs.get('name', '0')
+    clip1 = Clip(registrationName="clip_%s" % _name, Input=solutionpvd)
+    clip1.ClipType = 'Plane'
+    clip1.HyperTreeGridClipper = 'Plane'
+    # clip1.Scalars = ['POINTS', 'T']
+    # clip1.Value = 1136.5
+    # init the 'Plane' selected for 'ClipType'
+    clip1.ClipType.Origin = Origin
+    # init the 'Plane' selected for 'HyperTreeGridClipper'
+    clip1.HyperTreeGridClipper.Origin = Origin
+    # Properties modified on clip1.ClipType
+    clip1.ClipType.Normal = Normal
+    if renderView0 == None:
+        renderView1 = GetActiveViewOrCreate('RenderView')
+    else:
+        renderView1 = renderView0
+    # show data in view
+    clip1Display = Show(clip1, renderView1, 'GeometryRepresentation')
+    renderView1.Update()
+    return clip1, clip1Display, renderView1
+
+
+
 def add_isovolume(solutionpvd, field, thresholds, **kwargs):
     '''
     Inputs:
@@ -128,6 +162,36 @@ def add_isovolume(solutionpvd, field, thresholds, **kwargs):
     isoVolume1Display = Show(isoVolume1, renderView1, 'GeometryRepresentation')
     renderView1.Update()
     return isoVolume1, isoVolume1Display, renderView1
+
+
+def add_glyph(solutionpvd, field, scalefactor, nsample, **kwargs):
+    '''
+    Inputs:
+        solutionpvd: a solutionpvd object of paraview
+        field: field to show
+        scalefactor: a factor for the scaling of the lenght of the field
+        nsample: number of sample points
+    '''
+    # addtional variables
+    renderView0 = kwargs.get('renderView', None)
+    _name = kwargs.get('name', 0)
+    glyph1 = Glyph(registrationName='glyph_%s' % _name, Input=solutionpvd,
+    GlyphType='Arrow')
+    glyph1.OrientationArray = ['POINTS', 'No orientation array']
+    glyph1.ScaleArray = ['POINTS', 'No scale array']
+    glyph1.ScaleFactor = scalefactor
+    glyph1.GlyphTransform = 'Transform2'
+    glyph1.OrientationArray = ['POINTS', field]
+    glyph1.MaximumNumberOfSamplePoints = nsample
+    # get active view
+    if renderView0 == None:
+        renderView1 = GetActiveViewOrCreate('RenderView')
+    else:
+        renderView1 = renderView0
+    # show data in view
+    glyph1Display = Show(glyph1, renderView1, 'GeometryRepresentation')
+    return glyph1, glyph1Display, renderView1
+
 
     
 def adjust_slice_color(slice1Display, field, renderView):
