@@ -24,6 +24,7 @@ import numpy as np
 import shilofue.ParsePrm as ParsePrm
 import shilofue.PlotVisit as PlotVisit
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, RunScripts
+import shilofue.TwoDSubduction0.PlotVisit as TwoDPlotVisit
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -56,7 +57,7 @@ Examples of usage: \n\
         ")
 
 
-class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
+class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
     """
     parse .prm file to a option file that bash can easily read
     """

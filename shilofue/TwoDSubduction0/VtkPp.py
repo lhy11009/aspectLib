@@ -36,7 +36,7 @@ import multiprocessing
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
 from shilofue.PlotCombine import PLOT_COMBINE, PlotCombineExecute, PlotColorLabels, PC_OPT_BASE
-from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
+# from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 from shilofue.ParsePrm import ReadPrmFile, ParseFromDealiiInput
 from shilofue.Plot import LINEARPLOT
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS

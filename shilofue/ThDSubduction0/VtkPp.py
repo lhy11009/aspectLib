@@ -21,6 +21,8 @@ import sys, os, argparse
 # import subprocess
 import vtk
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
+from matplotlib import pyplot as plt
+from matplotlib import cm
 from numpy import linalg as LA 
 import multiprocessing
 import time
@@ -29,6 +31,7 @@ from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPE
 from shilofue.ThDSubduction0.PlotVisit import VISIT_OPTIONS
 from shilofue.ParsePrm import ReadPrmFile
 from shilofue.Plot import LINEARPLOT
+from shilofue.PlotCombine import PLOT_COMBINE
 from shilofue.TwoDSubduction0.VtkPp import get_theta
 import shilofue.VtkPp as VtkPp
 # directory to the aspect Lab
@@ -49,6 +52,11 @@ Examples of usage: \n\
     analyze slab morphology, by parsing a pvtu file:\n\
         python -m shilofue.ThDSubduction0.VtkPp analyze_slab -i /mnt/lochy0/ASPECT_DATA/ThDSubduction/gmg_test_stampede/test_ThD_gmg_mv1e20_picard_correction_side_plate -vs 0 \n\
 \n\
+    plot trench positions, assuming the trench.txt files have already been generated: \n\
+        the -ti option gives a time interval\n\
+\n\
+        python -m shilofue.ThDSubduction0.VtkPp plot_trench -i /mnt/lochy0/ASPECT_DATA/ThDSubduction/gmg_test_stampede/test_ThD_gmg_mv1e20_picard_correction_side_plate -ti 2e6 \n\
+\n\
 ")
 
 
@@ -59,7 +67,7 @@ class VTKP(VtkPp.VTKP):
     '''
     def __init__(self, **kwargs):
         VtkPp.VTKP.__init__(self, **kwargs)  # initiation of parental class
-        self.slab_shallow_cutoff = kwargs.get('slab_shallow_cutoff', 100e3)  # depth limit to slab
+        self.slab_shallow_cutoff = kwargs.get('slab_shallow_cutoff', 70e3)  # depth limit to slab
         self.slab_points = []  # points in the slab
         self.slab_envelop_interval_z = kwargs.get("slab_envelop_interval_z", 10e3)
         self.slab_envelop_interval_y = kwargs.get("slab_envelop_interval_y", 10e3)
@@ -237,7 +245,9 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     "# vtu step: %d\n" % vtu_step  + \
     "# time: %.4e\n" % _time
     for i in range(len(trench_coords_x)):
-        outputs += str(trench_coords_x[i]) + " " + str(trench_coords_y[i]) + " " + str(trench_coords_z[i]) + "\n"
+        if i > 0:
+            outputs += "\n"
+        outputs += str(trench_coords_x[i]) + " " + str(trench_coords_y[i]) + " " + str(trench_coords_z[i])
     fileout = os.path.join(output_path, "trench_%05d.txt" % vtu_snapshot)
     with open(fileout, 'w') as fout:
         fout.write(outputs)
@@ -245,11 +255,151 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     end = time.time()
     print("Write trench positions, takes %.2f s" % (end - start))
     start = end
+    return vtu_step, ""
+ 
+####
+# Case-wise functions
+####
+def SlabMorphologyCase(case_dir, **kwargs):
+    '''
+    run vtk and get outputs for every snapshots
+    Inputs:
+        kwargs:
+            rewrite: if rewrite previous results
+    '''
+    if_rewrite = kwargs.get('rewrite', 0)
+    # get all available snapshots
+    # the interval is choosen so there is no high frequency noises
+    time_interval_for_slab_morphology = 0.5e6
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+    available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+    print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # debug
+    # available_pvtu_steps = [i - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']) for i in available_pvtu_snapshots]
+    # get where previous session ends
+    vtk_output_dir = os.path.join(case_dir, 'vtk_outputs')
+    if not os.path.isdir(vtk_output_dir):
+        os.mkdir(vtk_output_dir)
+    
+    # slab_morph_file = os.path.join(vtk_output_dir, 'slab_morph.txt')
+    
+    # Initiation Wrapper class for parallel computation
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology, if_rewrite=True)
+    ParallelWrapper.configure(case_dir)  # assign case directory
+    # Remove previous file
 
-    # outputs = "%-12s%-12d%-14.4e\n"\
-    # % (vtu_step, step, _time)
-    # print("Output file generated: ", outputs)
-    return vtu_step, outputs
+#    if if_rewrite:
+#        if os.path.isfile(slab_morph_file):
+#            print("%s: Delete old slab_morph.txt file." % Utilities.func_name())
+#            os.remove(slab_morph_file)  # delete slab morph file
+#        ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
+
+    num_cores = multiprocessing.cpu_count()
+    # loop for all the steps to plot
+    # Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
+    # for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
+    ParallelWrapper.clear()
+    for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
+        ParallelWrapper(pvtu_snapshot)
+    pvtu_steps_o, outputs = ParallelWrapper.assemble() 
+ 
+  
+ 
+class SLABPLOT(LINEARPLOT):
+    '''
+    Plot slab morphology
+    Inputs:
+        -
+    Returns:
+        -
+    '''
+    def __init__(self, _name):
+        LINEARPLOT.__init__(self, _name)
+ 
+ 
+    def PlotTrenchPosition(self, case_dir, **kwargs):
+        '''
+        a variation of the PlotMorph function: used for combining results
+        Inputs:
+            case_dir (str): directory of case
+        kwargs(dict):
+            defined but not used
+        '''
+        time_interval_for_slab_morphology = kwargs.get("time_interval", 1.0e6)
+        Visit_Options = VISIT_OPTIONS(case_dir)
+        Visit_Options.Interpret()
+        trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
+        # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+        available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+        n_snapshots = len(available_pvtu_snapshots)
+        print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # output the availabe pvtu snapshots
+        fig, ax = plt.subplots()
+        normalizer = [ float(i)/(n_snapshots-1) for i in range(n_snapshots)] 
+        colors = cm.rainbow(normalizer) 
+        i = 0
+        for vtu_snapshot in available_pvtu_snapshots:
+            # plot each snapsh
+            _time = time_interval_for_slab_morphology * i
+            _color = colors[i]
+            ax = self.PlotTrenchPositionStep(case_dir, vtu_snapshot, axis=ax, color=_color, label="Time = %.2f Myr" % (_time / 1e6))
+            i += 1
+        ax.legend()
+        ax.set_xlim([trench_initial_position/1e3 - 1000, trench_initial_position/1e3 + 1000]) # set the x axis to center around the inital trench
+        img_dir = os.path.join(case_dir, 'img')
+        if not os.path.isdir(img_dir):
+            os.mkdir(img_dir)
+        morph_img_dir = os.path.join(img_dir, "morphology")
+        if not os.path.isdir(morph_img_dir):
+            os.mkdir(morph_img_dir)
+        fileout = os.path.join(morph_img_dir, "trench.png")
+        fig.savefig(fileout)
+        print("image output: ", fileout)
+
+
+    def PlotTrenchPositionStep(self, case_dir, vtu_snapshot, **kwargs):
+        '''
+        plot trench position for a single step
+        '''
+        _color = kwargs.get("color", None)
+        _label = kwargs.get("label", None)
+        filein = os.path.join(case_dir, "vtk_outputs", "trench_%05d.txt" % vtu_snapshot)
+        # initiate
+        ax = kwargs.get('axis', None)
+        if ax == None:
+            raise ValueError("Not implemented")
+        data = np.loadtxt(filein)
+        xs = data[:, 0]
+        ys = data[:, 1]
+        ax.plot(xs/1e3, ys/1e3, '.', color=_color, label=_label)
+        ax.set_xlabel('X (km)')
+        ax.set_ylabel('Y (km)')
+        return ax
+
+
+class PLOT_COMBINE_SLAB_MORPH(PLOT_COMBINE):
+    '''
+    Combine results from slab morphology
+    '''
+    def __init__(self, case_paths):
+        PLOT_COMBINE.__init__(self, case_paths)
+        UnitConvert = Utilities.UNITCONVERT()
+        self.MorphPlotter = SLABPLOT("plot_slab")
+        pass
+
+    def __call__(self, width, output_dir, time_range, tp_range, sd_range, **kwargs):
+        '''
+        perform combination
+        Inputs:
+            sizes: (list of 2) - size of the plot
+            output_dir: directory to output to
+        '''
+        _name = "combine_morphology"
+        _title = "Comparing slab morphology results"
+        color_method = kwargs.get('color_method', 'generated')
+        dump_color_to_json = kwargs.get('dump_color_to_json', None)
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
 
 
 def main():
@@ -279,6 +429,9 @@ def main():
     parser.add_argument('-vss', '--vtu_snapshot', type=int,
                         default=0,
                         help='vtu_snapshot')
+    parser.add_argument('-ti', '--time_interval', type=float,
+                        default=1.0e6,
+                        help='Time interval, affecting the time steps to visualize')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -293,6 +446,13 @@ def main():
     elif _commend == 'analyze_slab':
         # use the wrapper
         SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1)
+    elif _commend == 'morph_case':
+        # slab morphology for a case
+        SlabMorphologyCase(arg.inputs, rewrite=1)
+    elif _commend == 'plot_trench':
+        # plot slab morphology
+        SlabPlot = SLABPLOT('slab')
+        SlabPlot.PlotTrenchPosition(arg.inputs, time_interval=arg.time_interval)
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 
