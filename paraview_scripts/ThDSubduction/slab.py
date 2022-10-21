@@ -223,7 +223,7 @@ class SLAB(PARAVIEW_PLOT):
         renderView1 = GetActiveViewOrCreate('RenderView')
         if show_axis:
             renderView1.AxesGrid.Visibility = 1 
-        _display = Show(glyph1, renderView1, 'GeometryRepresentation')
+        # _display = Show(glyph1, renderView1, 'GeometryRepresentation')
         glyph1Display = GetDisplayProperties(glyph1, view=renderView1)
         # adjust the colormap for the glyph
         ColorBy(glyph1Display, ('POINTS', 'velocity', 'Magnitude'))
@@ -235,6 +235,10 @@ class SLAB(PARAVIEW_PLOT):
             assert(len(custom_range) == 2)
             # Rescale transfer function
             velocityLUT.RescaleTransferFunction(custom_range[0], custom_range[1])
+        # adjust colorbar for the glyph
+        # _display.SetScalarBarVisibility(renderView1, True)
+        color_bar_slice = [[0.03, 0.53], 0.36285420944558516]  # this doesn't work for now
+        adjust_color_bar(velocityLUT, renderView1, color_bar_slice)
         # adjust colorbar and camera
         _camera = self.camera_dict[_source]
         adjust_camera(renderView1, _camera[0],_camera[1], _camera[2], _camera[3])
