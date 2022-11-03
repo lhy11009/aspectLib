@@ -100,6 +100,11 @@ different age will be adjusted.",\
         self.add_key("use WB new ridge implementation", int, ['world builder', 'use new ridge implementation'], 0, nick='wb_new_ridge')
         self.add_key("Assign a side plate", int, ['plate setup', 'assign side plate'], 0, nick='assign_side_plate')
         self.add_key("branch", str, ['branch'], "", nick='branch')
+        # todo_trans
+        self.add_key("Age of the transit overiding plate", float, ['plate setup', 'ov transit age'], -1.0, nick='ov_trans_age')
+        self.add_key("Length of the transit overiding plate", float,\
+            ['plate setup', 'ov transit length'], 300e3, nick='ov_trans_length')
+        self.add_key("Geometry", str, ["geometry"], "box", nick='geometry')
 
     
     def check(self):
@@ -124,7 +129,6 @@ different age will be adjusted.",\
         Interface to configure_prm
         '''
         if_wb = self.values[8]
-        geometry = self.values[3]
         _type = self.values[9] 
         setup_method = self.values[self.start+26] # method of seting up slabs
         box_width = self.values[self.start]
@@ -157,6 +161,7 @@ different age will be adjusted.",\
         stokes_solver_type = self.values[18]
         case_o_dir = self.values[16]
         branch = self.values[self.start+33]
+        geometry = self.values[self.start+36]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
@@ -170,7 +175,6 @@ different age will be adjusted.",\
         Interface to configure_wb
         '''
         if_wb = self.values[8]
-        geometry = self.values[3]
         _type = self.values[9] 
         sp_width = self.values[self.start+3]
         sp_length = self.values[self.start+4]
@@ -185,9 +189,18 @@ different age will be adjusted.",\
         sp_rate = self.values[self.start+27] # method of seting up slabs
         wb_new_ridge = self.values[self.start+31]
         assign_side_plate = self.values[self.start+32]
+        # todo_trans
+        ov_trans_age =  self.values[self.start+34]
+        ov_trans_length =  self.values[self.start+35]
+        if ov_trans_age < 0.0:
+            if_ov_trans = False
+        else:
+            if_ov_trans = True
+        geometry = self.values[self.start+36]
         return _type, if_wb, geometry, sp_width, sp_length, trailing_length,\
         Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age,\
-        setup_method, sp_rate, wb_new_ridge, assign_side_plate
+        setup_method, sp_rate, wb_new_ridge, assign_side_plate,\
+        if_ov_trans, ov_trans_age, ov_trans_length
     
     def to_re_write_geometry_pa(self):
         '''
@@ -360,7 +373,8 @@ class CASE(CasesP.CASE):
 
 
     def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length,\
-    dip_angle, sp_age_trench, ov_age, setup_method, sp_rate, wb_new_ridge, assign_side_plate):
+    dip_angle, sp_age_trench, ov_age, setup_method, sp_rate, wb_new_ridge, assign_side_plate, if_ov_trans, ov_trans_age,\
+    ov_trans_length):
         '''
         Configure wb file
         '''
@@ -376,8 +390,14 @@ class CASE(CasesP.CASE):
             else:
                 raise ValueError("Wrong value for \"type\"")
         elif setup_method == '2d_consistent':
-            self.wb_dict = wb_configure_plate_2d_consistent(self.wb_dict, sp_width, sp_rate, Dsz, Ddl,\
-            slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate)
+            if geometry == 'chunk':
+                raise ValueError("chunk geometry has not been implemented")
+            elif geometry == 'box':
+                self.wb_dict = wb_configure_plate_2d_consistent(self.wb_dict, sp_width, sp_rate, Dsz, Ddl,\
+                slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate,  if_ov_trans,\
+                ov_trans_age, ov_trans_length)
+            else:
+                raise ValueError("Geometry must by \"chunk\" or \"box\", get %s" % geometry)
             pass
     
 
@@ -472,21 +492,41 @@ def wb_configure_plate_schellart07_Tdependent(wb_dict, sp_width, sp_length, Dsz,
 
 
 def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_length,\
-    dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate):
+    dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate, if_ov_trans, ov_trans_age,\
+    ov_trans_length, **kwargs):
     '''
     World builder configuration of plates in Schellart etal 2007
     '''
     Xmax = 40000e3  # some big values that are not ever reached
     Ymax = 20000e3
     pe_width = 55e3 # width of the plate edges
+    Ro = kwargs.get("Ro", 6371e3)
     sp_length = sp_rate * sp_age_trench
     o_dict = wb_dict.copy()
     # cross section
     o_dict["cross section"] = [[0.0, 0.0], [Xmax, 0.0]]
+    # overiding plate 1
+    # todo_trans
+    if if_ov_trans and ov_age > (1e6 + ov_trans_age):  # only transfer to younger age
+        i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate 1')
+        ov_trans_feature, ov =\
+            wb_configure_transit_ov_plates(wb_dict['features'][i0], sp_length,\
+                ov_age, ov_trans_age, ov_trans_length, wb_new_ridge,\
+                Ro=Ro, geometry='box')
+        o_dict['features'][i0] = ov_trans_feature
+    else:
+        # if no using transit plate, remove the feature
+        try:
+            i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate 1')
+        except ParsePrm.WBFeatureNotFoundError:
+            pass
+        else:
+            o_dict = ParsePrm.RemoveWBFeatures(o_dict, i0)
+        ov = sp_length
     # overiding plate
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate')
     ov_dict = o_dict['features'][i0]
-    ov_dict["coordinates"] = [[sp_length, -sp_width], [sp_length, sp_width], [Xmax, sp_width] ,[Xmax, -sp_width]]
+    ov_dict["coordinates"] = [[ov, -sp_width], [ov, sp_width], [Xmax, sp_width] ,[Xmax, -sp_width]]
     ov_dict["temperature models"][0]["plate age"] = ov_age
     o_dict['features'][i0] = ov_dict
     # overiding plate edge
@@ -514,8 +554,13 @@ def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_
         sdp_dict = deepcopy(ov_dict)
         sdp_dict["name"] = "side plate"
         sdp_dict["coordinates"] = [[0.0, sp_width+pe_width], [0.0, Ymax], [Xmax, Ymax] ,[Xmax, sp_width+pe_width]]
-        i0 = ParsePrm.FindWBFeatures(o_dict, "Subducting plate edge")
-        o_dict['features'].insert(i0 + 1, sdp_dict)
+        try:
+            i0 = ParsePrm.FindWBFeatures(o_dict, "side plate")
+        except ParsePrm.WBFeatureNotFoundError:
+            i0 = ParsePrm.FindWBFeatures(o_dict, "Subducting plate edge")
+            o_dict['features'].insert(i0 + 1, sdp_dict)
+        else:
+            o_dict['features'][i0] = sdp_dict
     # slab
     with open(twod_default_wb_file, 'r') as fin:
         twod_default_dict = json.load(fin)
@@ -637,6 +682,41 @@ sp_lower: %.4e|%.4e,\
 plate_edge: %.4e|%.4e|%.4e"\
         % (disl_V, disl_V_lm, disl_crust_V, disl_V, disl_V_lm, disl_V, disl_V_lm, disl_crust_V, disl_V, disl_V_lm)
 
+
+# todo_trans
+def wb_configure_transit_ov_plates(i_feature, trench, ov_age,\
+    ov_trans_age, ov_trans_length, wb_new_ridge, **kwargs):
+    '''
+    Transit overiding plate to a younger age at the trench
+    See descriptions of the interface to_configure_wb
+    '''
+    geometry = kwargs.get('geometry', 'chunk')
+    side_angle = 360  # side angle to creat features in the 3rd dimension
+    side_dist = 10000e3
+    Ro = kwargs.get("Ro", 6371e3)
+    o_feature = i_feature.copy()
+    trans_angle = ov_trans_length / Ro / np.pi * 180.0
+    if geometry == 'chunk':
+        ov = trench  + trans_angle  # new ending point of the default overiding plage
+        side = side_angle
+        ridge = trench - trans_angle * ov_trans_age / (ov_age - ov_trans_age)
+    elif geometry == 'box':
+        ov = trench + ov_trans_length
+        side = side_dist
+        ridge = trench - ov_trans_length * ov_trans_age / (ov_age - ov_trans_age)
+    else:
+        pass
+    v = ov_trans_length / (ov_age - ov_trans_age)
+    o_feature["temperature models"][0]["spreading velocity"] = v
+    o_feature["coordinates"] = [[trench, -side], [trench, side],\
+        [ov, side], [ov, -side]]
+    if wb_new_ridge == 1:
+        o_feature["temperature models"][0]["ridge coordinates"] =\
+            [[[ridge, -side], [ridge, side]]]
+    else:
+        o_feature["temperature models"][0]["ridge coordinates"] =\
+            [[ridge, -side], [ridge, side]]
+    return o_feature, ov
 
 
 

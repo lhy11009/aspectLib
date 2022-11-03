@@ -236,6 +236,24 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         Utilities.my_assert(found, ValueError, "%s: vtu_step %d is not found" % (Utilities.func_name(), vtu_step))
         time = self.Statistics.GetTime(step)
         return time, step
+    
+    def get_time_and_step_by_snapshot(self, vtu_snapshot):
+        '''
+        Convert vtu_snapshot to step and time in model
+        ''' 
+        assert(len(self.all_graphical_snaps) > 0)
+        assert(len(self.all_graphical_timesteps) > 0)
+        # find step in all available steps
+        found = False
+        i = 0
+        for snap_shot in self.all_graphical_snaps:
+            if vtu_snapshot == snap_shot:
+                found = True
+                step = int(self.all_graphical_timesteps[i])
+            i += 1
+        Utilities.my_assert(found, ValueError, "%s: vtu_snapshot %d is not found" % (Utilities.func_name(), vtu_snapshot))
+        time = self.Statistics.GetTime(step)
+        return time, step
 
 
 class PARALLEL_WRAPPER_FOR_VTK():
