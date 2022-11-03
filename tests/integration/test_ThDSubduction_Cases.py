@@ -231,7 +231,6 @@ def test_phase_transition():
     assert(filecmp.cmp(wb_path, wb_std_path))
 
 
-# todo_trans
 def test_ov_transit():
     '''
     test for applying an transit section in the overiding plate
