@@ -68,10 +68,10 @@ Examples of usage: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_slab_case_step -i \n\
             /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0  -vs 100\n\
 \n\
-  - Perform analysis on a single case\n\
+  - Slab morphology for a single step of a single case, by default, the slab envelops are outputed for debug usage and previous results are overwritten.\n\
         python -m shilofue.TwoDSubduction0.VtkPp morph_step -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 -vss 105 \n\
 \n\
-  - Perform analysis on one case for all the time steps\n\
+  - Slab morphology for one case for all the time steps\n\
         python -m shilofue.TwoDSubduction0.VtkPp morph_case -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT_cart2/eba_cdpt_cart_width80\n\
 \n\
   - Plot the morphology of the slab: \n\
@@ -618,6 +618,9 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         case_dir (str): case directory
         vtu_snapshot (int): index of file in vtu outputs
     '''
+    indent = kwargs.get("indent", 0)  # indentation for outputs
+    print("%s%s: Start" % (indent*" ", Utilities.func_name()))
+    output_slab = kwargs.get('output_slab', False)
     filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
     if not os.path.isfile(filein):
         raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
@@ -637,6 +640,24 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity']
     VtkP.ConstructPolyData(field_names, include_cell_center=True)
     VtkP.PrepareSlab(['spcrust', 'spharz'])
+    # output slab profile
+    if output_slab:
+        slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
+        slab_internal = VtkP.ExportSlabInternal(output_xy=True)
+        o_slab_env0 = os.path.join(case_dir,\
+            "vtk_outputs", "slab_env0_%05d.vtp" % (vtu_step)) # envelop 0
+        o_slab_env1 = os.path.join(case_dir,\
+            "vtk_outputs", "slab_env1_%05d.vtp" % (vtu_step)) # envelop 1
+        o_slab_in = os.path.join(case_dir,\
+            "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
+        VtkPp.ExportPolyDataFromRaw(slab_envelop0[:, 0], slab_envelop0[:, 1], None, None, o_slab_env0) # write the polydata
+        # np.savetxt(o_slab_env0, slab_envelop0)
+        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env0))
+        VtkPp.ExportPolyDataFromRaw(slab_envelop1[:, 0], slab_envelop1[:, 1], None, None, o_slab_env1) # write the polydata
+        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env1))
+        np.savetxt(o_slab_in, slab_internal)
+        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
+    # process trench, slab depth, dip angle
     trench, slab_depth, dip_100 = VtkP.ExportSlabInfo()
     vsp, vov = VtkP.ExportVelocity()
     vsp_magnitude = np.linalg.norm(vsp, 2)
@@ -644,7 +665,7 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     # generate outputs
     outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e\n"\
     % (vtu_step, step, _time, trench, slab_depth, dip_100, vsp_magnitude, vov_magnitude)
-    print(outputs) # debug
+    print("%s%s" % (indent*" ", outputs)) # debug
     return vtu_step, outputs
 
 
@@ -1489,7 +1510,7 @@ def main():
         PlotSlabShape(arg.inputs, arg.vtu_step)
     elif _commend == 'morph_step':
         # slab_morphology, input is the case name
-        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1)
+        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1, output_slab=True)
     elif _commend == 'morph_case':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=1)
