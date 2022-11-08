@@ -388,7 +388,6 @@ class VTKP(VtkPp.VTKP):
         '''
         assert (len(self.slab_envelop_cell_list0) > 0 and\
             len(self.slab_envelop_cell_list1) > 0)  # assert we have slab internels
-        indent = kwargs.get('indent', 0)
         centers = vtk_to_numpy(self.c_poly_data.GetPoints().GetData())
         slab_envelop0 = []
         slab_envelop1 = []
@@ -448,6 +447,59 @@ class VTKP(VtkPp.VTKP):
         b_profile[:, 0] = depths
         b_profile[:, 1] = buoyancies
         return total_buoyancy, b_profile
+
+    def FindMDD(self, **kwargs):
+        '''
+        find the mechanical decoupling depth from the velocity field
+        '''
+        # todo_mdd
+        dx = kwargs.get('dx', 10e3)
+        tolerance = kwargs.get('tolerance', 0.05)
+        indent = kwargs.get("indent", 0)  # indentation for outputs
+        debug = kwargs.get("debug", False) # output debug messages
+        slab_envelop0, slab_envelop1 = self.ExportSlabEnvelopCoord()
+        query_grid = np.zeros((2,2))
+        mdd = -1.0
+        for i in range(slab_envelop1.shape[0]):
+            x = slab_envelop1[i, 0]
+            y = slab_envelop1[i, 1]
+            r = get_r(x, y, self.geometry) 
+            theta = get_theta(x, y, self.geometry)
+            if self.geometry == "chunk":
+                x0 = r * np.cos(theta - dx/self.Ro) 
+                y0 = r * np.sin(theta - dx/self.Ro)
+                x1 = r * np.cos(theta + dx/self.Ro)
+                y1 = r * np.sin(theta + dx/self.Ro)
+            elif self.geometry == "box":
+                x0 = x - dx
+                y0 = y
+                x1 = x + dx
+                y1 = y
+            query_grid[0, 0] = x0
+            query_grid[0, 1] = y0
+            query_grid[1, 0] = x1
+            query_grid[1, 1] = y1
+            query_poly_data = VtkPp.InterpolateGrid(self.i_poly_data, query_grid, quiet=True)
+            query_vs = vtk_to_numpy(query_poly_data.GetPointData().GetArray('velocity'))
+            vi = query_vs[0, :]
+            vi_mag = (query_vs[0, 0]**2.0 + query_vs[0, 1]**2.0)**0.5
+            vi_theta = np.arctan2(query_vs[0,0], query_vs[0, 1])
+            vo = query_vs[1, :]
+            vo_mag = (query_vs[1, 0]**2.0 + query_vs[1, 1]**2.0)**0.5
+            vo_theta = np.arctan2(query_vs[1,0], query_vs[1, 1])
+            depth = (self.Ro - (x**2.0 + y**2.0)**0.5)
+            if debug:
+                print("%sx: %.4e, y: %.4e, depth: %.4e, vi: [%.4e, %.4e] (mag = %.4e, theta = %.4e), vo: [%.4e, %.4e] (mag = %.4e, theta = %.4e)"\
+                % (indent*" ", x, y, depth, vi[0], vi[1], vi_mag, vi_theta, vo[0], vo[1], vo_mag, vo_theta))
+            if (abs((vo_mag - vi_mag)/vi_mag) < tolerance) and (abs((vo_theta - vi_theta)/vi_theta) < tolerance):
+                mdd = depth
+                break
+        if mdd > 0.0:
+            print("%smdd = %.4e m" % (indent*" ", mdd))
+            return mdd
+        else:
+            raise ValueError("FindMDD: a valid MDD has not been found, please considering changing the tolerance")
+        pass
 
 ####
 # Utilities functions
@@ -618,7 +670,10 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         case_dir (str): case directory
         vtu_snapshot (int): index of file in vtu outputs
     '''
+    # todo_mdd
     indent = kwargs.get("indent", 0)  # indentation for outputs
+    findmdd = kwargs.get("findmdd", False)
+    mdd = -1.0 # an initial value
     print("%s%s: Start" % (indent*" ", Utilities.func_name()))
     output_slab = kwargs.get('output_slab', False)
     filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
@@ -640,6 +695,11 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity']
     VtkP.ConstructPolyData(field_names, include_cell_center=True)
     VtkP.PrepareSlab(['spcrust', 'spharz'])
+    if findmdd:
+        try:
+            mdd = VtkP.FindMDD()
+        except ValueError:
+            mdd = - 1.0
     # output slab profile
     if output_slab:
         slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
@@ -663,8 +723,11 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     vsp_magnitude = np.linalg.norm(vsp, 2)
     vov_magnitude = np.linalg.norm(vov, 2)
     # generate outputs
-    outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e\n"\
+    outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e"\
     % (vtu_step, step, _time, trench, slab_depth, dip_100, vsp_magnitude, vov_magnitude)
+    if findmdd:
+        outputs += "%-14.4e\n" % (mdd)
+    outputs += "\n"
     print("%s%s" % (indent*" ", outputs)) # debug
     return vtu_step, outputs
 
@@ -890,6 +953,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
             rewrite: if rewrite previous results
     '''
     if_rewrite = kwargs.get('rewrite', 0)
+    # todo_mdd
+    findmdd = kwargs.get('findmdd', False)
     # get all available snapshots
     # the interval is choosen so there is no high frequency noises
     time_interval_for_slab_morphology = 0.5e6
@@ -905,7 +970,7 @@ def SlabMorphologyCase(case_dir, **kwargs):
         os.mkdir(vtk_output_dir)
     slab_morph_file = os.path.join(vtk_output_dir, 'slab_morph.txt')
     # Initiation Wrapper class for parallel computation
-    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology, if_rewrite=True)
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology, if_rewrite=True, findmdd=findmdd)
     ParallelWrapper.configure(case_dir)  # assign case directory
     # Remove previous file
     if if_rewrite:
@@ -925,6 +990,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
     # header
     file_header = "# 1: pvtu_step\n# 2: step\n# 3: time (yr)\n# 4: trench (rad)\n# 5: slab depth (m)\n\
 # 6: 100km dip (rad)\n# 7: subducting plate velocity (m/yr)\n# 8: overiding plate velocity (m/yr)\n"
+    if findmdd:
+        file_header += "# 9: mechanical decoupling depth (m)\n"
     output_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
     # output data
     if not os.path.isfile(output_file):
@@ -1052,6 +1119,8 @@ class SLABPLOT(LINEARPLOT):
         kwargs(dict):
             defined but not used
         '''
+        # initialization
+        findmdd = False
         # path
         img_dir = os.path.join(case_dir, 'img')
         if not os.path.isdir(img_dir):
@@ -1097,11 +1166,23 @@ class SLABPLOT(LINEARPLOT):
         sink_velocities = np.gradient(slab_depthes, times)
         sp_velocities = self.data[:, col_pvtu_sp_v]
         ov_velocities = self.data[:, col_pvtu_ov_v]
+        try:
+            col_mdd = self.header['mechanical_decoupling_depth']['col']
+        except KeyError:
+            pass
+        else:
+            findmdd = True
+            mdds = self.data[:, col_mdd]
         # trench velocity
         # start figure
+        if findmdd:
+            _size = (20, 10)
+            gs = gridspec.GridSpec(4, 2) 
+        else:
+            _size = (15, 10)
+            gs = gridspec.GridSpec(3, 2) 
         fig = plt.figure(tight_layout=True, figsize=(15, 10)) 
         fig.subplots_adjust(hspace=0)
-        gs = gridspec.GridSpec(3, 2) 
         # 1: trench & slab movement
         ax = fig.add_subplot(gs[0, 0:2]) 
         ax_tx = ax.twinx()
@@ -1139,6 +1220,16 @@ class SLABPLOT(LINEARPLOT):
         ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
         ax.set_ylabel('Velocity (whole, cm/yr)')
         ax.grid()
+        # 3: the mechanical decoupling depth, only if the data is found
+        if findmdd:
+            ax = fig.add_subplot(gs[3, 0]) 
+            ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
+            lns0 = ax.plot(times/1e6, mdds/1e3, '-', color="tab:blue", label='mechanical decoupling depth (km)')
+            ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+            ax.set_ylabel('Depth (km)')
+            ax.grid()
+            ax.legend()
+        
         # 3: wedge temperature
 #        depthes, Ts = self.ReadWedgeT(case_dir, int(pvtu_steps[0]), int(pvtu_steps[-1]))
 #        tt, dd = np.meshgrid(times, depthes)
@@ -1510,10 +1601,10 @@ def main():
         PlotSlabShape(arg.inputs, arg.vtu_step)
     elif _commend == 'morph_step':
         # slab_morphology, input is the case name
-        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1, output_slab=True)
+        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1, output_slab=True, findmdd=True)
     elif _commend == 'morph_case':
         # slab morphology for a case
-        SlabMorphologyCase(arg.inputs, rewrite=1)
+        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')

@@ -44,6 +44,35 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
+def test_find_mdd():
+    # todo_mdd
+    case_dir = os.path.join(ASPECT_LAB_DIR, "tests/integration/fixtures/big_files/test_TwoD_vtk_pp_full")
+    assert(os.path.isdir(case_dir))
+    vtu_snapshot = 97
+    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+    if not os.path.isfile(filein):
+        raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
+    else:
+        print("SlabMorphology: processing %s" % filein)
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis',\
+    # vtu_step=vtu_step, include_step_in_filename=True, generate_horiz=True)
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    _time, step = Visit_Options.get_time_and_step(vtu_step)
+    geometry = Visit_Options.options['GEOMETRY']
+    Ro =  Visit_Options.options['OUTER_RADIUS']
+    Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
+    VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity']
+    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.PrepareSlab(['spcrust', 'spharz'])
+    mdd = VtkP.FindMDD()
+    assert(abs(mdd - 7.9729e+04) / 7.9729e+04 < 1e-3) # check the mdd value
+    pass
+
+
 def test_prepare_slab():
     '''
     Test utilities from VtkPp.py
@@ -249,3 +278,4 @@ def test_slab_analysis():
         fig_ofile = os.path.join(o_dir, "slab_forces_dp_T100.png")
         PlotSlabForces(o_file, fig_ofile)
         assert(os.path.isfile(fig_ofile))
+

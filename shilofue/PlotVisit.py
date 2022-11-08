@@ -282,6 +282,7 @@ class PARALLEL_WRAPPER_FOR_VTK():
         self.module = module
         self.last_pvtu_step = kwargs.get('last_pvtu_step', -1)
         self.if_rewrite = kwargs.get('if_rewrite', False)
+        self.kwargs = kwargs
         self.pvtu_steps = []
         self.outputs = []
         pass
@@ -314,9 +315,9 @@ class PARALLEL_WRAPPER_FOR_VTK():
         else:    
             if pvtu_step == 0:
                 # start new file with the 0th step
-                pvtu_step, output = self.module(self.case_dir, pvtu_step, new=True)
+                pvtu_step, output = self.module(self.case_dir, pvtu_step, new=True, **self.kwargs)
             else:
-                pvtu_step, output = self.module(self.case_dir, pvtu_step)
+                pvtu_step, output = self.module(self.case_dir, pvtu_step, **self.kwargs)
             with open(expect_result_file, 'w') as fout:
                 fout.write('%d\n' % pvtu_step)
                 fout.write(output)
