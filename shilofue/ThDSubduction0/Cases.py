@@ -100,11 +100,12 @@ different age will be adjusted.",\
         self.add_key("use WB new ridge implementation", int, ['world builder', 'use new ridge implementation'], 0, nick='wb_new_ridge')
         self.add_key("Assign a side plate", int, ['plate setup', 'assign side plate'], 0, nick='assign_side_plate')
         self.add_key("branch", str, ['branch'], "", nick='branch')
-        # todo_trans
         self.add_key("Age of the transit overiding plate", float, ['plate setup', 'ov transit age'], -1.0, nick='ov_trans_age')
         self.add_key("Length of the transit overiding plate", float,\
             ['plate setup', 'ov transit length'], 300e3, nick='ov_trans_length')
         self.add_key("Geometry", str, ["geometry"], "box", nick='geometry')
+        self.add_key("Age of the transit overiding plate", float, ['plate setup', 'sp ridge x'], 0.0, nick='sp_ridge_x')
+
 
     
     def check(self):
@@ -162,13 +163,14 @@ different age will be adjusted.",\
         case_o_dir = self.values[16]
         branch = self.values[self.start+33]
         geometry = self.values[self.start+36]
+        sp_ridge_x = self.values[self.start+37]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
             sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
             adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
             reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir,\
-            branch
+            branch, sp_ridge_x
         
     def to_configure_wb(self):
         '''
@@ -189,7 +191,6 @@ different age will be adjusted.",\
         sp_rate = self.values[self.start+27] # method of seting up slabs
         wb_new_ridge = self.values[self.start+31]
         assign_side_plate = self.values[self.start+32]
-        # todo_trans
         ov_trans_age =  self.values[self.start+34]
         ov_trans_length =  self.values[self.start+35]
         if ov_trans_age < 0.0:
@@ -197,10 +198,11 @@ different age will be adjusted.",\
         else:
             if_ov_trans = True
         geometry = self.values[self.start+36]
+        sp_ridge_x = self.values[self.start+37]
         return _type, if_wb, geometry, sp_width, sp_length, trailing_length,\
         Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age,\
         setup_method, sp_rate, wb_new_ridge, assign_side_plate,\
-        if_ov_trans, ov_trans_age, ov_trans_length
+        if_ov_trans, ov_trans_age, ov_trans_length, sp_ridge_x
     
     def to_re_write_geometry_pa(self):
         '''
@@ -222,7 +224,7 @@ class CASE(CasesP.CASE):
     sp_width, trailing_length, reset_trailing_morb, ref_visc, relative_visc_plate, friction_angle,\
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
-    reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch):
+    reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch, sp_ridge_x):
         '''
         Configure prm file
         '''
@@ -326,7 +328,7 @@ class CASE(CasesP.CASE):
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
             "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
         # rewrite the reaction morb part
-        if _type in ['s07', 's07_newton']:
+        if _type in ['s07', 's07_newton', '2d_consistent']:
             if abs(Dsz - 50e3)/50e3 > 1e-6:
                 # for the sake of backwards compatible
                 Dsz_str = str(Dsz)
@@ -337,18 +339,27 @@ class CASE(CasesP.CASE):
                 Dp_str = str(Dsz + Ddl)
             else:
                 Dp_str = "1e5"
+        if reset_trailing_morb == 1:
+            o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'true'
+        else:
+            o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'false'
+        if _type == "s07":
+            # fix the variables type-wise
             if reset_trailing_morb == 1:
-                o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'true'
-                if _type == "s07":
+                o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
+                    "Width=%.4e, Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (trailing_length, box_depth, box_length, Dsz_str, Dp_str, sp_width)
+        elif _type == "s07_newton":
+            if reset_trailing_morb == 1:
+                o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
+                    "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (box_depth, box_length, Dsz_str, Dp_str, sp_width)
+        elif _type == '2d_consistent':
+            if reset_trailing_morb == 1:
+                if sp_ridge_x > 0.0:
                     o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
-                        "Width=%.4e, Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (trailing_length, box_depth, box_length, Dsz_str, Dp_str, sp_width)
-                elif _type == "s07_newton":
-                    o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
-                        "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (box_depth, box_length, Dsz_str, Dp_str, sp_width)
-                else:
-                    raise ValueError()
-            else:
-                o_dict['Material model'][material_model_subsection]['Reaction mor'] = 'false'
+                        "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, pRidge=%.4e" %  (box_depth, box_length, Dsz_str, Dp_str, sp_width, sp_ridge_x)
+        else:
+            raise ValueError()
+
 
         o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries
 
@@ -374,7 +385,7 @@ class CASE(CasesP.CASE):
 
     def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length,\
     dip_angle, sp_age_trench, ov_age, setup_method, sp_rate, wb_new_ridge, assign_side_plate, if_ov_trans, ov_trans_age,\
-    ov_trans_length):
+    ov_trans_length, sp_ridge_x):
         '''
         Configure wb file
         '''
@@ -395,7 +406,7 @@ class CASE(CasesP.CASE):
             elif geometry == 'box':
                 self.wb_dict = wb_configure_plate_2d_consistent(self.wb_dict, sp_width, sp_rate, Dsz, Ddl,\
                 slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate,  if_ov_trans,\
-                ov_trans_age, ov_trans_length)
+                ov_trans_age, ov_trans_length, sp_ridge_x)
             else:
                 raise ValueError("Geometry must by \"chunk\" or \"box\", get %s" % geometry)
             pass
@@ -493,7 +504,7 @@ def wb_configure_plate_schellart07_Tdependent(wb_dict, sp_width, sp_length, Dsz,
 
 def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_length,\
     dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate, if_ov_trans, ov_trans_age,\
-    ov_trans_length, **kwargs):
+    ov_trans_length, sp_ridge_x, **kwargs):
     '''
     World builder configuration of plates in Schellart etal 2007
     '''
@@ -506,11 +517,10 @@ def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_
     # cross section
     o_dict["cross section"] = [[0.0, 0.0], [Xmax, 0.0]]
     # overiding plate 1
-    # todo_trans
     if if_ov_trans and ov_age > (1e6 + ov_trans_age):  # only transfer to younger age
         i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate 1')
         ov_trans_feature, ov =\
-            wb_configure_transit_ov_plates(wb_dict['features'][i0], sp_length,\
+            wb_configure_transit_ov_plates(wb_dict['features'][i0], sp_length + sp_ridge_x,\
                 ov_age, ov_trans_age, ov_trans_length, wb_new_ridge,\
                 Ro=Ro, geometry='box')
         o_dict['features'][i0] = ov_trans_feature
@@ -522,7 +532,7 @@ def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_
             pass
         else:
             o_dict = ParsePrm.RemoveWBFeatures(o_dict, i0)
-        ov = sp_length
+        ov = sp_length + sp_ridge_x
     # overiding plate
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate')
     ov_dict = o_dict['features'][i0]
@@ -532,23 +542,25 @@ def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_
     # overiding plate edge
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate edge')
     ove_dict = o_dict['features'][i0]
-    ove_dict["coordinates"] = [[sp_length, sp_width], [sp_length, sp_width + pe_width], [Xmax, sp_width + pe_width] ,[Xmax, sp_width]]
+    ove_dict["coordinates"] = [[sp_ridge_x + sp_length, sp_width], [sp_ridge_x + sp_length, sp_width + pe_width], [Xmax, sp_width + pe_width] ,[Xmax, sp_width]]
     ove_dict["temperature models"][0]["plate age"] = ov_age
     o_dict['features'][i0] = ove_dict
     # subducting plate
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Subducting plate')
     sp_dict = o_dict['features'][i0]
-    sp_dict["coordinates"] = [[0.0, -sp_width], [0.0, sp_width], [sp_length, sp_width] ,[sp_length, -sp_width]]
+    sp_dict["coordinates"] = [[sp_ridge_x, -sp_width], [sp_ridge_x, sp_width], [sp_ridge_x + sp_length, sp_width] ,[sp_ridge_x + sp_length, -sp_width]]
     sp_dict["composition models"][0]["max depth"] = Dsz  # moho
     sp_dict["composition models"][1]["min depth"] = Dsz
     sp_dict["composition models"][1]["max depth"] = Dsz + Ddl  # lithosphere - athenosphere boundary
     sp_dict["temperature models"][0]["spreading velocity"] = sp_rate
+    sp_dict["temperature models"][0]["ridge coordinates"] = [[[sp_ridge_x, -10000000.0], [sp_ridge_x, 10000000.0]]]
     o_dict['features'][i0] = sp_dict
     # subducting plate edge
     i0 = ParsePrm.FindWBFeatures(o_dict, "Subducting plate edge")
     spe_dict = o_dict['features'][i0]
-    spe_dict["coordinates"] = [[0.0, sp_width], [0.0, sp_width + pe_width], [sp_length, sp_width + pe_width] ,[sp_length, sp_width]]
+    spe_dict["coordinates"] = [[0.0, sp_width], [0.0, sp_width + pe_width], [sp_ridge_x + sp_length, sp_width + pe_width] ,[sp_ridge_x + sp_length, sp_width]]
     spe_dict["temperature models"][0]["spreading velocity"] = sp_rate
+    spe_dict["temperature models"][0]["ridge coordinates"] = [[[sp_ridge_x, -10000000.0], [sp_ridge_x, 10000000.0]]]
     # side plate
     if assign_side_plate == 1:
         sdp_dict = deepcopy(ov_dict)
@@ -568,7 +580,7 @@ def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_
     i1 = ParsePrm.FindWBFeatures(twod_default_dict, 'Slab')
     o_dict['features'][i0] = twod_default_dict['features'][i1].copy() # default options
     sdict = o_dict['features'][i0]  # modify the properties
-    sdict["coordinates"] = [[sp_length, -sp_width], [sp_length, sp_width]]
+    sdict["coordinates"] = [[sp_length + sp_ridge_x, -sp_width], [sp_length + sp_ridge_x, sp_width]]
     sdict["dip point"] = [Xmax, 0.0]
     for i in range(len(sdict["segments"])-1):
         # slab compostion, the last one is a phantom for temperature tapering
@@ -579,10 +591,10 @@ def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_
         sdict["segments"][i] = segment
     if wb_new_ridge == 1:
         sdict["temperature models"][0]["ridge coordinates"] = \
-            [[[0,-10000000.0], [0, 10000000.0]]]
+            [[[sp_ridge_x,-10000000.0], [sp_ridge_x, 10000000.0]]]
     else:
         sdict["temperature models"][0]["ridge coordinates"] = \
-            [[0,-10000000.0], [0, 10000000.0]]
+            [[sp_ridge_x,-10000000.0], [sp_ridge_x, 10000000.0]]
     sdict["temperature models"][0]["plate velocity"] = sp_rate
     return o_dict
 
@@ -683,7 +695,6 @@ plate_edge: %.4e|%.4e|%.4e"\
         % (disl_V, disl_V_lm, disl_crust_V, disl_V, disl_V_lm, disl_V, disl_V_lm, disl_crust_V, disl_V, disl_V_lm)
 
 
-# todo_trans
 def wb_configure_transit_ov_plates(i_feature, trench, ov_age,\
     ov_trans_age, ov_trans_length, wb_new_ridge, **kwargs):
     '''

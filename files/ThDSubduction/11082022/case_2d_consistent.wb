@@ -24,11 +24,11 @@
       "min depth": -100000.0,
       "coordinates": [
         [
-          5000000.0,
+          5700000.0,
           -1000000.0
         ],
         [
-          5000000.0,
+          5700000.0,
           1000000.0
         ],
         [
@@ -45,7 +45,49 @@
           "model": "plate model constant age",
           "min depth": -10000.0,
           "max depth": 150000.0,
-          "plate age": 50000000.0
+          "plate age": 40000000.0
+        }
+      ]
+    },
+    {
+      "model": "oceanic plate",
+      "name": "Overiding plate 1",
+      "max depth": 150000.0,
+      "min depth": -100000.0,
+      "coordinates": [
+        [
+          5000000.0,
+          -1000000.0
+        ],
+        [
+          5000000.0,
+          1000000.0
+        ],
+        [
+          5700000.0,
+          1000000.0
+        ],
+        [
+          5700000.0,
+          -1000000.0
+        ]
+      ],
+      "temperature models": [
+        {
+          "model": "plate model",
+          "min depth": -10000.0,
+          "max depth": 150000.0,
+          "spreading velocity": 0.035,
+          "ridge coordinates": [[
+            [
+              4300000.0,
+              -1000000.0
+            ],
+            [
+              4300000.0,
+              1000000.0
+            ]
+          ]]
         }
       ]
     },
@@ -56,11 +98,11 @@
       "min depth": -100000.0,
       "coordinates": [
         [
-          5000000.0,
+          4000000.0,
           1000000.0
         ],
         [
-          5000000.0,
+          4000000.0,
           1055000.0
         ],
         [
@@ -87,7 +129,7 @@
           "model": "plate model constant age",
           "min depth": -10000.0,
           "max depth": 150000.0,
-          "plate age": 50000000.0
+          "plate age": 40000000.0
         }
       ]
     },
@@ -98,11 +140,11 @@
       "min depth": -100000.0,
       "coordinates": [
         [
-          0.0,
+          1000e3,
           -1000000.0
         ],
         [
-          0.0,
+          1000e3,
           1000000.0
         ],
         [
@@ -195,11 +237,11 @@
           "ridge coordinates": [
             [
               [
-                0.0,
+                0,
                 -10000000.0
               ],
               [
-                0.0,
+                0,
                 10000000.0
               ]
             ]
@@ -232,10 +274,22 @@
       ],
       "temperature models": [
         {
-          "model": "plate model constant age",
+          "model": "plate model",
           "min depth": -10000.0,
           "max depth": 150000.0,
-          "plate age": 50000000.0
+          "spreading velocity": 0.05,
+          "ridge coordinates": [
+            [
+              [
+                0,
+                -10000000.0
+              ],
+              [
+                0,
+                10000000.0
+              ]
+            ]
+          ]
         }
       ]
     },
@@ -311,11 +365,11 @@
           "ridge coordinates": [
             [
               [
-                0.0,
+                0,
                 -10000000.0
               ],
               [
-                0.0,
+                0,
                 10000000.0
               ]
             ]
