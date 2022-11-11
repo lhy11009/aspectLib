@@ -203,9 +203,10 @@ subsection Material model
         subsection Reaction mor function
             set Coordinate system = cartesian
             set Variable names = x, y, z
-            set Function constants = Do=1.0000e+06, xm=6.7830e+06, DpUp=15000.0, Dp=65000.0, Wp=1.0000e+06, pWidth=1e5, pRidge=0.0
-            set Function expression = ((z >= Do - DpUp) && (x > pRidge) && (x < pRidge + pWidth) && (y <= Wp)) ? 0:\
-                                        ((z < Do - DpUp) && (z > Do - Dp) && (x > pRidge) && (x < pRidge + pWidth) && (y <= Wp)) ? 1: -1
+            set Function constants = Do=1.0000e+06, xm=6.7830e+06, DpUp=15000.0, Dp=65000.0, Wp=1.0000e+06, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=0.0, dOvSide=0.0
+            set Function expression = ((z > Do - DpUp) && (x > pRidge) && (x <= pRidge + pWidth) && (y <= Wp)) ? 0:\
+                                        (((z <= Do - DpUp) && (z > Do - Dp) && (x > pRidge) && (x <= pRidge + pWidth) && (y <= Wp)) ? 1:\
+                                        ((z > Do - Dplate) && (((x > pRidge) && (x <= pRidge + pWidth)) || ((x > xm - dOvSide - pWidth) && (x <= xm - dOvSide))) && (y > Wp) && (y <= Wp + Wweak))? 2:-1)
         end
     end
 end
