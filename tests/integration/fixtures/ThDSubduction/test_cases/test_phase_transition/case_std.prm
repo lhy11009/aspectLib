@@ -180,7 +180,7 @@ subsection Material model
         set Viscous flow law = composite
         set Yield mechanism = drucker
         set Grain size = 1.0000e-02
-        set Prefactors for diffusion creep = background: 8.1787e-17|8.1787e-17|8.1787e-17|8.1787e-17|2.4977e-19|2.4977e-19|2.4977e-19|2.4977e-19, sp_upper: 5.0000e-21|8.1787e-17|2.4977e-19|2.4977e-1, sp_lower: 8.1787e-17|8.1787e-17|8.1787e-17|8.1787e-17|2.4977e-19|2.4977e-19|2.4977e-19|2.4977e-19, plate_edge: 5.0000e-21|8.1787e-17|2.4208e-19
+        set Prefactors for diffusion creep = background: 8.1787e-17|8.1787e-17|8.1787e-17|8.1787e-17|2.4977e-19|2.4977e-19|2.4977e-19|2.4977e-19, sp_upper: 5.0000e-21|8.1787e-17|2.4977e-19|2.4977e-19, sp_lower: 8.1787e-17|8.1787e-17|8.1787e-17|8.1787e-17|2.4977e-19|2.4977e-19|2.4977e-19|2.4977e-19, plate_edge: 5.0000e-21|8.1787e-17|2.4208e-19
         set Grain size exponents for diffusion creep = background:3.0000e+00 ,sp_upper: 0.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00, sp_lower: 3.0000e+00, plate_edge: 0.0000e+00|3.0000e+00|3.0000e+00
         set Activation energies for diffusion creep = background: 2.8500e+05, sp_upper: 0.0000e+00|2.8500e+05|2.8500e+05|2.8500e+05,sp_lower: 2.8500e+05, plate_edge: 0.0000e+00|2.8500e+05|2.8500e+05
         set Activation volumes for diffusion creep = background:6.9000e-06|6.9000e-06|6.9000e-06|6.9000e-06|3.0000e-06|3.0000e-06|3.0000e-06|3.0000e-06, sp_upper:0.0000e+00|6.9000e-06|3.0000e-06|3.0000e-06 ,sp_lower: 6.9000e-06|6.9000e-06|6.9000e-06|6.9000e-06|3.0000e-06|3.0000e-06|3.0000e-06|3.0000e-06, plate_edge: 0.0000e+00|6.9000e-06|3.0000e-06
