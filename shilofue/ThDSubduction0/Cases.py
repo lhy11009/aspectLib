@@ -106,6 +106,11 @@ different age will be adjusted.",\
         self.add_key("Geometry", str, ["geometry"], "box", nick='geometry')
         self.add_key("position of the sp ridge", float, ['plate setup', 'sp ridge x'], 0.0, nick='sp_ridge_x')
         self.add_key("distance of the ov ridge from the side wall", float, ['plate setup', 'ov side dist'], 0.0, nick='ov_side_dist')
+        # todo_pres
+        self.add_key("prescribe mantle temperature before the subducting plate starts",\
+        int, ['plate setup', 'prescribe mantle sp start'], 0, nick='prescribe_mantle_sp')
+        self.add_key("prescribe mantle temperature after the overiding plate ends",\
+        int, ['plate setup', 'prescribe mantle ov end'], 0, nick='prescribe_mantle_ov')
 
 
     
@@ -166,13 +171,15 @@ different age will be adjusted.",\
         geometry = self.values[self.start+36]
         sp_ridge_x = self.values[self.start+37]
         ov_side_dist = self.values[self.start+38]
+        prescribe_mantle_sp = self.values[self.start+39]
+        prescribe_mantle_ov = self.values[self.start+40]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
             sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
             adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
             reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir,\
-            branch, sp_ridge_x, ov_side_dist
+            branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov
         
     def to_configure_wb(self):
         '''
@@ -235,7 +242,7 @@ class CASE(CasesP.CASE):
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
     reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch,\
-    sp_ridge_x, ov_side_dist):
+    sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov):
         '''
         Configure prm file
         '''
@@ -247,6 +254,9 @@ class CASE(CasesP.CASE):
             else:
                 branch_str = "_%s" % branch
             o_dict["Additional shared libraries"] =  "$ASPECT_SOURCE_DIR/build%s/visco_plastic_TwoD/libvisco_plastic_TwoD.so" % branch_str
+            if prescribe_mantle_sp or prescribe_mantle_sp:
+                o_dict["Additional shared libraries"] += ", "
+                o_dict["Additional shared libraries"] +=  "$ASPECT_SOURCE_DIR/build%s/prescribe_field_T_adiabat/libprescribe_field_T_adiabat.so" % branch_str
         # geometry options
         # repitition, figure this out by deviding the dimensions with a unit value of repitition_slice
         repitition_slice = np.min(np.array([box_length, box_width, box_depth]))  # take the min as the repitition_slice
@@ -371,6 +381,36 @@ class CASE(CasesP.CASE):
                         (box_depth, box_length, Dsz_str, Dp_str, sp_width, sp_ridge_x, ov_side_dist)
         else:
             raise ValueError()
+        # todo_pres
+        # prescribe mantle temperature
+        if _type == '2d_consistent':
+            # only do this for the 2d_consistent model
+            if prescribe_mantle_sp or prescribe_mantle_ov:
+                o_dict["Prescribe internal mantle adiabat temperatures"] = 'true'
+                o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function constants"] = \
+                    "Do=%.4e, xm=%.4e, Wp=%.4e, Depth=150e3, pRidge=%.4e, dOvSide=%.4e" % \
+                    (box_depth, box_length, sp_width, sp_ridge_x, ov_side_dist)
+                o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function expression"] = \
+                    "(z > Do - Depth) && ((x <= pRidge) || (x > (xm - dOvSide))) && (y <= Wp)? 1.0: 0.0"
+            elif prescribe_mantle_sp and (not prescribe_mantle_ov):
+                o_dict["Prescribe internal mantle adiabat temperatures"] = 'true'
+                o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function constants"] = \
+                    "Do=%.4e, xm=%.4e, Wp=%.4e, Depth=150e3, pRidge=%.4e" % \
+                    (box_depth, box_length, sp_width, sp_ridge_x)
+                o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function expression"] = \
+                    "(z > Do - Depth) && (x <= pRidge) && (y <= Wp)? 1.0: 0.0"
+                pass
+            elif (not prescribe_mantle_sp) and prescribe_mantle_ov:
+                o_dict["Prescribe internal mantle adiabat temperatures"] = 'true'
+                o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function constants"] = \
+                    "Do=%.4e, xm=%.4e, Wp=%.4e, Depth=150e3, dOvSide=%.4e" % \
+                    (box_depth, box_length, sp_width, v_side_dist)
+                o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function expression"] = \
+                    "(z > Do - Depth) && (x > (xm - dOvSide)) && (y <= Wp)? 1.0: 0.0"
+                pass
+            else:
+                # the default in the file should be false if there is any
+                pass
 
 
         o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries
