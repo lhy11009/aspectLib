@@ -111,6 +111,8 @@ different age will be adjusted.",\
         int, ['plate setup', 'prescribe mantle sp start'], 0, nick='prescribe_mantle_sp')
         self.add_key("prescribe mantle temperature after the overiding plate ends",\
         int, ['plate setup', 'prescribe mantle ov end'], 0, nick='prescribe_mantle_ov')
+        self.add_key("Minimum mantle rheology for subducting initiation",\
+        float, ['mantle rheology', 'minimum viscosity for initial stage'], -1.0, nick='mantle_minimum_init')
 
 
     
@@ -173,13 +175,14 @@ different age will be adjusted.",\
         ov_side_dist = self.values[self.start+38]
         prescribe_mantle_sp = self.values[self.start+39]
         prescribe_mantle_ov = self.values[self.start+40]
+        mantle_minimum_init = self.values[self.start+41]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
             sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
             adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
             reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir,\
-            branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov
+            branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init
         
     def to_configure_wb(self):
         '''
@@ -242,7 +245,7 @@ class CASE(CasesP.CASE):
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
     reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch,\
-    sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov):
+    sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init):
         '''
         Configure prm file
         '''
@@ -341,6 +344,9 @@ class CASE(CasesP.CASE):
             o_dict['Material model'][material_model_subsection]['Angles of internal friction'] =\
                 "background:0.0, sp_upper: %.4e, sp_lower: 0.0" % friction_angle
             o_dict['Material model'][material_model_subsection]['Cohesions'] = "background:1e31, sp_upper: %.4e, sp_lower:1e31" % cohesion
+        # 3. set the minium rheology
+        if mantle_minimum_init > 0.0:
+            o_dict['Material model'][material_model_subsection]['Minimum viscosity'] = "%.4e" % mantle_minimum_init
         # rewrite the reset viscosity part
         if _type == 's07':
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
