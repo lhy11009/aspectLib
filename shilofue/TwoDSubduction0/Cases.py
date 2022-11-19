@@ -37,6 +37,7 @@ import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 import shilofue.FlowLaws as flf
 from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput, STRENGTH_PROFILE, PlotShearZoneStrengh
+from shilofue.WorldBuilder import slab_surface_profile
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -118,6 +119,10 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("use WB new ridge implementation", int, ['world builder', 'use new ridge implementation'], 0, nick='wb_new_ridge')
         self.add_key("branch", str, ['branch'], "", nick='branch')
         self.add_key("minimum viscosity in the shear zone", float, ['shear zone', 'minimum viscosity'], 1e18, nick='sz_minimum_viscosity')
+        self.add_key("Use embeded fault implementation",\
+          int, ["shear zone", 'use embeded fault'], 0, nick='use_embeded_fault')
+        self.add_key("factor for the embeded fault that controls the maxmimum thickness of the layer", float,\
+            ['shear zone', 'ef factor'], 1.9, nick='ef_factor')
     
     def check(self):
         '''
@@ -219,12 +224,15 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         branch = self.values[self.start + 28]
         partitions = self.values[20]
         sz_minimum_viscosity = self.values[self.start + 29]
+        use_embeded_fault = self.values[self.start + 30]
+        Dsz = self.values[self.start + 16]
+        ef_factor = self.values[self.start + 31]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
-        branch, partitions, sz_minimum_viscosity
+        branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor
 
     def to_configure_wb(self):
         '''
@@ -245,8 +253,10 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         is_box_wider = self.is_box_wider()
         Dsz = self.values[self.start + 16]
         wb_new_ridge = self.values[self.start + 27]
+        use_embeded_fault = self.values[self.start + 30]
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
-            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge
+            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge,\
+            use_embeded_fault
     
     def to_re_write_geometry_pa(self):
         box_width_pre_adjust = self.values[self.start+11]
@@ -278,7 +288,7 @@ class CASE(CasesP.CASE):
     HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme,\
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
-    sz_constant_viscosity, branch, partitions, sz_minimum_viscosity):
+    sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor):
         Ro = 6371e3
         # velocity boundaries
         if type_of_bd == "all free slip":  # boundary conditions
@@ -469,6 +479,34 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             pass
         elif phase_model == "CDPT":
             o_dict['Material model']['Visco Plastic TwoD'].pop("Use lookup table", "Foo")
+        # post-process
+        # assign the options for the embeded-fault implementation of shear zone:
+        #   1. add a section in the material model
+        #   2. set up particles
+        if use_embeded_fault:
+            o_dict['Material model']['Visco Plastic TwoD']["Sz from embeded fault"] = 'true'
+            o_dict['Material model']['Visco Plastic TwoD']["Sz embeded fault"] =\
+            {
+                "Sz composition index" : '0',\
+                "Sz thickness minimum" : str(Dsz),\
+                "Sz thickness maximum" :  str(ef_factor * Dsz),\
+                "Sz depth" : str(sz_cutoff_depth)\
+            }
+            pp_dict = o_dict['Postprocess']
+            # add particles in this section
+            pp_dict["List of postprocessors"] += ', particles'
+            pp_dict['Particles'] = {
+                "Particle generator name" : "ascii file",\
+                "Data output format" : "vtu",\
+                "List of particle properties" : "initial position",\
+                "Generator": {\
+                    "Ascii file": {\
+                        "Data directory": "./particle_file/",\
+                        "Data file name": "particle.dat"\
+                    }
+                }
+            }
+            o_dict['Postprocess'] = pp_dict
         # create a multi-stage model
         if if_peierls and (peierls_two_stage_time > 0):
             o_dict1 = deepcopy(o_dict)
@@ -482,7 +520,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             pass 
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
-        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge):
+        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, use_embeded_fault):
         '''
         Configure world builder file
         Inputs:
@@ -524,11 +562,29 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                 Xmax = 2e7
             else:
                 Xmax = 1e7  # lateral extent of the box
+            Ro = float(self.idict['Geometry model']['Box']['Y extent'])
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag, wb_new_ridge, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry, sz_thickness=Dsz) # plates
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
+        # use the embeded fault implementation, here we need to
+        # assign particle positions with world builder configuration
+        if use_embeded_fault:
+            i0 = ParsePrm.FindWBFeatures(self.wb_dict, 'Slab')  # find trench position
+            s_dict = self.wb_dict['features'][i0]
+            trench = s_dict["coordinates"][0][0]
+            p0 = np.array([trench, Ro]) # starting point of the slab, theta needs to be in radian
+            Dbury = 5e3  # bury depth of particle
+            segments = s_dict["segments"]  # find slab lengths and slab_dips
+            slab_lengths = []
+            slab_dips = []
+            for i in range(len(segments)-1):
+                # the last one is a ghost component for tapering, thus get rid of it
+                segment = segments[i]
+                slab_dips.append(segment["angle"])
+                slab_lengths.append(segment["length"])
+            self.particle_data = particle_positions_ef(geometry, Ro, trench, Dsz, Dbury, p0, slab_lengths, slab_dips)
 
 
 
@@ -1096,6 +1152,72 @@ def CDPT_assign_yielding(o_dict, cohesion, friction, **kwargs):
         % (friction, crust_friction, friction, friction, friction)
         o_dict['Material model']['Visco Plastic TwoD']["Cohesions"] = "background: %.4e, spcrust: %.4e, spharz: %.4e, opcrust: %.4e, opharz: %.4e" \
         % (cohesion, crust_cohesion, cohesion, cohesion, cohesion)
+
+
+def particle_positions_ef(geometry, Ro, trench0, Dsz, Dbury, p0, slab_lengths, slab_dips):
+    '''
+    figure out particle positions for the ef method
+    Inputs:
+        geometry: geometry of the model: box or chunk
+        Ro: y/r extent of the geometry
+        trench: position of the trench
+        Dsz: thickness of the shear zone
+        Dbury: bury depth of the particle
+    '''
+    # assert that equal number of sections are given in slab_lengths and slab_dips
+    # and that the slab_dips contains ranges of slab dip angles (2 componets each)
+    assert(len(slab_lengths) == len(slab_dips))
+    for slab_dip in slab_dips:
+        assert(len(slab_dip) == 2)
+    # initiation
+    if geometry == "chunk":
+        trench = Ro * trench0 * np.pi / 180.0  # convert to radian
+    elif geometry == "box":
+        trench = trench0
+    interval = 10e3
+    num = int(trench//interval)  # figure out the total number of point
+    for slab_length in slab_lengths:
+        num += int(slab_length//interval)
+    particle_data = np.zeros((num, 2))
+    for i in range(int(trench//interval)):
+        if geometry == "box":
+            x = interval * i
+            y = Ro - Dsz - Dbury
+            pass
+        elif geometry == "chunk":
+            theta = (interval * i)/Ro
+            x = (Ro - Dsz - Dbury) * np.cos(theta)
+            y = (Ro - Dsz - Dbury) * np.sin(theta)
+            pass
+        else:
+            pass
+        particle_data[i][0] = x
+        particle_data[i][1] = y 
+    # particles entrained in the slab
+    i = int(trench//interval)
+    total_slab_length = 0.0
+    i_sect = 0
+    l1_last = Ro - Dsz - Dbury
+    if geometry == "box":
+        l2_last = trench
+    elif geometry == "chunk":
+        l2_last = (Ro - Dsz - Dbury)/Ro * trench
+    else:
+        pass
+    # call a predefined function to get the coordinates in cartesian
+    if geometry == "box":
+        ps = slab_surface_profile(p0, slab_lengths, slab_dips, "cartesian", num=(num - i))
+        xs = ps[:, 0]
+        ys = ps[:, 1] -  Dsz - Dbury
+    elif geometry == "chunk":
+        ps = slab_surface_profile(p0, slab_lengths, slab_dips, "spherical", num=(num - i))
+        thetas = ps[:, 0]
+        rs = ps[:, 1] -  Dsz - Dbury
+        xs = rs*np.cos(thetas)
+        ys = rs*np.sin(thetas)
+    particle_data[i: num, 0] = xs
+    particle_data[i: num, 1] = ys
+    return particle_data
 
 
 

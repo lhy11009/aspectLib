@@ -266,6 +266,7 @@ class CASE():
         self.additional_idicts = []
         self.output_files = [] # for saving the path of files and images output from this class
         self.output_imgs = []
+        self.particle_data = None
         if type(inputs)==dict:
             # direct read if dict is given
             print("    Read inputs from a dictionary")
@@ -347,6 +348,14 @@ class CASE():
         if self.wb_dict != {}:
             with open(wb_out_path, 'w') as fout:
                 json.dump(self.wb_dict, fout, indent=2)
+        # assign a particle.dat file that contains the coordinates of particles
+        if self.particle_data is not None:
+            particle_o_dir = os.path.join(case_dir, 'particle_file')
+            if not os.path.isdir(particle_o_dir):
+                os.mkdir(particle_o_dir)
+            particle_file_path = os.path.join(particle_o_dir, 'particle.dat')
+            with open(particle_file_path, 'w') as fout:
+                output_particle_ascii(fout, self.particle_data)
         print("New case created: %s" % case_dir)
         # generate slurm files if options are included
         slurm_opts = kwargs.get("slurm_opts", [])
@@ -687,6 +696,30 @@ def SetEndStep(o_dict, end_step):
     else:
         o_dict["Termination criteria"] = {"End step": str(end_step), "Termination criteria": "end step"}
     return o_dict
+
+
+def output_particle_ascii(fout, particle_data):
+    '''
+    Output to a ascii file that contains Particle coordinates, containing the coordinates of each particle
+    '''
+    # header information
+    _header = '# Ascii file for particle coordinates\n'
+    # output particle file
+    fout.write(_header)
+    is_first = True
+    for i in range(particle_data.shape[0]):
+        if is_first:
+            is_first = False
+        else:
+            fout.write('\n')
+        _string = ''
+        for j in range(particle_data.shape[1]):
+            if j == particle_data.shape[1] - 1:
+                _string += '%.4e' % particle_data[i, j]
+            else:
+                _string += '%.4e ' % particle_data[i, j]
+        fout.write(_string)
+    pass
     
 
 def GROUP():

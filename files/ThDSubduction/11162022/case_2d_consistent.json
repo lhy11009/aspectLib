@@ -29,7 +29,7 @@
     "ov transit length": 700e3,
     "sp ridge x": 1000e3,
     "prescribe mantle sp start": 0,
-    "ov side dist": 500e3,
+    "ov side dist": 1000e3,
     "prescribe mantle ov end": 1
   },
   "mantle rheology": {

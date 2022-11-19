@@ -257,7 +257,8 @@ class CASE(CasesP.CASE):
             else:
                 branch_str = "_%s" % branch
             o_dict["Additional shared libraries"] =  "$ASPECT_SOURCE_DIR/build%s/visco_plastic_TwoD/libvisco_plastic_TwoD.so" % branch_str
-            if prescribe_mantle_sp or prescribe_mantle_sp:
+            if "Prescribe internal mantle adiabat temperatures" in o_dict:
+                # append the library to prescribe temperature if needed
                 o_dict["Additional shared libraries"] += ", "
                 o_dict["Additional shared libraries"] +=  "$ASPECT_SOURCE_DIR/build%s/prescribe_field_T_adiabat/libprescribe_field_T_adiabat.so" % branch_str
         # geometry options
@@ -391,7 +392,7 @@ class CASE(CasesP.CASE):
         # prescribe mantle temperature
         if _type == '2d_consistent':
             # only do this for the 2d_consistent model
-            if prescribe_mantle_sp or prescribe_mantle_ov:
+            if prescribe_mantle_sp and prescribe_mantle_ov:
                 o_dict["Prescribe internal mantle adiabat temperatures"] = 'true'
                 o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function constants"] = \
                     "Do=%.4e, xm=%.4e, Wp=%.4e, Depth=150e3, pRidge=%.4e, dOvSide=%.4e" % \
@@ -410,7 +411,7 @@ class CASE(CasesP.CASE):
                 o_dict["Prescribe internal mantle adiabat temperatures"] = 'true'
                 o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function constants"] = \
                     "Do=%.4e, xm=%.4e, Wp=%.4e, Depth=150e3, dOvSide=%.4e" % \
-                    (box_depth, box_length, sp_width, v_side_dist)
+                    (box_depth, box_length, sp_width, ov_side_dist)
                 o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function expression"] = \
                     "(z > Do - Depth) && (x > (xm - dOvSide)) && (y <= Wp)? 1.0: 0.0"
                 pass

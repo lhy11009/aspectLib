@@ -410,11 +410,12 @@ class SLABPLOT(LINEARPLOT):
         # derive the trench velocities
         V_trs = []
         ts = []
-        for vtu_snapshot in available_pvtu_snapshots: 
+        for n in range(n_snapshots-1):
+            vtu_snapshot = available_pvtu_snapshots[n]
             filein0 = os.path.join(case_dir, "vtk_outputs", "trench_%05d.txt" % vtu_snapshot)
             filein1 = os.path.join(case_dir, "vtk_outputs", "trench_%05d.txt" % (vtu_snapshot+step_for_derivatives))
-            assert(os.path.isfile(filein0))
-            assert(os.path.isfile(filein1))
+            Utilities.my_assert(os.path.isfile(filein0), FileNotFoundError, "%s doens't exist" % filein0)
+            Utilities.my_assert(os.path.isfile(filein1), FileNotFoundError, "%s doens't exist" % filein1)
             _time, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot)
             _time1, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot+1)
             dt = _time1 - _time
