@@ -469,6 +469,28 @@ def FastZeroStep(Inputs):
     Inputs['Nonlinear solver scheme'] = 'no Advection, no Stokes'
 
 
+def TestInitalSteps(Inputs, n_outputs, output_interval):
+    '''
+    options for generating a case to test the initial steps
+    '''
+    Inputs['End time'] = str(output_interval * n_outputs)
+    # output timing information at every step
+    Inputs["Timing output frequency"] = "0"
+    # fix post-process section
+    pp_dict = Inputs["Postprocess"]
+    if "Depth average" in pp_dict:
+        # output Depth average at every step
+        pp_dict["Depth average"]["Time between graphical output"] = "0"
+    if "Visualization" in pp_dict:
+        pp_dict["Visualization"]["Time between graphical output"] = str(output_interval)
+    if "Particles" in pp_dict:
+        pp_dict["Particles"]["Time between data output"] = str(output_interval)
+    # fix checkpointing - chekcpoitn eveyr step
+    Inputs["Checkpointing"] = {
+        "Steps between checkpoint": "1"
+    }
+
+
 class WBFeatureNotFoundError(Exception):
     pass
 

@@ -68,7 +68,8 @@ def test_create_case():
         rmtree(case_output_dir)
     test_case.configure(ConfigureFoo, 1)  # do nothing, test interface
     test_case.add_extra_file(extra_path)  # add an extra file
-    test_case.create(test_dir, fast_first_step=1)
+    # todo_intial
+    test_case.create(test_dir, fast_first_step=1, test_initial_steps=(3, 1e4))
     # assert prm file is generated
     prm_output_path = os.path.join(case_output_dir, 'case.prm')
     prm_std_path = os.path.join(source_dir, 'case_std.prm')
@@ -77,6 +78,11 @@ def test_create_case():
     # assert prm file for fast running 0th step is generated
     prm_output_path = os.path.join(case_output_dir, 'case_f.prm')
     prm_std_path = os.path.join(source_dir, 'case_f_std.prm')
+    assert(os.path.isfile(prm_output_path))  # assert generated
+    assert(filecmp.cmp(prm_output_path, prm_std_path))  # assert contents
+    # assert prm file for testing hte initial steps are generated
+    prm_output_path = os.path.join(case_output_dir, 'case_ini.prm')
+    prm_std_path = os.path.join(source_dir, 'case_ini_std.prm')
     assert(os.path.isfile(prm_output_path))  # assert generated
     assert(filecmp.cmp(prm_output_path, prm_std_path))  # assert contents
     # assert extra file is generated

@@ -91,6 +91,8 @@ it only takes effect if the input is positiveh",\
          ["stokes solver", "type"], "block AMG", nick="stokes_solver_type")
         self.add_features('Slurm options', ['slurm'], ParsePrm.SLURM_OPT)
         self.add_key("partitions", list, ["partitions"], [], nick='partitions')
+        self.add_key("if a test case is generated for the initial steps", int, ['test initial steps', 'number of outputs'], -1, nick='test_initial_n_outputs')
+        self.add_key("interval of outputs for the initial steps", float, ['test initial steps', 'interval of outputs'], 1e5, nick='test_initial_outputs_interval')
 
         pass
     
@@ -174,6 +176,14 @@ it only takes effect if the input is positiveh",\
         '''
         return self.values[5]
         pass
+    
+    def test_initial_steps(self):
+        '''
+        options for generatign a test case for the initial steps
+        '''
+        test_initial_n_outputs = self.values[21]
+        test_initial_outputs_interval = self.values[22]
+        return (test_initial_n_outputs, test_initial_outputs_interval)
 
     def if_use_world_builder(self):
         '''
@@ -340,6 +350,17 @@ class CASE():
             prm_fast_out_path = os.path.join(case_dir, "case_f.prm")
             ParsePrm.FastZeroStep(outputs)  # generate another file for fast running the 0th step
             ParsePrm.WritePrmFile(prm_fast_out_path, outputs)
+        # test initial steps
+        test_initial_steps = kwargs.get('test_initial_steps', (-1, 0.0))
+        Utilities.my_assert(len(test_initial_steps)==2, ValueError, "test_initial_steps needs to have two components")
+        test_initial_n_outputs = test_initial_steps[0]
+        test_initial_outputs_interval = test_initial_steps[1]
+        if test_initial_n_outputs > 0:
+            outputs = deepcopy(self.idict)
+            prm_fast_out_path = os.path.join(case_dir, "case_ini.prm")
+            ParsePrm.TestInitalSteps(outputs, test_initial_n_outputs, test_initial_outputs_interval)  # generate another file for fast running the 0th step
+            ParsePrm.WritePrmFile(prm_fast_out_path, outputs)
+        # append extra files
         for path in self.extra_files:
             base_name = os.path.basename(path)
             path_out = os.path.join(case_dir, base_name)
@@ -514,7 +535,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
         case_dir_tmp = os.path.join(Case_Opt.o_dir(), "%s_tmp" % Case_Opt.case_name())
         if os.path.isdir(case_dir_tmp):
             rmtree(case_dir_tmp)
-        Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(), is_tmp=True, slurm_opts=Case_Opt.get_slurm_opts())
+        Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(),\
+            test_initial_steps=Case_Opt.test_initial_steps(), is_tmp=True, slurm_opts=Case_Opt.get_slurm_opts())
         assert(os.path.isdir(case_dir_tmp))
         do_update = False # a flag to perform update, only true if the parameters are different
         # generate catalog: loop over files in the new folder and output the differences from
@@ -615,7 +637,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             print("Case %s already exists but there is no change, aborting" % case_dir_to_check)
         rmtree(case_dir_tmp)
     else:
-        case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(), slurm_opts=Case_Opt.get_slurm_opts())
+        case_dir = Case.create(Case_Opt.o_dir(), fast_first_step=Case_Opt.if_fast_first_step(),\
+            test_initial_steps=Case_Opt.test_initial_steps(), slurm_opts=Case_Opt.get_slurm_opts())
     return case_dir
 
 def SetBcVelocity(bc_dict, dimension, type_bc_v):

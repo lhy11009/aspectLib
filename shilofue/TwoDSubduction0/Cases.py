@@ -499,6 +499,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                 "Particle generator name" : "ascii file",\
                 "Data output format" : "vtu",\
                 "List of particle properties" : "initial position",\
+                "Time between data output": "0.1e6",\
                 "Generator": {\
                     "Ascii file": {\
                         "Data directory": "./particle_file/",\
