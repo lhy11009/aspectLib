@@ -123,6 +123,10 @@ intiation stage causes the slab to break in the middle",\
           int, ["shear zone", 'use embeded fault'], 0, nick='use_embeded_fault')
         self.add_key("factor for the embeded fault that controls the maxmimum thickness of the layer", float,\
             ['shear zone', 'ef factor'], 1.9, nick='ef_factor')
+        self.add_key("bury depth of the particles in the harzburgite layer", float,\
+            ['shear zone', 'ef particle bury depth'], 5e3, nick='ef_Dbury')
+        self.add_key("interval measured in meter between adjacent particles", float,\
+            ['shear zone', 'ef particle interval'], 10e3, nick='ef_interval')
     
     def check(self):
         '''
@@ -254,9 +258,11 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         Dsz = self.values[self.start + 16]
         wb_new_ridge = self.values[self.start + 27]
         use_embeded_fault = self.values[self.start + 30]
+        ef_Dbury = self.values[self.start + 32]
+        ef_particle_interval = self.values[self.start + 33]
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
             if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge,\
-            use_embeded_fault
+            use_embeded_fault, ef_Dbury, ef_particle_interval
     
     def to_re_write_geometry_pa(self):
         box_width_pre_adjust = self.values[self.start+11]
@@ -521,7 +527,8 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             pass 
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
-        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, use_embeded_fault):
+        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, use_embeded_fault,\
+        ef_Dbury, ef_particle_interval):
         '''
         Configure world builder file
         Inputs:
@@ -576,7 +583,6 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             s_dict = self.wb_dict['features'][i0]
             trench = s_dict["coordinates"][0][0]
             p0 = np.array([trench, Ro]) # starting point of the slab, theta needs to be in radian
-            Dbury = 5e3  # bury depth of particle
             segments = s_dict["segments"]  # find slab lengths and slab_dips
             slab_lengths = []
             slab_dips = []
@@ -585,7 +591,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                 segment = segments[i]
                 slab_dips.append(segment["angle"])
                 slab_lengths.append(segment["length"])
-            self.particle_data = particle_positions_ef(geometry, Ro, trench, Dsz, Dbury, p0, slab_lengths, slab_dips)
+            self.particle_data = particle_positions_ef(geometry, Ro, trench, Dsz, ef_Dbury, p0, slab_lengths, slab_dips, interval=ef_particle_interval)
 
 
 
@@ -1155,7 +1161,7 @@ def CDPT_assign_yielding(o_dict, cohesion, friction, **kwargs):
         % (cohesion, crust_cohesion, cohesion, cohesion, cohesion)
 
 
-def particle_positions_ef(geometry, Ro, trench0, Dsz, Dbury, p0, slab_lengths, slab_dips):
+def particle_positions_ef(geometry, Ro, trench0, Dsz, Dbury, p0, slab_lengths, slab_dips, **kwargs):
     '''
     figure out particle positions for the ef method
     Inputs:
@@ -1175,7 +1181,7 @@ def particle_positions_ef(geometry, Ro, trench0, Dsz, Dbury, p0, slab_lengths, s
         trench = Ro * trench0 * np.pi / 180.0  # convert to radian
     elif geometry == "box":
         trench = trench0
-    interval = 10e3
+    interval = kwargs.get("interval", 10e3)
     num = int(trench//interval)  # figure out the total number of point
     for slab_length in slab_lengths:
         num += int(slab_length//interval)
