@@ -45,7 +45,6 @@ if not os.path.isdir(test_dir):
 
 
 def test_find_mdd():
-    # todo_mdd
     case_dir = os.path.join(ASPECT_LAB_DIR, "tests/integration/fixtures/big_files/test_TwoD_vtk_pp_full")
     assert(os.path.isdir(case_dir))
     vtu_snapshot = 97

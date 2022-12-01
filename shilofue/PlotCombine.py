@@ -694,7 +694,7 @@ def PlotCombineExecute(PLOT_COMBINE_CLASS, PLOT_COMBINE_OPT, _name, json_path):
     Inputs:
         json_path: path to a json file for configuration
     '''
-    assert(os.access(json_path, os.R_OK))
+    Utilities.my_assert(os.access(json_path, os.R_OK), FileExistsError, "the json file %s doesn't exist" % json_path)
     Pc_opt = PLOT_COMBINE_OPT()
     Pc_opt.read_json(json_path)  # read options
     # plot the combined figure

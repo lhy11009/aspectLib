@@ -231,12 +231,13 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         use_embeded_fault = self.values[self.start + 30]
         Dsz = self.values[self.start + 16]
         ef_factor = self.values[self.start + 31]
+        ef_Dbury = self.values[self.start + 32]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
-        branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor
+        branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury
 
     def to_configure_wb(self):
         '''
@@ -294,7 +295,7 @@ class CASE(CasesP.CASE):
     HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme,\
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
-    sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor):
+    sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury):
         Ro = 6371e3
         # velocity boundaries
         if type_of_bd == "all free slip":  # boundary conditions
@@ -496,7 +497,8 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                 "Sz composition index" : '0',\
                 "Sz thickness minimum" : str(Dsz),\
                 "Sz thickness maximum" :  str(ef_factor * Dsz),\
-                "Sz depth" : str(sz_cutoff_depth)\
+                "Sz depth" : str(sz_cutoff_depth),\
+                "Sz particle bury depth" : str(ef_Dbury)
             }
             pp_dict = o_dict['Postprocess']
             # add particles in this section
