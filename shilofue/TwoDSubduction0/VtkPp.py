@@ -19,7 +19,7 @@ descriptions
 """
 #### 3rd parties 
 import numpy as np
-import sys, os, argparse
+import sys, os, argparse, json
 # import json, re
 # import pathlib
 # import subprocess
@@ -37,7 +37,7 @@ from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
 from shilofue.PlotCombine import PLOT_COMBINE, PlotCombineExecute, PlotColorLabels, PC_OPT_BASE
 # from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
-from shilofue.ParsePrm import ReadPrmFile, ParseFromDealiiInput
+from shilofue.ParsePrm import ReadPrmFile, ParseFromDealiiInput, FindWBFeatures
 from shilofue.Plot import LINEARPLOT
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 
@@ -107,6 +107,7 @@ class VTKP(VtkPp.VTKP):
         self.surface_cells = []
         self.slab_envelop_cell_list0 = []
         self.slab_envelop_cell_list1 = []
+        self.sz_geometry = None
         self.slab_depth = None
         self.slab_trench = None
         self.coord_100 = None 
@@ -452,7 +453,6 @@ class VTKP(VtkPp.VTKP):
         '''
         find the mechanical decoupling depth from the velocity field
         '''
-        # todo_mdd
         dx = kwargs.get('dx', 10e3)
         tolerance = kwargs.get('tolerance', 0.05)
         indent = kwargs.get("indent", 0)  # indentation for outputs
@@ -500,6 +500,69 @@ class VTKP(VtkPp.VTKP):
         else:
             raise ValueError("FindMDD: a valid MDD has not been found, please considering changing the tolerance")
         pass
+
+    # todo_sz
+    def PrepareSZ(self, fileout):
+        '''
+        Get the geometry of the shear zone
+        '''
+        contour_poly_data = VtkPp.ExportContour(self.i_poly_data, 'spcrust', 0.9, fileout=fileout)
+        contour_data = vtk_to_numpy(contour_poly_data.GetPoints().GetData())
+        max_thickness = 50e3
+        max_depth = 200e3
+        depth_interval = 5e3
+        theta_subgroup = np.pi / 10.0 # 1 degree
+        n_group = int(np.floor(max_depth / depth_interval) + 1.0)
+        idx_groups = [[] for i in range(n_group)]
+        # step 0: assign points in groups, with an interval in depth
+        for i in range(contour_data.shape[0]):
+            x = contour_data[i, 0]
+            y = contour_data[i, 1]
+            r = get_r(x, y, self.geometry)
+            depth = self.Ro - r
+            if depth < max_depth:
+                i_group = int(np.floor(depth / depth_interval))
+                idx_groups[i_group].append(i)
+        # step 2: look for the points located near to a query point in depth
+        sz_depths  = []
+        sz_theta_mins = []
+        sz_theta_maxs = []
+        for i_group in range(n_group-1):
+            query_depth = depth_interval * (i_group + 0.5)
+            theta_min = np.pi
+            theta_max = 0.0
+            for i in (idx_groups[i_group]):
+                # find the minimum and maximum theta in this group
+                x = contour_data[i, 0]
+                y = contour_data[i, 1]
+                theta = get_theta(x, y, self.geometry) 
+                if theta < theta_min and True:
+                    theta_min = theta
+                if theta > theta_max and True:
+                    theta_max = theta
+            thickness = 0.0
+            if self.geometry == "box":
+                thickness = theta_max - theta_min
+            elif self.geometry == "chunk":
+                thickness = (self.Ro - depth) * (theta_max - theta_min)
+            else:
+                raise ValueError("Geometry must be either box or chunk")
+            if thickness < max_thickness:
+                # select the reasonable values of layer thickness
+                sz_depths.append(query_depth)
+                sz_theta_mins.append(theta_min)
+                sz_theta_maxs.append(theta_max)
+        self.sz_geometry = np.array([sz_depths, sz_theta_mins, sz_theta_maxs]).transpose()
+        # write output file
+        header = "# 1: depth (m)\n# 2: left\n# 3: right\n"
+        with open(fileout, 'w') as fout:
+            fout.write(header)
+            np.savetxt(fout, self.sz_geometry)
+        print("%s: file output: %s" % (Utilities.func_name(), fileout))
+                
+            
+
+
 
 ####
 # Utilities functions
@@ -670,7 +733,6 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         case_dir (str): case directory
         vtu_snapshot (int): index of file in vtu outputs
     '''
-    # todo_mdd
     indent = kwargs.get("indent", 0)  # indentation for outputs
     findmdd = kwargs.get("findmdd", False)
     mdd = -1.0 # an initial value
@@ -953,7 +1015,6 @@ def SlabMorphologyCase(case_dir, **kwargs):
             rewrite: if rewrite previous results
     '''
     if_rewrite = kwargs.get('rewrite', 0)
-    # todo_mdd
     findmdd = kwargs.get('findmdd', False)
     # get all available snapshots
     # the interval is choosen so there is no high frequency noises
@@ -1070,8 +1131,7 @@ class SLABPLOT(LINEARPLOT):
     def __init__(self, _name):
         LINEARPLOT.__init__(self, _name)
         self.wedge_T_reader = LINEARPLOT('wedge_T')
-
-    
+ 
     def ReadWedgeT(self, case_dir, min_pvtu_step, max_pvtu_step, **kwargs):
         time_interval_for_slab_morphology = 0.5e6  # hard in
         i = 0
@@ -1425,6 +1485,79 @@ class SLABPLOT(LINEARPLOT):
         lns = lns0 + lns1
         labs = [I.get_label() for I in lns]
         return lns, labs
+
+    def PlotShearZoneThickness(self, case_dir, **kwargs):
+        '''
+        todo_sz
+        a variation of the PlotMorph function: used for combining results
+        Inputs:
+            case_dir (str): directory of case
+        kwargs(dict):
+            defined but not used
+        '''
+        # initiate
+        ax = kwargs.get('axis', None)
+        if ax == None:
+            raise ValueError("Not implemented")
+        filein = kwargs.get("filein", None)
+        if filein is not None:
+            sz_file = filein
+        else:
+            sz_file = os.path.join(case_dir, 'vtk_outputs', 'shear_zone.txt')
+        Utilities.my_assert(os.path.isfile(sz_file), FileExistsError, "%s doesn't exist" % sz_file)
+        label = kwargs.get('label', None)
+        xlims = kwargs.get('xlims', None)
+        ylims = kwargs.get('ylims', None)
+#        color = kwargs.get('color', None)
+#        time_range = kwargs.get('time_range', [])
+#        tp_range = kwargs.get('tp_range', [])
+#        sd_range = kwargs.get('sd_range', [])
+        # read inputs
+        prm_file = os.path.join(case_dir, 'output', 'original.prm')
+        assert(os.access(prm_file, os.R_OK))
+        self.ReadPrm(prm_file)
+        # read parameters
+        geometry = self.prm['Geometry model']['Model name']
+        if geometry == 'chunk':
+            Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        else:
+            Ro = -1.0  # in this way, wrong is wrong
+        wb_file = os.path.join(case_dir, 'case.wb')
+        assert(os.access(wb_file, os.R_OK))
+        # get the initial thickness of the shear zone
+        with open(wb_file, 'r') as fin:
+            wb_dict = json.load(fin)
+        i0 = FindWBFeatures(wb_dict, 'Subducting plate')
+        sp_dict = wb_dict['features'][i0]
+        initial_thickness = sp_dict["composition models"][0]["max depth"]
+        # read data
+        self.ReadHeader(sz_file)
+        self.ReadData(sz_file)
+        col_depth = self.header['depth']['col']
+        col_left = self.header['left']['col']
+        col_right = self.header['right']['col']
+        depths = self.data[:, col_depth]
+        lefts = self.data[:, col_left]
+        rights = self.data[:, col_right]
+        # plot
+        if geometry == 'box':
+            thicks = rights - lefts
+        elif geometry == 'chunk':
+            thicks = (rights - lefts) * (Ro - depths)
+        else:
+            raise ValueError("Geometry has to be either box or chunk")
+        ax.plot(depths/1e3, thicks/1e3, label=label)
+        ax.plot(depths/1e3, initial_thickness*np.ones(depths.size)/1e3, '--')
+        if xlims is not None:
+            # set x limit
+            assert(len(xlims) == 2)
+            ax.set_xlim[xlims[0]/1e3, xlims[1]/1e3]
+        if ylims is not None:
+            # set y limit
+            assert(len(ylims) == 2)
+            ax.set_ylim[ylims[0]/1e3, ylims[1]/1e3]
+        ax.set_xlabel("Depth (km)")
+        ax.set_ylabel("Thickness (km)")
 
 
 class PC_MORPH_OPT(PC_OPT_BASE):

@@ -1047,7 +1047,6 @@ def CDPT_assign_mantle_rheology(o_dict, rheology, **kwargs):
     diffusion_creep_lm = rheology['diffusion_lm']
     sz_viscous_scheme = kwargs.get("sz_viscous_scheme", "constant")
     sz_constant_viscosity = kwargs.get("sz_constant_viscosity", 1e20)
-    # todo_sz
     sz_minimum_viscosity = kwargs.get("sz_minimum_viscosity", 1e18)
     if sz_viscous_scheme == "constant":
         diff_crust_A = 1.0 / 2.0 / sz_constant_viscosity
