@@ -170,6 +170,54 @@ def test_export_velocity():
     assert(abs(vov[0]) < 1e-6 and abs(vov[1]) < 1e-6 and abs(vov[2]) < 1e-6)
     # assert
 
+# todo_sz
+def test_analysize_sz():
+    '''
+    test the sz geometry
+    '''
+    case_dir = os.path.join(ASPECT_LAB_DIR, "tests/integration/fixtures/big_files/test_TwoD_vtk_pp_full")
+    assert(os.path.isdir(case_dir))
+    # fix the output directory
+    output_path = os.path.join(test_dir, "twod_vtkp_sz")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    os.mkdir(output_path)
+    vtu_snapshot = 97
+    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+    if not os.path.isfile(filein):
+        raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
+    else:
+        print("SlabMorphology: processing %s" % filein)
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis',\
+    # vtu_step=vtu_step, include_step_in_filename=True, generate_horiz=True)
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    _time, step = Visit_Options.get_time_and_step(vtu_step)
+    geometry = Visit_Options.options['GEOMETRY']
+    Ro =  Visit_Options.options['OUTER_RADIUS']
+    Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
+    VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity']
+    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.PrepareSlab(['spcrust', 'spharz'])
+    trench, slab_depth, dip_100 = VtkP.ExportSlabInfo()
+    # call the functions for the shear zone
+    fileout = os.path.join(output_path, "sz.txt")
+    file_std = os.path.join(case_dir, "sz_std.txt")
+    VtkP.PrepareSZ(fileout)
+    assert(os.path.isfile(fileout))  # assert file generation
+    assert(filecmp.cmp(fileout, file_std))  # compare file contents
+    # plot
+    fig_path = os.path.join(output_path, "sz_thickness.png") 
+    fig, ax = plt.subplots()
+    MorphPlotter = SLABPLOT("plot_slab")
+    MorphPlotter.PlotShearZoneThickness(case_dir, trench, axis=ax, filein=fileout, label='shear zone thickness')
+    ax.legend()
+    fig.savefig(fig_path)
+    assert(os.path.isfile(fig_path))  # assert figure generation
+
 
 def test_slab_analysis():
     ''' 
@@ -276,50 +324,3 @@ def test_find_mdd():
     assert(abs(mdd - 7.9729e+04) / 7.9729e+04 < 1e-3) # check the mdd value
     pass
 
-
-# todo_sz
-def test_analysize_sz():
-    '''
-    test the sz geometry
-    '''
-    case_dir = os.path.join(ASPECT_LAB_DIR, "tests/integration/fixtures/big_files/test_TwoD_vtk_pp_full")
-    assert(os.path.isdir(case_dir))
-    # fix the output directory
-    output_path = os.path.join(test_dir, "twod_vtkp_sz")
-    if os.path.isdir(output_path):
-        rmtree(output_path)  # remove old results
-    os.mkdir(output_path)
-    vtu_snapshot = 97
-    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
-    if not os.path.isfile(filein):
-        raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
-    else:
-        print("SlabMorphology: processing %s" % filein)
-    Visit_Options = VISIT_OPTIONS(case_dir)
-    Visit_Options.Interpret()
-    # vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis',\
-    # vtu_step=vtu_step, include_step_in_filename=True, generate_horiz=True)
-    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
-    _time, step = Visit_Options.get_time_and_step(vtu_step)
-    geometry = Visit_Options.options['GEOMETRY']
-    Ro =  Visit_Options.options['OUTER_RADIUS']
-    Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
-    VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
-    VtkP.ReadFile(filein)
-    field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity']
-    VtkP.ConstructPolyData(field_names, include_cell_center=True)
-    VtkP.PrepareSlab(['spcrust', 'spharz'])
-    # call the functions for the shear zone
-    fileout = os.path.join(output_path, "sz.txt")
-    file_std = os.path.join(case_dir, "sz_std.txt")
-    VtkP.PrepareSZ(fileout)
-    assert(os.path.isfile(fileout))  # assert file generation
-    assert(filecmp.cmp(fileout, file_std))  # compare file contents
-    # plot
-    fig_path = os.path.join(output_path, "sz_thickness.png") 
-    fig, ax = plt.subplots()
-    MorphPlotter = SLABPLOT("plot_slab")
-    MorphPlotter.PlotShearZoneThickness(case_dir, axis=ax, filein=fileout, label='shear zone thickness')
-    ax.legend()
-    fig.savefig(fig_path)
-    assert(os.path.isfile(fig_path))  # assert figure generation

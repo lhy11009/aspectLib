@@ -554,16 +554,12 @@ class VTKP(VtkPp.VTKP):
                 sz_theta_maxs.append(theta_max)
         self.sz_geometry = np.array([sz_depths, sz_theta_mins, sz_theta_maxs]).transpose()
         # write output file
-        header = "# 1: depth (m)\n# 2: left\n# 3: right\n"
+        header = "# 1: depth (m)\n# 2: theta_min\n# 3: theta_max\n"
         with open(fileout, 'w') as fout:
             fout.write(header)
             np.savetxt(fout, self.sz_geometry)
         print("%s: file output: %s" % (Utilities.func_name(), fileout))
                 
-            
-
-
-
 ####
 # Utilities functions
 ####
@@ -1486,7 +1482,7 @@ class SLABPLOT(LINEARPLOT):
         labs = [I.get_label() for I in lns]
         return lns, labs
 
-    def PlotShearZoneThickness(self, case_dir, **kwargs):
+    def PlotShearZoneThickness(self, case_dir, trench, **kwargs):
         '''
         todo_sz
         a variation of the PlotMorph function: used for combining results
@@ -1508,10 +1504,6 @@ class SLABPLOT(LINEARPLOT):
         label = kwargs.get('label', None)
         xlims = kwargs.get('xlims', None)
         ylims = kwargs.get('ylims', None)
-#        color = kwargs.get('color', None)
-#        time_range = kwargs.get('time_range', [])
-#        tp_range = kwargs.get('tp_range', [])
-#        sd_range = kwargs.get('sd_range', [])
         # read inputs
         prm_file = os.path.join(case_dir, 'output', 'original.prm')
         assert(os.access(prm_file, os.R_OK))
@@ -1534,20 +1526,39 @@ class SLABPLOT(LINEARPLOT):
         self.ReadHeader(sz_file)
         self.ReadData(sz_file)
         col_depth = self.header['depth']['col']
-        col_left = self.header['left']['col']
-        col_right = self.header['right']['col']
+        col_theta_min = self.header['theta_min']['col']
+        col_theta_max = self.header['theta_max']['col']
         depths = self.data[:, col_depth]
-        lefts = self.data[:, col_left]
-        rights = self.data[:, col_right]
+        theta_mins = self.data[:, col_theta_min]
+        theta_maxs = self.data[:, col_theta_max]
+        # convert to thickness along strike
+        num = depths.size
+        strikes = np.zeros(num)
+        thicks = np.zeros(num)
+        theta_last = trench
+        r_last = Ro
+        strike = 0.0
+        for i in range(num):
+            r_min = Ro - depths[i]
+            theta_min = theta_mins[i]
+            strike += Utilities.point2dist([theta_last, r_last], [theta_min, r_min], geometry)
+            theta_max = theta_maxs[0]
+            thick = 0.0
+            for j in range(0, num):
+                r_max = Ro - depths[j]
+                theta_max = theta_maxs[j]
+                thick_temp = Utilities.point2dist([theta_min, r_min], [theta_max, r_max], geometry)
+                if j == 0:
+                    thick = thick_temp
+                if thick_temp < thick:
+                    thick = thick_temp
+            strikes[i] = strike
+            thicks[i] = thick 
+            theta_last = theta_min
+            r_last = r_min
         # plot
-        if geometry == 'box':
-            thicks = rights - lefts
-        elif geometry == 'chunk':
-            thicks = (rights - lefts) * (Ro - depths)
-        else:
-            raise ValueError("Geometry has to be either box or chunk")
-        ax.plot(depths/1e3, thicks/1e3, label=label)
-        ax.plot(depths/1e3, initial_thickness*np.ones(depths.size)/1e3, '--')
+        ax.plot(strikes/1e3, thicks/1e3, label=label)
+        ax.plot(strikes/1e3, initial_thickness*np.ones(strikes.size)/1e3, '--')
         if xlims is not None:
             # set x limit
             assert(len(xlims) == 2)
@@ -1556,7 +1567,7 @@ class SLABPLOT(LINEARPLOT):
             # set y limit
             assert(len(ylims) == 2)
             ax.set_ylim[ylims[0]/1e3, ylims[1]/1e3]
-        ax.set_xlabel("Depth (km)")
+        ax.set_xlabel("Along Strike Distance (km)")
         ax.set_ylabel("Thickness (km)")
 
 
