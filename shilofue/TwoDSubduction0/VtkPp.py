@@ -501,7 +501,6 @@ class VTKP(VtkPp.VTKP):
             raise ValueError("FindMDD: a valid MDD has not been found, please considering changing the tolerance")
         pass
 
-    # todo_sz
     def PrepareSZ(self, fileout):
         '''
         Get the geometry of the shear zone
@@ -1484,7 +1483,6 @@ class SLABPLOT(LINEARPLOT):
 
     def PlotShearZoneThickness(self, case_dir, trench, **kwargs):
         '''
-        todo_sz
         a variation of the PlotMorph function: used for combining results
         Inputs:
             case_dir (str): directory of case

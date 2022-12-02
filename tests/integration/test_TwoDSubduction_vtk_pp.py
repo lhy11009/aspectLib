@@ -170,7 +170,7 @@ def test_export_velocity():
     assert(abs(vov[0]) < 1e-6 and abs(vov[1]) < 1e-6 and abs(vov[2]) < 1e-6)
     # assert
 
-# todo_sz
+
 def test_analysize_sz():
     '''
     test the sz geometry
