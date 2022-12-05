@@ -117,6 +117,11 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
             "(%.4e, %.4e, 1.9e6, 2.9e6)" % (trench_x - window_width/2.0, trench_x + window_width/2.0)
         else:
             raise ValueError("Geometry should be \"chunk\" or \"box\"")
+        # Slab configuration
+        index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
+        feature_sp = self.wb_dict['features'][index]
+        self.options["INITIAL_SHEAR_ZONE_THICKNESS"] = feature_sp["composition models"][0]["max depth"]
+
         # peierls rheology
         try:
             include_peierls_rheology = self.idict['Material model']['Visco Plastic TwoD']['Include Peierls creep']
@@ -167,7 +172,9 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         kwargs (dict):
             time_interval (float)
         '''
+        ptime_start = kwargs.get('time_start', None)
         ptime_interval = kwargs.get('time_interval', None)
+        ptime_end = kwargs.get('time_end', None)
         assert(ptime_interval is None or type(ptime_interval) == float)      
         # steps for processing slab morphology
         snaps, times, _ = PlotVisit.GetSnapsSteps(self._case_dir, 'graphical')
@@ -178,6 +185,12 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         for i in range(len(times)):
             time = times[i]
             snap = snaps[i]
+            if ptime_start is not None and time < ptime_start:
+                # check on the start
+                continue
+            if ptime_end is not None and time > ptime_end:
+                # check on the end
+                break
             if type(ptime_interval) == float:
                 if (time - last_time) < ptime_interval:
                     continue  # continue if interval is not reached

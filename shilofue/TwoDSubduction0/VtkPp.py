@@ -25,7 +25,7 @@ import sys, os, argparse, json
 # import subprocess
 import vtk
 from matplotlib import pyplot as plt
-from matplotlib import gridspec
+from matplotlib import gridspec, cm
 from matplotlib import colors as mcolors
 import shilofue.VtkPp as VtkPp
 from shilofue.VtkPp import get_r
@@ -80,6 +80,13 @@ Examples of usage: \n\
   - Combine the morphology of a few cases. Note for this to work, a json file needs to be presented: \n\
         python -m shilofue.TwoDSubduction0.VtkPp combine_slab_morph -j /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT_peierls1/plot_combine/slab_morph.json\n\
 \n\
+  - Generature figure of shear zone geometry for a case at one step: \n\
+        python -m shilofue.TwoDSubduction0.VtkPp plot_shear_zone -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -vss 100\n\
+\n\
+  - Generature figure of shear zone geometry for a case, with a time interval and an end: \n\
+        python -m shilofue.TwoDSubduction0.VtkPp plot_shear_zone_case -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -ti 2e6 -te 10e6\n\
+\n\
+        note the -ti option would assign an interval and the -te option will assign and end\n\
         ")
 
 
@@ -501,32 +508,56 @@ class VTKP(VtkPp.VTKP):
             raise ValueError("FindMDD: a valid MDD has not been found, please considering changing the tolerance")
         pass
 
-    def PrepareSZ(self, fileout):
+    def PrepareSZ(self, fileout, **kwargs):
         '''
         Get the geometry of the shear zone
         '''
         contour_poly_data = VtkPp.ExportContour(self.i_poly_data, 'spcrust', 0.9, fileout=fileout)
         contour_data = vtk_to_numpy(contour_poly_data.GetPoints().GetData())
-        max_thickness = 50e3
+        Dsz = kwargs.get("Dsz", 7.5e3)
+        max_extent = 50e3
+        min_extent = 2e3
+        min_depth = 10e3
         max_depth = 200e3
-        depth_interval = 5e3
+        depth_interval = 2e3
+        inf = 1e31 # define a vary big value
+        small_depth_variation = 500 # a negalectable variation in depth
         theta_subgroup = np.pi / 10.0 # 1 degree
         n_group = int(np.floor(max_depth / depth_interval) + 1.0)
         idx_groups = [[] for i in range(n_group)]
-        # step 0: assign points in groups, with an interval in depth
+        sz_depths  = []  # initial arrays
+        sz_theta_mins = []
+        sz_theta_maxs = []
+        # step 0: a. assign points in groups, with an interval in depth
+        #         b. append points on the surface
         for i in range(contour_data.shape[0]):
             x = contour_data[i, 0]
             y = contour_data[i, 1]
             r = get_r(x, y, self.geometry)
+            # theta = get_theta(x, y, self.geometry) 
             depth = self.Ro - r
-            if depth < max_depth:
+            if depth < max_depth and depth > min_depth:
+                # assign points in groups, with an interval in depth
                 i_group = int(np.floor(depth / depth_interval))
                 idx_groups[i_group].append(i)
+#            elif depth < small_depth_variation and abs((theta-trench)/trench) < 0.2:
+#                # append the points on the surface, and this point has to be near the trench
+#                # sz_depths.append(0.0)
+#                # sz_theta_mins.append(-1.0 * inf) # an inf is assigned to indicate no point on the other branch
+#                # sz_theta_maxs.append(theta)
+#                pass
+#            elif abs(depth - Dsz) < small_depth_variation and theta < trench and (theta-trench)/trench > -0.1:
+#                # append the points on the subducting plate moho, and this point has to be below the subducting
+#                # plate and near the trench
+#                sz_depths.append(Dsz)
+#                sz_theta_mins.append(theta)
+#                sz_theta_maxs.append(inf) # an inf is assigned to indicate no point on the other branch
+#                pass
         # step 2: look for the points located near to a query point in depth
-        sz_depths  = []
-        sz_theta_mins = []
-        sz_theta_maxs = []
         for i_group in range(n_group-1):
+            if len(idx_groups[i_group])==0:
+                # skip groups that has no points
+                continue
             query_depth = depth_interval * (i_group + 0.5)
             theta_min = np.pi
             theta_max = 0.0
@@ -539,18 +570,91 @@ class VTKP(VtkPp.VTKP):
                     theta_min = theta
                 if theta > theta_max and True:
                     theta_max = theta
-            thickness = 0.0
+            extent = 0.0
             if self.geometry == "box":
-                thickness = theta_max - theta_min
+                extent = theta_max - theta_min
             elif self.geometry == "chunk":
-                thickness = (self.Ro - depth) * (theta_max - theta_min)
+                extent = (self.Ro - depth) * (theta_max - theta_min)
             else:
                 raise ValueError("Geometry must be either box or chunk")
-            if thickness < max_thickness:
+            if extent < max_extent and extent > min_extent:
                 # select the reasonable values of layer thickness
                 sz_depths.append(query_depth)
                 sz_theta_mins.append(theta_min)
                 sz_theta_maxs.append(theta_max)
+        # loop again, append some points
+        sz_theta_min_start = sz_theta_mins[0]
+        sz_depths_app = []
+        sz_theta_mins_app = [] 
+        sz_theta_maxs_app = []
+        theta_max_moho = 0.0
+        depth_at_theta_max_moho = 0.0
+        found = False
+        for i in range(contour_data.shape[0]):
+            # find the points on the subducting plate moho, and this point has to be below the subducting
+            # plate and near the trench
+            x = contour_data[i, 0]
+            y = contour_data[i, 1]
+            r = get_r(x, y, self.geometry)
+            theta = get_theta(x, y, self.geometry) 
+            depth = self.Ro - r
+            if abs(depth - Dsz) < small_depth_variation and theta < sz_theta_min_start and (theta-sz_theta_min_start)/sz_theta_min_start > -0.1:
+                # print("theta: ",theta)
+                found = True
+                if (theta > theta_max_moho):
+                    theta_max_moho = theta
+                    depth_at_theta_max_moho = depth
+        Utilities.my_assert(found, ValueError, "PrepareSZ: No point found on moho near the trench.")
+        sz_depths_surf_shallow = []
+        sz_theta_mins_surf_shallow = []
+        sz_theta_maxs_surf_shallow = []
+        for i in range(contour_data.shape[0]):
+            # find the points on the subducting surface and shallower than the initial depth
+            x = contour_data[i, 0]
+            y = contour_data[i, 1]
+            r = get_r(x, y, self.geometry)
+            theta = get_theta(x, y, self.geometry) 
+            depth = self.Ro - r
+            if depth > 0.0 and depth < depth_at_theta_max_moho and theta > theta_max_moho:
+                pass
+                sz_depths_surf_shallow.append(depth)
+                sz_theta_mins_surf_shallow.append(-inf)
+                sz_theta_maxs_surf_shallow.append(theta)
+        sz_depths_app += sz_depths_surf_shallow # append the points on the subducting surface and shallower than the initial depth
+        sz_theta_mins_app += sz_theta_mins_surf_shallow
+        sz_theta_maxs_app += sz_theta_maxs_surf_shallow
+        sz_depths_app.append(0.0) # append two points, one on the surface, another on the moho
+        sz_theta_mins_app.append(-inf)
+        sz_theta_maxs_app.append(theta_max_moho)
+        sz_depths_app.append(depth_at_theta_max_moho)
+        sz_theta_mins_app.append(theta_max_moho)
+        sz_theta_maxs_app.append(inf)
+#        # found points between the point on the moho and the previous points on the contour
+#        depth_last = depth_at_theta_max_moho 
+#        theta_last = theta_max_moho
+#        i_group = int(np.floor(depth_last / depth_interval))
+#        print("n_group: ", n_group)
+#        print("i_group: ", i_group) # debug
+#        found = False
+#        while not found:
+#            for i in (idx_groups[i_group]):
+#                # find the minimum and maximum theta in this group
+#                x = contour_data[i, 0]
+#                y = contour_data[i, 1]
+#                theta = get_theta(x, y, self.geometry) 
+#                depth = self.Ro - r
+#                if depth > depth_last and abs((theta - theta_last) / theta_last) < 0.1:
+#                    found = True
+#            i_group += 1
+#        sz_depths_app.append(depth)
+#        sz_theta_mins_app.append(theta)
+#        sz_theta_maxs_app.append(inf)
+        
+
+        sz_depths = sz_depths_app + sz_depths # append to the front
+        sz_theta_mins = sz_theta_mins_app + sz_theta_mins
+        sz_theta_maxs = sz_theta_maxs_app + sz_theta_maxs
+         
         self.sz_geometry = np.array([sz_depths, sz_theta_mins, sz_theta_maxs]).transpose()
         # write output file
         header = "# 1: depth (m)\n# 2: theta_min\n# 3: theta_max\n"
@@ -999,6 +1103,53 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
     return depths, thetas[:, 0], ps  # return depths and pressures
 
 
+def ShearZoneGeometry(case_dir, vtu_snapshot, **kwargs):
+    indent = kwargs.get("indent", 0)  # indentation for outputs
+    assert(os.path.isdir(case_dir))
+    # fix the output directory
+    vtk_o_dir = os.path.join(case_dir, "vtk_outputs")
+    if not os.path.isdir(vtk_o_dir):
+        os.mkdir(vtk_o_dir)
+    img_dir = os.path.join(case_dir, "img")
+    if not os.path.isdir(img_dir):
+        os.mkdir(img_dir)
+    img_o_dir = os.path.join(img_dir, "shear_zone")
+    if not os.path.isdir(img_o_dir):
+        os.mkdir(img_o_dir)
+    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+    if not os.path.isfile(filein):
+        raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
+    else:
+        print("%sSlabMorphology: processing %s" % (indent*" ", filein))
+    # prepare the slab
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    _time, step = Visit_Options.get_time_and_step(vtu_step)
+    geometry = Visit_Options.options['GEOMETRY']
+    Ro =  Visit_Options.options['OUTER_RADIUS']
+    Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
+    Dsz =  Visit_Options.options['INITIAL_SHEAR_ZONE_THICKNESS']
+    VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity']
+    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.PrepareSlab(['spcrust', 'spharz'])
+    # call the functions for the shear zone
+    fileout = os.path.join(vtk_o_dir, "sz_%05d.txt" % vtu_step)
+    VtkP.PrepareSZ(fileout, Dsz=Dsz)
+    assert(os.path.isfile(fileout))  # assert file generation
+    # plot
+    fig_path = os.path.join(img_o_dir, "sz_thickness_%05d.png" % vtu_step) 
+    fig, ax = plt.subplots()
+    MorphPlotter = SLABPLOT("plot_slab")
+    MorphPlotter.PlotShearZoneThickness(case_dir, axis=ax, filein=fileout, label='shear zone thickness')
+    ax.legend()
+    fig.savefig(fig_path)
+    assert(os.path.isfile(fig_path))  # assert figure generation
+    print("%s%s: figure generated %s" % (indent*" ", Utilities.func_name(), fig_path))
+
+
 ####
 # Case-wise functions
 ####
@@ -1113,6 +1264,73 @@ def PlotSlabShape(in_dir, vtu_step):
     ax.set_ylabel('Y (m)')
     ax.set_aspect('equal', adjustable='box')
     plt.show()
+
+
+def ShearZoneGeometryCase(case_dir, **kwargs):
+    '''
+    plot the shear zone geometry for a single case
+    '''
+    indent = kwargs.get("indent", 0)  # indentation for outputs
+    time_start = kwargs.get("time_start", 0.0)
+    time_interval = kwargs.get("time_interval", 5e6)
+    time_end = kwargs.get("time_end", 60e6)
+    assert(os.path.isdir(case_dir))
+    # fix the output directory
+    vtk_o_dir = os.path.join(case_dir, "vtk_outputs")
+    if not os.path.isdir(vtk_o_dir):
+        os.mkdir(vtk_o_dir)
+    img_dir = os.path.join(case_dir, "img")
+    if not os.path.isdir(img_dir):
+        os.mkdir(img_dir)
+    img_o_dir = os.path.join(img_dir, "shear_zone")
+    if not os.path.isdir(img_o_dir):
+        os.mkdir(img_o_dir)
+    # initialize the VTK object
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_start=time_start, time_interval=time_interval, time_end=time_end)
+    geometry = Visit_Options.options['GEOMETRY']
+    Ro =  Visit_Options.options['OUTER_RADIUS']
+    Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
+    Dsz =  Visit_Options.options['INITIAL_SHEAR_ZONE_THICKNESS']
+    # initiate the function and object for the figure
+    fig, ax = plt.subplots()
+    MorphPlotter = SLABPLOT("plot_slab")
+    length = len(available_pvtu_snapshots)
+    normalizer = [ float(i)/(length-1) for i in range(length) ] 
+    colors = cm.rainbow(normalizer) 
+    i = 0
+    for vtu_snapshot in available_pvtu_snapshots:
+        # prepare the slab
+        vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+        _time, step = Visit_Options.get_time_and_step(vtu_step)
+        filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+        if not os.path.isfile(filein):
+            raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
+        else:
+            print("%sSlabMorphology: processing %s" % (indent*" ", filein))
+        VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
+        VtkP.ReadFile(filein)
+        field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity']
+        VtkP.ConstructPolyData(field_names, include_cell_center=True)
+        VtkP.PrepareSlab(['spcrust', 'spharz'])
+        # call the functions for the shear zone
+        fileout = os.path.join(vtk_o_dir, "sz_%05d.txt" % vtu_step)
+        VtkP.PrepareSZ(fileout, Dsz=Dsz)
+        assert(os.path.isfile(fileout))  # assert file generation
+        plot_initial = False
+        if i == 0:
+            plot_initial = True
+        MorphPlotter.PlotShearZoneThickness(case_dir, plot_initial, axis=ax, filein=fileout,\
+                                            label="t = %.4e Ma" % (_time/1e6), color=colors[i])
+        i += 1
+    # plot
+    ax.legend()
+    fig_path = os.path.join(img_o_dir, "sz_thickness_combined_s%.1f_i%.1f_e%.1f.png"\
+        % (time_start/1e6, time_interval/1e6, time_end/1e6)) 
+    fig.savefig(fig_path)
+    assert(os.path.isfile(fig_path))  # assert figure generation
+    print("%s%s: figure generated %s" % (indent*" ", Utilities.func_name(), fig_path))
 
 
 class SLABPLOT(LINEARPLOT):
@@ -1481,7 +1699,7 @@ class SLABPLOT(LINEARPLOT):
         labs = [I.get_label() for I in lns]
         return lns, labs
 
-    def PlotShearZoneThickness(self, case_dir, trench, **kwargs):
+    def PlotShearZoneThickness(self, case_dir, plot_initial=True, **kwargs):
         '''
         a variation of the PlotMorph function: used for combining results
         Inputs:
@@ -1502,6 +1720,7 @@ class SLABPLOT(LINEARPLOT):
         label = kwargs.get('label', None)
         xlims = kwargs.get('xlims', None)
         ylims = kwargs.get('ylims', None)
+        _color = kwargs.get("color", "tab:blue")
         # read inputs
         prm_file = os.path.join(case_dir, 'output', 'original.prm')
         assert(os.access(prm_file, os.R_OK))
@@ -1531,15 +1750,10 @@ class SLABPLOT(LINEARPLOT):
         theta_maxs = self.data[:, col_theta_max]
         # convert to thickness along strike
         num = depths.size
-        strikes = np.zeros(num)
         thicks = np.zeros(num)
-        theta_last = trench
-        r_last = Ro
-        strike = 0.0
         for i in range(num):
             r_min = Ro - depths[i]
             theta_min = theta_mins[i]
-            strike += Utilities.point2dist([theta_last, r_last], [theta_min, r_min], geometry)
             theta_max = theta_maxs[0]
             thick = 0.0
             for j in range(0, num):
@@ -1550,22 +1764,21 @@ class SLABPLOT(LINEARPLOT):
                     thick = thick_temp
                 if thick_temp < thick:
                     thick = thick_temp
-            strikes[i] = strike
             thicks[i] = thick 
-            theta_last = theta_min
-            r_last = r_min
         # plot
-        ax.plot(strikes/1e3, thicks/1e3, label=label)
-        ax.plot(strikes/1e3, initial_thickness*np.ones(strikes.size)/1e3, '--')
+        mask = (depths > initial_thickness) & (theta_mins > 0.0) # points with theta min < 0.0 are those on the surface
+        ax.plot(depths[mask]/1e3, thicks[mask]/1e3, label=label, color=_color) # debug
+        if plot_initial:
+            ax.plot(depths/1e3, initial_thickness*np.ones(depths.size)/1e3, 'k--')
         if xlims is not None:
             # set x limit
             assert(len(xlims) == 2)
-            ax.set_xlim[xlims[0]/1e3, xlims[1]/1e3]
+            ax.set_xlim([xlims[0]/1e3, xlims[1]/1e3])
         if ylims is not None:
             # set y limit
             assert(len(ylims) == 2)
-            ax.set_ylim[ylims[0]/1e3, ylims[1]/1e3]
-        ax.set_xlabel("Along Strike Distance (km)")
+            ax.set_ylim([ylims[0]/1e3, ylims[1]/1e3])
+        ax.set_xlabel("Depth (km)")
         ax.set_ylabel("Thickness (km)")
 
 
@@ -1713,6 +1926,15 @@ def main():
     parser.add_argument('-j', '--json', type=str,
                         default='',
                         help='A json file for configuration')
+    parser.add_argument('-ti', '--time_interval', type=float,
+                        default=None,
+                        help='Time interval, affecting the time steps to visualize')
+    parser.add_argument('-te', '--time_end', type=float,
+                        default=None,
+                        help='Time end, affecting the time steps to visualize')
+    parser.add_argument('-ts', '--time_start', type=float,
+                        default=None,
+                        help='Time end, affecting the time steps to visualize')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -1759,6 +1981,10 @@ but will not generarte that file. Make sure all these files are updated, proceed
             PlotCombineExecute(PLOT_COMBINE_SLAB_MORPH, PC_MORPH_OPT, "slab_morph", arg.json)
         else:
             print("abort")
+    elif _commend == "plot_shear_zone":
+        ShearZoneGeometry(arg.inputs, int(arg.vtu_snapshot))
+    elif _commend == "plot_shear_zone_case":
+        ShearZoneGeometryCase(arg.inputs, time_interval=arg.time_interval, time_end=arg.time_end, time_start=arg.time_start)
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 
