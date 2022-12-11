@@ -419,7 +419,6 @@ class VTKP(VtkPp.VTKP):
         slab_envelop1 = np.array([xs, ys])
         return slab_envelop0.T, slab_envelop1.T
 
-
     def SlabBuoyancy(self, v_profile, depth_increment):
         '''
         slab buoyancy
@@ -528,7 +527,7 @@ class VTKP(VtkPp.VTKP):
         sz_depths  = []  # initial arrays
         sz_theta_mins = []
         sz_theta_maxs = []
-        # step 0: a. assign points in groups, with an interval in depth
+        # step 1: a. assign points in groups, with an interval in depth
         #         b. append points on the surface
         for i in range(contour_data.shape[0]):
             x = contour_data[i, 0]
@@ -540,19 +539,6 @@ class VTKP(VtkPp.VTKP):
                 # assign points in groups, with an interval in depth
                 i_group = int(np.floor(depth / depth_interval))
                 idx_groups[i_group].append(i)
-#            elif depth < small_depth_variation and abs((theta-trench)/trench) < 0.2:
-#                # append the points on the surface, and this point has to be near the trench
-#                # sz_depths.append(0.0)
-#                # sz_theta_mins.append(-1.0 * inf) # an inf is assigned to indicate no point on the other branch
-#                # sz_theta_maxs.append(theta)
-#                pass
-#            elif abs(depth - Dsz) < small_depth_variation and theta < trench and (theta-trench)/trench > -0.1:
-#                # append the points on the subducting plate moho, and this point has to be below the subducting
-#                # plate and near the trench
-#                sz_depths.append(Dsz)
-#                sz_theta_mins.append(theta)
-#                sz_theta_maxs.append(inf) # an inf is assigned to indicate no point on the other branch
-#                pass
         # step 2: look for the points located near to a query point in depth
         for i_group in range(n_group-1):
             if len(idx_groups[i_group])==0:
@@ -629,32 +615,9 @@ class VTKP(VtkPp.VTKP):
         sz_depths_app.append(depth_at_theta_max_moho)
         sz_theta_mins_app.append(theta_max_moho)
         sz_theta_maxs_app.append(inf)
-#        # found points between the point on the moho and the previous points on the contour
-#        depth_last = depth_at_theta_max_moho 
-#        theta_last = theta_max_moho
-#        i_group = int(np.floor(depth_last / depth_interval))
-#        print("n_group: ", n_group)
-#        print("i_group: ", i_group) # debug
-#        found = False
-#        while not found:
-#            for i in (idx_groups[i_group]):
-#                # find the minimum and maximum theta in this group
-#                x = contour_data[i, 0]
-#                y = contour_data[i, 1]
-#                theta = get_theta(x, y, self.geometry) 
-#                depth = self.Ro - r
-#                if depth > depth_last and abs((theta - theta_last) / theta_last) < 0.1:
-#                    found = True
-#            i_group += 1
-#        sz_depths_app.append(depth)
-#        sz_theta_mins_app.append(theta)
-#        sz_theta_maxs_app.append(inf)
-        
-
         sz_depths = sz_depths_app + sz_depths # append to the front
         sz_theta_mins = sz_theta_mins_app + sz_theta_mins
         sz_theta_maxs = sz_theta_maxs_app + sz_theta_maxs
-         
         self.sz_geometry = np.array([sz_depths, sz_theta_mins, sz_theta_maxs]).transpose()
         # write output file
         header = "# 1: depth (m)\n# 2: theta_min\n# 3: theta_max\n"
