@@ -40,6 +40,9 @@ from shilofue.Utilities import ReadHeader2, my_assert, UNITCONVERT
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+# import utilities in subdirectiory
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
 
 
 def Usage():
@@ -285,7 +288,50 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
         odata, _ = self.ExportDataByTime(time, names)
         _func = interp1d(odata[:, 0], odata[:, 1], assume_sorted=True, fill_value="extrapolate")
         return _func
-
+    
+    def GetIntegrateArray(self, time, field_name, dim, geometry, geometry_length, geometry_width = None, **kwargs):
+        '''
+        Returns:
+            integretions - an array of added volume * field
+            segmentations - an array of volume * field
+        Note the data at depth 0 has to be fixed in some way (as depth 0 is not in the depth_average files)
+        '''
+        # initiating
+        Utilities.my_assert(geometry in ["cartesian", "spherical"], ValueError,\
+            "geometry must be either cartesian or spherical")
+        Ro = kwargs.get('Ro', 6371e3)
+        # get raw data
+        names = ["depth", field_name]
+        odata, _ = self.ExportDataByTime(time, names)
+        depths = odata[:, 0]
+        vals = odata[:, 1]
+        # compute integretion
+        segmentations = np.zeros(self.time_step_length)
+        integretions = np.zeros(self.time_step_length)
+        if geometry == "cartesian" and dim == 2:
+            # compute the value for the shallowes depth,
+            # note this only takes the first value in
+            # the data
+            integretions[0] = depths[0] * geometry_length * vals[0]
+            segmentations[0] = integretions[0]
+        elif geometry == "spherical" and dim == 2:
+            integretions[0] = geometry_length/2.0 * (Ro**2.0 - (Ro - depths[0])**2.0) * vals[0]
+            segmentations[0] = integretions[0]
+        else:
+            raise NotImplementedError()
+        for i in range(1, self.time_step_length):
+            if geometry == "cartesian" and dim == 2:
+                volume = (depths[i] - depths[i-1]) * geometry_length
+            elif geometry == "spherical" and dim == 2:
+                r_last = Ro - depths[i-1]
+                r = Ro - depths[i]
+                volume = geometry_length/2.0 * (r_last**2.0 - r**2.0) # geometry_length in theta
+            else:
+                raise NotImplementedError()
+            # compute average between the current point and the last point
+            integretions[i] = integretions[i-1] + (vals[i-1] + vals[i])/2.0 * volume 
+            segmentations[i] = (vals[i-1] + vals[i])/2.0 * volume 
+        return integretions, segmentations
 
 def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
     '''

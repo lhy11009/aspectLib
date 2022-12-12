@@ -87,6 +87,11 @@ Examples of usage: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_shear_zone_case -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -ti 2e6 -te 10e6\n\
 \n\
         note the -ti option would assign an interval and the -te option will assign and end\n\
+\n\
+  - Generate a plot of crustal material over depth in each segment: \n\
+        python -m shilofue.TwoDSubduction0.VtkPp plot_slab_material_time -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT4/eba_cdpt_SA80.0_OA40.0_CpEcl -t 1e6\n\
+\n\
+        the -t option would assign a model time to plot\n\
         ")
 
 
@@ -1744,6 +1749,98 @@ class SLABPLOT(LINEARPLOT):
         ax.set_xlabel("Depth (km)")
         ax.set_ylabel("Thickness (km)")
 
+class SLABMATERIAL(LINEARPLOT): 
+    '''
+    A class defined to plot the Slab materials (crust and harzburgite)
+    '''
+    def __init__(self, _name):
+        LINEARPLOT.__init__(self, _name)
+        self.ha_reader =  DEPTH_AVERAGE_PLOT('DepthAverage') # reader of the horizontal average file
+
+    def ReadFile(self, case_dir):
+        '''
+        Inputs:
+        '''
+        # read inputs
+        prm_file = os.path.join(case_dir, 'output', 'original.prm')
+        assert(os.access(prm_file, os.R_OK))
+        self.ReadPrm(prm_file)
+        # read parameters
+        geometry = self.prm['Geometry model']['Model name']
+        if geometry == 'chunk':
+            self.Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+            self.geometry_extent = float(self.prm['Geometry model']['Chunk']['Chunk maximum longitude'])\
+                - float(self.prm['Geometry model']['Chunk']["Chunk minimum longitude"])
+            self.geometry_input = "cartesian" # this is the input that goes into the integretion function
+        elif geometry == 'box':
+            self.Ro =  float(self.prm['Geometry model']['box']["Y extent"])
+            self.geometry_extent =  float(self.prm['Geometry model']['box']["X extent"])
+            self.geometry_input = "spherical"
+        else:
+            return ValueError("%s: geometry must be chunk or box" % Utilities.func_name())
+        # read data
+        case_output_dir = os.path.join(case_dir, 'output')
+        depth_average_file = os.path.join(case_output_dir, 'depth_average.txt')
+        assert(os.access(depth_average_file, os.R_OK))
+        self.ha_reader.ReadHeader(depth_average_file)  # inteprate header information
+        self.ha_reader.ReadData(depth_average_file)  # read data
+        # self.ha_reader.ManageUnits()  # mange unit to output
+        self.ha_reader.SplitTimeStep()  # split time step data
+   
+   
+    def PlotSlabMaterial(self, _time, ax):
+        '''
+        plot the slab material
+        Inputs:
+            ax: an axis is passed in for plotting
+        '''
+        data_list0, step = self.ha_reader.ExportDataByTime(_time, ["depth", "spcrust", "spharz"])
+        depths = data_list0[:, 0]
+        spcrusts = data_list0[:, 1]
+        spcrust_integretions, spcrust_segmentations = self.ha_reader.GetIntegrateArray(_time, "spcrust",\
+            2, self.geometry_input, self.geometry_extent, Ro=self.Ro)
+        # plot
+        mask = (spcrusts > 0.0)
+        # ax.semilogx(spcrusts[mask], depths[mask]/1e3, 'b', label="t = %.2f Myr" % (_time / 1e6)) # plot
+        ax.semilogx(spcrust_segmentations, depths/1e3, 'b', label="t = %.2f Myr" % (_time / 1e6)) # plot
+        ax.invert_yaxis()
+        ax.set_xlabel("Crust Material in Segments (km^2)")
+        ax.set_ylabel("Depth (km)")
+        ax.set_xlim([spcrust_segmentations[0]/1e3, spcrust_segmentations[0]*5.0])
+
+    
+    def PlotMaterialRate(self, _time, ax, **kwargs):
+        '''
+        plot rate of tranform
+        Inputs:
+            ax: an axis is passed in for plotting
+        '''
+        # need results from two adjacent steps
+        dt = kwargs.get('dt', 0.5e6)
+        # read data from this step
+        data_list, step = self.ha_reader.ExportDataByTime(_time, ["depth", "spcrust", "spharz"])
+        depths = data_list[:, 0]
+        # t_last: last step to compute the rate of material transformation
+        if _time < dt:
+            t_last = 0.0
+        else:
+            t_last = _time - dt
+        spcrust_integretions, spcrust_segmentations = self.ha_reader.GetIntegrateArray(_time, "spcrust" ,\
+            2, self.geometry_input, self.geometry_extent, Ro=self.Ro)
+        spcrust_integretions_last, spcrust_segmentations_last = self.ha_reader.GetIntegrateArray(t_last, "spcrust",\
+            2, self.geometry_input, self.geometry_extent, Ro=self.Ro)
+        # derive the rate of material transformation
+        spcrust_below_depths = spcrust_integretions[-1] - spcrust_integretions
+        spcrust_below_depths_last = spcrust_integretions_last[-1] - spcrust_integretions_last
+        spcrust_transform_rate = (spcrust_below_depths - spcrust_below_depths_last)/dt
+        # plot
+        ax.semilogx(spcrust_transform_rate, depths/1e3, 'b', label="t = %.2f Myr" % (_time / 1e6)) # plot
+        ax.invert_yaxis()
+        ax.set_xlabel("Crust Material transformed (km^2/yr)")
+        ax.set_ylabel("Depth (km)")
+        ax.set_xlim([spcrust_transform_rate[0]/1e3, spcrust_transform_rate[0]*5.0])
+        return step
+
 
 class PC_MORPH_OPT(PC_OPT_BASE):
     '''
@@ -1861,6 +1958,35 @@ class PLOT_COMBINE_SLAB_MORPH(PLOT_COMBINE):
         plt.savefig(fig_path)
         return fig_path
 
+def PlotSlabMaterialTime(case_dir, _time):
+    '''
+    Plot slab material
+    '''
+    # mkdir directory
+    img_dir = os.path.join(case_dir, 'img')
+    if not os.path.isdir(img_dir):
+        os.mkdir(img_dir)
+    img_sm_dir = os.path.join(img_dir,'slab_material')
+    if not os.path.isdir(img_sm_dir):
+        os.mkdir(img_sm_dir)
+    # initiate plotter
+    plotter_material = SLABMATERIAL('slab')
+    plotter_material.ReadFile(case_dir)
+    fig = plt.figure(tight_layout=True, figsize=(5, 10))
+    gs = gridspec.GridSpec(2, 1)
+    # plot composition
+    ax = fig.add_subplot(gs[0, :])
+    step = plotter_material.PlotSlabMaterial(_time, ax)
+    ax.legend()
+    # plot rate of transformation
+    ax = fig.add_subplot(gs[1, :])
+    step = plotter_material.PlotMaterialRate(_time, ax)
+    ax.legend()
+    fileout = os.path.join(img_sm_dir, "s%06d_t%.4e.png" % (step, _time))
+    fig.savefig(fileout)
+    print("%s: %s generated" % (Utilities.func_name(), fileout))
+    pass
+
 
 def main():
     '''
@@ -1898,6 +2024,9 @@ def main():
     parser.add_argument('-ts', '--time_start', type=float,
                         default=None,
                         help='Time end, affecting the time steps to visualize')
+    parser.add_argument('-t', '--time', type=float,
+                        default=0.0,
+                        help='Time')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -1948,6 +2077,8 @@ but will not generarte that file. Make sure all these files are updated, proceed
         ShearZoneGeometry(arg.inputs, int(arg.vtu_snapshot))
     elif _commend == "plot_shear_zone_case":
         ShearZoneGeometryCase(arg.inputs, time_interval=arg.time_interval, time_end=arg.time_end, time_start=arg.time_start)
+    elif _commend == "plot_slab_material_time":
+        PlotSlabMaterialTime(arg.inputs, arg.time)
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 
