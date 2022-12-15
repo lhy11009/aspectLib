@@ -158,6 +158,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         # check the option for refinement
         refinement_level = self.values[15]
         assert(refinement_level in [-1, 9, 10, 11])  # it's either not turned on or one of the options for the total refinement levels
+        # check the option for the type of boundary conditions
+        type_of_bd = self.values[self.start + 5]
+        assert(type_of_bd in ["all free slip", "top prescrbed with bottom right open"])
         # check the method to use for phase transition
         phase_model = self.values[self.start + 12]
         Utilities.my_assert( phase_model in ["CDPT", "HeFESTo"], ValueError,\
@@ -232,12 +235,13 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         Dsz = self.values[self.start + 16]
         ef_factor = self.values[self.start + 31]
         ef_Dbury = self.values[self.start + 32]
+        sp_age_trench = self.values[self.start]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
-        branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury
+        branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench
 
     def to_configure_wb(self):
         '''
@@ -295,15 +299,21 @@ class CASE(CasesP.CASE):
     HeFESTo_data_dir, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme, peierls_scheme,\
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
-    sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury):
+    sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
+    sp_age_trench):
         Ro = 6371e3
-        # velocity boundaries
-        if type_of_bd == "all free slip":  # boundary conditions
-            if_fs_sides = True  # use free slip on both sides
-        else:
-            if_fs_sides = False
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
+        # velocity boundaries
+        if type_of_bd == "all free slip":  # boundary conditions
+            pass
+        elif type_of_bd == "top prescrbed with bottom right open":
+            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro)
+            # assign a 0.0 value for the overiding plate velocity
+            # the subducting plate velocity is consistent with the value used in the worldbuilder
+            bd_v_dict, bd_t_dict = prm_top_prescribed_with_bottom_right_open(trench, sp_rate, 0.0, refinement_level)
+            o_dict["Boundary velocity model"] = bd_v_dict
+            o_dict["Boundary traction model"] = bd_t_dict
         # directory to put outputs
         if branch != "":
             if branch == "master":
@@ -364,10 +374,10 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         visco_plastic_twoD = self.idict['Material model']['Visco Plastic TwoD']
         if geometry == 'chunk':
             o_dict['Material model']['Visco Plastic TwoD'] =\
-              prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, if_fs_sides=if_fs_sides)
+              prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd)
         elif geometry == 'box':
             o_dict['Material model']['Visco Plastic TwoD'] =\
-              prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, if_fs_sides=if_fs_sides)
+              prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd)
         # set up subsection Prescribed temperatures
         if type_of_bd == "all free slip":
             o_dict["Prescribe internal temperatures"] = "true"
@@ -384,9 +394,22 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                 elif prescribe_T_method == 'plate model':
                     o_dict['Prescribed temperatures'] =\
                         prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate, ov_age)
-        else:
-            # remove this feature if otherwise
-            pass
+        elif type_of_bd == "top prescrbed with bottom right open":
+            # in this case, I want to keep the options for prescribing temperature but to turn it off at the start
+            o_dict["Prescribe internal temperatures"] = "false"
+            if geometry == 'chunk':
+                if prescribe_T_method == 'plate model':
+                    warnings.warn("plate model only works for cartesian model right now, reset to using function")
+                o_dict['Prescribed temperatures'] =\
+                    prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age)
+            elif geometry == 'box':
+                o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
+                if prescribe_T_method == 'function':
+                    o_dict['Prescribed temperatures'] =\
+                        prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age)
+                elif prescribe_T_method == 'plate model':
+                    o_dict['Prescribed temperatures'] =\
+                        prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate, ov_age)
         # Material model
         da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
         assert(os.path.isfile(da_file))
@@ -608,20 +631,16 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, *
     Dsz = kwargs.get("sz_thickness", None)
     D2C_ratio = 35.2e3 / 7.5e3 # ratio of depleted / crust layer
     o_dict = wb_dict.copy()
-    trench_sph = (sp_age_trench * sp_rate / Ro) * 180.0 / np.pi
-    trench_cart = sp_age_trench * sp_rate
     max_cart = 2 * Xmax
     side_angle = 5.0  # side angle to creat features in the 3rd dimension
     side_dist = 1e3
     if geometry == 'chunk':
         _side = side_angle
         _max = max_sph
-        trench = trench_sph
     elif geometry == 'box':
         _side = side_dist
         _max = max_cart
-        trench = trench_cart
-        pass
+    trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro)
     if wb_new_ridge == 1:
         sp_ridge_coords = [[[0, -_side], [0, _side]]]
     else:
@@ -859,7 +878,7 @@ def prm_geometry_cart(box_width, **kwargs):
     return o_dict
 
 
-def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, **kwargs):
+def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, **kwargs):
     '''
     reset subsection Visco Plastic TwoD
     Inputs:
@@ -868,8 +887,7 @@ def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, **kwargs):
         kwargs(dict):
     '''
     o_dict = visco_plastic_twoD.copy()
-    if_fs_sides = kwargs.get('if_fs_sides', True)
-    if if_fs_sides:
+    if type_of_bd == "all free slip":
         # use free slip on both sides, set ridges on both sides
         o_dict['Reset viscosity'] = 'true'
         o_dict['Reset viscosity function'] =\
@@ -877,13 +895,20 @@ def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, **kwargs):
         o_dict["Reaction mor"] = 'true'
         o_dict["Reaction mor function"] =\
             prm_reaction_mor_function_sph(max_phi)
-    else:
-        # remove the related options
+    elif type_of_bd == "top prescrbed with bottom right open":
+        # no need to reset the viscosity, only fix the composition
+        # keep the options but turn it off
+        o_dict['Reset viscosity'] = 'false'
+        o_dict['Reset viscosity function'] =\
+            prm_reset_viscosity_function_sph(max_phi)
+        o_dict["Reaction mor"] = 'true'
+        o_dict["Reaction mor function"] =\
+            prm_reaction_mor_function_sph(max_phi)
         pass
     return o_dict
 
 
-def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, **kwargs):
+def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, **kwargs):
     '''
     reset subsection Visco Plastic TwoD
     Inputs:
@@ -892,8 +917,7 @@ def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, **kwargs):
         kwargs(dict):
     '''
     o_dict = visco_plastic_twoD.copy()
-    if_fs_sides = kwargs.get('if_fs_sides', True)
-    if if_fs_sides:
+    if type_of_bd == "all free slip":
         # use free slip on both sides, set ridges on both sides
         o_dict['Reset viscosity'] = 'true'
         o_dict['Reset viscosity function'] =\
@@ -901,9 +925,15 @@ def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, **kwargs):
         o_dict["Reaction mor"] = 'true'
         o_dict["Reaction mor function"] =\
             prm_reaction_mor_function_cart(box_width)
-    else:
-        # remove the related options
-        pass
+    elif type_of_bd == "top prescrbed with bottom right open":
+        # no need to reset the viscosity, only fix the composition
+        # keep the options but turn it off
+        o_dict['Reset viscosity'] = 'false'
+        o_dict['Reset viscosity function'] =\
+            prm_reset_viscosity_function_cart(box_width)
+        o_dict["Reaction mor"] = 'true'
+        o_dict["Reaction mor function"] =\
+            prm_reaction_mor_function_cart(box_width)
     return o_dict
 
 
@@ -1023,6 +1053,38 @@ def prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate,
         }
     }
     return odict
+
+
+def prm_top_prescribed_with_bottom_right_open(trench, sp_rate, ov_rate, refinement_level):
+    '''
+    Inputs:
+        trench: position of the trench
+        sp_rate: prescribed rate of the subducting plate
+        ov_rate: prescribed rate of the overidding plate
+        refinement_level: total levele of refinement, for figuring out the number of integration points
+    '''
+    bd_v_dict = {
+        "Prescribed velocity boundary indicators": "3:function",\
+        "Tangential velocity boundary indicators": "0",\
+        "Function": {
+            "Function constants": "u0=0.03, x0=10000",\
+            "Variable names": "x,y",\
+            "Function constants": "xtr=%.4e, usp=%.4e, uov=%.4e" % (trench, sp_rate, ov_rate),\
+            "Function expression": "((x < xtr)? usp: uov); 0.0",\
+        }
+    }
+    # fix the number of integretion points
+    n_integration_points = 2048
+    if refinement_level > 0:
+        n_integration_points = int(2**(refinement_level+1))
+    bd_t_dict = {
+        "Prescribed traction boundary indicators": "1:initial lithostatic pressure, 2:initial lithostatic pressure",\
+        "Initial lithostatic pressure":{
+            "Representative point": "100000.0, 100000.0",\
+            "Number of integration points": "%d" % n_integration_points
+        }
+    }
+    return bd_v_dict, bd_t_dict
 
 
 def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_rate):
@@ -1160,6 +1222,16 @@ def CDPT_assign_yielding(o_dict, cohesion, friction, **kwargs):
         % (friction, crust_friction, friction, friction, friction)
         o_dict['Material model']['Visco Plastic TwoD']["Cohesions"] = "background: %.4e, spcrust: %.4e, spharz: %.4e, opcrust: %.4e, opharz: %.4e" \
         % (cohesion, crust_cohesion, cohesion, cohesion, cohesion)
+
+
+def get_trench_position(sp_age_trench, sp_rate, geometry, Ro):
+    trench_sph = (sp_age_trench * sp_rate / Ro) * 180.0 / np.pi
+    trench_cart = sp_age_trench * sp_rate
+    if geometry == "chunk":
+        trench = trench_sph
+    elif geometry == "box":
+        trench = trench_cart
+    return trench
 
 
 def particle_positions_ef(geometry, Ro, trench0, Dsz, Dbury, p0, slab_lengths, slab_dips, **kwargs):

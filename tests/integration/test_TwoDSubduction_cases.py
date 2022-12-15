@@ -454,6 +454,26 @@ def test_sz_ef():
     assert(os.path.isfile(particle_path))
     assert(filecmp.cmp(particle_path, particle_std_path))
 
+
+def test_bd_v():
+    '''
+    todo_bd
+    test the boundary velcoty condition of "top prescrbed with bottom right open"
+    '''
+    source_case_dir = os.path.join(source_dir, "bd_v")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'bd_v')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)  # create case
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    assert(filecmp.cmp(prm_path, prm_std_path))
+    wb_std_path = os.path.join(source_case_dir, 'case_0_std.wb')
+    wb_path = os.path.join(output_dir, 'case.wb')
+    assert(filecmp.cmp(wb_path, wb_std_path))
+
     
 # to check for error message
     # with pytest.raises(SomeError) as _excinfo:

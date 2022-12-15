@@ -8,7 +8,7 @@ set Additional shared libraries = $ASPECT_SOURCE_DIR/build_master_TwoD/prescribe
 set Pressure normalization = surface
 set Surface pressure = 0
 set Adiabatic surface temperature = 1573.0
-set Prescribe internal temperatures = true
+set Prescribe internal temperatures = false
 set Resume computation = false
 set Nonlinear solver scheme = single Advection, iterated Newton Stokes
 set CFL number = 0.8
@@ -59,13 +59,11 @@ end
 
 
 subsection Geometry model
-    set Model name = chunk
-    subsection Chunk
-        set Chunk inner radius = 3.481e6
-        set Chunk outer radius = 6.371e6
-        set Chunk maximum longitude = 1.4002e+02
-        set Chunk minimum longitude = 0.0
-        set Longitude repetitions = 5
+    set Model name = box
+    subsection Box
+        set X extent = 1.5570e+07
+        set Y extent = 2.8900e6
+        set X repetitions = 5
     end
 end
 
@@ -86,17 +84,23 @@ subsection Mesh refinement
         set Level for coarsening the lower mantle = 3
     end
     subsection Minimum refinement function
-        set Coordinate system = spherical
-        set Variable names = r,phi,t
-        set Function constants = Ro=6.3710e+06, UM=670e3, DD=100e3
-        set Function expression = ((Ro-r<UM)? \
-                                   ((Ro-r<DD)? 8: 6): 0.0)
+        set Coordinate system = cartesian
+        set Variable names = x, y, t
+        set Function constants = Do=2.8900e+06, UM=670e3, DD=100e3
+        set Function expression = ((Do-y<UM)? \
+                                   ((Do-y<DD)? 8: 6): 0.0)
     end
 end
 
 
 subsection Boundary velocity model
-    set Tangential velocity boundary indicators = 0, 1, 2, 3
+    set Prescribed velocity boundary indicators = 3:function
+    set Tangential velocity boundary indicators = 0
+    subsection Function
+        set Function constants = xtr=4.0000e+06, usp=5.0000e-02, uov=0.0000e+00
+        set Variable names = x,y
+        set Function expression = ((x < xtr)? usp: uov); 0.0
+    end
 end
 
 
@@ -118,10 +122,10 @@ end
 
 subsection Boundary temperature model
     set Fixed temperature boundary indicators = bottom, top
-    set List of model names = spherical constant
-    subsection Spherical constant
-        set Inner temperature = 3500
-        set Outer temperature = 273
+    set List of model names = box
+    subsection Box
+        set Bottom temperature = 3500
+        set Top temperature = 273
     end
 end
 
@@ -200,22 +204,22 @@ subsection Material model
         set Activation volumes for Peierls creep = 0.0
         set Peierls shear modulus = 7.74e10
         set Peierls shear modulus derivative = 1.61
-        set Reset viscosity = true
+        set Reset viscosity = false
         subsection Reset viscosity function
-            set Coordinate system = spherical
-            set Variable names = r, phi
-            set Function constants = Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=2.4439e+00, CV=1e20
-            set Function expression = (((r > Ro - Depth) && ((Ro*phi < Width) || (Ro*(PHIM-phi) < Width)))? CV: -1.0)
+            set Coordinate system = cartesian
+            set Variable names = x, y
+            set Function constants = Depth=1.45e5, Width=2.75e5, Do=2.890e6, xm=1.5570e+07, CV=1e20
+            set Function expression = (((y > Do - Depth) && ((x < Width) || (xm-x < Width)))? CV: -1.0)
         end
         set Reaction mor = true
         subsection Reaction mor function
-            set Coordinate system = spherical
-            set Variable names = r, phi
-            set Function constants = Width=2.75e5, Ro=6.371e6, PHIM=2.4439e+00, DCS=7.500e+03, DHS=3.520e+04
-            set Function expression = ((r > Ro - DCS) && (Ro*phi < Width)) ? 0:\
-                                        ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*phi < Width)) ? 1:\
-                                        ((r > Ro - DCS) && (Ro*(PHIM - phi) < Width)) ? 2:\
-                                        ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*(PHIM - phi) < Width)) ? 3: -1
+            set Coordinate system = cartesian
+            set Variable names = x, y
+            set Function constants = Width=2.75e5, Do=2.890e6, xm=1.5570e+07, DCS=7.500e+03, DHS=3.520e+04
+            set Function expression = ((y > Do - DCS) && (x < Width)) ? 0:\
+                                        ((y < Do - DCS) && (y > Do - DHS) && (x < Width)) ? 1:\
+                                        ((y > Do - DCS) && (xm - x < Width)) ? 2:\
+                                        ((y < Do - DCS) && (y > Do - DHS) && (xm - x < Width)) ? 3: -1
         end
         subsection Eclogite transition
             set Temperature for eclogite transition = 673.0
@@ -227,7 +231,7 @@ subsection Material model
             set Max pressure width for eclogite transition = 1.5e9
         end
         subsection Eclogite decoupled viscosity
-            set Decoupled depth = 200000.0
+            set Decoupled depth = 100000.0
             set Decoupled depth width = 10e3
         end
         subsection Lookup table
@@ -236,14 +240,6 @@ subsection Material model
             set Material lookup indexes = 0, 1, 2, 1, 2
             set Bilinear interpolation = true
             set Latent heat = false
-        end
-        set Sz from embeded fault = true
-        subsection Sz embeded fault
-            set Sz composition index = 0
-            set Sz thickness minimum = 7500.0
-            set Sz thickness maximum = 14250.0
-            set Sz depth = 200000.0
-            set Sz particle bury depth = 5000.0
         end
     end
 end
@@ -256,24 +252,24 @@ end
 
 subsection Prescribed temperatures
     subsection Indicator function
-        set Coordinate system = spherical
-        set Variable names = r, phi
-        set Function constants = Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=2.4439e+00
-        set Function expression = (((r>Ro-Depth)&&((r*phi<Width)||(r*(PHIM-phi)<Width))) ? 1:0)
+        set Coordinate system = cartesian
+        set Variable names = x, y
+        set Function constants = Depth=1.45e5, Width=2.75e5, Do=2.890e6, xm=1.5570e+07
+        set Function expression = (((y>Do-Depth)&&((x<Width)||(xm-x<Width))) ? 1:0)
     end
     subsection Temperature function
-        set Coordinate system = spherical
-        set Variable names = r, phi
-        set Function constants = Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=2.4439e+00,\
-                             AGEOP=1.2614e+15, TS=2.730e+02, TM=1.5730e+03, K=1.000e-06, VSUB=1.5855e-09, PHILIM=1e-6
-        set Function expression = ((r*(PHIM-phi)<Width) ? TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt(K*AGEOP)))):\
-	(phi > PHILIM)? (TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt((K*Ro*phi)/VSUB))))): TM)
+        set Coordinate system = cartesian
+        set Variable names = x, y
+        set Function constants = Depth=1.45e5, Width=2.75e5, Do=2.890e6, xm=1.5570e+07,\
+                             AGEOP=1.2614e+15, TS=2.730e+02, TM=1.5730e+03, K=1.000e-06, VSUB=1.5855e-09, XLIM=6
+        set Function expression = (xm-x<Width) ? TS+(TM-TS)*(1-erfc(abs(Do-y)/(2*sqrt(K*AGEOP)))):\
+	((x > XLIM)? (TS+(TM-TS)*(1-erfc(abs(Do-y)/(2*sqrt((K*x)/VSUB))))): TM)
     end
 end
 
 
 subsection Postprocess
-    set List of postprocessors = visualization, velocity statistics, temperature statistics, depth average, particles
+    set List of postprocessors = visualization, velocity statistics, temperature statistics, depth average
     subsection Depth average
         set Number of zones = 50
         set Output format = txt
@@ -284,22 +280,19 @@ subsection Postprocess
         set Output format = vtu
         set Time between graphical output = 0.1e6
     end
-    subsection Particles
-        set Particle generator name = ascii file
-        set Data output format = vtu
-        set List of particle properties = initial position
-        set Time between data output = 0.1e6
-        subsection Generator
-            subsection Ascii file
-                set Data directory = ./particle_file/
-                set Data file name = particle.dat
-            end
-        end
-    end
 end
 
 
 subsection Checkpointing
     set Steps between checkpoint = 50
+end
+
+
+subsection Boundary traction model
+    set Prescribed traction boundary indicators = 1:initial lithostatic pressure, 2:initial lithostatic pressure
+    subsection Initial lithostatic pressure
+        set Representative point = 100000.0, 100000.0
+        set Number of integration points = 2048
+    end
 end
 

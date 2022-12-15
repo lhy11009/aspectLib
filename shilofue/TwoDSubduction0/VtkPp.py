@@ -2016,13 +2016,13 @@ def main():
                         default='',
                         help='A json file for configuration')
     parser.add_argument('-ti', '--time_interval', type=float,
-                        default=None,
+                        default=1e6,
                         help='Time interval, affecting the time steps to visualize')
     parser.add_argument('-te', '--time_end', type=float,
-                        default=None,
+                        default=60e6,
                         help='Time end, affecting the time steps to visualize')
     parser.add_argument('-ts', '--time_start', type=float,
-                        default=None,
+                        default=0.0,
                         help='Time end, affecting the time steps to visualize')
     parser.add_argument('-t', '--time', type=float,
                         default=0.0,
