@@ -1457,7 +1457,7 @@ def Convert2AspectInput(creep, **kwargs):
     d = creep['d']
     Coh = creep['Coh']
     # compute value of F(pre factor)
-    use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
+    use_effective_strain_rate = kwargs.get('use_effective_strain_rate', 0)
     if use_effective_strain_rate:
         F = 1 / (2**((n-1)/n)*3**((n+2)/2/n))
     else:
@@ -2119,8 +2119,8 @@ def main():
         RheologyPrm = RHEOLOGY_PRM()
         diffusion_creep, dislocation_creep = GetRheology(rheology)
         # convert 2 aspect
-        diffusion_creep_aspect = Convert2AspectInput(diffusion_creep)
-        dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=True)
+        diffusion_creep_aspect = Convert2AspectInput(diffusion_creep, use_effective_strain_rate=arg.use_effective_strain_rate)
+        dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=arg.use_effective_strain_rate)
         # save to output
         if arg.json is not None:
             creep_in_aspect = {}
