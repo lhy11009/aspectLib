@@ -131,6 +131,12 @@ it only takes effect if the input is positiveh",\
         '''
         refinement_level = self.values[15]
         return refinement_level
+    
+    def to_configure_final(self):
+        '''
+        Interface to configure_final
+        '''
+        return "foo", "foo"
 
     def wb_inputs_path(self):
         '''
@@ -444,6 +450,12 @@ class CASE():
         Configure world builder file
         '''
         pass
+    
+    def configure_final(self, _, __):
+        '''
+        finalize configuration
+        '''
+        pass
 
     def add_extra_file(self, path):
         '''
@@ -526,6 +538,8 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
     # add extra files
     for _path in Case_Opt.get_additional_files():
         Case.add_extra_file(_path)
+    # finalizing
+    Case.configure_final(*(Case_Opt.to_configure_final()))
     # create new case
     if update_flag:
         # update a previous case:

@@ -127,6 +127,8 @@ intiation stage causes the slab to break in the middle",\
             ['shear zone', 'ef particle bury depth'], 5e3, nick='ef_Dbury')
         self.add_key("interval measured in meter between adjacent particles", float,\
             ['shear zone', 'ef particle interval'], 10e3, nick='ef_interval')
+        self.add_key("Use embeded fault implementation with the implementation of world builder feature surface",\
+          int, ["shear zone", 'use embeded fault with feature surface'], 0, nick='use_embeded_fault_feature_surface')
     
     def check(self):
         '''
@@ -236,12 +238,15 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         ef_factor = self.values[self.start + 31]
         ef_Dbury = self.values[self.start + 32]
         sp_age_trench = self.values[self.start]
+        use_embeded_fault_feature_surface = self.values[self.start + 34]
+        ef_particle_interval = self.values[self.start + 33]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
-        branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench
+        branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
+        ef_particle_interval
 
     def to_configure_wb(self):
         '''
@@ -262,12 +267,20 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         is_box_wider = self.is_box_wider()
         Dsz = self.values[self.start + 16]
         wb_new_ridge = self.values[self.start + 27]
+        return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
+            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge
+    
+    def to_configure_final(self):
+        '''
+        Interface to configure_final
+        '''
+        geometry = self.values[3]
+        Dsz = self.values[self.start + 16]
         use_embeded_fault = self.values[self.start + 30]
         ef_Dbury = self.values[self.start + 32]
         ef_particle_interval = self.values[self.start + 33]
-        return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
-            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge,\
-            use_embeded_fault, ef_Dbury, ef_particle_interval
+        use_embeded_fault_feature_surface = self.values[self.start + 34]
+        return geometry, Dsz, use_embeded_fault, ef_Dbury, ef_particle_interval, use_embeded_fault_feature_surface
     
     def to_re_write_geometry_pa(self):
         box_width_pre_adjust = self.values[self.start+11]
@@ -300,7 +313,7 @@ class CASE(CasesP.CASE):
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
     sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
-    sp_age_trench):
+    sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -549,17 +562,10 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             pp_dict = o_dict['Postprocess']
             # add particles in this section
             pp_dict["List of postprocessors"] += ', particles'
-            pp_dict['Particles'] = {
-                "Particle generator name" : "ascii file",\
+            pp_dict['Particles'] = {\
                 "Data output format" : "vtu",\
                 "List of particle properties" : "initial position",\
-                "Time between data output": "0.1e6",\
-                "Generator": {\
-                    "Ascii file": {\
-                        "Data directory": "./particle_file/",\
-                        "Data file name": "particle.dat"\
-                    }
-                }
+                "Time between data output": "0.1e6"\
             }
             o_dict['Postprocess'] = pp_dict
         # create a multi-stage model
@@ -575,8 +581,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             pass 
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
-        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, use_embeded_fault,\
-        ef_Dbury, ef_particle_interval):
+        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge):
         '''
         Configure world builder file
         Inputs:
@@ -624,22 +629,69 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             ov_trans_length=ov_trans_length, geometry=geometry, sz_thickness=Dsz) # plates
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
+    
+    def configure_final(self, geometry, Dsz, use_embeded_fault, ef_Dbury, ef_particle_interval, use_embeded_fault_feature_surface):
+        '''
+        final step of configurations.
+        1. fix the options for the embeded fault method
+        '''
         # use the embeded fault implementation, here we need to
         # assign particle positions with world builder configuration
+        if geometry == 'chunk':
+            Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
+        elif geometry == 'box':
+            Ro = float(self.idict['Geometry model']['Box']['Y extent'])
+        else:
+            raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
+        # find information of the slab
+        i0 = ParsePrm.FindWBFeatures(self.wb_dict, 'Slab')  # find trench position
+        s_dict = self.wb_dict['features'][i0]
+        trench = s_dict["coordinates"][0][0]
+        p0 = np.array([trench, Ro]) # starting point of the slab, theta needs to be in radian
+        segments = s_dict["segments"]  # find slab lengths and slab_dips
+        slab_lengths = []
+        slab_dips = []
+        for i in range(len(segments)-1):
+            # the last one is a ghost component for tapering, thus get rid of it
+            segment = segments[i]
+            slab_dips.append(segment["angle"])
+            slab_lengths.append(segment["length"])
+        # fix options for the embeded fault method
         if use_embeded_fault:
-            i0 = ParsePrm.FindWBFeatures(self.wb_dict, 'Slab')  # find trench position
-            s_dict = self.wb_dict['features'][i0]
-            trench = s_dict["coordinates"][0][0]
-            p0 = np.array([trench, Ro]) # starting point of the slab, theta needs to be in radian
-            segments = s_dict["segments"]  # find slab lengths and slab_dips
-            slab_lengths = []
-            slab_dips = []
-            for i in range(len(segments)-1):
-                # the last one is a ghost component for tapering, thus get rid of it
-                segment = segments[i]
-                slab_dips.append(segment["angle"])
-                slab_lengths.append(segment["length"])
-            self.particle_data = particle_positions_ef(geometry, Ro, trench, Dsz, ef_Dbury, p0, slab_lengths, slab_dips, interval=ef_particle_interval)
+            if use_embeded_fault_feature_surface:
+                # if the feature surface from the WorldBuilder, no need to generate particles manually
+                # set up the variables instead
+                n_particles_on_plate = int(Ro * trench * np.pi / 180.0 // ef_particle_interval)
+                n_particles_on_slab = 0
+                for slab_length in slab_lengths:
+                    n_particles_on_slab += int(slab_length//ef_particle_interval)
+                n_particles = n_particles_on_plate + n_particles_on_slab
+                self.idict['Postprocess']['Particles']["Number of particles"] = str(n_particles)
+                self.idict['Postprocess']['Particles']["Particle generator name"] = "world builder feature surface"
+                self.idict['Postprocess']['Particles']["Generator"] = {\
+                    "World builder feature surface":\
+                    {\
+                        "Number of particles on the slab": str(n_particles_on_slab),\
+                        "Feature surface distance": "%.4e" % (Dsz + ef_Dbury),\
+                        "Maximum radius": "%.4e" % Ro,\
+                        "Minimum radius" : "%.4e" % (Ro - 200e3),\
+                        "Feature start": "%.4e" % (trench * np.pi / 180.0),\
+                        "Search start": "%.4e" % (trench * np.pi / 180.0),\
+                        "Search length": "0.00174",\
+                        "Search max step": "100"\
+                    }\
+                }
+            else:
+                self.idict['Postprocess']['Particles']["Particle generator name"] = "ascii file"
+                self.idict['Postprocess']['Particles']["Generator"] = {
+                    "Ascii file": {\
+                        "Data directory": "./particle_file/",\
+                        "Data file name": "particle.dat"\
+                    }
+                }
+                # if not using the feature surface from the WorldBuilder, generate particles manually
+                self.particle_data = particle_positions_ef(geometry, Ro, trench, Dsz, ef_Dbury, p0, slab_lengths, slab_dips, interval=ef_particle_interval)
+
 
 
 

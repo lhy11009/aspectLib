@@ -102,6 +102,36 @@ class RHEOLOGY_PRM():
         '''
         Initiation, initiate rheology parameters
         '''
+        # dry dislocation creep in Hirth & Kohlstedt 2003)
+        # note the V (activation energy) value has a large variation, here I
+        # picked up a value the same as wet value.
+        self.HK03_dry_disl = \
+            {
+                "A": 1.1e5,
+                "p": 0.0,
+                "r": 0.0,
+                "n": 3.5,
+                "E": 530e3,
+                "V": 12e-6,
+                "d" : 1e4,
+                "Coh" : 0.0
+            }
+        
+        # dry diffusion creep in Hirth & Kohlstedt 2003)
+        # note the V (activation energy) value has a large variation, here I
+        # picked up a value the same as the wet value.
+        self.HK03_dry_diff = \
+            {
+                "A": 1.5e9,
+                "p": 3.0,
+                "r": 0.0,
+                "n": 1.0,
+                "E": 375e3,
+                "V": 4e-6,
+                "d" : 1e4,
+                "Coh" : 0.0
+            }
+
         # dislocation creep in Hirth & Kohlstedt 2003
         self.HK03_disl = \
             {
@@ -2119,8 +2149,8 @@ def main():
         RheologyPrm = RHEOLOGY_PRM()
         diffusion_creep, dislocation_creep = GetRheology(rheology)
         # convert 2 aspect
-        diffusion_creep_aspect = Convert2AspectInput(diffusion_creep, use_effective_strain_rate=arg.use_effective_strain_rate)
-        dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=arg.use_effective_strain_rate)
+        diffusion_creep_aspect = Convert2AspectInput_v1(diffusion_creep, use_effective_strain_rate=arg.use_effective_strain_rate)
+        dislocation_creep_aspect = Convert2AspectInput_v1(dislocation_creep, use_effective_strain_rate=arg.use_effective_strain_rate)
         # save to output
         if arg.json is not None:
             creep_in_aspect = {}
