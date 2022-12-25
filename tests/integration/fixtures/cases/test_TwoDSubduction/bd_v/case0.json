@@ -11,7 +11,7 @@
   "geometry": "box",
   "potential temperature": 1573.0,
   "boundary condition": {
-    "model": "top prescrbed with bottom right open"
+    "model": "top prescribed with bottom right open"
   },
   "use world builder": 1,
   "world builder": {

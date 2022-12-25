@@ -169,7 +169,8 @@ def ParseToDealiiInput(fout, outputs, layer=0):
             if layer == 0:
                 fout.write('\n')
         else:
-            raise ValueError('Value in dict must be str')
+            raise ValueError('Value in dict must be str, get:\n key: '\
+            + key + "\n type of value: " + str(type(value)) + "\n value: " + str(value))
     return
 
 

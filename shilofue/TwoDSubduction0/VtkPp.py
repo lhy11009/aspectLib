@@ -72,7 +72,8 @@ Examples of usage: \n\
         python -m shilofue.TwoDSubduction0.VtkPp morph_step -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 -vss 105 \n\
 \n\
   - Slab morphology for one case for all the time steps\n\
-        python -m shilofue.TwoDSubduction0.VtkPp morph_case -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT_cart2/eba_cdpt_cart_width80\n\
+        python -m shilofue.TwoDSubduction0.VtkPp morph_case -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT_cart2/eba_cdpt_cart_width80 -ti 0.1e6\n\
+        note the -ti option would assign an interval (default is 0.5e6)\n\
 \n\
   - Plot the morphology of the slab: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_morph -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 \n\
@@ -1132,7 +1133,7 @@ def SlabMorphologyCase(case_dir, **kwargs):
     findmdd = kwargs.get('findmdd', False)
     # get all available snapshots
     # the interval is choosen so there is no high frequency noises
-    time_interval_for_slab_morphology = 0.5e6
+    time_interval_for_slab_morphology = kwargs.get("time_interval", 0.5e6)
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
     # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
@@ -2060,7 +2061,7 @@ def main():
         SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1, output_slab=True, findmdd=True)
     elif _commend == 'morph_case':
         # slab morphology for a case
-        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True)
+        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')

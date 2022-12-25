@@ -97,9 +97,12 @@ subsection Boundary velocity model
     set Prescribed velocity boundary indicators = 3:function
     set Tangential velocity boundary indicators = 0
     subsection Function
-        set Function constants = xtr=4.0000e+06, usp=5.0000e-02, uov=0.0000e+00
+        set Function constants = xtr=4.0000e+06, dtr=2.0000e+04, usp=5.0000e-02, uov=0.0000e+00, xrd=100e3
         set Variable names = x,y
-        set Function expression = ((x < xtr)? usp: uov); 0.0
+        set Function expression = ((x < xrd)? (x/xrd*usp):\
+                                     ((x < (xtr - dtr/2.0))? usp:\
+                                     ((x < (xtr + dtr/2.0))?(usp + (uov - usp)*(x-xtr+dtr/2.0)/dtr): uov)))\
+                                  ; 0.0
     end
 end
 
@@ -211,7 +214,7 @@ subsection Material model
             set Function constants = Depth=1.45e5, Width=2.75e5, Do=2.890e6, xm=1.5570e+07, CV=1e20
             set Function expression = (((y > Do - Depth) && ((x < Width) || (xm-x < Width)))? CV: -1.0)
         end
-        set Reaction mor = true
+        set Reaction mor = false
         subsection Reaction mor function
             set Coordinate system = cartesian
             set Variable names = x, y

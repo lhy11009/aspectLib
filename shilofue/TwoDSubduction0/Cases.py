@@ -129,6 +129,8 @@ intiation stage causes the slab to break in the middle",\
             ['shear zone', 'ef particle interval'], 10e3, nick='ef_interval')
         self.add_key("Use embeded fault implementation with the implementation of world builder feature surface",\
           int, ["shear zone", 'use embeded fault with feature surface'], 0, nick='use_embeded_fault_feature_surface')
+        self.add_key("transition distance at the trench for the kinematic boundary condition", float,\
+            ["boundary condition", "trench transit distance"], 20e3, nick='delta_trench')
     
     def check(self):
         '''
@@ -162,7 +164,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         assert(refinement_level in [-1, 9, 10, 11])  # it's either not turned on or one of the options for the total refinement levels
         # check the option for the type of boundary conditions
         type_of_bd = self.values[self.start + 5]
-        assert(type_of_bd in ["all free slip", "top prescrbed with bottom right open", "top prescrbed with bottom left open"])
+        assert(type_of_bd in ["all free slip", "top prescribed", "top prescribed with bottom right open", "top prescribed with bottom left open"])
         # check the method to use for phase transition
         phase_model = self.values[self.start + 12]
         Utilities.my_assert( phase_model in ["CDPT", "HeFESTo"], ValueError,\
@@ -240,13 +242,14 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         sp_age_trench = self.values[self.start]
         use_embeded_fault_feature_surface = self.values[self.start + 34]
         ef_particle_interval = self.values[self.start + 33]
+        delta_trench = self.values[self.start + 35]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
         branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
-        ef_particle_interval
+        ef_particle_interval, delta_trench
 
     def to_configure_wb(self):
         '''
@@ -313,21 +316,27 @@ class CASE(CasesP.CASE):
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
     sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
-    sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval):
+    sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
         # velocity boundaries
         if type_of_bd == "all free slip":  # boundary conditions
             pass
-        elif type_of_bd == "top prescrbed with bottom right open":
+        elif type_of_bd == "top prescribed":
             trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro)
             # assign a 0.0 value for the overiding plate velocity
             # the subducting plate velocity is consistent with the value used in the worldbuilder
-            bd_v_dict, bd_t_dict = prm_top_prescribed_with_bottom_right_open(trench, sp_rate, 0.0, refinement_level)
+            bd_v_dict = prm_top_prescribed(trench, sp_rate, 0.0, refinement_level, delta_trench=delta_trench)
+            o_dict["Boundary velocity model"] = bd_v_dict
+        elif type_of_bd == "top prescribed with bottom right open":
+            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro)
+            # assign a 0.0 value for the overiding plate velocity
+            # the subducting plate velocity is consistent with the value used in the worldbuilder
+            bd_v_dict, bd_t_dict = prm_top_prescribed_with_bottom_right_open(trench, sp_rate, 0.0, refinement_level, delta_trench=delta_trench)
             o_dict["Boundary velocity model"] = bd_v_dict
             o_dict["Boundary traction model"] = bd_t_dict
-        elif type_of_bd == "top prescrbed with bottom left open":
+        elif type_of_bd == "top prescribed with bottom left open":
             trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro)
             # assign a 0.0 value for the overiding plate velocity
             # the subducting plate velocity is consistent with the value used in the worldbuilder
@@ -399,53 +408,27 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             o_dict['Material model']['Visco Plastic TwoD'] =\
               prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd)
         # set up subsection Prescribed temperatures
-        if type_of_bd == "all free slip":
-            o_dict["Prescribe internal temperatures"] = "true"
-            if geometry == 'chunk':
-                if prescribe_T_method == 'plate model':
-                    warnings.warn("plate model only works for cartesian model right now, reset to using function")
+        if geometry == 'chunk':
+            if prescribe_T_method == 'plate model':
+                warnings.warn("plate model only works for cartesian model right now, reset to using function")
+            o_dict['Prescribed temperatures'] =\
+                prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age)
+            if type_of_bd == "all free slip":
+                o_dict["Prescribe internal temperatures"] = "true"
+        elif geometry == 'box':
+            if prescribe_T_method == 'function':
                 o_dict['Prescribed temperatures'] =\
-                    prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age)
-            elif geometry == 'box':
+                    prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age)
+            elif prescribe_T_method == 'plate model':
+                o_dict['Prescribed temperatures'] =\
+                    prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate, ov_age)
+            if type_of_bd == "all free slip":
                 o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
-                if prescribe_T_method == 'function':
-                    o_dict['Prescribed temperatures'] =\
-                        prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age)
-                elif prescribe_T_method == 'plate model':
-                    o_dict['Prescribed temperatures'] =\
-                        prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate, ov_age)
-        elif type_of_bd == "top prescrbed with bottom right open":
+        if type_of_bd in ["top prescribed with bottom right open", "top prescribed with bottom left open", "top prescribed"]:
             # in this case, I want to keep the options for prescribing temperature but to turn it off at the start
-            o_dict["Prescribe internal temperatures"] = "false"
-            if geometry == 'chunk':
-                if prescribe_T_method == 'plate model':
-                    warnings.warn("plate model only works for cartesian model right now, reset to using function")
-                o_dict['Prescribed temperatures'] =\
-                    prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age)
-            elif geometry == 'box':
-                o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
-                if prescribe_T_method == 'function':
-                    o_dict['Prescribed temperatures'] =\
-                        prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age)
-                elif prescribe_T_method == 'plate model':
-                    o_dict['Prescribed temperatures'] =\
-                        prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate, ov_age)
-        elif type_of_bd == "top prescrbed with bottom left open":
-            # in this case, I want to keep the options for prescribing temperature but to turn it off at the start
-            o_dict["Prescribe internal temperatures"] = "false"
-            if geometry == 'chunk':
-                if prescribe_T_method == 'plate model':
-                    warnings.warn("plate model only works for cartesian model right now, reset to using function")
-                o_dict['Prescribed temperatures'] =\
-                    prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age)
-            elif geometry == 'box':
-                o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
-                if prescribe_T_method == 'function':
-                    o_dict['Prescribed temperatures'] =\
-                        prm_prescribed_temperature_cart(box_width, potential_T, sp_rate, ov_age)
-                elif prescribe_T_method == 'plate model':
-                    o_dict['Prescribed temperatures'] =\
-                        prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate, ov_age)
+            o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
+
+        
         # Material model
         da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
         assert(os.path.isfile(da_file))
@@ -962,32 +945,19 @@ def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, **kwargs
         kwargs(dict):
     '''
     o_dict = visco_plastic_twoD.copy()
+    o_dict['Reset viscosity function'] =\
+        prm_reset_viscosity_function_sph(max_phi)
+    if type_of_bd in ["all free slip"]:
+        o_dict["Reaction mor"] = 'true'
+    else:
+        o_dict["Reaction mor"] = 'false'
+    o_dict["Reaction mor function"] =\
+        prm_reaction_mor_function_sph(max_phi)
     if type_of_bd == "all free slip":
         # use free slip on both sides, set ridges on both sides
         o_dict['Reset viscosity'] = 'true'
-        o_dict['Reset viscosity function'] =\
-            prm_reset_viscosity_function_sph(max_phi)
-        o_dict["Reaction mor"] = 'true'
-        o_dict["Reaction mor function"] =\
-            prm_reaction_mor_function_sph(max_phi)
-    elif type_of_bd == "top prescrbed with bottom right open":
-        # no need to reset the viscosity, only fix the composition
-        # keep the options but turn it off
+    else:
         o_dict['Reset viscosity'] = 'false'
-        o_dict['Reset viscosity function'] =\
-            prm_reset_viscosity_function_sph(max_phi)
-        o_dict["Reaction mor"] = 'true'
-        o_dict["Reaction mor function"] =\
-            prm_reaction_mor_function_sph(max_phi)
-    elif type_of_bd == "top prescrbed with bottom left open":
-        # no need to reset the viscosity, only fix the composition
-        # keep the options but turn it off
-        o_dict['Reset viscosity'] = 'false'
-        o_dict['Reset viscosity function'] =\
-            prm_reset_viscosity_function_sph(max_phi)
-        o_dict["Reaction mor"] = 'true'
-        o_dict["Reaction mor function"] =\
-            prm_reaction_mor_function_sph(max_phi)
     return o_dict
 
 
@@ -1000,32 +970,19 @@ def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, **kwa
         kwargs(dict):
     '''
     o_dict = visco_plastic_twoD.copy()
-    if type_of_bd == "all free slip":
+    o_dict['Reset viscosity function'] =\
+        prm_reset_viscosity_function_cart(box_width)
+    if type_of_bd in ["all free slip"]:
+        o_dict["Reaction mor"] = 'true'
+    else:
+        o_dict["Reaction mor"] = 'false'
+    o_dict["Reaction mor function"] =\
+        prm_reaction_mor_function_cart(box_width)
+    if type_of_bd in ["all free slip"]:
         # use free slip on both sides, set ridges on both sides
         o_dict['Reset viscosity'] = 'true'
-        o_dict['Reset viscosity function'] =\
-            prm_reset_viscosity_function_cart(box_width)
-        o_dict["Reaction mor"] = 'true'
-        o_dict["Reaction mor function"] =\
-            prm_reaction_mor_function_cart(box_width)
-    elif type_of_bd == "top prescrbed with bottom right open":
-        # no need to reset the viscosity, only fix the composition
-        # keep the options but turn it off
+    else:
         o_dict['Reset viscosity'] = 'false'
-        o_dict['Reset viscosity function'] =\
-            prm_reset_viscosity_function_cart(box_width)
-        o_dict["Reaction mor"] = 'true'
-        o_dict["Reaction mor function"] =\
-            prm_reaction_mor_function_cart(box_width)
-    elif type_of_bd == "top prescrbed with bottom left open":
-        # no need to reset the viscosity, only fix the composition
-        # keep the options but turn it off
-        o_dict['Reset viscosity'] = 'false'
-        o_dict['Reset viscosity function'] =\
-            prm_reset_viscosity_function_cart(box_width)
-        o_dict["Reaction mor"] = 'true'
-        o_dict["Reaction mor function"] =\
-            prm_reaction_mor_function_cart(box_width)
     return o_dict
 
 
@@ -1146,24 +1103,75 @@ def prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate,
     }
     return odict
 
+###
+# velocity boundary conditions
+###
 
-def prm_top_prescribed_with_bottom_right_open(trench, sp_rate, ov_rate, refinement_level):
+def prm_prescribed_velocity_function(trench, delta_trench, sp_rate, ov_rate):
+    '''
+    the "Function" subsection in the "" subsection
+    Inputs:
+        trench: position of the trench
+        delta_trench: the transition distance where the velocity 
+                      varies continously from the subducting plate to the overiding plate
+        sp_rate: prescribed rate of the subducting plate
+        ov_rate: prescribed rate of the overidding plate
+    Returns:
+        func_dict: a dictionary storing the settings
+    '''
+    func_dict = \
+    {
+        "Function constants": "u0=0.03, x0=10000",\
+        "Variable names": "x,y",\
+        "Function constants": "xtr=%.4e, dtr=%.4e, usp=%.4e, uov=%.4e, xrd=100e3" % (trench, delta_trench,sp_rate, ov_rate),\
+        "Function expression": "((x < xrd)? (x/xrd*usp):\\\n%s\
+ ((x < (xtr - dtr/2.0))? usp:\\\n%s\
+ ((x < (xtr + dtr/2.0))?(usp + (uov - usp)*(x-xtr+dtr/2.0)/dtr): uov)))\\\n%s; 0.0" %\
+        (36*" ", 36*" ", 34*" ")
+    }
+    return func_dict
+
+
+def prm_top_prescribed(trench, sp_rate, ov_rate, refinement_level, **kwargs):
     '''
     Inputs:
         trench: position of the trench
         sp_rate: prescribed rate of the subducting plate
         ov_rate: prescribed rate of the overidding plate
         refinement_level: total levele of refinement, for figuring out the number of integration points
+        kwargs:
+            delta_trench: the transition distance where the velocity 
+                          varies continously from the subducting plate to the overiding plate
     '''
+    delta_trench = kwargs.get("delta_trench", 20e3)
+    prescribed_velocity_function =  prm_prescribed_velocity_function(trench, delta_trench,sp_rate, ov_rate)
+    bd_v_dict = {
+        "Prescribed velocity boundary indicators": "3:function",\
+        "Tangential velocity boundary indicators": "0, 1, 2",\
+        "Function": prescribed_velocity_function
+    }
+    return bd_v_dict
+    pass
+
+
+
+def prm_top_prescribed_with_bottom_right_open(trench, sp_rate, ov_rate, refinement_level, **kwargs):
+    '''
+    Inputs:
+        trench: position of the trench
+        sp_rate: prescribed rate of the subducting plate
+        ov_rate: prescribed rate of the overidding plate
+        refinement_level: total levele of refinement, for figuring out the number of integration points
+        kwargs:
+            delta_trench: the transition distance where the velocity 
+                          varies continously from the subducting plate to the overiding plate
+    '''
+    delta_trench = kwargs.get("delta_trench", 20e3)
+    prescribed_velocity_function =  prm_prescribed_velocity_function(trench, delta_trench,sp_rate, ov_rate)
     bd_v_dict = {
         "Prescribed velocity boundary indicators": "3:function",\
         "Tangential velocity boundary indicators": "0",\
-        "Function": {
-            "Function constants": "u0=0.03, x0=10000",\
-            "Variable names": "x,y",\
-            "Function constants": "xtr=%.4e, usp=%.4e, uov=%.4e, xrd=100e3" % (trench, sp_rate, ov_rate),\
-            "Function expression": "((x < xtr)?((x<xrd)?(x/xrd*usp):usp): uov); 0.0",\
-        }
+        "Function": prescribed_velocity_function
     }
     # fix the number of integretion points
     n_integration_points = 2048
@@ -1179,7 +1187,7 @@ def prm_top_prescribed_with_bottom_right_open(trench, sp_rate, ov_rate, refineme
     return bd_v_dict, bd_t_dict
 
 
-def prm_top_prescribed_with_bottom_left_open(trench, sp_rate, ov_rate, refinement_level):
+def prm_top_prescribed_with_bottom_left_open(trench, sp_rate, ov_rate, refinement_level, **kwargs):
     '''
     Inputs:
         trench: position of the trench
@@ -1187,15 +1195,12 @@ def prm_top_prescribed_with_bottom_left_open(trench, sp_rate, ov_rate, refinemen
         ov_rate: prescribed rate of the overidding plate
         refinement_level: total levele of refinement, for figuring out the number of integration points
     '''
+    delta_trench = kwargs.get("delta_trench", 20e3)
+    prescribed_velocity_function =  prm_prescribed_velocity_function(trench, delta_trench,sp_rate, ov_rate)
     bd_v_dict = {
         "Prescribed velocity boundary indicators": "3:function",\
         "Tangential velocity boundary indicators": "1",\
-        "Function": {
-            "Function constants": "u0=0.03, x0=10000",\
-            "Variable names": "x,y",\
-            "Function constants": "xtr=%.4e, usp=%.4e, uov=%.4e" % (trench, sp_rate, ov_rate),\
-            "Function expression": "((x < xtr)? usp: uov); 0.0",\
-        }
+        "Function": prescribed_velocity_function
     }
     # fix the number of integretion points
     n_integration_points = 2048
