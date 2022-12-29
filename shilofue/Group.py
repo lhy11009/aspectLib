@@ -398,6 +398,8 @@ class GDOC():
             outputs += self.create_case_table(group) + "\n"
         return outputs
 
+    class CreateCaseTableError(Exception):
+        pass 
     
     def create_case_table(self, group):
         json_path = os.path.join(group, 'group.json')
@@ -446,8 +448,14 @@ class GDOC():
                 case_options = json.load(fin)
             for feature in features:
                 keys = feature.get_keys()
-                value = Utilities.read_dict_recursive(case_options, keys)
-                outputs += str(value) + "\t|"
+                try:
+                    value = Utilities.read_dict_recursive(case_options, keys)
+                except KeyError as e:
+                    # if key not found, don't append anything except for "|" to maintain the table
+                    pass
+                else:
+                    outputs += str(value)
+                outputs += "\t|"
             outputs += "\n"
             i += 1
         outputs += "\n</div>\n"  # css block marks ending
