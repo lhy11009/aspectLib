@@ -32,6 +32,7 @@ from shilofue.VtkPp import get_r
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 from numpy import linalg as LA 
 import multiprocessing
+import warnings
 #### self
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
@@ -1397,6 +1398,9 @@ class SLABPLOT(LINEARPLOT):
         pvtu_steps = self.data[:, col_pvtu_step]
         times = self.data[:, col_pvtu_time]
         trenches = self.data[:, col_pvtu_trench]
+        time_interval = times[1] - times[0]
+        if time_interval < 0.5e6:
+            warnings.warn("Time intervals smaller than 0.5e6 may cause vabriation in the velocity (get %.4e)" % time_interval)
         if geometry == "chunk":
             trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
         elif geometry == 'box':
