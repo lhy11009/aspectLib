@@ -55,7 +55,7 @@ def test_plot_combine():
     'tests/integration/fixtures/cases/test_multiple_cases/wb_sph_cdd50_substract_T')
     assert(len(result) == 2 and result[0] == result_std)
     # test the class
-    figure_path = os.path.join(ASPECT_LAB_DIR, ".test", "combined", "foo.png")
+    figure_path = os.path.join(ASPECT_LAB_DIR, ".test", "plot_combine", "foo.png")
     if os.path.isfile(figure_path):
         os.remove(figure_path)
     Plot_Combine = PLOT_COMBINE(Pc_opt.to_PC_init())

@@ -250,7 +250,7 @@ class PC_OPT(Utilities.JSON_OPT):
             output_dir0 = Utilities.var_subs(self.values[5])
         if not os.path.isdir(output_dir0):
             os.mkdir(output_dir0)
-        output_dir = os.path.join(output_dir0, 'combined')
+        output_dir = os.path.join(output_dir0, 'plot_combine')
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
         # title, note that None means there is no title
@@ -497,6 +497,13 @@ def PlotCombineFigures(json_path):
     Plot_Combine = PLOT_COMBINE(Pc_opt.to_PC_init())
     Plot_Combine.set_plots(Pc_opt.to_PC_set_plots())
     figure_path = Plot_Combine(*Pc_opt.to_PC_call())
+    # save the json file in new location
+    json_copy_path = os.path.join(os.path.dirname(figure_path), "combine_figure.json")
+    try:
+        shutil.copy(json_path, json_copy_path)
+        print("Saved json file: ", json_copy_path)
+    except shutil.SameFileError:
+        print("Saing json file: The two files are the same, skip")
     assert(os.path.isfile(figure_path))
 
 
