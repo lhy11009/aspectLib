@@ -141,6 +141,7 @@ class VTKP(VtkPp.VTKP):
     def PrepareSlab(self, slab_field_names, **kwargs):
         '''
         prepare slab composition
+        Slab surface is determined by the crustal composition
         '''
         assert(self.include_cell_center)
         slab_threshold = kwargs.get('slab_threshold', 0.2)
@@ -870,6 +871,7 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
     Inputs:
         kwargs(dict):
             output_slab - output slab file
+            use_dT - use temperature difference as the criteria for the slab surface.
     '''
     # assert something
     indent = kwargs.get("indent", 0)  # indentation for outputs
