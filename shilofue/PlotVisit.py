@@ -282,6 +282,7 @@ class PARALLEL_WRAPPER_FOR_VTK():
         self.module = module
         self.last_pvtu_step = kwargs.get('last_pvtu_step', -1)
         self.if_rewrite = kwargs.get('if_rewrite', False)
+        self.assemble = kwargs.get('assemble', True)
         self.kwargs = kwargs
         self.pvtu_steps = []
         self.outputs = []
@@ -312,18 +313,28 @@ class PARALLEL_WRAPPER_FOR_VTK():
             with open(expect_result_file, 'r') as fin:
                 pvtu_step = int(fin.readline())
                 output = fin.readline()
-        else:    
-            if pvtu_step == 0:
-                # start new file with the 0th step
-                pvtu_step, output = self.module(self.case_dir, pvtu_step, new=True, **self.kwargs)
-            else:
-                pvtu_step, output = self.module(self.case_dir, pvtu_step, **self.kwargs)
-            with open(expect_result_file, 'w') as fout:
-                fout.write('%d\n' % pvtu_step)
-                fout.write(output)
-        print("%s: pvtu_step - %d, output - %s" % (Utilities.func_name(), pvtu_step, output))
-        self.pvtu_steps.append(pvtu_step) # append to data
-        self.outputs.append(output)
+        else:
+            if self.assemble:    
+                # here the outputs from individual steps are combined together
+                if pvtu_step == 0:
+                    # start new file with the 0th step
+                    pvtu_step, output = self.module(self.case_dir, pvtu_step, new=True, **self.kwargs)
+                else:
+                    pvtu_step, output = self.module(self.case_dir, pvtu_step, **self.kwargs)
+                with open(expect_result_file, 'w') as fout:
+                    fout.write('%d\n' % pvtu_step)
+                    fout.write(output)
+                print("%s: pvtu_step - %d, output - %s" % (Utilities.func_name(), pvtu_step, output))
+                self.pvtu_steps.append(pvtu_step) # append to data
+                self.outputs.append(output)
+            else: 
+                # otherwise, just call the module for each steps
+                if pvtu_step == 0:
+                    # start new file with the 0th step
+                    self.module(self.case_dir, pvtu_step, new=True, **self.kwargs)
+                else:
+                    self.module(self.case_dir, pvtu_step, **self.kwargs)
+                
         return 0
     
     def assemble(self):

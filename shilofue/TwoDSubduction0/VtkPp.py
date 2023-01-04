@@ -24,6 +24,7 @@ import sys, os, argparse, json
 # import pathlib
 # import subprocess
 import vtk
+from joblib import Parallel, delayed
 from matplotlib import pyplot as plt
 from matplotlib import gridspec, cm
 from matplotlib import colors as mcolors
@@ -33,6 +34,7 @@ from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 from numpy import linalg as LA 
 import multiprocessing
 import warnings
+from scipy.interpolate import interp1d 
 #### self
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
@@ -92,8 +94,16 @@ Examples of usage: \n\
 \n\
   - Generate a plot of crustal material over depth in each segment: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_slab_material_time -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT4/eba_cdpt_SA80.0_OA40.0_CpEcl -t 1e6\n\
-\n\
         the -t option would assign a model time to plot\n\
+\n\
+  - Generate a plot of temperature on the slab over depth in each segment: \n\
+        python -m shilofue.TwoDSubduction0.VtkPp plot_slab_temperature -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -vss 100\n\
+\n\
+  - Generate the outputs of slab temperature\n\
+        python -m shilofue.TwoDSubduction0.VtkPp slab_temperature_case -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140\n\
+\n\
+  - Plot the outputs of slab temperature\n\
+        python -m shilofue.TwoDSubduction0.VtkPp plot_slab_temperature_case -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -ts 10e6 -te 60e6\n\
         ")
 
 
@@ -118,9 +128,11 @@ class VTKP(VtkPp.VTKP):
         '''
         VtkPp.VTKP.__init__(self, **kwargs)
         self.slab_cells = []
+        self.crust_cells = []
         self.surface_cells = []
         self.slab_envelop_cell_list0 = []
         self.slab_envelop_cell_list1 = []
+        self.cmb_envelop_cell_list = []
         self.sz_geometry = None
         self.slab_depth = None
         self.slab_trench = None
@@ -128,7 +140,7 @@ class VTKP(VtkPp.VTKP):
         self.dip_100 = None
         self.vsp = None
         self.vov = None
-        self.slab_shallow_cutoff = 50e3  # depth limit to slab
+        self.slab_shallow_cutoff = kwargs.get("slab_shallow_cutoff", 50e3)  # depth limit to slab
         self.slab_envelop_interval = kwargs.get("slab_envelop_interval", 5e3)
         self.velocity_query_depth = 5e3  # depth to look up plate velocities
         self.velocity_query_disl_to_trench = 500e3  # distance to trench to look up plate velocities
@@ -142,8 +154,11 @@ class VTKP(VtkPp.VTKP):
         '''
         prepare slab composition
         Slab surface is determined by the crustal composition
+        kwargs:
+            prepare_cmb: generate the envelop of the core-mantle boundary as well
         '''
         assert(self.include_cell_center)
+        prepare_cmb = kwargs.get('prepare_cmb', None)
         slab_threshold = kwargs.get('slab_threshold', 0.2)
         points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
         centers = vtk_to_numpy(self.c_poly_data.GetPoints().GetData())
@@ -152,6 +167,9 @@ class VTKP(VtkPp.VTKP):
         # slab composition field
         slab_field = VtkPp.OperateDataArrays(cell_point_data, slab_field_names,\
         [0 for i in range(len(slab_field_names) - 1)])
+        crust_field = None  # store the field of crust composition
+        if prepare_cmb is not None:
+            crust_field = vtk_to_numpy(cell_point_data.GetArray(prepare_cmb))
         # add cells by composition
         min_r = self.Ro
         for i in range(self.i_poly_data.GetNumberOfCells()):
@@ -165,6 +183,17 @@ class VTKP(VtkPp.VTKP):
                 self.slab_cells.append(i)
                 if r < min_r:
                     min_r = r
+        if prepare_cmb is not None:
+            # cells of the crustal composition
+            for i in range(self.i_poly_data.GetNumberOfCells()):
+                cell = self.i_poly_data.GetCell(i)
+                id_list = cell.GetPointIds()  # list of point ids in this cell
+                x = centers[i][0]
+                y = centers[i][1]
+                r = get_r(x, y, self.geometry)
+                crust = crust_field[i]
+                if crust > slab_threshold and ((self.Ro - r) > self.slab_shallow_cutoff):
+                    self.crust_cells.append(i)
         self.slab_depth = self.Ro - min_r  # cart
         # get slab envelops
         total_en_interval = int((self.slab_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval + 1)
@@ -222,7 +251,53 @@ class VTKP(VtkPp.VTKP):
         r100 = get_r(x100, y100, self.geometry)
         theta100 = get_theta(x100, y100, self.geometry)
         self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
-        pass
+        if prepare_cmb is not None:
+            # get the crust envelop
+            crust_en_cell_lists = [ [] for i in range(total_en_interval) ]
+            for id in self.crust_cells:
+                x = centers[id][0]  # first, separate cells into intervals
+                y = centers[id][1]
+                r = get_r(x, y, self.geometry)
+                id_en =  int(np.floor(
+                                    (self.Ro - r - self.slab_shallow_cutoff)/
+                                    self.slab_envelop_interval))# id in the envelop list
+                crust_en_cell_lists[id_en].append(id) 
+            for id_en in range(len(crust_en_cell_lists)):
+                theta_min = 0.0  # then, loop again by intervals to look for a
+                # theta_max = 0.0  # max theta and a min theta for each interval
+                cell_list = crust_en_cell_lists[id_en]
+                if len(cell_list) == 0:
+                    if len(slab_en_cell_lists[id_en]) == 0:
+                        pass
+                    else:
+                        # if there are points in the slab interval list
+                        # I'll append some non-sense value here to make sure these 
+                        # two have the same size
+                        self.cmb_envelop_cell_list.append(-1)
+                    continue  # make sure we have some point
+                is_first = True
+                id_min = -1
+                # id_max = -1
+                for id in cell_list:
+                    x = centers[id][0]
+                    y = centers[id][1]
+                    theta = get_theta(x, y, self.geometry)  # cart
+                    if is_first:
+                        id_min = id
+                        # id_max = id
+                        theta_min = theta
+                        # theta_max = theta
+                        is_first = False
+                    else:
+                        if theta < theta_min:
+                            id_min = id
+                            theta_min = theta
+                        # if theta > theta_max:
+                        #     id_max = id
+                        #    theta_max = theta
+                self.cmb_envelop_cell_list.append(id_min)  # first half of the envelop
+            # make sure these envelops have the same amount of points
+            assert(len(self.cmb_envelop_cell_list)==len(self.slab_envelop_cell_list1))
     
 
     def PrepareSlabByDT(self, **kwargs):
@@ -426,6 +501,27 @@ class VTKP(VtkPp.VTKP):
             ys.append(y)
         slab_envelop1 = np.array([xs, ys])
         return slab_envelop0.T, slab_envelop1.T
+
+    def ExportSlabCmbCoord(self, **kwargs):
+        '''
+        export slab core-mantle boundary envelop
+        returns:
+            coordinates of points on the core-mantle boundary
+        '''
+        assert (len(self.cmb_envelop_cell_list) > 0)
+        centers = vtk_to_numpy(self.c_poly_data.GetPoints().GetData())
+        xs = []
+        ys = []
+        for id in self.cmb_envelop_cell_list:
+            x = -1e31  # these initial value are none sense
+            y = -1e31  # but if there are negative ids, just maintain these values
+            if id > 0:
+                x = centers[id][0]
+                y = centers[id][1]
+            xs.append(x)
+            ys.append(y)
+        cmb_envelop = np.array([xs, ys])
+        return cmb_envelop.T
 
     def SlabBuoyancy(self, v_profile, depth_increment):
         '''
@@ -932,10 +1028,7 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
         o_slab_in = os.path.join(case_dir,\
             "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
         VtkPp.ExportPolyDataFromRaw(slab_envelop0[:, 0], slab_envelop0[:, 1], None, None, o_slab_env0) # write the polydata
-        # np.savetxt(o_slab_env0, slab_envelop0)
-        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env0))
         VtkPp.ExportPolyDataFromRaw(slab_envelop1[:, 0], slab_envelop1[:, 1], None, None, o_slab_env1) # write the polydata
-        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env1))
         np.savetxt(o_slab_in, slab_internal)
         print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
     # buoyancy
@@ -1074,6 +1167,156 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
     print("%s%s: write output %s" % (' '*indent, Utilities.func_name(), fileout))
     return depths, thetas[:, 0], ps  # return depths and pressures
 
+class CmbExtractionIndexError(Exception):
+    pass
+
+def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
+    '''
+    Perform analysis on the slab, this would output a file including the
+    buoyancy forces of the slab and the pressures on the slab surface.
+    Inputs:
+        case_dir(str) - directory of the case
+        vtu_snapshot - snapshots (step plus the level of the initial adaptive refinements)
+        ofile - output file of the slab temperature profile. If this is None, then no outputs are generated
+        kwargs(dict):
+            output_slab - output slab file
+            use_dT - use temperature difference as the criteria for the slab surface.
+    '''
+    # assert something
+    debug = kwargs.get('debug', False)
+    indent = kwargs.get("indent", 0)  # indentation for outputs
+    print("%s%s: Start" % (indent*" ", Utilities.func_name()))
+    output_slab = kwargs.get('output_slab', False)
+    output_poly_data = kwargs.get('output_poly_data', True)
+    slab_envelop_interval = kwargs.get("slab_envelop_interval", 5e3)
+    output_path = os.path.join(case_dir, "vtk_outputs")
+    if not os.path.isdir(output_path):
+        os.mkdir(output_path)
+    filein = os.path.join(case_dir, "output", "solution",\
+         "solution-%05d.pvtu" % (vtu_snapshot))
+    assert(os.path.isfile(filein))
+    # get parameters
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    geometry = Visit_Options.options['GEOMETRY']
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    _time, step = Visit_Options.get_time_and_step(vtu_step)
+    # initiate class
+    VtkP = VTKP(time=_time, slab_envelop_interval=slab_envelop_interval, slab_shallow_cutoff=25e3)
+    VtkP.ReadFile(filein)
+    # fields to load
+    field_names = ['T', 'p', 'density', 'spcrust', 'spharz']
+    has_dynamic_pressure = int(Visit_Options.options['HAS_DYNAMIC_PRESSURE']) 
+    if has_dynamic_pressure == 1:
+        field_names += ['nonadiabatic_pressure']
+    VtkP.ConstructPolyData(field_names, include_cell_center=True, construct_Tdiff=False)
+    # include a v_profile
+    r0_range = [6371e3 - 2890e3, 6371e3]
+    Ro = 6371e3
+    x1 = 0.01 
+    n = 100
+    v_profile = VtkP.VerticalProfile2D(r0_range, x1, n)
+    # output poly data, debug
+    if output_poly_data:
+        file_out = os.path.join(output_path, "processed-%05d.vtp" % vtu_snapshot)
+        VtkPp.ExportPolyData(VtkP.i_poly_data, file_out)
+        file_out_1 = os.path.join(output_path, "processed_center-%05d.vtp" % vtu_snapshot)
+        VtkPp.ExportPolyData(VtkP.c_poly_data, file_out_1)
+    # slab envelop
+    VtkP.PrepareSlab(['spcrust', 'spharz'], prepare_cmb='spcrust')  # slab: composition
+    slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
+    cmb_envelop = VtkP.ExportSlabCmbCoord()
+    if output_slab:
+        slab_internal = VtkP.ExportSlabInternal(output_xy=True)
+        o_slab_env0 = os.path.join(case_dir,\
+            "vtk_outputs", "slab_env0_%05d.vtp" % (vtu_step)) # envelop 0
+        o_slab_env1 = os.path.join(case_dir,\
+            "vtk_outputs", "slab_env1_%05d.vtp" % (vtu_step)) # envelop 1
+        o_cmb_env = os.path.join(case_dir,\
+            "vtk_outputs", "cmb_env_%05d.vtp" % (vtu_step)) # envelop 0
+        o_slab_in = os.path.join(case_dir,\
+            "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
+        VtkPp.ExportPolyDataFromRaw(slab_envelop0[:, 0], slab_envelop0[:, 1], None, None, o_slab_env0) # write the polydata
+        VtkPp.ExportPolyDataFromRaw(slab_envelop1[:, 0], slab_envelop1[:, 1], None, None, o_slab_env1) # write the polydata
+        # export the envelop of the core-mantle boundary
+        VtkPp.ExportPolyDataFromRaw(cmb_envelop[:, 0], cmb_envelop[:, 1], None, None, o_cmb_env) # write the polydata
+        np.savetxt(o_slab_in, slab_internal)
+        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
+    rs_n = 5 # resample interval
+    ip_interval = 1e3  # interval for interpolation
+    # resample the original envelop dataset
+    n_point = slab_envelop1.shape[0]
+    rs_idx = range(0, n_point, rs_n)
+    slab_envelop_rs = slab_envelop1[np.ix_(rs_idx, [0, 1])]  # for slab surface
+    depths = np.zeros(slab_envelop_rs.shape[0])
+    for i in range(0, slab_envelop_rs.shape[0]):
+        # get depths
+        x = slab_envelop_rs[i, 0]
+        y = slab_envelop_rs[i, 1]
+        r = (x*x + y*y)**0.5
+        depth = Ro - r  # depth of this point
+        depths[i] = depth
+    slab_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, slab_envelop_rs, quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
+    env_Ttops  = vtk_to_numpy(slab_env_polydata.GetPointData().GetArray('T'))
+    if debug:
+        print("cmb_envelop: ")  # screen outputs
+        print(cmb_envelop)
+    try:
+        cmb_envelop_rs = cmb_envelop[np.ix_(rs_idx, [0, 1])]
+        if debug:
+            print("cmb_envelop_rs: ")  # screen outputs
+            print(cmb_envelop_rs)
+    except IndexError as e:
+        rs_idx_last = rs_idx[-1]
+        cmb_envelop_rs_length = cmb_envelop.shape[0]
+        raise CmbExtractionIndexError("the last index to extract is %d, while the shape of the cmb_envelop is %d"\
+        % (rs_idx_last, cmb_envelop_rs_length)) from e
+    cmb_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, cmb_envelop_rs, quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
+    env_Tbots = vtk_to_numpy(cmb_env_polydata.GetPointData().GetArray('T'))
+    # fix the non-sense values
+    mask = (env_Tbots < 1.0)
+    env_Tbots[mask] = -1e31
+    if debug:
+        print("env_Tbots")  # screen outputs
+        print(env_Tbots)
+    if ofile is not None:
+        # write output if a valid path is given
+        data_env0 = np.zeros((env_Tbots.size, 4)) # output: x, y, Tbot, Ttop
+        data_env0[:, 0] = slab_envelop_rs[:, 0]
+        data_env0[:, 1] = slab_envelop_rs[:, 1]
+        data_env0[:, 2] = env_Tbots
+        data_env0[:, 3] = env_Ttops
+        c_out = data_env0.shape[1]
+        # interpolate data to regular grid & prepare outputs
+        start = np.ceil(depths[0]/ip_interval) * ip_interval
+        end = np.floor(depths[-1]/ip_interval) * ip_interval
+        n_out = int((end-start) / ip_interval)
+        data_env0_out = np.zeros((n_out, c_out+1))
+        depths_out = np.arange(start, end, ip_interval)
+        data_env0_out[:, 0] = depths_out
+        for j in range(c_out):
+            data_env0_out[:, j+1] = np.interp(depths_out, depths, data_env0[:, j]) # interpolation
+            header = "# 1: depth (m)\n# 2: x (m)\n# 3: y (m)\n# 4: Tbot (K)\n# 5: Ttop (K)\n"
+        with open(ofile, 'w') as fout:
+            fout.write(header)
+        with open(ofile, 'a') as fout: 
+            np.savetxt(fout, data_env0_out, fmt='%.4e\t')
+        print("%s%s: write output %s" % (' '*indent, Utilities.func_name(), ofile))
+    return depths, env_Ttops, env_Tbots  # return depths and pressures
+
+
+def SlabTemperature1(case_dir, vtu_snapshot, **kwargs):
+    '''
+    a wrapper for the SlabTemperature function
+    '''
+    output_path = os.path.join(case_dir, "vtk_outputs")
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    geometry = Visit_Options.options['GEOMETRY']
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    ofile = os.path.join(output_path, "slab_temperature_%05d.txt" % (vtu_step))
+    SlabTemperature(case_dir, vtu_snapshot, ofile=ofile, **kwargs)
+
 
 def ShearZoneGeometry(case_dir, vtu_snapshot, **kwargs):
     indent = kwargs.get("indent", 0)  # indentation for outputs
@@ -1122,6 +1365,118 @@ def ShearZoneGeometry(case_dir, vtu_snapshot, **kwargs):
     print("%s%s: figure generated %s" % (indent*" ", Utilities.func_name(), fig_path))
 
 
+def PlotSlabTemperature(case_dir, vtu_snapshot, **kwargs):
+    '''
+    Process slab envelops and plot the slab temperature
+    '''
+    indent = kwargs.get("indent", 0)  # indentation for outputs
+    assert(os.path.isdir(case_dir))
+    # read some options
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    # fix the output directory
+    vtk_o_dir = os.path.join(case_dir, "vtk_outputs")
+    if not os.path.isdir(vtk_o_dir):
+        os.mkdir(vtk_o_dir)
+    img_dir = os.path.join(case_dir, "img")
+    if not os.path.isdir(img_dir):
+        os.mkdir(img_dir)
+    img_o_dir = os.path.join(img_dir, "slab_temperature")
+    if not os.path.isdir(img_o_dir):
+        os.mkdir(img_o_dir)
+    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+    if not os.path.isfile(filein):
+        raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
+    else:
+        print("%sSlabMorphology: processing %s" % (indent*" ", filein))
+    o_file = os.path.join(vtk_o_dir, "slab_temperature")
+    if os.path.isfile(o_file):
+        os.remove(o_file)
+    assert(os.path.isdir(case_dir))
+    _, _, _ = SlabTemperature(case_dir, vtu_snapshot, o_file, output_slab=True)
+    assert(os.path.isfile(o_file))  # assert the outputs of slab and cmb envelops
+    # plot
+    fig_path = os.path.join(img_o_dir, "slab_temperature_%05d.png" % vtu_step) 
+    fig, ax = plt.subplots()
+    MorphPlotter = SLABPLOT("plot_slab")
+    MorphPlotter.PlotSlabT(case_dir, axis=ax, filein=o_file, label='slab temperature', xlims=[273.0, 1273.0], ylims=[25e3, 250e3])
+    ax.legend()
+    ax.invert_yaxis()
+    fig.savefig(fig_path)
+    # assert figure generation and screen outputs
+    assert(os.path.isfile(fig_path))  # assert figure generation
+    print("%s%s: figure generated %s" % (indent*" ", Utilities.func_name(), fig_path))
+
+
+def PlotSlabTemperatureCase(case_dir, **kwargs):
+    '''
+    Plot the slab temperature for the case
+    '''
+    indent = kwargs.get("indent", 0)  # indentation for outputs
+    time_range = kwargs.get("time_range", None)
+    assert(os.path.isdir(case_dir))
+    img_dir = os.path.join(case_dir, "img")
+    if not os.path.isdir(img_dir):
+        os.mkdir(img_dir)
+    img_o_dir = os.path.join(img_dir, "slab_temperature")
+    if not os.path.isdir(img_o_dir):
+        os.mkdir(img_o_dir)
+    # plot
+    fig, ax = plt.subplots()
+    MorphPlotter = SLABPLOT("plot_slab")
+    MorphPlotter.PlotSlabTCase(case_dir, axis=ax, label='slab temperature', xlims=[273.0, 1673.0], ylims=[25e3, 250e3], time_range=time_range)
+    ax.legend()
+    ax.invert_yaxis()
+    if time_range is None:
+        fig_path = os.path.join(img_o_dir, "slab_temperature.png") 
+    else:
+        fig_path = os.path.join(img_o_dir, "slab_temperature_%.4eMa_%.4eMa.png" % (time_range[0]/1e6, time_range[1]/1e6)) 
+    fig.savefig(fig_path)
+    # assert figure generation and screen outputs
+    assert(os.path.isfile(fig_path))  # assert figure generation
+    print("%s%s: figure generated %s" % (indent*" ", Utilities.func_name(), fig_path))
+
+####
+# Case-wise functions
+####
+def SlabTemperatureCase(case_dir, **kwargs):
+    '''
+    run vtk and get outputs for every snapshots
+    Inputs:
+        kwargs:
+            time_interval: the interval between two processing steps
+    '''
+    # get all available snapshots
+    # the interval is choosen so there is no high frequency noises
+    time_interval_for_slab_morphology = kwargs.get("time_interval", 0.5e6)
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+    available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+    print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # debug
+    # get where previous session ends
+    vtk_output_dir = os.path.join(case_dir, 'vtk_outputs')
+    if not os.path.isdir(vtk_output_dir):
+        os.mkdir(vtk_output_dir)
+    # Initiation Wrapper class for parallel computation
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_temperature', SlabTemperature1, if_rewrite=True, assemble=False, output_poly_data=False)
+    ParallelWrapper.configure(case_dir)  # assign case directory
+    # Remove previous file
+    print("%s: Delete old slab_temperature.txt file." % Utilities.func_name())
+    ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
+    num_cores = multiprocessing.cpu_count()
+    # loop for all the steps to plot
+    Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_snapshot)\
+    for pvtu_snapshot in available_pvtu_snapshots)  # first run in parallel and get stepwise output
+    ParallelWrapper.clear()
+    # for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
+    #    ParallelWrapper(pvtu_snapshot)
+    # pvtu_steps_o, outputs = ParallelWrapper.assemble()
+
+
+
+
 ####
 # Case-wise functions
 ####
@@ -1159,8 +1514,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
         ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
     num_cores = multiprocessing.cpu_count()
     # loop for all the steps to plot
-    # Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
-    # for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
+    # Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_snapshot)\
+    # for pvtu_snapshot in available_pvtu_snapshots)  # first run in parallel and get stepwise output
     ParallelWrapper.clear()
     for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
         ParallelWrapper(pvtu_snapshot)
@@ -1756,6 +2111,188 @@ class SLABPLOT(LINEARPLOT):
         ax.set_xlabel("Depth (km)")
         ax.set_ylabel("Thickness (km)")
 
+    def PlotSlabT(self, case_dir, **kwargs):
+        '''
+        Plot the slab temperature
+        Inputs:
+            case_dir (str) - directory of case
+            kwargs(dict):
+                axis - a matplotlib axis
+        '''
+        # initiate
+        ax = kwargs.get('axis', None)
+        if ax == None:
+            raise ValueError("Not implemented")
+        filein = kwargs.get("filein", None)
+        if filein is not None:
+            temp_file = filein
+        else:
+            temp_file = os.path.join(case_dir, 'vtk_outputs', 'shear_zone.txt')
+        Utilities.my_assert(os.path.isfile(temp_file), FileExistsError, "%s doesn't exist" % temp_file)
+        label = kwargs.get('label', None)
+        xlims = kwargs.get('xlims', None)
+        ylims = kwargs.get('ylims', None)
+        # read inputs
+        prm_file = os.path.join(case_dir, 'output', 'original.prm')
+        assert(os.access(prm_file, os.R_OK))
+        self.ReadPrm(prm_file)
+        # read parameters
+        geometry = self.prm['Geometry model']['Model name']
+        if geometry == 'chunk':
+            Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        else:
+            Ro = -1.0  # in this way, wrong is wrong
+        # read data
+        self.ReadHeader(temp_file)
+        self.ReadData(temp_file)
+        col_depth = self.header['depth']['col']
+        col_Tbot = self.header['Tbot']['col']
+        col_Ttop = self.header['Ttop']['col']
+        depths = self.data[:, col_depth]
+        Tbots = self.data[:, col_Tbot]
+        Ttops = self.data[:, col_Ttop]
+        ax.plot(Ttops, depths/1e3, label=label, color="tab:blue")
+        mask = (Tbots > 0.0)  # non-sense values are set to negative when these files are generated
+        ax.plot(Tbots[mask], depths[mask]/1e3, label=label, color="tab:green")
+        if xlims is not None:
+            # set temperature limit
+            assert(len(xlims) == 2)
+            ax.set_xlim([xlims[0], xlims[1]])
+        if ylims is not None:
+            # set depth limit
+            assert(len(ylims) == 2)
+            ax.set_ylim([ylims[0]/1e3, ylims[1]/1e3])
+        ax.set_xlabel("Temperature (K)")
+        ax.set_ylabel("Depth (km)")
+
+    def PlotSlabTCase(self, case_dir, **kwargs):
+        '''
+        Plot the temperature profile for a case by assembling results
+        from individual steps
+            kwargs(dict):
+                axis - a matplotlib axis
+                debug - print debug message
+                time_range - range of the time for plotting the temperature
+        '''
+        # initiate
+        n_plot = 100 # points in the plot
+        max_plot_depth = 250e3
+        ax = kwargs.get('axis', None)
+        debug = kwargs.get('debug', False)
+        use_degree = kwargs.get('use_degree', False)
+        if ax == None:
+            raise ValueError("Not implemented")
+        label = kwargs.get('label', None)
+        xlims = kwargs.get('xlims', None)
+        ylims = kwargs.get('ylims', None)
+        time_range = kwargs.get('time_range', None)
+        if time_range is not None:
+            assert(len(time_range) == 2)
+            assert(time_range[0] < time_range[1])
+        # options for slab temperature outputs
+        time_interval_for_slab_morphology = kwargs.get("time_interval", 0.5e6)
+        Visit_Options = VISIT_OPTIONS(case_dir)
+        Visit_Options.Interpret()
+        # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+        available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+        print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # debug
+        # assert all files exist
+        for pvtu_snapshot in available_pvtu_snapshots:
+            vtu_step = max(0, int(pvtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+            output_path = os.path.join(case_dir, "vtk_outputs")
+            temp_file = os.path.join(output_path, "slab_temperature_%05d.txt" % (vtu_step))
+            assert(os.access(temp_file, os.R_OK))
+        pDepths = np.linspace(0, max_plot_depth, n_plot)
+        # derive the range of the slab temperatures
+        pTtops_min = np.ones(n_plot) * 1e31
+        pTtops_max = np.ones(n_plot) * (-1e31)
+        pTtops_med = np.zeros(n_plot)
+        pTtops_wt = np.zeros(n_plot)
+        pTbots_min = np.ones(n_plot) * 1e31
+        pTbots_max = np.ones(n_plot) * (-1e31)
+        pTbots_med = np.zeros(n_plot)
+        pTbots_wt = np.zeros(n_plot)
+        time_last = 0.0
+        for pvtu_snapshot in available_pvtu_snapshots:
+            vtu_step = max(0, int(pvtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+            _time, step = Visit_Options.get_time_and_step(vtu_step)
+            if time_range is not None:
+                if _time < time_range[0] or _time > time_range[1]:
+                    # if the step is out of the time range, skip it.
+                    continue
+            dtime = (_time - time_last)
+            time_last = _time
+            output_path = os.path.join(case_dir, "vtk_outputs")
+            temp_file = os.path.join(output_path, "slab_temperature_%05d.txt" % (vtu_step))
+            # read data from file
+            self.ReadHeader(temp_file)
+            self.ReadData(temp_file)
+            col_depth = self.header['depth']['col']
+            col_Tbot = self.header['Tbot']['col']
+            col_Ttop = self.header['Ttop']['col']
+            depths = self.data[:, col_depth]
+            Tbots = self.data[:, col_Tbot]
+            Ttops = self.data[:, col_Ttop]
+            Tbot_func = interp1d(depths, Tbots, assume_sorted=True) 
+            Ttop_func = interp1d(depths, Ttops, assume_sorted=True) 
+            for i in range(n_plot):
+                pDepth = pDepths[i]
+                if pDepth < depths[0] or pDepth > depths[-1]:
+                    # the range in the slab temperature file
+                    # could be limited, so that invalid values
+                    # are skipped 
+                    continue
+                pTtop = Ttop_func(pDepth)
+                if pTtop > 0.0:
+                    if pTtop < pTtops_min[i]:
+                        pTtops_min[i] = pTtop
+                    if pTtop > pTtops_max[i]:
+                        pTtops_max[i] = pTtop
+                    pTtops_med[i] += pTtop * dtime
+                    pTtops_wt[i] += dtime
+                pTbot = Tbot_func(pDepth)
+                if pTbot > 0.0:
+                    # only deal with valid values
+                    if pTbot < pTbots_min[i]:
+                        pTbots_min[i] = pTbot
+                    if pTbot > pTbots_max[i]:
+                        pTbots_max[i] = pTbot
+                    pTbots_med[i] += pTbot * dtime
+                    pTbots_wt[i] += dtime
+        pTtops_med /= pTtops_wt
+        pTbots_med /= pTbots_wt
+        if debug:
+            print("pTbots_min: ")  # screen outputs
+            print(pTbots_min)
+            print("pTbots_max: ") 
+            print(pTbots_max)
+            print("pTbots_med: ")
+            print(pTbots_med)
+        # plot result of slab surface temperature
+        mask = ((pTbots_min > 0.0) & (pTbots_min < 1e4))
+        ax.plot(pTbots_min[mask], pDepths[mask]/1e3, "--", label="cmb T", color="tab:green")
+        mask = ((pTbots_max > 0.0) & (pTbots_max < 1e4))
+        ax.plot(pTbots_max[mask], pDepths[mask]/1e3, "--", color="tab:green")
+        mask = ((pTbots_med > 0.0) & (pTbots_med < 1e4))
+        ax.plot(pTbots_med[mask], pDepths[mask]/1e3, "-",  color="tab:green")
+        # plot result of cmb temperature
+        mask = ((pTtops_min > 0.0) & (pTtops_min < 1e4))
+        ax.plot(pTtops_min[mask], pDepths[mask]/1e3, "--", label="surface T", color="tab:blue")
+        mask = ((pTtops_max > 0.0) & (pTtops_max < 1e4))
+        ax.plot(pTtops_max[mask], pDepths[mask]/1e3, "--", color="tab:blue")
+        mask = ((pTtops_med > 0.0) & (pTtops_med < 1e4))
+        ax.plot(pTtops_med[mask], pDepths[mask]/1e3, "-",  color="tab:blue")
+        ax.set_xlim(xlims)
+        ax.set_ylim([ylims[0]/1e3, ylims[1]/1e3])
+        ax.set_ylabel("Depth (km)")
+        if use_degree:
+            ax.set_xlabel("Temperature (C)")
+        else:
+            ax.set_xlabel("Temperature (K)")
+            
+            
+
+
 class SLABMATERIAL(LINEARPLOT): 
     '''
     A class defined to plot the Slab materials (crust and harzburgite)
@@ -2086,6 +2623,15 @@ but will not generarte that file. Make sure all these files are updated, proceed
         ShearZoneGeometryCase(arg.inputs, time_interval=arg.time_interval, time_end=arg.time_end, time_start=arg.time_start)
     elif _commend == "plot_slab_material_time":
         PlotSlabMaterialTime(arg.inputs, arg.time)
+    elif _commend == "plot_slab_temperature":
+        PlotSlabTemperature(arg.inputs, int(arg.vtu_snapshot))
+    elif _commend == "slab_temperature_case":
+        SlabTemperatureCase(arg.inputs, rewrite=1, time_interval=arg.time_interval)
+    elif _commend == "plot_slab_temperature_case":
+        if arg.time_start > 0 or arg.time_end < 60e6:
+            PlotSlabTemperatureCase(arg.inputs, time_range=[arg.time_start, arg.time_end])
+        else:
+            PlotSlabTemperatureCase(arg.inputs)
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 

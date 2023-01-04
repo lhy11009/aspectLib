@@ -570,7 +570,7 @@ def OperateDataArrays(poly_data, names, operations):
     i = 0
     for _name in names:
         if is_first:
-            o_array = vtk_to_numpy(poly_data.GetArray(_name))
+            o_array = np.copy(vtk_to_numpy(poly_data.GetArray(_name)))
             is_first = False
         else:
             if operations[i] == 0:
