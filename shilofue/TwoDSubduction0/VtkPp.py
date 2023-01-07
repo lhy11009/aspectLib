@@ -104,6 +104,13 @@ Examples of usage: \n\
 \n\
   - Plot the outputs of slab temperature\n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_slab_temperature_case -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -ts 10e6 -te 60e6\n\
+\n\
+  - Generate the outputs of mantle wedge temperature\n\
+        python -m shilofue.TwoDSubduction0.VtkPp mantle_wedge_T_case -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -ti 0.5e6\n\
+\n\
+  - Plot the mantle wedge temperature\n\
+        python -m shilofue.TwoDSubduction0.VtkPp plot_wedge_T -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -ti 0.5e6\n\
+        (note the interval of time assigned needs to be the same as the mantle_wedge_T_case command)\n\
         ")
 
 
@@ -388,7 +395,6 @@ class VTKP(VtkPp.VTKP):
         theta100 = get_theta(x100, y100, self.geometry)
         self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
         pass
-
     
     
     def ExportSlabInfo(self):
@@ -522,6 +528,52 @@ class VTKP(VtkPp.VTKP):
             ys.append(y)
         cmb_envelop = np.array([xs, ys])
         return cmb_envelop.T
+
+    def ExportWedgeT(self, **kwargs):
+        '''
+        export the temperature in the mantle wedge
+        kwargs:
+            fileout - path for output temperature, if this is None,
+                      then no output is generated
+        '''
+        fileout = kwargs.get('fileout', None)
+        depth_lookup = 100e3
+        min_depth = 0.0
+        max_depth = 100e3
+        n_points = 100  # points for vtk interpolation
+        o_n_points = 200  # points for output
+        depths = np.linspace(0.0, max_depth, n_points)
+        o_depths = np.linspace(0.0, max_depth, o_n_points)
+        o_Ts = np.zeros(o_n_points)
+        # look up for the point on the slab that is 100 km deep
+        coord_lookup = self.SlabSurfDepthLookup(depth_lookup)
+        vProfile2D = self.VerticalProfile2D((self.Ro - max_depth, self.Ro),\
+                                            coord_lookup, n_points, fix_point_value=True)
+        Tfunc = vProfile2D.GetFunction('T')
+        outputs = "# 1: x (m)\n# 2: y (m)\n# 3: T\n"
+        is_first = True
+        for i in range(o_n_points):
+            depth = o_depths[i]
+            if self.geometry == "chunk":
+                radius = self.Ro - depth
+                x = radius * np.cos(coord_lookup)
+                y = radius * np.sin(coord_lookup)
+            elif self.geometry == "box":
+                x = coord_lookup
+                y = self.Ro - depth
+            T = Tfunc(self.Ro - depth)
+            o_Ts[i] = T
+            if is_first:
+                is_first = False
+            else:
+                outputs += "\n"
+            outputs += "%.4e %.4e %.4e" % (x, y, T)
+        if fileout is not None:
+            with open(fileout, 'w') as fout:
+                fout.write(outputs)
+            print("%s: write file %s" % (Utilities.func_name(), fileout))  # screen output
+        return o_depths, o_Ts
+
 
     def SlabBuoyancy(self, v_profile, depth_increment):
         '''
@@ -1318,6 +1370,27 @@ def SlabTemperature1(case_dir, vtu_snapshot, **kwargs):
     SlabTemperature(case_dir, vtu_snapshot, ofile=ofile, **kwargs)
 
 
+def WedgeT(case_dir, vtu_snapshot, **kwargs):
+    '''
+    export mantle temperature
+    '''
+    output_path = os.path.join(case_dir, "vtk_outputs")
+    if not os.path.isdir(output_path):
+        os.mkdir(output_path)
+    filein = os.path.join(case_dir, "output", "solution",\
+         "solution-%05d.pvtu" % (vtu_snapshot))
+    assert(os.path.isfile(filein))
+    VtkP = VTKP()
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density', 'spcrust', 'spharz']
+    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.PrepareSlab(['spcrust', 'spharz'])
+    # test 1 output slab grid & envelop
+    fileout = os.path.join(output_path, 'wedge_T100_%05d.txt' % (vtu_snapshot))
+    VtkP.ExportWedgeT(fileout=fileout)
+    assert(os.path.isfile(fileout))
+
+
 def ShearZoneGeometry(case_dir, vtu_snapshot, **kwargs):
     indent = kwargs.get("indent", 0)  # indentation for outputs
     assert(os.path.isdir(case_dir))
@@ -1437,6 +1510,24 @@ def PlotSlabTemperatureCase(case_dir, **kwargs):
     assert(os.path.isfile(fig_path))  # assert figure generation
     print("%s%s: figure generated %s" % (indent*" ", Utilities.func_name(), fig_path))
 
+
+def PlotWedgeTCase(case_dir, **kwargs):
+    '''
+    Plot the figure of the mantle wedge temperature
+    kwargs:
+        time_interval - the interval of time between two steps
+    '''
+    time_interval = kwargs.get("time_interval")
+    ofile = os.path.join(case_dir, 'img', "wedge_T_100.png")
+    SlabPlot = SLABPLOT('wedge_T')
+    fig, ax = plt.subplots(figsize=(10, 4)) 
+    ax, h = SlabPlot.PlotTWedge(case_dir, time_interval=time_interval, axis=ax)
+    fig.colorbar(h, ax=ax, label='T (K)') 
+    fig.savefig(ofile)
+    assert(os.path.isfile(ofile))
+    print("%s: output figure %s" % (Utilities.func_name(), ofile))
+
+
 ####
 # Case-wise functions
 ####
@@ -1475,11 +1566,6 @@ def SlabTemperatureCase(case_dir, **kwargs):
     # pvtu_steps_o, outputs = ParallelWrapper.assemble()
 
 
-
-
-####
-# Case-wise functions
-####
 def SlabMorphologyCase(case_dir, **kwargs):
     '''
     run vtk and get outputs for every snapshots
@@ -1539,6 +1625,41 @@ def SlabMorphologyCase(case_dir, **kwargs):
             for output in outputs:
                 fout.write("%s" % output)
         print('Updated output: %s' % output_file)
+
+
+def WedgeTCase(case_dir, **kwargs):
+    '''
+    run vtk and get outputs for every snapshots
+    Inputs:
+        kwargs:
+            time_interval: the interval between two processing steps
+    '''
+    # get all available snapshots
+    # the interval is choosen so there is no high frequency noises
+    time_interval = kwargs.get("time_interval", 0.5e6)
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+    available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval)
+    print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # debug
+    # get where previous session ends
+    vtk_output_dir = os.path.join(case_dir, 'vtk_outputs')
+    if not os.path.isdir(vtk_output_dir):
+        os.mkdir(vtk_output_dir)
+    # Initiation Wrapper class for parallel computation
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('wedgeT', WedgeT, if_rewrite=True, assemble=False, output_poly_data=False)
+    ParallelWrapper.configure(case_dir)  # assign case directory
+    # Remove previous file
+    print("%s: Delete old slab_temperature.txt file." % Utilities.func_name())
+    ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
+    num_cores = multiprocessing.cpu_count()
+    # loop for all the steps to plot
+    Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_snapshot)\
+    for pvtu_snapshot in available_pvtu_snapshots)  # first run in parallel and get stepwise output
+    ParallelWrapper.clear()
+    # for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
+    #    ParallelWrapper(pvtu_snapshot)
+    # pvtu_steps_o, outputs = ParallelWrapper.assemble()
     
 
 def PlotSlabForcesCase(case_dir, vtu_step, **kwargs):
@@ -1670,45 +1791,46 @@ class SLABPLOT(LINEARPLOT):
     '''
     def __init__(self, _name):
         LINEARPLOT.__init__(self, _name)
-        self.wedge_T_reader = LINEARPLOT('wedge_T')
  
-    def ReadWedgeT(self, case_dir, min_pvtu_step, max_pvtu_step, **kwargs):
-        time_interval_for_slab_morphology = 0.5e6  # hard in
-        i = 0
+    def ReadWedgeT(self, case_dir, **kwargs):
+        '''
+        read the wedge_T100 files and rearrange data
+        '''
+        time_interval = kwargs.get("time_interval", 0.5e6)
+        # read inputs
+        prm_file = os.path.join(case_dir, 'output', 'original.prm')
+        assert(os.access(prm_file, os.R_OK))
+        self.ReadPrm(prm_file)
         initial_adaptive_refinement = int(self.prm['Mesh refinement']['Initial adaptive refinement'])
         geometry = self.prm['Geometry model']['Model name']
         if geometry == 'chunk':
             Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
         elif geometry == 'box':
-            Do = float(self.prm['Geometry model']['Box']['Y extent'])
+            Ro = float(self.prm['Geometry model']['Box']['Y extent'])
         else:
             raise ValueError('Invalid geometry')
         Visit_Options = VISIT_OPTIONS(case_dir)
         Visit_Options.Interpret()
         # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
-        available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
-        # for pvtu_step in range(min_pvtu_step + initial_adaptive_refinement, max_pvtu_step + initial_adaptive_refinement + 1):
+        available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval)
+        i = 0
         for pvtu_step in available_pvtu_snapshots:
             file_in_path = os.path.join(case_dir, 'vtk_outputs', 'wedge_T100_%05d.txt' % pvtu_step)
+            print("file_in_path: ", file_in_path)  # debug
             Utilities.my_assert(os.access(file_in_path, os.R_OK), FileExistsError, "File %s doesn\'t exist" % file_in_path)
-            self.wedge_T_reader.ReadHeader(file_in_path)
-            self.wedge_T_reader.ReadData(file_in_path)
-            col_x = self.wedge_T_reader.header['x']['col']
-            col_y = self.wedge_T_reader.header['y']['col']
-            col_T = self.wedge_T_reader.header['T']['col']
-            xs = self.wedge_T_reader.data[:, col_x]
-            ys = self.wedge_T_reader.data[:, col_y]
+            self.ReadHeader(file_in_path)
+            self.ReadData(file_in_path)
+            col_x = self.header['x']['col']
+            col_y = self.header['y']['col']
+            col_T = self.header['T']['col']
+            xs = self.data[:, col_x]
+            ys = self.data[:, col_y]
             if i == 0: 
                 rs = (xs**2.0 + ys**2.0)**0.5
-                if geometry == 'chunk':
-                    depthes = Ro - rs # compute depth
-                elif geometry == 'box':
-                    depthes = Do - rs # compute depth
-                else:
-                    raise ValueError('Invalid geometry')
+                depthes = Ro - rs # compute depth
                 # Ts = np.zeros((depthes.size, max_pvtu_step - min_pvtu_step + 1))
                 Ts = np.zeros((depthes.size, len(available_pvtu_snapshots)))
-            Ts[:, i] = self.wedge_T_reader.data[:, col_T]
+            Ts[:, i] = self.data[:, col_T]
             i += 1
         return depthes, Ts
 
@@ -1832,24 +1954,38 @@ class SLABPLOT(LINEARPLOT):
             ax.set_ylabel('Depth (km)')
             ax.grid()
             ax.legend()
-        
-        # 3: wedge temperature
-#        depthes, Ts = self.ReadWedgeT(case_dir, int(pvtu_steps[0]), int(pvtu_steps[-1]))
-#        tt, dd = np.meshgrid(times, depthes)
-#        ax = fig.add_subplot(gs[2, 0:2]) 
-#        h = ax.pcolormesh(tt/1e6,dd/1e3,Ts, shading='gouraud') 
-#        ax.invert_yaxis()
-#        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
-#        ax.set_xlabel('Times (Myr)')
-#        ax.set_ylabel('Depth (km)')
-#        ax = fig.add_subplot(gs[2, 2])
-#        ax.axis('off') 
-#        fig.colorbar(h, ax=ax, label='T (K)') 
         fig.tight_layout()
         # save figure
         o_path = os.path.join(morph_dir, 'trench.png')
         plt.savefig(o_path)
         print("%s: figure %s generated" % (Utilities.func_name(), o_path))
+
+    def PlotTWedge(self, case_dir, **kwargs):
+        '''
+        plot the mantle wedge temperature on top of the 100-km deep slab.
+        '''
+        time_interval = kwargs.get("time_interval", 0.5e6)
+        ax = kwargs.get('axis', None)
+        if ax == None:
+            raise ValueError("Not implemented")
+        depthes, Ts = self.ReadWedgeT(case_dir)
+        Visit_Options = VISIT_OPTIONS(case_dir)
+        Visit_Options.Interpret()
+        available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval)
+        print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # debug
+        times = []
+        for snapshot in available_pvtu_snapshots:
+            _time, _ = Visit_Options.get_time_and_step_by_snapshot(snapshot)
+            times.append(_time)
+        times = np.array(times)
+        tt, dd = np.meshgrid(times, depthes)
+        h = ax.pcolormesh(tt/1e6,dd/1e3,Ts, shading='gouraud') 
+        ax.invert_yaxis()
+        ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+        ax.set_xlabel('Times (Myr)')
+        ax.set_ylabel('Depth (km)')
+        return ax, h
+
     
     def PlotTrenchVelocity(self, case_dir, **kwargs):
         '''
@@ -2609,6 +2745,8 @@ def main():
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
         SlabPlot.PlotMorph(arg.inputs)
+    elif _commend == 'plot_wedge_T':
+        PlotWedgeTCase(arg.inputs, time_interval=arg.time_interval)
     elif _commend == 'combine_slab_morph':
         # combine plot of slab morphology
         _continue = input("This option will plot the data in the vtk_outputs/slab_morph.txt file, \
@@ -2627,6 +2765,8 @@ but will not generarte that file. Make sure all these files are updated, proceed
         PlotSlabTemperature(arg.inputs, int(arg.vtu_snapshot))
     elif _commend == "slab_temperature_case":
         SlabTemperatureCase(arg.inputs, rewrite=1, time_interval=arg.time_interval)
+    elif _commend == "mantle_wedge_T_case":
+        WedgeTCase(arg.inputs, time_interval=arg.time_interval)
     elif _commend == "plot_slab_temperature_case":
         if arg.time_start > 0 or arg.time_end < 60e6:
             PlotSlabTemperatureCase(arg.inputs, time_range=[arg.time_start, arg.time_end])

@@ -271,8 +271,12 @@ import data takes %f, interpolate cell center data takes %f"\
             n (int): number of point in the profile
             kwargs (dict):
                 geometry: spherical or cartesian
+                fix_point_value: fix invalid value indicated by zero temperature
+                                these points exist as a result of interpolation
+                                in adaptive meshes.
         '''
         geometry = kwargs.get('geometry', 'chunk')
+        fix_point_value = kwargs.get('fix_point_value', False)
         assert(len(x0_range) == 2)
         points = np.zeros((n, 2))
         x0s = np.linspace(x0_range[0], x0_range[1], n)
@@ -291,12 +295,23 @@ import data takes %f, interpolate cell center data takes %f"\
         point_data = v_poly_data.GetPointData()
         fields = []
         field_names = []
+        fix_value_mask = None
         for i in range(point_data.GetNumberOfArrays()):
             field_name = point_data.GetArrayName(i)
             field = vtk_to_numpy(point_data.GetArray(field_name))
             field_names.append(field_name)
             fields.append(field)
-        v_profile = VERTICAL_PROFILE(x0s, field_names, fields, uniform=True)
+            if fix_point_value and field_name == "T":
+                # only take the valid point value (T = 0.0)
+                fix_value_mask = (field > 1e-6)
+        fields1 = []
+        if fix_value_mask is not None:
+            x0s = x0s[fix_value_mask]
+            for field in fields:
+                fields1.append(field[fix_value_mask])
+        else:
+            fields1 = fields
+        v_profile = VERTICAL_PROFILE(x0s, field_names, fields1, uniform=True)
         return v_profile
     
     def StaticPressure(self, x0_range, x1, n, **kwargs):

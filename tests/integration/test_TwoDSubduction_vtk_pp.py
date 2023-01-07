@@ -43,6 +43,31 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
+def test_wedge_T():
+    '''
+    Test wedge temperature
+    '''
+    case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp')
+    output_path = os.path.join(test_dir, "vtkp_wedge_T")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    os.mkdir(output_path)
+    filein = os.path.join(case_dir, "output", "solution", "solution-00002.pvtu")
+    assert(os.path.isfile(filein))
+    VtkP = VTKP()
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density', 'spcrust', 'spharz']
+    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.PrepareSlab(['spcrust', 'spharz'])
+    # test 1 output slab grid & envelop
+    fileout = os.path.join(output_path, 'wedge_T100.txt')
+    VtkP.ExportWedgeT(fileout=fileout)
+    fileout_std = os.path.join(case_dir, 'wedge_T100_std.txt')
+    assert(os.path.isfile(fileout))
+    assert(filecmp.cmp(fileout_std, fileout))  # compare file extent
+
+
+
 def test_prepare_slab():
     '''
     Test utilities from VtkPp.py
