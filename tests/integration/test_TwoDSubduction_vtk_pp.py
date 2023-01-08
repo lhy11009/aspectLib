@@ -271,3 +271,43 @@ def test_find_mdd():
     assert(abs(mdd - 7.9729e+04) / 7.9729e+04 < 1e-3) # check the mdd value
     pass
 
+
+def test_trench_T():
+    '''
+    Test trench temperature
+    '''
+    case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp')
+    output_path = os.path.join(test_dir, "vtkp_trench_T")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    os.mkdir(output_path)
+    filein = os.path.join(case_dir, "output", "solution", "solution-00002.pvtu")
+    assert(os.path.isfile(filein))
+    VtkP = VTKP()
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density', 'spcrust', 'spharz']
+    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.PrepareSlab(['spcrust', 'spharz'])
+    # test 1 output slab grid & envelop
+    fileout = os.path.join(output_path, 'trench_T.txt')
+    VtkP.ExportTrenchT(fileout=fileout)
+    fileout_std = os.path.join(case_dir, 'trench_T_std.txt')
+    assert(os.path.isfile(fileout))
+    assert(filecmp.cmp(fileout_std, fileout))  # compare file extent
+
+
+def test_fit_trench_T():
+    '''
+    test fitting an age of the subducting plate to the trench temperature profile
+    '''
+    case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp')
+    output_path = os.path.join(case_dir, 'vtk_outputs')
+    if os.path.isdir(output_path):
+        rmtree(output_path)
+    vtu_snapshot = 2
+    # export the trench temperature
+    TrenchT(case_dir, vtu_snapshot)
+    SlabPlot = SLABPLOT('trench_T')
+    age_myr_std = 77.78356193082101
+    age_myr = SlabPlot.FitTrenchT(case_dir, vtu_snapshot)
+    assert(abs(age_myr - age_myr_std)/age_myr_std < 1e-6)

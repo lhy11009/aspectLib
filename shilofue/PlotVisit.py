@@ -282,7 +282,7 @@ class PARALLEL_WRAPPER_FOR_VTK():
         self.module = module
         self.last_pvtu_step = kwargs.get('last_pvtu_step', -1)
         self.if_rewrite = kwargs.get('if_rewrite', False)
-        self.assemble = kwargs.get('assemble', True)
+        self.do_assemble = kwargs.get('assemble', True)
         self.kwargs = kwargs
         self.pvtu_steps = []
         self.outputs = []
@@ -314,7 +314,7 @@ class PARALLEL_WRAPPER_FOR_VTK():
                 pvtu_step = int(fin.readline())
                 output = fin.readline()
         else:
-            if self.assemble:    
+            if self.do_assemble:    
                 # here the outputs from individual steps are combined together
                 if pvtu_step == 0:
                     # start new file with the 0th step
@@ -334,7 +334,6 @@ class PARALLEL_WRAPPER_FOR_VTK():
                     self.module(self.case_dir, pvtu_step, new=True, **self.kwargs)
                 else:
                     self.module(self.case_dir, pvtu_step, **self.kwargs)
-                
         return 0
     
     def assemble(self):

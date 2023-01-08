@@ -35,6 +35,7 @@ from numpy import linalg as LA
 import multiprocessing
 import warnings
 from scipy.interpolate import interp1d 
+from scipy.optimize import minimize
 #### self
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
@@ -111,6 +112,14 @@ Examples of usage: \n\
   - Plot the mantle wedge temperature\n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_wedge_T -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -ti 0.5e6\n\
         (note the interval of time assigned needs to be the same as the mantle_wedge_T_case command)\n\
+\n\
+  - Plot the thermal state of the slab\n\
+        python -m shilofue.TwoDSubduction0.VtkPp plot_slab_thermal -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -ti 0.5e6\n\
+        (note the slab_morph.txt must be present)\n\
+\n\
+  - Plot the slab age intepreted from the thermal state of the trench\n\
+        python -m shilofue.TwoDSubduction0.VtkPp plot_slab_age_from_T -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -ti 0.5e6\n\
+        (note the trench_T.txt files need to be present)
         ")
 
 
@@ -121,7 +130,7 @@ class VTKP(VtkPp.VTKP):
         slab_cells: cell id of internal points in the slab
         slab_envelop_cell_list0: cell id of slab envelop with smaller theta, slab bottom
         slab_envelop_cell_list1: cell id of slab envelop with bigger theta, slab surface
-        slab_trench: trench position, theta for a 'chunk' model and x for a 'box' model
+        trench: trench position, theta for a 'chunk' model and x for a 'box' model
         coord_100: position where slab is 100km deep, theta for a 'chunk' model and x for a 'box' model
         vsp : velocity of the subducting plate
         vov : velocity of the overiding plate
@@ -142,7 +151,7 @@ class VTKP(VtkPp.VTKP):
         self.cmb_envelop_cell_list = []
         self.sz_geometry = None
         self.slab_depth = None
-        self.slab_trench = None
+        self.trench = None
         self.coord_100 = None 
         self.dip_100 = None
         self.vsp = None
@@ -403,10 +412,14 @@ class VTKP(VtkPp.VTKP):
         '''
         return self.trench, self.slab_depth, self.dip_100
 
-    def ExportVelocity(self):
+    def ExportVelocity(self, **kwargs):
         '''
         Output sp and ov plate velocity
+        Inputs:
+            kwargs:
+                project_velocity - whether the velocity is projected to the tangential direction
         '''
+        project_velocity = kwargs.get('project_velocity', False)
         assert(self.trench is not None)
         if self.geometry == "chunk":
             r_sp_query = self.Ro - self.velocity_query_depth
@@ -433,8 +446,16 @@ class VTKP(VtkPp.VTKP):
         query_grid[1, 1] = y_ov_query
         query_poly_data = VtkPp.InterpolateGrid(self.i_poly_data, query_grid, quiet=True)
         query_vs = vtk_to_numpy(query_poly_data.GetPointData().GetArray('velocity'))
-        self.vsp = query_vs[0, :]
-        self.vov = query_vs[1, :]
+        if project_velocity:
+            cos_sp = x_sp_query / (x_sp_query**2.0 + y_sp_query**2.0)**0.5
+            sin_sp = y_sp_query / (x_sp_query**2.0 + y_sp_query**2.0)**0.5
+            self.vsp = query_vs[0, 0] * (-sin_sp) + query_vs[0, 1] * cos_sp
+            cos_ov = x_ov_query / (x_ov_query**2.0 + y_ov_query**2.0)**0.5
+            sin_ov = y_ov_query / (x_ov_query**2.0 + y_ov_query**2.0)**0.5
+            self.vov = query_vs[1, 0] * (-sin_ov) + query_vs[1, 1] * cos_ov
+        else:
+            self.vsp = query_vs[0, :]
+            self.vov = query_vs[1, :]
         return self.vsp, self.vov
 
     def SlabSurfDepthLookup(self, depth_lkp):
@@ -532,9 +553,10 @@ class VTKP(VtkPp.VTKP):
     def ExportWedgeT(self, **kwargs):
         '''
         export the temperature in the mantle wedge
-        kwargs:
-            fileout - path for output temperature, if this is None,
-                      then no output is generated
+        Inputs:
+            kwargs:
+                fileout - path for output temperature, if this is None,
+                        then no output is generated
         '''
         fileout = kwargs.get('fileout', None)
         depth_lookup = 100e3
@@ -574,6 +596,58 @@ class VTKP(VtkPp.VTKP):
             print("%s: write file %s" % (Utilities.func_name(), fileout))  # screen output
         return o_depths, o_Ts
 
+    def ExportTrenchT(self, **kwargs):
+        '''
+        export the temperature in the mantle wedge
+        Inputs:
+            trench: coordinate of trench position (theta or x)
+            kwargs:
+                fileout - path for output temperature, if this is None,
+                        then no output is generated
+        '''
+        assert(self.trench is not None)  # assert that the trench posiiton is processed
+        fileout = kwargs.get('fileout', None)
+        distance_to_trench = 200e3
+        # the point to look up needs to be on the the subducting plate
+        if self.geometry == 'box':
+            lookup = self.trench - distance_to_trench
+        elif self.geometry == 'chunk':
+            lookup = self.trench - distance_to_trench / self.Ro
+        depth_lookup = 100e3
+        min_depth = 0.0
+        max_depth = 100e3
+        n_points = 100  # points for vtk interpolation
+        o_n_points = 200  # points for output
+        depths = np.linspace(0.0, max_depth, n_points)
+        o_depths = np.linspace(0.0, max_depth, o_n_points)
+        o_Ts = np.zeros(o_n_points)
+        # look up for the point on the slab that is 100 km deep
+        vProfile2D = self.VerticalProfile2D((self.Ro - max_depth, self.Ro),\
+                                            lookup, n_points, fix_point_value=True)
+        Tfunc = vProfile2D.GetFunction('T')
+        outputs = "# 1: x (m)\n# 2: y (m)\n# 3: depth (m)\n# 4: T (K)\n"
+        is_first = True
+        for i in range(o_n_points):
+            depth = o_depths[i]
+            if self.geometry == "chunk":
+                radius = self.Ro - depth
+                x = radius * np.cos(lookup)
+                y = radius * np.sin(lookup)
+            elif self.geometry == "box":
+                x = lookup
+                y = self.Ro - depth
+            T = Tfunc(self.Ro - depth)
+            o_Ts[i] = T
+            if is_first:
+                is_first = False
+            else:
+                outputs += "\n"
+            outputs += "%.4e %.4e %.4e %.4e" % (x, y, depth, T)
+        if fileout is not None:
+            with open(fileout, 'w') as fout:
+                fout.write(outputs)
+            print("%s: write file %s" % (Utilities.func_name(), fileout))  # screen output
+        return o_depths, o_Ts
 
     def SlabBuoyancy(self, v_profile, depth_increment):
         '''
@@ -827,6 +901,84 @@ def get_dip(x0, y0, x1, y1, geometry):
     else:
         raise ValueError("not implemented")
     return dip
+
+
+class T_FIT_FUNC():
+    '''Residual functions'''
+    def __init__(self, depth_to_fit, T_to_fit, **kwargs):
+        '''
+        Inputs:
+            depth_to_fit - an array of depth
+            T_to_fit - an array of temperature to fit
+            kwargs:
+                potential_temperature - mantle potential temperature
+
+        '''
+        self.depth_to_fit = depth_to_fit
+        self.T_fit = T_to_fit
+        self.potential_temperature = kwargs.get('potential_temperature', 1673.0)
+
+    def PlateModel(self, xs):
+        '''
+        Inputs:
+            xs - an array of non-dimensioned variables
+        '''
+        Ts = []
+        seconds_in_yr = 3600.0 * 24 * 365
+        age = xs[0] * 40 * seconds_in_yr * 1e6
+        for depth in self.depth_to_fit:
+            Ts.append(plate_model_temperature(depth, age=age, potential_temperature=self.potential_temperature))
+        return np.linalg.norm(Ts - self.T_fit, 2.0)
+
+
+def plate_model_temperature(depth, **kwargs):
+    '''
+    Use plate model to compute the temperature, migrated from the world builder
+    in order to generate consistent result with the world builder.
+    Inputs:
+        x - distance to ridge, in meter
+        depth - depth under the surface
+        kwargs:
+            plate_velocity - velocity of the plate, if this value is given, then the
+                            distance to the ridge is also needed.
+            distance_ridge - distance to the ridge
+            age - age of the plate
+    '''
+    plate_velocity = kwargs.get('plate_velocity', None)
+    if plate_velocity is None:
+        age = kwargs['age']
+    else:
+        distance_ridge = kwargs['distance_ridge']
+        age = distance_ridge / plate_velocity
+    max_depth = kwargs.get('max_depth', 150e3)
+    potential_mantle_temperature = kwargs.get('potential_temperature', 1673.0)
+    top_temperature = kwargs.get('top_temperature', 273.0)
+    thermal_diffusivity = 1e-6
+    thermal_expansion_coefficient = 3e-5
+    gravity_norm = 10.0
+    specific_heat = 1250.0
+    sommation_number = 100 # same as in the World Builder
+    bottom_temperature_local = potential_mantle_temperature *\
+                            np.exp(((thermal_expansion_coefficient* gravity_norm) / specific_heat) * depth)
+
+    temperature = top_temperature + (bottom_temperature_local - top_temperature) * (depth / max_depth)
+
+    for i in range(1, sommation_number+1):
+        # suming over the "sommation_number"
+        # use a spreading ridge around the left corner and a constant age around the right corner 
+        if plate_velocity is not None:
+            temperature = temperature + (bottom_temperature_local - top_temperature) *\
+                        ((2.0 / (i * np.pi)) * np.sin((i * np.pi * depth) / max_depth) *\
+                         np.exp((((plate_velocity * max_depth)/(2 * thermal_diffusivity)) -\
+                                   np.sqrt(((plate_velocity*plate_velocity*max_depth*max_depth) /\
+                                              (4*thermal_diffusivity*thermal_diffusivity)) + i * i * np.pi * np.pi)) *\
+                                  ((plate_velocity * age) / max_depth)))
+        else:
+            temperature = temperature + (bottom_temperature_local - top_temperature) *\
+                        ((2.0 / (i * np.pi)) * np.sin((i * np.pi * depth) / max_depth) *\
+                         np.exp(-1.0 * i * i * np.pi * np.pi * thermal_diffusivity * age / (max_depth * max_depth)))
+    return temperature 
+
     
 
 ####
@@ -950,9 +1102,12 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     Inputs:
         case_dir (str): case directory
         vtu_snapshot (int): index of file in vtu outputs
+        kwargs:
+            project_velocity - whether the velocity is projected to the tangential direction
     '''
     indent = kwargs.get("indent", 0)  # indentation for outputs
     findmdd = kwargs.get("findmdd", False)
+    project_velocity = kwargs.get('project_velocity', False)
     mdd = -1.0 # an initial value
     print("%s%s: Start" % (indent*" ", Utilities.func_name()))
     output_slab = kwargs.get('output_slab', False)
@@ -999,14 +1154,17 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
     # process trench, slab depth, dip angle
     trench, slab_depth, dip_100 = VtkP.ExportSlabInfo()
-    vsp, vov = VtkP.ExportVelocity()
-    vsp_magnitude = np.linalg.norm(vsp, 2)
-    vov_magnitude = np.linalg.norm(vov, 2)
+    if project_velocity:
+        vsp_magnitude, vov_magnitude = VtkP.ExportVelocity(project_velocity=True)
+    else:
+        vsp, vov = VtkP.ExportVelocity()
+        vsp_magnitude = np.linalg.norm(vsp, 2)
+        vov_magnitude = np.linalg.norm(vov, 2)
     # generate outputs
     outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e"\
     % (vtu_step, step, _time, trench, slab_depth, dip_100, vsp_magnitude, vov_magnitude)
     if findmdd:
-        outputs += "%-14.4e\n" % (mdd)
+        outputs += "%-14.4e" % (mdd)
     outputs += "\n"
     print("%s%s" % (indent*" ", outputs)) # debug
     return vtu_step, outputs
@@ -1390,6 +1548,28 @@ def WedgeT(case_dir, vtu_snapshot, **kwargs):
     VtkP.ExportWedgeT(fileout=fileout)
     assert(os.path.isfile(fileout))
 
+def TrenchT(case_dir, vtu_snapshot, **kwargs):
+    '''
+    Export the trench temperature profiles
+    '''
+    filein = os.path.join(case_dir, "output", "solution",\
+         "solution-%05d.pvtu" % (vtu_snapshot))
+    output_path = os.path.join(case_dir, 'vtk_outputs')
+    if not os.path.isdir(output_path):
+        os.mkdir(output_path)
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    fileout =  os.path.join(output_path, 'trench_T_%05d.txt' % (vtu_step))
+    assert(os.path.isfile(filein))
+    VtkP = VTKP()
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density', 'spcrust', 'spharz']
+    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.PrepareSlab(['spcrust', 'spharz'])
+    VtkP.ExportTrenchT(fileout=fileout)
+    assert(os.path.isfile(fileout))
+
 
 def ShearZoneGeometry(case_dir, vtu_snapshot, **kwargs):
     indent = kwargs.get("indent", 0)  # indentation for outputs
@@ -1565,16 +1745,18 @@ def SlabTemperatureCase(case_dir, **kwargs):
     #    ParallelWrapper(pvtu_snapshot)
     # pvtu_steps_o, outputs = ParallelWrapper.assemble()
 
-
 def SlabMorphologyCase(case_dir, **kwargs):
     '''
     run vtk and get outputs for every snapshots
     Inputs:
         kwargs:
             rewrite: if rewrite previous results
+            project_velocity - whether the velocity is projected to the tangential direction
     '''
-    if_rewrite = kwargs.get('rewrite', 0)
     findmdd = kwargs.get('findmdd', False)
+    project_velocity = kwargs.get('project_velocity', False)
+    # todo_parallel
+    use_parallel = kwargs.get('use_parallel', False)
     # get all available snapshots
     # the interval is choosen so there is no high frequency noises
     time_interval_for_slab_morphology = kwargs.get("time_interval", 0.5e6)
@@ -1590,22 +1772,24 @@ def SlabMorphologyCase(case_dir, **kwargs):
         os.mkdir(vtk_output_dir)
     slab_morph_file = os.path.join(vtk_output_dir, 'slab_morph.txt')
     # Initiation Wrapper class for parallel computation
-    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology, if_rewrite=True, findmdd=findmdd)
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology, if_rewrite=True, findmdd=findmdd, project_velocity=project_velocity)
     ParallelWrapper.configure(case_dir)  # assign case directory
     # Remove previous file
-    if if_rewrite:
-        if os.path.isfile(slab_morph_file):
-            print("%s: Delete old slab_morph.txt file." % Utilities.func_name())
-            os.remove(slab_morph_file)  # delete slab morph file
-        ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
+    if os.path.isfile(slab_morph_file):
+        print("%s: Delete old slab_morph.txt file." % Utilities.func_name())
+        os.remove(slab_morph_file)  # delete slab morph file
+    ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
     num_cores = multiprocessing.cpu_count()
-    # loop for all the steps to plot
-    # Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_snapshot)\
-    # for pvtu_snapshot in available_pvtu_snapshots)  # first run in parallel and get stepwise output
+    # loop for all the steps to plot, the parallel version doesn't work for now
+    if use_parallel:
+        raise NotImplementedError("Parallel for the function %s is not properly implemented yet" % Utilities.func_name())
+        Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_snapshot)\
+        for pvtu_snapshot in available_pvtu_snapshots)  # first run in parallel and get stepwise output
+    else:
+        for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
+            ParallelWrapper(pvtu_snapshot)
+        pvtu_steps_o, outputs = ParallelWrapper.assemble()
     ParallelWrapper.clear()
-    for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
-        ParallelWrapper(pvtu_snapshot)
-    pvtu_steps_o, outputs = ParallelWrapper.assemble()
     # last, output
     # header
     file_header = "# 1: pvtu_step\n# 2: step\n# 3: time (yr)\n# 4: trench (rad)\n# 5: slab depth (m)\n\
@@ -1660,6 +1844,42 @@ def WedgeTCase(case_dir, **kwargs):
     # for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
     #    ParallelWrapper(pvtu_snapshot)
     # pvtu_steps_o, outputs = ParallelWrapper.assemble()
+
+
+def TrenchTCase(case_dir, **kwargs):
+    '''
+    run vtk and get outputs of trench temperature profile for every snapshots
+    Inputs:
+        case_dir: the directory of case
+        kwargs:
+            time_interval: the interval between two processing steps
+    '''
+    # get all available snapshots
+    # the interval is choosen so there is no high frequency noises
+    time_interval = kwargs.get("time_interval", 0.5e6)
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+    available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval)
+    print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # debug
+    # get where previous session ends
+    vtk_output_dir = os.path.join(case_dir, 'vtk_outputs')
+    if not os.path.isdir(vtk_output_dir):
+        os.mkdir(vtk_output_dir)
+    # Initiation Wrapper class for parallel computation
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('trenchT', TrenchT, if_rewrite=True, assemble=False, output_poly_data=False)
+    ParallelWrapper.configure(case_dir)  # assign case directory
+    # Remove previous file
+    print("%s: Delete old slab_temperature.txt file." % Utilities.func_name())
+    ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
+    num_cores = multiprocessing.cpu_count()
+    # loop for all the steps to plot
+    Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_snapshot)\
+    for pvtu_snapshot in available_pvtu_snapshots)  # first run in parallel and get stepwise output
+    ParallelWrapper.clear()
+    # for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
+    #    ParallelWrapper(pvtu_snapshot)
+    # pvtu_steps_o, outputs = ParallelWrapper.assemble()
     
 
 def PlotSlabForcesCase(case_dir, vtu_step, **kwargs):
@@ -1687,6 +1907,7 @@ def PlotSlabForcesCase(case_dir, vtu_step, **kwargs):
         os.mkdir(img_dir)
     fig_ofile = os.path.join(img_dir, "slab_forces_%05d.png" % vtu_step)
     PlotSlabForces(ofile, fig_ofile)
+
 
 
 def PlotSlabShape(in_dir, vtu_step):
@@ -2425,9 +2646,227 @@ class SLABPLOT(LINEARPLOT):
             ax.set_xlabel("Temperature (C)")
         else:
             ax.set_xlabel("Temperature (K)")
-            
-            
 
+
+    def FitTrenchT(self, case_dir, vtu_snapshot):
+        '''
+        fit the trench temperature
+        '''
+        prm_file = os.path.join(case_dir, 'output', 'original.prm')
+        Utilities.my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,
+                'BASH_OPTIONS.__init__: case prm file - %s cannot be read' % prm_file)
+        with open(prm_file, 'r') as fin:
+            idict = ParseFromDealiiInput(fin)
+        potential_temperature = idict.get('Adiabatic surface temperature', 1673.0)
+        # read the temperature and depth profile
+        Visit_Options = VISIT_OPTIONS(case_dir)
+        Visit_Options.Interpret()
+        vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+        trench_T_file = os.path.join(case_dir, 'vtk_outputs', 'trench_T_%05d.txt' % (vtu_step))
+        assert(os.path.isfile(trench_T_file))
+        self.ReadHeader(trench_T_file)
+        self.ReadData(trench_T_file)
+        col_depth = self.header['depth']['col']
+        col_T = self.header['T']['col']
+        depths = self.data[:, col_depth]
+        Ts = self.data[:, col_T]
+        tFitFunc = T_FIT_FUNC(depths, Ts, potential_temperature=1573.0)
+        x0 = [1.0]  # variables: age; scaling: 40 Ma
+        res = minimize(tFitFunc.PlateModel, x0)
+        age_myr = res.x[0] * 40.0 # Ma
+        print('step: ', vtu_step, 'age_myr: ', age_myr)
+        return age_myr
+
+    def GetSlabMorph(self, case_dir):
+        '''
+        read the slab_morph file
+        '''
+        morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+        assert(os.path.isfile(morph_file))
+        self.ReadHeader(morph_file)
+        self.ReadData(morph_file)
+        col_sp_velocity = self.header['subducting_plate_velocity']['col']
+        col_ov_velocity = self.header['overiding_plate_velocity']['col']
+        col_dip = self.header['100km_dip']['col']
+        col_time = self.header['time']['col']
+        col_trench = self.header['trench']['col']
+        times = self.data[:, col_time]
+        sp_velocities = self.data[:, col_sp_velocity]
+        ov_velocities = self.data[:, col_ov_velocity]
+        trenches = self.data[:, col_trench]
+        dips = self.data[:, col_dip]
+        conv_velocities = sp_velocities - ov_velocities
+        return times, sp_velocities, ov_velocities, dips, trenches
+
+    def GetAgeTrench(self, case_dir, use_thermal=True, **kwargs):
+        '''
+        get the ages of the subducting plate at the trench
+        Inputs:
+            kwargs:
+                time_interval - interval between steps
+        '''
+        time_interval = kwargs.get('time_interval', 0.5e6)
+        Visit_Options = VISIT_OPTIONS(case_dir)
+        Visit_Options.Interpret()
+        if use_thermal:
+            # use thermal option would fit the temperature at the trench for the individual steps
+            # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+            available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval)
+            print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # debug
+            age_trenchs = []
+            times = []
+            for pvtu_snapshot in available_pvtu_snapshots:
+                vtu_step = max(0, int(pvtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+                output_path = os.path.join(case_dir, "vtk_outputs")
+                temp_file = os.path.join(output_path, "trench_T_%05d.txt" % (vtu_step))
+                assert(os.access(temp_file, os.R_OK))
+            for pvtu_snapshot in available_pvtu_snapshots:
+                vtu_step = max(0, int(pvtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+                _time, _ = Visit_Options.get_time_and_step(vtu_step)
+                times.append(_time)
+                age_trench = self.FitTrenchT(case_dir, pvtu_snapshot)
+                age_trenchs.append(age_trench)
+            times = np.array(times)
+            age_trenchs = np.array(age_trenchs)
+        else:
+            morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+            self.ReadHeader(morph_file)
+            self.ReadData(morph_file)
+            assert(os.path.isfile(morph_file))
+            # read the geometry & Ro
+            prm_file = os.path.join(case_dir, 'output', 'original.prm')
+            assert(os.access(prm_file, os.R_OK))
+            self.ReadPrm(prm_file)
+            # read parameters
+            geometry = self.prm['Geometry model']['Model name']
+            if geometry == 'chunk':
+                Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+            elif geometry == 'box':
+                Ro =  float(self.prm['Geometry model']['box']["Y extent"])
+            # read the spreading velocity 
+            wb_file = os.path.join(case_dir, 'case.wb')
+            assert(os.path.isfile(wb_file))
+            with open(wb_file, 'r') as fin:
+                wb_dict = json.load(fin)
+            i0 = FindWBFeatures(wb_dict, 'Subducting plate')
+            sp_dict = wb_dict['features'][i0]
+            trench_ini = sp_dict['coordinates'][2][0] * np.pi / 180.0
+            spreading_velocity = sp_dict['temperature models'][0]['spreading velocity']
+            # read data in slab_morph.txt
+            col_time = self.header['time']['col']
+            col_trench = self.header['trench']['col']
+            col_sp_velocity = self.header['subducting_plate_velocity']['col']
+            times = self.data[:, col_time]
+            trenchs = self.data[:, col_trench]
+            sp_velocities = self.data[:, col_sp_velocity]
+            # correction on the trench coordinates
+            trench_correction = trench_ini - trenchs[0]
+            trenchs = trenchs + trench_correction
+            age_trenchs = []
+            is_first = True
+            dist = 0.0
+            time_last = 0.0
+            for i in range(times.size):
+                _time = times[i]
+                sp_velocity = sp_velocities[i]
+                trench = trenchs[i]
+                dtime = _time - time_last 
+                if is_first:
+                    is_first = False
+                else:
+                    dist += sp_velocity * dtime
+                time_last = _time
+                # first part is the initial age of the material at the trench
+                if geometry == 'box':
+                    age = (trench - dist) / spreading_velocity + _time
+                elif geometry == 'chunk':
+                    age = (trench * Ro - dist) / spreading_velocity + _time
+                age_trenchs.append(age)
+            age_trenchs = np.array(age_trenchs)
+        return times, age_trenchs
+
+
+    def PlotTrenchAge(self, case_dir, **kwargs):
+        '''
+        plot the age of the trench
+        Inputs:
+            kwargs:
+                time_interval - interval between steps
+        '''
+        time_interval = kwargs.get('time_interval', 0.5e6)
+        ax = kwargs.get('axis', None)
+        use_thermal = kwargs.get('use_thermal', True)
+        # options for slab temperature outputs
+        times, age_trenchs = self.GetAgeTrench(case_dir, use_thermal, time_interval=time_interval)
+        if use_thermal:
+            figure_label = "age of the trench (%s)" % "thermally interpreted"
+        else:
+            figure_label = "age of the trench (%s)" % "motion reconstruction"
+        ax.plot(times/1e6, age_trenchs, label=figure_label)
+        ax.set_xlabel("Time (Ma)")
+        ax.set_ylabel("Trench Age (Ma)")
+    
+    
+    def PlotThermalParameter(self, case_dir, **kwargs):
+        '''
+        plot the age of the trench
+        Inputs:
+            kwargs:
+                time_interval - interval between steps
+                time_stable - begining of the stable subduction
+                plot_velocity - plot the velocity alongside the thermal parameter
+        '''
+        time_interval = kwargs.get('time_interval', 0.5e6)
+        time_stable = kwargs.get('time_stable', None)
+        ax = kwargs.get('axis', None)
+        use_thermal = kwargs.get('use_thermal', True)
+        plot_velocity = kwargs.get('plot_velocity', False)
+        plot_dip = kwargs.get('plot_dip', False)
+        # options for slab temperature outputs
+        if use_thermal:
+            # not implemented yet, the array of the age_trenchs imported this way could
+            # be different in size from other arrays
+            raise NotImplementedError()
+        _, age_trenchs = self.GetAgeTrench(case_dir, use_thermal, time_interval=time_interval)
+        times, sp_velocities, ov_velocities, dips, _ = self.GetSlabMorph(case_dir)
+        conv_velocities = sp_velocities - ov_velocities
+        thermal_parameters = age_trenchs * conv_velocities * np.sin(dips)
+        if use_thermal:
+            figure_label = "thermal parameter (%s)" % "thermally interpreted"
+        else:
+            figure_label = "thermal parameter (%s)" % "motion reconstruction"
+        ax.plot(times/1e6, thermal_parameters/1e3, label=figure_label)
+        ax.set_xlabel("Time (Ma)")
+        ax.set_ylabel("Thermal Parameter (km)", color='tab:blue')
+        if time_stable is not None:
+            # focus on the range of thermal parameter in the stable regem
+            mask = (times > time_stable)
+            ymax = np.ceil(np.max(thermal_parameters[mask]) / 1e6) * 1e6
+            ymin = np.floor(np.min(thermal_parameters[mask]) / 1e6) * 1e6
+            ax.set_ylim([ymin/1e3, ymax/1e3])
+        # converging velocity
+        if plot_velocity:
+            ax1 = ax.twinx()
+            ax1.plot(times/1e6, conv_velocities/1e3, '--', label="conv velocity", color='tab:green')
+            ax1.set_ylabel("Velocity (m/yr)", color='tab:green')
+            if time_stable is not None:
+                # focus on the range of thermal parameter in the stable regem
+                mask = (times > time_stable)
+                ymax1 = np.ceil(np.max(conv_velocities[mask]) / 1e-3) * 1e-3
+                ymin1 = np.floor(np.min(conv_velocities[mask]) / 1e-3) * 1e-3
+                ax1.set_ylim([ymin1/1e3, ymax1/1e3])
+        if plot_dip:
+            ax2 = ax.twinx()
+            ax2.plot(times/1e6, np.sin(dips), '--', label="sin(dip angle)", color='tab:red')
+            ax2.set_ylabel("sin(dip angle)", color='tab:red')
+            if time_stable is not None:
+                # focus on the range of thermal parameter in the stable regem
+                mask = (times > time_stable)
+                ymax2 = np.ceil(np.max(np.sin(dips[mask])) / 1e-2) * 1e-2
+                ymin2 = np.floor(np.min(np.sin(dips[mask])) / 1e-2) * 1e-2
+                ax2.set_ylim([ymin2, ymax2])
+
+        
 
 class SLABMATERIAL(LINEARPLOT): 
     '''
@@ -2667,6 +3106,97 @@ def PlotSlabMaterialTime(case_dir, _time):
     print("%s: %s generated" % (Utilities.func_name(), fileout))
     pass
 
+def PlotTrenchAgeFromT(case_dir, **kwargs):
+    '''
+    plot the age of the trench, from the result of the thermal interpretation of the trench temperature
+    Inputs:
+        kwargs:
+            time_interval - interval between steps
+    '''
+    use_thermal = True  # twik options between thermally interpretation and motion reconstruction
+    # let the user check these options
+    if use_thermal:
+        # use thermal option would fit the temperature at the trench for the individual steps
+        # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+        _continue = input("This option will plot the data in the vtk_outputs/trench_T.txt file, \
+but will not generarte that file. Make sure all these files are updated, proceed (y/n)?")
+        if _continue != 'y':
+            print('abort')
+            exit(0)
+    else:
+        _continue = input("This option requires the data in the vtk_outputs/slab_morph.txt file, \
+but will not generarte that file. Make sure all these files are updated, proceed (y/n)?")
+        if _continue != 'y':
+            print('abort')
+            exit(0) 
+    time_interval = kwargs.get('time_interval', 0.5e6)
+    img_dir = os.path.join(case_dir, "img")
+    if not os.path.isdir(img_dir):
+        os.mkdir(img_dir)
+    fig = plt.figure(tight_layout=True, figsize=(5, 5))
+    gs = gridspec.GridSpec(1, 1)
+    # plot composition
+    plotter = SLABPLOT('trench_age_from_T')
+    # 0. age
+    ax = fig.add_subplot(gs[0, 0])
+    plotter.PlotTrenchAge(case_dir, axis=ax, time_interval=time_interval, use_thermal=use_thermal)
+    fig_path = os.path.join(img_dir, "trench_age_from_T.png") 
+    fig.savefig(fig_path)
+    print("%s: save figure %s" % (Utilities.func_name(), fig_path))
+
+def PlotTrenchThermalState(case_dir, **kwargs):
+    '''
+    plot the age of the trench
+    Inputs:
+        kwargs:
+            time_interval - interval between steps
+    '''
+    use_thermal = False  # twik options between thermally interpretation and motion reconstruction
+    # let the user check these options
+    if use_thermal:
+        # use thermal option would fit the temperature at the trench for the individual steps
+        # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+        _continue = input("This option will plot the data in the vtk_outputs/trench_T.txt file, \
+but will not generarte that file. Make sure all these files are updated, proceed (y/n)?")
+        if _continue != 'y':
+            print('abort')
+            exit(0)
+    else:
+        _continue = input("This option requires the data in the vtk_outputs/slab_morph.txt file, \
+but will not generarte that file. Make sure all these files are updated, proceed (y/n)?")
+        if _continue != 'y':
+            print('abort')
+            exit(0) 
+    time_interval = kwargs.get('time_interval', 0.5e6)
+    img_dir = os.path.join(case_dir, "img")
+    if not os.path.isdir(img_dir):
+        os.mkdir(img_dir)
+    fig = plt.figure(tight_layout=True, figsize=(10, 15))
+    gs = gridspec.GridSpec(3, 2)
+    # plot composition
+    plotter = SLABPLOT('trench_thermal_state')
+    # 0. age
+    ax = fig.add_subplot(gs[0, 0])
+    plotter.PlotTrenchAge(case_dir, axis=ax, time_interval=time_interval, use_thermal=use_thermal)
+    # 1. thermal parameter
+    ax = fig.add_subplot(gs[1, 0])
+    plotter.PlotThermalParameter(case_dir, axis=ax, time_interval=time_interval, use_thermal=use_thermal)
+    # 2. thermal parameter, focusing on the stable subduction regem
+    ax = fig.add_subplot(gs[2, 0])
+    plotter.PlotThermalParameter(case_dir, axis=ax, time_interval=time_interval, use_thermal=use_thermal, time_stable=10e6)
+    # 3. thermal parameter with the subducting plate velocity
+    ax = fig.add_subplot(gs[0, 1])
+    plotter.PlotThermalParameter(case_dir, axis=ax, time_interval=time_interval,\
+    use_thermal=use_thermal, time_stable=10e6, plot_velocity=True)
+    # 4. thermal parameter with the dip angle
+    ax = fig.add_subplot(gs[1, 1])
+    plotter.PlotThermalParameter(case_dir, axis=ax, time_interval=time_interval,\
+    use_thermal=use_thermal, time_stable=10e6, plot_dip=True)
+
+    fig_path = os.path.join(img_dir, "trench_thermal_state.png") 
+    fig.savefig(fig_path)
+    print("%s: save figure %s" % (Utilities.func_name(), fig_path))
+
 
 def main():
     '''
@@ -2737,10 +3267,10 @@ def main():
         PlotSlabShape(arg.inputs, arg.vtu_step)
     elif _commend == 'morph_step':
         # slab_morphology, input is the case name
-        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1, output_slab=True, findmdd=True)
+        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1, output_slab=True, findmdd=True, project_velocity=True)
     elif _commend == 'morph_case':
         # slab morphology for a case
-        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval)
+        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
@@ -2772,6 +3302,12 @@ but will not generarte that file. Make sure all these files are updated, proceed
             PlotSlabTemperatureCase(arg.inputs, time_range=[arg.time_start, arg.time_end])
         else:
             PlotSlabTemperatureCase(arg.inputs)
+    elif _commend == "trench_T_case":
+        TrenchTCase(arg.inputs, time_interval=arg.time_interval)
+    elif _commend == "plot_slab_age_from_T":
+        PlotTrenchAgeFromT(arg.inputs, time_interval=arg.time_interval)
+    elif _commend == "plot_slab_thermal":
+        PlotTrenchThermalState(arg.inputs, time_interval=arg.time_interval)
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 
