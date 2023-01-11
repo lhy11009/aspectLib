@@ -119,7 +119,7 @@ Examples of usage: \n\
 \n\
   - Plot the slab age intepreted from the thermal state of the trench\n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_slab_age_from_T -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0_width140 -ti 0.5e6\n\
-        (note the trench_T.txt files need to be present)
+        (note the trench_T.txt files need to be present)\n\
         ")
 
 
@@ -1668,6 +1668,7 @@ def PlotSlabTemperatureCase(case_dir, **kwargs):
     '''
     indent = kwargs.get("indent", 0)  # indentation for outputs
     time_range = kwargs.get("time_range", None)
+    plot_eclogite = kwargs.get("plot_eclogite", False)
     assert(os.path.isdir(case_dir))
     img_dir = os.path.join(case_dir, "img")
     if not os.path.isdir(img_dir):
@@ -1678,6 +1679,9 @@ def PlotSlabTemperatureCase(case_dir, **kwargs):
     # plot
     fig, ax = plt.subplots()
     MorphPlotter = SLABPLOT("plot_slab")
+    # todo_eclogite
+    if plot_eclogite:
+        MorphPlotter.PlotEclogite(axis=ax)
     MorphPlotter.PlotSlabTCase(case_dir, axis=ax, label='slab temperature', xlims=[273.0, 1673.0], ylims=[25e3, 250e3], time_range=time_range)
     ax.legend()
     ax.invert_yaxis()
@@ -2647,6 +2651,43 @@ class SLABPLOT(LINEARPLOT):
         else:
             ax.set_xlabel("Temperature (K)")
 
+    # todo_eclogite
+    def PlotEclogite(self, **kwargs):
+        '''
+        Plot the temperature profile for a case by assembling results
+        from individual steps
+            kwargs(dict):
+                axis - a matplotlib axis
+                debug - print debug message
+                time_range - range of the time for plotting the temperature
+        '''
+        ax = kwargs.get('axis', None)
+        use_degree = kwargs.get('use_degree', False)
+        p_to_depth = 3.3/100 # 100 km 3.3 GPa
+        file_stern_2001 = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'reference', 'eclogite_stern_2001.txt')
+        assert(os.path.isfile(file_stern_2001))
+        file_hu_2022 = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', 'reference', 'eclogite_hernandez-uribe_2022.txt')
+        assert(os.path.isfile(file_hu_2022))
+        # data from stern 2001
+        self.ReadHeader(file_stern_2001)
+        self.ReadData(file_stern_2001)
+        col_T = self.header['temperature']['col']
+        col_depth = self.header['depth']['col']
+        Ts = self.data[:, col_T] # C
+        depths = self.data[:, col_depth]
+        if not use_degree:
+            Ts += 273.0 # K
+        ax.plot(Ts, depths, 'k-.', label='stern_2001')
+        # data from the Hernandez-uribe_2022
+        self.ReadHeader(file_hu_2022)
+        self.ReadData(file_hu_2022)
+        col_T = self.header['temperature']['col']
+        col_P = self.header['pressure']['col']
+        Ts = self.data[:, col_T] # C
+        depths = self.data[:, col_P] / p_to_depth
+        if not use_degree:
+            Ts += 273.0 # K
+        ax.plot(Ts, depths, 'c-.', label='Hernandez-uribe_2022')
 
     def FitTrenchT(self, case_dir, vtu_snapshot):
         '''
@@ -3299,7 +3340,7 @@ but will not generarte that file. Make sure all these files are updated, proceed
         WedgeTCase(arg.inputs, time_interval=arg.time_interval)
     elif _commend == "plot_slab_temperature_case":
         if arg.time_start > 0 or arg.time_end < 60e6:
-            PlotSlabTemperatureCase(arg.inputs, time_range=[arg.time_start, arg.time_end])
+            PlotSlabTemperatureCase(arg.inputs, time_range=[arg.time_start, arg.time_end], plot_eclogite=True)
         else:
             PlotSlabTemperatureCase(arg.inputs)
     elif _commend == "trench_T_case":
