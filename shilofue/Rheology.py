@@ -272,6 +272,37 @@ class RHEOLOGY_PRM():
                 "Coh" : 1000.0,
                 "wet" : 1.0
             }
+
+         # modified creep laws from Hirth & Kohlstedt 2003
+        # for detail, refer to magali's explain_update_modHK03_rheology.pdf file
+        # 'wet' indicates this has to applied with a rheology of water
+        # In the version, I modified the value of r, compared to the first version
+        self.HK03_wet_mod2_diff = \
+            {
+                # "A" : 10**6.9,  # MPa^(-n-r)*um**p/s
+                "A" : 7.1768e6,  # MPa^(-n-r)*um**p/s
+                "p" : 3.0,
+                "r" : 0.8, # 1.0 -> 0.8
+                "n" : 1.0,
+                "E" : 375e3,
+                "V" : 23e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0,
+                "wet": 1.0  # I use this to mark this is a wet rheology, so I need to account for V and E for water later.
+            }
+
+        self.HK03_wet_mod2_disl = \
+            {
+                "A" : 10**2.65,
+                "p" : 0.0,
+                "r" : 1.2,  # 1.0 -> 1.2
+                "n" : 3.5,
+                "E" : 520e3,
+                "V" : 24e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0,
+                "wet" : 1.0
+            }
         
         
         # modified creep laws from Hirth & Kohlstedt 2003
@@ -644,6 +675,7 @@ class RHEOLOGY_OPR():
         # dump json file 
         constrained_rheology = {'diffusion_creep': diffusion_creep, 'dislocation_creep': dislocation_creep, 'diffusion_lm': diff_lm}
         # convert aspect rheology
+        print('diffusion_creep: ', diffusion_creep) # debug
         diffusion_creep_aspect = Convert2AspectInput_v1(diffusion_creep, use_effective_strain_rate=use_effective_strain_rate)
         diffusion_lm_aspect = Convert2AspectInput_v1(diff_lm, use_effective_strain_rate=use_effective_strain_rate)
         dislocation_creep_aspect = Convert2AspectInput_v1(dislocation_creep, use_effective_strain_rate=use_effective_strain_rate)
@@ -667,8 +699,8 @@ class RHEOLOGY_OPR():
         volume = np.trapz(integral_cores[mask_integral], self.depths[mask_integral])
         average_log_eta = integral / volume
         if save_json == 1:
-            json_path = os.path.join(RESULT_DIR, "mantle_profile_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
-            json_path_aspect = os.path.join(RESULT_DIR, "mantle_profile_aspect_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
+            json_path = os.path.join(RESULT_DIR, "mantle_profile_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e_dAdiff%.4e_dAdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl, dAdiff_ratio, dAdisl_ratio))
+            json_path_aspect = os.path.join(RESULT_DIR, "mantle_profile_aspect_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e_dAdiff%.4e_dAdisl%.4e.json" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl, dAdiff_ratio, dAdisl_ratio))
             with open(json_path, 'w') as fout:
                 json.dump(constrained_rheology, fout)
             with open(json_path_aspect, 'w') as fout:
@@ -716,7 +748,9 @@ class RHEOLOGY_OPR():
             axs[2].legend()
             axs[2].set_title('strain_rate1.0e-13')
             # save figure
-            fig_path = os.path.join(RESULT_DIR, "mantle_profile_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e.png" % (rheology, dEdiff, dEdisl, dVdiff, dVdisl))
+            fig_path = os.path.join(RESULT_DIR,\
+                "mantle_profile_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e_dAdiff%.4e_dAdisl%.4e.png"\
+                % (rheology, dEdiff, dEdisl, dVdiff, dVdisl, dAdiff_ratio, dAdisl_ratio))
             fig.savefig(fig_path)
             print("New figure: %s" % fig_path)
             plt.close()

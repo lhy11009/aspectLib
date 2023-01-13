@@ -69,6 +69,40 @@ def test_HK03_mod_whole_mantle_apsect_prm():
     assert(abs(diffusion_lm_V - 3e-6)/3e-6 < 1e-6)
     pass
 
+def test_HK03_mod_whole_mantle_apsect_v1():
+    """
+    test converting the HK03 modified rheology to a whole-mantle rheology in aspect
+    and converts to a prm file
+    Here I will use the MantleRheology_v1 where I tried to take care of the prefactor F.
+    Note: in the previous version, (n+1) is written as (n+2), and the F prefactor is not applied to the diffusion creep.
+
+    """
+    da_file = os.path.join(source_dir, "depth_average.txt")
+    assert(os.path.isfile(da_file))
+    Operator = RHEOLOGY_OPR()
+    # read profile
+    Operator.ReadProfile(da_file)
+    rheology_aspect = Operator.MantleRheology_v1(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
+    dVdiff=-5.5e-6, dVdisl=0.0, save_profile=1)
+    diffusion_creep = rheology_aspect['diffusion_creep']
+    diffusion_A = diffusion_creep['A']
+    diffusion_E = diffusion_creep['E']
+    diffusion_V = diffusion_creep['V']
+    assert(abs(diffusion_A - 2.453606837606838e-16)/2.453606837606838e-16 < 1e-6)
+    assert(abs(diffusion_E - 285000.0) / 285000.0 < 1e-6)
+    assert(abs(diffusion_V - 6.9e-6)/6.9e-6 < 1e-6)
+    dislocation_creep = rheology_aspect['dislocation_creep']
+    dislocation_A = dislocation_creep['A']
+    dislocation_E = dislocation_creep['E']
+    dislocation_V = dislocation_creep['V']
+    assert(abs(dislocation_A - 3.4107562776358284e-16)/3.4107562776358284e-16 < 1e-6)
+    assert(abs(dislocation_E - 490000.0)/490000.0 < 1e-6)
+    assert(abs(dislocation_V - 1.34e-5)/1.34e-5 < 1e-6)
+    diffusion_creep_lm = rheology_aspect['diffusion_lm']
+    diffusion_lm_A = diffusion_creep_lm['A']
+    diffusion_lm_V = diffusion_creep_lm['V']
+    # assert(abs(diffusion_lm_A - 2.5003579819454594e-19)/2.5003579819454594e-19 < 1e-6)
+    # assert(abs(diffusion_lm_V - 3e-6)/3e-6 < 1e-6)
 
 def test_HK03_mod_whole_mantle_apsect_v1_fit_v0_prm():
     """
@@ -106,6 +140,41 @@ def test_HK03_mod_whole_mantle_apsect_v1_fit_v0_prm():
     diffusion_lm_V = diffusion_creep_lm['V']
     assert(abs(diffusion_lm_A - 2.5003579819454594e-19)/2.5003579819454594e-19 < 1e-6)
     assert(abs(diffusion_lm_V - 3e-6)/3e-6 < 1e-6)
+
+def test_HK03_mod_whole_mantle_apsect_v2():
+    """
+    test converting the HK03 modified rheology to a whole-mantle rheology in aspect
+    and converts to a prm file
+    compared to the test test_HK03_mod_whole_mantle_apsect_v2, I modified the value of r
+    diffusion creep: 1.0 -> 0.8
+    dislocation creep: 1.0 -> 1.2
+    """
+    da_file = os.path.join(source_dir, "depth_average.txt")
+    assert(os.path.isfile(da_file))
+    Operator = RHEOLOGY_OPR()
+    # read profile
+    Operator.ReadProfile(da_file)
+    rheology_aspect = Operator.MantleRheology_v1(rheology="HK03_wet_mod2", dEdiff=-50e3, dEdisl=30e3,\
+    dVdiff=-7.62e-6, dVdisl=2.12e-6, save_profile=1)
+    diffusion_creep = rheology_aspect['diffusion_creep']
+    diffusion_A = diffusion_creep['A']
+    diffusion_E = diffusion_creep['E']
+    diffusion_V = diffusion_creep['V']
+    assert(abs(diffusion_A - 1.508184240094372e-16)/1.508184240094372e-16 < 1e-6)
+    assert(abs(diffusion_E - 285000.0) / 285000.0 < 1e-6)
+    assert(abs(diffusion_V - 6.9e-6)/6.9e-6 < 1e-6)
+    dislocation_creep = rheology_aspect['dislocation_creep']
+    dislocation_A = dislocation_creep['A']
+    dislocation_E = dislocation_creep['E']
+    dislocation_V = dislocation_creep['V']
+    assert(abs(dislocation_A -5.548827989141475e-16)/5.548827989141475e-16 < 1e-6)
+    assert(abs(dislocation_E - 490000.0)/490000.0 < 1e-6)
+    assert(abs(dislocation_V - 1.34e-5)/1.34e-5 < 1e-6)
+    diffusion_creep_lm = rheology_aspect['diffusion_lm']
+    diffusion_lm_A = diffusion_creep_lm['A']
+    diffusion_lm_V = diffusion_creep_lm['V']
+    # assert(abs(diffusion_lm_A - 2.5003579819454594e-19)/2.5003579819454594e-19 < 1e-6)
+    # assert(abs(diffusion_lm_V - 3e-6)/3e-6 < 1e-6)
 
 
 def test_HK03_wet_whole_mantle_apsect_prm():
