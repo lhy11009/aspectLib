@@ -27,7 +27,7 @@
     "assign side plate": 1
   },
   "mantle rheology": {
-    "scheme": "HK03_wet_mod_2d",
+    "scheme": "HK03_wet_mod",
     "flow law": "composite"
   },
   "apply reference density": 1,

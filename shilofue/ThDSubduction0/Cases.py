@@ -315,17 +315,30 @@ class CASE(CasesP.CASE):
         # rheology
         # 1. mantle rheology
         if _type == 's07_newton':
+            # for the type of model modified from schellart 07 paper and includes the newtonian
+            # rheology. A profile is read from a depth_average file to get a reference temperature
+            # and pressure.
+            # Here I inherit the older rheology from my 2-d models:
+            #   HK03: the original rheology from the Hirth and Kolstedt model
+            #   HK03_wet_mod: the wet modified rheology I used in my 2-d models
+            #   else: something else 
             da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'ThDSubduction', "depth_average.txt")
             assert(os.path.isfile(da_file))
             Operator = RHEOLOGY_OPR()
             # read profile
             Operator.ReadProfile(da_file)
             if mantle_rheology_scheme == "HK03":
-                use_effective_strain_rate = False
+                rheology = Operator.MantleRheology(rheology="HK03",\
+                            save_profile=1, save_json=1, use_effective_strain_rate=False)
+            elif mantle_rheology_scheme == "HK03_wet_mod":
+                rheology = Operator.MantleRheology(rheology="HK03_wet_mod",\
+                            save_profile=1, save_json=1, use_effective_strain_rate=True,\
+                            dEdiff=-40e3, dEdisl=30e3, dVdiff=-5.5e-6, dVdisl=2.12e-6,\
+                            dAdiff_ratio=0.33333333333, dAdisl_ratio=1.040297619,\
+                            jump_lower_mantle=15.0)
             else:
-                use_effective_strain_rate = True
-            rheology = Operator.MantleRheology_v0(rheology=mantle_rheology_scheme,\
-            save_profile=1, save_json=1, use_effective_strain_rate=use_effective_strain_rate)
+                rheology = Operator.MantleRheology(rheology=mantle_rheology_scheme,\
+                            save_profile=1, save_json=1, use_effective_strain_rate=True)
             s07T_assign_mantle_rheology(o_dict, rheology)    
             self.output_files.append(Operator.output_json)
             self.output_files.append(Operator.output_json_aspect)
