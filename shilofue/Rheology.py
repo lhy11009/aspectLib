@@ -218,7 +218,6 @@ class RHEOLOGY_PRM():
         # 'wet' indicates this has to applied with a rheology of water
         self.HK03_wet_mod_diff = \
             {
-                "A" : 10**6.9,  # MPa^(-n-r)*um**p/s
                 "A" : 7.1768184e6,  # MPa^(-n-r)*um**p/s
                 "p" : 3.0,
                 "r" : 1.0,

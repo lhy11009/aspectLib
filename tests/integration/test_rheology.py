@@ -49,7 +49,7 @@ def test_HK03_mod_whole_mantle_apsect():
     # read profile
     Operator.ReadProfile(da_file)
     rheology_aspect = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
-    dVdiff=-5.5e-6, dVdisl=0.0, save_profile=1, debug=True)
+    dVdiff=-5.5e-6, dVdisl=-1.2e-6, save_profile=1, debug=True)
     diffusion_creep = rheology_aspect['diffusion_creep']
     diffusion_A = diffusion_creep['A']
     diffusion_E = diffusion_creep['E']
@@ -63,12 +63,12 @@ def test_HK03_mod_whole_mantle_apsect():
     dislocation_V = dislocation_creep['V']
     assert(abs(dislocation_A - 5.678755891919797e-16)/5.678755891919797e-16 < 1e-6)
     assert(abs(dislocation_E - 480000.0)/480000.0 < 1e-6)
-    assert(abs(dislocation_V - 1.128e-05)/1.128e-05 < 1e-6)
+    assert(abs(dislocation_V - 1.008e-05)/1.008e-05 < 1e-6)
     diffusion_creep_lm = rheology_aspect['diffusion_lm']
     diffusion_lm_A = diffusion_creep_lm['A']
     diffusion_lm_V = diffusion_creep_lm['V']
     print("diffusion_creep_lm: ", diffusion_creep_lm) 
-    assert(abs(diffusion_lm_A - 3.477253038558388e-19)/3.477253038558388e-19 < 1e-6)
+    assert(abs(diffusion_lm_A - 5.370961197093647e-19)/5.370961197093647e-19 < 1e-6)
     assert(abs(diffusion_lm_V - 3e-6)/3e-6 < 1e-6)
 
 def test_HK03_mod_whole_mantle_apsect_TwoDSubdution():
