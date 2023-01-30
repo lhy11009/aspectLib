@@ -369,13 +369,45 @@ class RHEOLOGY_PRM():
             "type": "stress dependent"
         }
 
-        
-        
         self.water = \
             {
                 "A" : 87.75,             # H/(10^6*Si)/MPa
                 "E" : 50e3,                     # J/mol +/-2e3
                 "V" : 10.6e-6                     # m^3/mol+/-1
+            }
+
+        # todo_mineral
+        # Basalt rheology from Shelton and Tullis 1981 
+        # and Hacker and Christie 1990
+        # the diffusion creep of this rheology is missing
+        # in literatures
+        self.ST1981_basalt_diff = None
+
+        self.ST1981_basalt_disl = \
+            {
+                "A" : 1.0e-4,
+                "p" : 0.0,
+                "r" : 0.0,  # not dependent on the "Coh"
+                "n" : 3.5,
+                "E" : 250e3,
+                "V" : 0.0,
+                "d" : 1e4, # not dependent on d
+            }
+
+        # Quartz rheology from Ranalli and Murphy 1987.
+        # the diffusion creep of this rheology is missing
+        # in literatures
+        self.ST1981_basalt_diff = None
+
+        self.RM1987_quartz_disl = \
+            {
+                "A" : 6.8e-6,
+                "p" : 0.0,
+                "r" : 0.0,  # not dependent on the "Coh"
+                "n" : 3,
+                "E" : 156e3,
+                "V" : 0.0,
+                "d" : 1e4, # not dependent on d
             }
 
     def get_rheology(self, _name, _type):
@@ -879,29 +911,44 @@ class RHEOLOGY_OPR():
 
 
 
-
 def GetRheology(rheology):
     '''
     read rheology parameters, and account for effects of water if it is a wet rheology
     '''
     RheologyPrm = RHEOLOGY_PRM()
-    if not hasattr(RheologyPrm, rheology + "_diff") and hasattr(RheologyPrm, rheology + "_disl"):
-        raise ValueError("RHEOLOGY_PRM object doesn't have attribute %s_diff" % rheology)
-    diffusion_creep = getattr(RheologyPrm, rheology + "_diff")
-    dislocation_creep = getattr(RheologyPrm, rheology + "_disl")
-    try:
-        _ = diffusion_creep['wet']
-    except KeyError:
-        pass
+    # if the diffusion creep flow law is specified, then include it here
+    if hasattr(RheologyPrm, rheology + "_diff"):
+        diffusion_creep = getattr(RheologyPrm, rheology + "_diff")
+        ### if the rheology is formulated with the fugacity, convert it to using the Coh
+        if diffusion_creep is not None:
+            try:
+                _ = diffusion_creep['wet']
+            except KeyError:
+                pass
+            else:
+                water_creep = getattr(RheologyPrm, "water")
+                diffusion_creep['A'] = diffusion_creep['A'] / (water_creep['A'] ** diffusion_creep['r'])
+                diffusion_creep['V'] = diffusion_creep['V'] - water_creep['V'] * diffusion_creep['r']
+                diffusion_creep['E'] = diffusion_creep['E'] - water_creep['E'] * diffusion_creep['r']
     else:
-        ### effects of water accounted, see Magali's file explain_update_modHK03_rheology eq(5)
-        water_creep = getattr(RheologyPrm, "water")
-        diffusion_creep['A'] = diffusion_creep['A'] / (water_creep['A'] ** diffusion_creep['r'])
-        diffusion_creep['V'] = diffusion_creep['V'] - water_creep['V'] * diffusion_creep['r']
-        diffusion_creep['E'] = diffusion_creep['E'] - water_creep['E'] * diffusion_creep['r']
-        dislocation_creep['A'] = dislocation_creep['A'] / (water_creep['A'] ** dislocation_creep['r'])
-        dislocation_creep['V'] = dislocation_creep['V'] - water_creep['V'] * dislocation_creep['r']
-        dislocation_creep['E'] = dislocation_creep['E'] - water_creep['E'] * dislocation_creep['r']
+        diffusion_creep = None
+    # if the dislocation creep flow law is specified, then include it here
+    if hasattr(RheologyPrm, rheology + "_disl"):
+        dislocation_creep = getattr(RheologyPrm, rheology + "_disl")
+        ### if the rheology is formulated with the fugacity, convert it to using the Coh
+        if dislocation_creep is not None:
+            try:
+                _ = dislocation_creep['wet']
+            except KeyError:
+                pass
+            else:
+                water_creep = getattr(RheologyPrm, "water")
+                dislocation_creep['A'] = dislocation_creep['A'] / (water_creep['A'] ** dislocation_creep['r'])
+                dislocation_creep['V'] = dislocation_creep['V'] - water_creep['V'] * dislocation_creep['r']
+                dislocation_creep['E'] = dislocation_creep['E'] - water_creep['E'] * dislocation_creep['r']
+    else:
+        dislocation_creep = None
+    
     return diffusion_creep, dislocation_creep
 
 

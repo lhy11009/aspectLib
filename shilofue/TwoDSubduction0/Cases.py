@@ -131,6 +131,8 @@ intiation stage causes the slab to break in the middle",\
           int, ["shear zone", 'use embeded fault with feature surface'], 0, nick='use_embeded_fault_feature_surface')
         self.add_key("transition distance at the trench for the kinematic boundary condition", float,\
             ["boundary condition", "trench transit distance"], 20e3, nick='delta_trench')
+        self.add_key("Cold cutoff of the eclogite transition",\
+         float, ["shear zone", 'Max pressure for eclogite transition'], 5e9, nick='eclogite_max_P')
     
     def check(self):
         '''
@@ -243,13 +245,14 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         use_embeded_fault_feature_surface = self.values[self.start + 34]
         ef_particle_interval = self.values[self.start + 33]
         delta_trench = self.values[self.start + 35]
+        eclogite_max_P = self.values[self.start + 36]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
         branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
-        ef_particle_interval, delta_trench
+        ef_particle_interval, delta_trench, eclogite_max_P
 
     def to_configure_wb(self):
         '''
@@ -316,7 +319,7 @@ class CASE(CasesP.CASE):
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
     sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
-    sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench):
+    sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -521,6 +524,9 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
         # Couple eclogite viscosity
         if if_couple_eclogite_viscosity:
             o_dict['Material model']['Visco Plastic TwoD']["Decoupling eclogite viscosity"] = 'false'
+            if abs(eclogite_max_P - 5e9)/5e9 > 1e-6:
+                o_dict['Material model']['Visco Plastic TwoD']["Eclogite transition"]["Max pressure for eclogite transition"] =\
+                "%.4e" % eclogite_max_P # assign the max pressure for the eclogite transition
         else:
             o_dict['Material model']['Visco Plastic TwoD']["Decoupling eclogite viscosity"] = 'true'
             o_dict['Material model']['Visco Plastic TwoD']["Eclogite decoupled viscosity"] =\

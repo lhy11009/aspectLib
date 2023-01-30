@@ -98,7 +98,6 @@ def test_HirthKohlstedt_wet_modified():
     # get rheology
     rheology = 'HK03_wet_mod'
     diffusion_creep, dislocation_creep = GetRheology(rheology)
-    print('diffusion_creep: ', diffusion_creep)  # debug
     tolerance = 0.01
     # check the value from the diffusion creep
     check0 = CreepRheology(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 1000.0)
@@ -119,12 +118,8 @@ def test_AB17():
     diffusion_creep, dislocation_creep = GetRheology(rheology)
     diff_eta_1 = CreepRheology(diffusion_creep, 1e-15, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
     disl_eta_1 = CreepRheology(dislocation_creep, 1e-15, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
-    print("diff_eta_1: ", diff_eta_1)
-    print("disl_eta_1: ", disl_eta_1)
     diff_eta_2 = CreepRheology(diffusion_creep, 1e-13, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
     disl_eta_2 = CreepRheology(dislocation_creep, 1e-13, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
-    print("diff_eta_2: ", diff_eta_2)
-    print("disl_eta_2: ", disl_eta_2)
 
 
 def test_CreepComputeV():
@@ -241,6 +236,49 @@ def test_StrengthProfile():
     Zs = Operator.Zs
     assert((Sigs[-1] - 6420880.603595899)/6420880.603595899 < 1e-6)
 
+
+def test_ST1981_basalt():
+    '''
+    test the basalt rheology from Shelton and Tullis 1981 
+    and Hacker and Christie 1990
+    Assert:
+        The values of viscosity agrees with the values shown in fig 4 
+        in Agard_etal_2016, note there are 3 lines below the mark "basalt"
+        in fig4, use the one on the bottom.
+    '''
+    # get rheology
+    rheology = 'ST1981_basalt'
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+    tolerance = 0.01
+    # check the value from the dislocation creep
+    # the last two variables (d and Coh) are not effective for this rheology
+    check0 = CreepRheology(dislocation_creep, 1e-13, 0.0, 500.0 + 273.15, 1e4, 1000.0)  
+    check0_std = 8.984374489053491e+20
+    assert(abs(check0 - check0_std) / check0_std < tolerance)
+    check1 = CreepRheology(dislocation_creep, 1e-13, 0.0, 400.0 + 273.15, 1e4, 1000.0)  
+    check1_std = 4.681745069507827e+21
+    assert(abs(check1 - check1_std) / check1_std < tolerance)
+    
+
+def test_RM1987_quartz():
+    '''
+    test the quartz rheology from Ranalli and Murphy 1987 
+    Assert:
+        The values of viscosity agrees with the values shown in fig 4 
+        in Agard_etal_2016
+    '''
+    # get rheology
+    rheology = 'RM1987_quartz'
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+    tolerance = 0.01
+    # check the value from the dislocation creep
+    # the last two variables (d and Coh) are not effective for this rheology
+    check0 = CreepRheology(dislocation_creep, 1e-13, 0.0, 500.0 + 273.15, 1e4, 1000.0)  
+    check0_std = 3.994134531813513e+19
+    assert(abs(check0 - check0_std) / check0_std < tolerance)
+    check1 = CreepRheology(dislocation_creep, 1e-13, 0.0, 400.0 + 273.15, 1e4, 1000.0)  
+    check1_std = 10**(20.12)
+    assert(abs(check1 - check1_std) / check1_std < tolerance)
 
 # notes
     
