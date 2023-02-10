@@ -97,14 +97,22 @@ class CheckValueError(Exception):
 class RHEOLOGY_PRM():
     """
     class for rheologies
+    components and units:
+        A (the prefactor) - MPa^(-n-r)*um**p/s
+        n (stress dependence) - 1
+        p (grain size dependence) - 1
+        r (power of C_{OH}) - 1
+        E (activation energy) - J / mol
+        V (activation volume) - m^3 / mol
+    Notes on the choice of the units:
+        The unit of E and V are much easier to convert to UI.
+        But for A, this code will handle the convertion, so the
+        user only need to take the value for published flow laws.
     """
     def __init__(self):
         '''
         Initiation, initiate rheology parameters
         '''
-        # dry dislocation creep in Hirth & Kohlstedt 2003)
-        # note the V (activation energy) value has a large variation, here I
-        # picked up a value the same as wet value.
         self.HK03_dry_disl = \
             {
                 "A": 1.1e5,
@@ -218,7 +226,7 @@ class RHEOLOGY_PRM():
         # 'wet' indicates this has to applied with a rheology of water
         self.HK03_wet_mod_diff = \
             {
-                "A" : 7.1768184e6,  # MPa^(-n-r)*um**p/s
+                "A" : 7.1768184e6,  
                 "p" : 3.0,
                 "r" : 1.0,
                 "n" : 1.0,
@@ -406,8 +414,49 @@ class RHEOLOGY_PRM():
                 "r" : 0.0,  # not dependent on the "Coh"
                 "n" : 3,
                 "E" : 156e3,
-                "V" : 0.0,
-                "d" : 1e4, # not dependent on d
+                "V" : 0.0
+            }
+
+        self.Rybachi_06_anorthite_wet_diff = \
+            {
+                "A" : 0.2,  # note, 10^(-0.7), less than 1 digit accuracy, as 10^(0.1) = 1.25
+                "p" : 3.0,
+                "r" : 1.0,
+                "n" : 1.0,
+                "E" : 159e3,
+                "V" : 38e-6,
+                "wet": 1.0  # I use this to mark this is a wet rheology, so I need to account for V and E for water later.
+            }
+        
+        self.Rybachi_06_anorthite_wet_disl = \
+            {
+                "A" : 1.6,  # note, 10^(0.2), less than 1 digit accuracy, as 10^(0.1) = 1.25
+                "p" : 0.0,
+                "r" : 1.0,
+                "n" : 3.0,
+                "E" : 345e3,
+                "V" : 38e-6,
+                "wet": 1.0  # I use this to mark this is a wet rheology, so I need to account for V and E for water later.
+            }
+        
+        self.Rybachi_06_anorthite_dry_diff = \
+            {
+                "A" : 1.26e12,  # note, 10^(12.1), less than 1 digit accuracy, as 10^(0.1) = 1.25
+                "p" : 3.0,
+                "r" : 0.0,  # dry, not dependent on fugacity
+                "n" : 1.0,
+                "E" : 460e3,
+                "V" : 24e-6
+            }
+        
+        self.Rybachi_06_anorthite_dry_disl = \
+            {
+                "A" : 5.01e12,  # note, 10^(12.7), less than 1 digit accuracy, as 10^(0.1) = 1.25
+                "p" : 0.0,
+                "r" : 0.0, # dry, not dependent on fugacity
+                "n" : 3.0,
+                "E" : 641e3,
+                "V" : 24e-6
             }
 
     def get_rheology(self, _name, _type):
@@ -1121,12 +1170,14 @@ def Convert2AspectInput(creep, **kwargs):
     Viscosity is calculated by flow law in form of (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T)) * 1e6
     while in aspect, flow law in form of 0.5 * A**(-1.0 / n) * d**(m / n) * (strain_rate)**(1.0 / n - 1) * np.exp((E + P * V) / (n * R * T))
     In this version, I am trying to take care of the F factor correctly
-    Original Units:
+    Inputs:
+        kwargs:
+            d: um, the grain size to use, default is 1e4
+            Coh: H / 10^6 Si, default is 1000.0
+    Original Units in creep:
      - P: Pa
      - T: K
-     - d: mm
-     - Coh: H / 10^6 Si
-    Original Units:
+    Converted units in aspect_creep:
      - P: Pa
      - T: K
      - d: m
@@ -1138,8 +1189,8 @@ def Convert2AspectInput(creep, **kwargs):
     n = creep['n']
     E = creep['E']
     V = creep['V']
-    d = creep['d']
-    Coh = creep['Coh']
+    d = kwargs.get('d', 1e4)
+    Coh = kwargs.get('Coh', 1000.0)
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     if use_effective_strain_rate:

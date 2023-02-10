@@ -280,6 +280,51 @@ def test_RM1987_quartz():
     check1_std = 10**(20.12)
     assert(abs(check1 - check1_std) / check1_std < tolerance)
 
+
+def test_Rybachi_06_anorthite():
+    '''
+    test the anorthite flow law from the Rybachi 06
+    Assert:
+        1. For the dry rheologys the values of differential stresses agree with their Figure 8.
+        2. For the wet rheologys the values of differential stresses agree with their Figure 8.
+    Print:
+        converted dry rheology in ASPECT (commenting out the relative lines)
+    '''
+    # assert 1: dry rheology
+    rheology = 'Rybachi_06_anorthite_dry'
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+    print("diffusion_creep: ", diffusion_creep)  # debug
+    print("dislocation_creep: ", dislocation_creep)
+    strain_rate = 1e-12
+    stress_diff_dry_0 = CreepStress(diffusion_creep, strain_rate, 1080e6, 841 + 273.15, 20, 5)  # 20um, 10^-12, 40km, 841 C
+    assert(abs((stress_diff_dry_0 - 384.50841946490283) / 384.50841946490283) < 1e-6)  # stress = 384.5 MPa
+    strain_rate = 1e-14
+    stress_disl_dry_0 = CreepStress(dislocation_creep, strain_rate, 1080e6, 841 + 273.15, 20, 5)  # 20um, 10^-14, 40km, 841 C
+    assert(abs((stress_disl_dry_0 - 33.32906329872165) / 33.32906329872165) < 1e-6)  # stress = 33.3 MPa
+    # print the converting to aspect's rheology
+    diffusion_creep_aspect = Convert2AspectInput(diffusion_creep, d=20.0) # 20 um
+    print("Rybachi_06_anorthite_dry_diffusion_creep_aspect: ", diffusion_creep_aspect)
+    dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, d=20.0) # 20 um
+    print("Rybachi_06_anorthite_dry_dislocation_creep_aspect: ", dislocation_creep_aspect)
+    # assert 2: wet rheology
+    rheology = 'Rybachi_06_anorthite_wet'
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+    print("diffusion_creep: ", diffusion_creep)
+    strain_rate = 1e-12
+    # stress_diff_0 = CreepStress(diffusion_creep, strain_rate, 660e6, 482 + 273.15, 20, 1000)  # 20um, 10^-12, 20km, 482 C
+    stress_diff_0 = CreepStress(diffusion_creep, strain_rate, 660e6, 482 + 273.15, 20, 5)  # 20um, 10^-12, 20km, 482 C
+    print('stress_diff_0: ', stress_diff_0)
+    stress_diff_1 = CreepStress(diffusion_creep, strain_rate, 990e6, 671 + 273.15, 20, 100)  # 20um, 10^-12, 30km, 671 C
+    print('stress_diff_1: ', stress_diff_1)
+    print("dislocation_creep: ", dislocation_creep)
+    strain_rate = 1e-14
+    # stress_disl_0 = CreepStress(dislocation_creep, strain_rate, 660e6, 482 + 273.15, 20, 1000)  # 20um, 10^-14, 20km, 482 C
+    stress_disl_0 = CreepStress(dislocation_creep, strain_rate, 660e6, 482 + 273.15, 20, 5)  # 20um, 10^-14, 20km, 482 C
+    stress_disl_1 = CreepStress(dislocation_creep, strain_rate, 990e6, 671 + 273.15, 20, 100)  # 20um, 10^-14, 30km, 671 C
+    print('stress_disl_0: ', stress_disl_0)
+    print('stress_disl_1: ', stress_disl_1)
+    tolerance = 0.1
+
 # notes
     
 # to check for error message
