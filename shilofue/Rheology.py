@@ -90,6 +90,10 @@ R = 8.314
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 
+# import utilities in subdirectiory
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
+
 class CheckValueError(Exception):
     pass
 
@@ -458,6 +462,53 @@ class RHEOLOGY_PRM():
                 "E" : 641e3,
                 "V" : 24e-6
             }
+        
+        self.Dimanov_Dresen_An50Di35D_dry_diff = \
+        {
+                # diffusion creep for a 35 mu*m grain size
+                "A" : 5.1879e13,  #  1.21e3 * (1e6) / (35)^(-3)
+                "p" : 3.0,
+                "r" : 0.0, # dry, not dependent on fugacity
+                "n" : 1.0,
+                "E" : 436e3,
+                "V" : 0.0  # not present in the table
+        }
+        
+        self.Dimanov_Dresen_An50Di35D_dry_disl = \
+        {
+            # this is actually the An50DiD in table 3b
+            # since the dislocation creep is not grain size sensitive
+                "A" : 8.1840692e+12,  #  / 2.71e-12 * (1e6)^4.08
+                "p" : 0.0,
+                "r" : 0.0, # dry, not dependent on fugacity
+                "n" : 4.08,
+                "E" : 723e3,
+                "V" : 0.0  # not present in the table
+        }
+        
+        
+        self.Dimanov_Dresen_An50Di45D_dry_diff = \
+        {
+                # diffusion creep for a 45 mu*m grain size
+                "A" : 6.187e15,  # 6.79e4 * 1e6 / (45)^(-3.0)
+                "p" : 3.0,
+                "r" : 0.0, # dry, not dependent on fugacity
+                "n" : 1.0,
+                "E" : 496e3,
+                "V" : 0.0  # not present in the table
+        }
+        
+        self.Dimanov_Dresen_An50Di45D_dry_disl = \
+        {
+            # this is actually the An50DiD in table 3b
+            # since the dislocation creep is not grain size sensitive
+                "A" : 8.1840692e+12,  #  / 2.71e-12 * (1e6)^4.08
+                "p" : 0.0,
+                "r" : 0.0, # dry, not dependent on fugacity
+                "n" : 4.08,
+                "E" : 723e3,
+                "V" : 0.0  # not present in the table
+        }
 
     def get_rheology(self, _name, _type):
         '''
@@ -1034,6 +1085,30 @@ def CreepStress(creep, strain_rate, P, T, d, Coh):
     # calculate B
     B = A * d**(-p) * Coh**r
     return (strain_rate / B)**(1.0 / n) * np.exp((E + P * V) / (n * R * T))
+
+
+def CreepStrainRate(creep, stress, P, T, d, Coh):
+    """
+    Calculate strain rate by flow law in form of 
+        B * sigma^n * exp( - (E + P * V) / (R * T))
+    Units:
+     - P: Pa
+     - T: K
+     - d: mu m
+     - stress: MPa
+     - Coh: H / 10^6 Si
+     - Return value: s^-1
+    Pay attention to pass in the right value, this custom is inherited
+    """
+    A = creep['A']
+    p = creep['p']
+    r = creep['r']
+    n = creep['n']
+    E = creep['E']
+    V = creep['V']
+    # calculate B
+    B = A * d**(-p) * Coh**r
+    return B *stress**n * np.exp(-(E + P * V) / (R * T))
 
 
 def CreepRheology(creep, strain_rate, P, T, d=None, Coh=None, **kwargs):
@@ -1741,6 +1816,64 @@ def temperature_halfspace(z, t, **kwargs):
     T = T_s + (T_m - T_s)*erf(z/(2*np.sqrt(kappa*t)))
     return T
 
+###
+# fuctions for plotting a subducting shear zone rheology
+###
+## todo_splot
+def PlotShearZoneRheologySummary():
+    # options for rheologies
+    rheology_olivine = "HK03_dry"
+    # options for strain rates
+    strain_rate_min = 10**(-10)
+    strain_rate_max =  10**(-15)
+    strain_rate_N = 100  # integer, number of sample points for the strain rate
+    # options for the differential stress, only affect ploting
+    stress_min = 5 # Mpa
+    stress_max = 5e2 # Mpa
+    # options for the temperature, pressure
+    Ts = np.array([875.0, 925.0])  # C
+    T_N = Ts.size
+    depths = np.array([2500, 3000])
+    assert(T_N == depths.size)
+    Ps = depths * 10 * 3000.0 # Pa, has to be the same shape as Ts
+    assert(T_N == Ps.size)
+    # options for the grain size
+    dry_olivine_diff, dry_olivine_disl = GetRheology(rheology_olivine)
+    d_olivine_dry = 3000 
+    ## initializing
+    fig = plt.figure(tight_layout=True, figsize = (10, 5))
+    gs = gridspec.GridSpec(1, T_N)
+    gridspec
+    strain_rates = np.linspace(strain_rate_min, strain_rate_max, strain_rate_N)
+    for i in range(Ts.size):
+        # initalize for a subplot
+        T = Ts[i]
+        P = Ps[i]
+        depth = depths[i]
+        ax = fig.add_subplot(gs[0, i])
+        stress_dict = {}
+        grain_size_dict = {}
+        stress_array_olivine = np.zeros(strain_rates.shape)
+        for j in range(strain_rate_N):
+            strain_rate = strain_rates[j]
+            visc_diff = CreepStress(dry_olivine_diff, strain_rate, P, T + 273.15, d_olivine_dry, 0.0)  # dry rheology, Coh is not dependent
+            visc_disl = CreepStress(dry_olivine_disl, strain_rate, P, T + 273.15, d_olivine_dry, 0.0)  # dry rheology, Coh is not dependent
+            stress_array_olivine[j] =  ComputeComposite(visc_diff, visc_disl)
+        stress_dict['olivine_dry'] = stress_array_olivine
+        grain_size_dict['olivine_dry'] = d_olivine_dry
+        for key, value in stress_dict.items():
+            _label = key + ", d = " + str(grain_size_dict[key]) + " um"
+            ax.loglog(value, strain_rates, label=_label)
+        ax.legend()
+        ax.set_xlabel("Stress (MPa)")
+        ax.set_xlim([stress_min, stress_max])
+        ax.set_ylim([strain_rate_max, strain_rate_min])
+        ax.set_ylabel('Strain Rate (s^-1)')
+        ax.set_title("%.2e m, %.2e C, %.2e Pa" % (depth, T, P))
+    fig_path = os.path.join(RESULT_DIR, "shear_zone_rheology_summary.png") # path to save the figure 
+    print("%s: generate figure %s" % (Utilities.func_name(), fig_path))
+    fig.savefig(fig_path)
+
 
 def main():
     '''
@@ -1876,6 +2009,10 @@ def main():
         Zs = Operator.Zs
         fig_path = os.path.join(ASPECT_LAB_DIR, "results", "strength_profile.png")
         PlotShearZoneStrengh(Operator, fig_path)
+    
+    elif _commend == "plot_shear_zone_rheology_summary":
+        ## todo_splot
+        PlotShearZoneRheologySummary()
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)
 

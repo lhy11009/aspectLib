@@ -37,12 +37,14 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
-def test_CreepStress_CreepRheology():
+def test_CreepStress_CreepRheology_CreepStrainRate():
     """
     test the implementation of equations from Hirth & Kohlstedt, 2003(filename='Hirth_Kohlstedt.json')
     Tolerence set to be 1%
     Asserts:
-        values computed from the rheology
+        1. values of stress
+        2. values computed from the rheology
+        3. values of strain rate
     """
     # read parameters
     RheologyPrm = RHEOLOGY_PRM()
@@ -65,6 +67,14 @@ def test_CreepStress_CreepRheology():
     
     check3 = CreepRheology(dislocation_creep, 2.5e-12, 1e9, 1400 + 273.15, 1e4, 1000.0)
     assert(abs((check3 - 6.0119447368476904e+16) / check3) < tolerance)
+
+    # check for strain rate
+    check4 = CreepStrainRate(diffusion_creep, 0.2991, 1e9, 1400 + 273.15, 1e4, 1000.0)
+    assert(abs(check4 - 7.8e-15) / 7.8e-15 < tolerance)
+    
+    check5 = CreepStrainRate(dislocation_creep, 0.3006, 1e9, 1400 + 273.15, 1e4, 1000.0)
+    assert(abs(check5 - 2.5e-12) / 2.5e-12 < tolerance)
+    
 
 
 def test_CreepComputeA():
@@ -325,6 +335,46 @@ def test_Rybachi_06_anorthite():
     print('stress_disl_1: ', stress_disl_1)
     tolerance = 0.1
 
+
+def test_Dimanov_Dresen():
+    '''
+    Test the plagioclase rheology from Dimanov Dresen 2005
+    Asserts:
+        1. Assert the 35 mu m rheology 
+        2. Assert the 45 mu m rheology
+    '''
+    # assert 1: 35 mu m 
+    rheology = 'Dimanov_Dresen_An50Di35D_dry'
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+    P = 300e6  # pa
+    T = 1423.0
+    d = 35.0  # in the fit, the d^(-p) term is set to 1
+    stress = 200.0 # 200 Mpa
+    disl_strain_rate =  CreepStrainRate(dislocation_creep, stress, P, T, d, 1.0)
+    diff_strain_rate =  CreepStrainRate(diffusion_creep, stress, P, T, d, 1.0)
+    strain_rate_200_35 = disl_strain_rate + diff_strain_rate
+    assert(abs((strain_rate_200_35 - 8.156720213764019e-05)/8.156720213764019e-05) < 1e-6)
+    stress = 50.0 # 50 Mpa
+    disl_strain_rate =  CreepStrainRate(dislocation_creep, stress, P, T, d, 1.0)
+    diff_strain_rate =  CreepStrainRate(diffusion_creep, stress, P, T, d, 1.0)
+    strain_rate_50_35 = disl_strain_rate + diff_strain_rate
+    assert(abs((strain_rate_50_35 - 6.182208873681617e-06)/6.182208873681617e-06) < 1e-6)
+    # assert 2: 45 mu m
+    rheology = 'Dimanov_Dresen_An50Di45D_dry'
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+    P = 300e6  # pa
+    T = 1423.0
+    d = 45.0  # in the fit, the d^(-p) term is set to 1
+    stress = 200.0 # 200 Mpa
+    disl_strain_rate =  CreepStrainRate(dislocation_creep, stress, P, T, d, 1.0)
+    diff_strain_rate =  CreepStrainRate(diffusion_creep, stress, P, T, d, 1.0)
+    strain_rate_200_45 = disl_strain_rate + diff_strain_rate
+    assert(abs((strain_rate_200_45 - 6.606507553256844e-05)/6.606507553256844e-05) < 1e-6)
+    stress = 50.0 # 50 Mpa
+    disl_strain_rate =  CreepStrainRate(dislocation_creep, stress, P, T, d, 1.0)
+    diff_strain_rate =  CreepStrainRate(diffusion_creep, stress, P, T, d, 1.0)
+    strain_rate_50_45 = disl_strain_rate + diff_strain_rate
+    assert(abs((strain_rate_50_45 - 2.3066772224136795e-06)/2.3066772224136795e-06) < 1e-6)
 # notes
     
 # to check for error message
