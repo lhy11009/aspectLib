@@ -375,6 +375,41 @@ def test_Dimanov_Dresen():
     diff_strain_rate =  CreepStrainRate(diffusion_creep, stress, P, T, d, 1.0)
     strain_rate_50_45 = disl_strain_rate + diff_strain_rate
     assert(abs((strain_rate_50_45 - 2.3066772224136795e-06)/2.3066772224136795e-06) < 1e-6)
+    # assert 3: 35 mu m, at a smaller differential stress and strain rate
+    rheology = 'Dimanov_Dresen_An50Di35D_dry'
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+    P = 3000 * 10 * 3000.0  # pa, 3000 km depth, 3000 kg/m^3
+    T = 925.0 + 273.0
+    d = 35.0  # in the fit, the d^(-p) term is set to 1
+    stress = 60.0 # 60 Mpa
+    diff_strain_rate =  CreepStrainRate(diffusion_creep, stress, P, T, d, 1.0)
+    disl_strain_rate =  CreepStrainRate(dislocation_creep, stress, P, T, d, 1.0)
+    print("diff_strain_rate: ", diff_strain_rate)  # debug
+    print("disl_strain_rate: ", disl_strain_rate)  # debug
+
+
+def test_MehlHirth08GabbroMylonite():
+    '''
+    test the piezometer of MehlHirth08GabbroMylonite
+    Assert:
+        1. a grain size is converted to the right stress
+        2. the stress could be converted back to the original grain size
+        3 & 4, with a different grain size of 100 mu m
+    '''
+    Piezometer = PIEZOMETER()
+    d = 35 # mu m
+    sigma = Piezometer.MehlHirth08GabbroMylonite(d)
+    assert(abs((sigma - 43.01259895022442)/43.01259895022442) < 1e-6)
+    sigma = 43.01259895022442 # invert the relation
+    d = Piezometer.MehlHirth08GabbroMyloniteInvert(sigma)
+    assert(abs((d - 35.0)/35.0) < 1e-6)
+    # 3 & 4
+    d = 100 # mu m
+    sigma = Piezometer.MehlHirth08GabbroMylonite(d)
+    assert(abs((sigma - 25.986533248593485)/25.986533248593485) < 1e-6)
+    sigma = 25.986533248593485 # invert the relation
+    d = Piezometer.MehlHirth08GabbroMyloniteInvert(sigma)
+    assert(abs((d - 100.0)/100.0) < 1e-6)
 # notes
     
 # to check for error message

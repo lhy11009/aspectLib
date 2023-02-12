@@ -1010,6 +1010,40 @@ class RHEOLOGY_OPR():
             i = i + 1
 
 
+class PIEZOMETER():
+    '''
+    A class of piezometers
+    Units to use in the Piezometers:
+        grain size in mu m; sigma in MPa
+    Attributes
+    '''
+    def __init__(self):
+        pass
+
+    def MehlHirth08GabbroMylonite(self, d):
+        '''
+        Piezometers in mylonite gabbro from the Melh Hirth 08 paper
+        Inputs:
+            d - grain size, mu m
+        returns:
+            sigma - stress, MPa
+        '''
+        sigma = 237.0 * d**(-0.48)
+        return sigma
+    
+    def MehlHirth08GabbroMyloniteInvert(self, sigma):
+        '''
+        Piezometers in mylonite gabbro from the Melh Hirth 08 paper
+        Inverting the relationship
+        Inputs:
+            sigma - stress, MPa
+        returns:
+            d - grain size, mu m
+        '''
+        d = (sigma / 237.0) ** (-2.08333333333)
+        return d
+
+
 
 def GetRheology(rheology):
     '''
@@ -1821,8 +1855,15 @@ def temperature_halfspace(z, t, **kwargs):
 ###
 ## todo_splot
 def PlotShearZoneRheologySummary():
+    '''
+    A function to plot the shear zone rheology, in a strain rate vs stress plot.
+    Different rocks / minerals are considered with their flow laws.
+    Options of grain sizes are also included.
+    An example is the Figure 13 in the Mehl and Hirth 2008 paper.
+    '''
     # options for rheologies
     rheology_olivine = "HK03_dry"
+    rheology_gabbro_mylonite = "Dimanov_Dresen_An50Di35D_dry"
     # options for strain rates
     strain_rate_min = 10**(-10)
     strain_rate_max =  10**(-15)
@@ -1837,9 +1878,13 @@ def PlotShearZoneRheologySummary():
     assert(T_N == depths.size)
     Ps = depths * 10 * 3000.0 # Pa, has to be the same shape as Ts
     assert(T_N == Ps.size)
-    # options for the grain size
+    # options for the olivine rheology
     dry_olivine_diff, dry_olivine_disl = GetRheology(rheology_olivine)
-    d_olivine_dry = 3000 
+    d_olivine_dry = 3000  # mu m
+    # options for the gabbro rheology
+    gabbro_diff, gabbro_disl = GetRheology(rheology_gabbro_mylonite)
+    d_gabbro_mylonite_dry = 35  # mu m
+    d_gabbro_coarse = 3000  # mu m
     ## initializing
     fig = plt.figure(tight_layout=True, figsize = (10, 5))
     gs = gridspec.GridSpec(1, T_N)
@@ -1851,16 +1896,32 @@ def PlotShearZoneRheologySummary():
         P = Ps[i]
         depth = depths[i]
         ax = fig.add_subplot(gs[0, i])
-        stress_dict = {}
-        grain_size_dict = {}
+        stress_dict = {}  # use for storing all the stress results
+        grain_size_dict = {}  # use for stroing all the grain size results
         stress_array_olivine = np.zeros(strain_rates.shape)
+        stress_array_gabbro_mylonite = np.zeros(strain_rates.shape)
+        stress_array_gabbro_coarse = np.zeros(strain_rates.shape)
         for j in range(strain_rate_N):
             strain_rate = strain_rates[j]
-            visc_diff = CreepStress(dry_olivine_diff, strain_rate, P, T + 273.15, d_olivine_dry, 0.0)  # dry rheology, Coh is not dependent
-            visc_disl = CreepStress(dry_olivine_disl, strain_rate, P, T + 273.15, d_olivine_dry, 0.0)  # dry rheology, Coh is not dependent
-            stress_array_olivine[j] =  ComputeComposite(visc_diff, visc_disl)
+            # for olivine
+            stress_diff = CreepStress(dry_olivine_diff, strain_rate, P, T + 273.15, d_olivine_dry, 0.0)  # dry rheology, Coh is not dependent
+            stress_disl = CreepStress(dry_olivine_disl, strain_rate, P, T + 273.15, d_olivine_dry, 0.0)  # dry rheology, Coh is not dependent
+            stress_array_olivine[j] =  ComputeComposite(stress_diff, stress_disl)
+            stress_diff = CreepStress(gabbro_diff, strain_rate, P, T + 273.15, d_gabbro_mylonite_dry, 0.0)  # dry rheology, Coh is not dependent
+            stress_disl = CreepStress(gabbro_disl, strain_rate, P, T + 273.15, d_gabbro_mylonite_dry, 0.0)  # dry rheology, Coh is not dependent
+            print("strain_rate: ", strain_rate)  # debug
+            print("stress_disl: ", stress_disl)
+            print("stress_diff: ", stress_diff)
+            stress_array_gabbro_mylonite[j] =  ComputeComposite(stress_diff, stress_disl)
+            stress_diff = CreepStress(gabbro_diff, strain_rate, P, T + 273.15, d_gabbro_coarse, 0.0)  # dry rheology, Coh is not dependent
+            stress_disl = CreepStress(gabbro_disl, strain_rate, P, T + 273.15, d_gabbro_coarse, 0.0)  # dry rheology, Coh is not dependent
+            stress_array_gabbro_coarse[j] =  ComputeComposite(stress_diff, stress_disl)
         stress_dict['olivine_dry'] = stress_array_olivine
+        stress_dict['gabbro_mylonite'] = stress_array_gabbro_mylonite
+        stress_dict['gabbro_course'] = stress_array_gabbro_coarse
         grain_size_dict['olivine_dry'] = d_olivine_dry
+        grain_size_dict['gabbro_mylonite'] = d_gabbro_mylonite_dry
+        grain_size_dict['gabbro_course'] = d_gabbro_coarse
         for key, value in stress_dict.items():
             _label = key + ", d = " + str(grain_size_dict[key]) + " um"
             ax.loglog(value, strain_rates, label=_label)

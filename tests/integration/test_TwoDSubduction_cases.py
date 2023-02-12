@@ -35,6 +35,26 @@ if os.path.isdir(test_dir):
 os.mkdir(test_dir)
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'cases', "test_TwoDSubduction")
 
+
+def test_fix_before_group1_old_sp():
+    '''
+    Tests before I fix the group of cases without the Peierls creep
+    '''
+    source_case_dir = os.path.join(source_dir, "fix_before_group1_old_sp")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'fix_before_group1_old_sp')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)  # create case
+#    assert(os.path.isdir(output_dir))  # check case generation
+#    prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
+#    prm_path = os.path.join(output_dir, 'case.prm')
+#    assert(filecmp.cmp(prm_path, prm_std_path))
+#    wb_std_path = os.path.join(source_case_dir, 'case_0_std.wb')
+#    wb_path = os.path.join(output_dir, 'case.wb')
+#    assert(filecmp.cmp(wb_path, wb_std_path))
+
+
 def test_bd_v():
     '''
     todo_bd
@@ -511,6 +531,8 @@ def test_eclogite_lowP():
     wb_std_path = os.path.join(source_case_dir, 'case_0_std.wb')
     wb_path = os.path.join(output_dir, 'case.wb')
     assert(filecmp.cmp(wb_path, wb_std_path))
+
+
     
 # to check for error message
     # with pytest.raises(SomeError) as _excinfo:

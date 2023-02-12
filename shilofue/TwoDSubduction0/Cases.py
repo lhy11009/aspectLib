@@ -249,13 +249,14 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         delta_trench = self.values[self.start + 35]
         eclogite_max_P = self.values[self.start + 36]
         eclogite_match = self.values[self.start + 37]
+        version = self.values[23]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
         branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
-        ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match
+        ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version
 
     def to_configure_wb(self):
         '''
@@ -276,8 +277,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         is_box_wider = self.is_box_wider()
         Dsz = self.values[self.start + 16]
         wb_new_ridge = self.values[self.start + 27]
+        version = self.values[23]
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
-            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge
+            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version
     
     def to_configure_final(self):
         '''
@@ -322,7 +324,8 @@ class CASE(CasesP.CASE):
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
     sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
-    sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match):
+    sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,
+    version):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -588,7 +591,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             pass 
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
-        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge):
+        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version):
         '''
         Configure world builder file
         Inputs:
@@ -623,7 +626,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
             # sz_thickness
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
-            sp_rate, ov_ag, wb_new_ridge, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+            sp_rate, ov_ag, wb_new_ridge, version, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz)
         elif geometry == 'box':
             if is_box_wider:
@@ -632,7 +635,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                 Xmax = 1e7  # lateral extent of the box
             Ro = float(self.idict['Geometry model']['Box']['Y extent'])
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
-            sp_rate, ov_ag, wb_new_ridge, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+            sp_rate, ov_ag, wb_new_ridge, version, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry, sz_thickness=Dsz) # plates
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
@@ -702,7 +705,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
 
 
 
-def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, **kwargs):
+def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, version, **kwargs):
     '''
     configure plate in world builder
     '''
@@ -727,6 +730,13 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, *
         sp_ridge_coords = [[[0, -_side], [0, _side]]]
     else:
         sp_ridge_coords = [[0, -_side], [0, _side]]
+    # change the method of the depth method to use
+    if version < 1.0:
+        pass
+    elif version < 2.0:
+        o_dict["coordinate system"]["depth method"] = "begin at end segment"
+    else:
+        raise NotImplementedError
     # Overiding plate
     if_ov_trans = kwargs.get('if_ov_trans', False)  # transit to another age
     if if_ov_trans and ov_age > (1e6 + kwargs['ov_trans_age']):  # only transfer to younger age
@@ -772,11 +782,17 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, *
     s_dict["dip point"] = [_max, 0.0]
     s_dict["temperature models"][0]["ridge coordinates"] = sp_ridge_coords
     s_dict["temperature models"][0]["plate velocity"] = sp_rate
-    if sp_age_trench > 100e6:
-        # in this case, I'll use the plate model
-        s_dict["temperature models"][0]["use plate model as reference"] = True
-        s_dict["temperature models"][0]["max distance slab top"] = 150e3
-        s_dict["temperature models"][0]["artificial heat factor"] = 0.5
+    if version < 1.0:
+        if sp_age_trench > 100e6:
+            # in this case, I'll use the plate model
+            s_dict["temperature models"][0]["use plate model as reference"] = True
+            s_dict["temperature models"][0]["max distance slab top"] = 150e3
+            s_dict["temperature models"][0]["artificial heat factor"] = 0.5
+    elif version < 2.0:
+            s_dict["temperature models"][0]["reference model name"] = "plate model"
+            s_dict["temperature models"][0]["max distance slab top"] = 150e3
+    else:
+        raise NotImplementedError()
     for i in range(len(s_dict["segments"])-1):
         # thickness of crust, last segment is a ghost, so skip
         s_dict["segments"][i]["composition models"][0]["max distance slab top"] = Dsz

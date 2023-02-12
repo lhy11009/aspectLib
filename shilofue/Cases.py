@@ -93,6 +93,7 @@ it only takes effect if the input is positiveh",\
         self.add_key("partitions", list, ["partitions"], [], nick='partitions')
         self.add_key("if a test case is generated for the initial steps", int, ['test initial steps', 'number of outputs'], -1, nick='test_initial_n_outputs')
         self.add_key("interval of outputs for the initial steps", float, ['test initial steps', 'interval of outputs'], 1e5, nick='test_initial_outputs_interval')
+        self.add_key("Version number", float, ["version"], 0.1, nick="version")
 
         pass
     
