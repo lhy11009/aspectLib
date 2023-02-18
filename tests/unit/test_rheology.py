@@ -55,9 +55,22 @@ def test_CreepStress_CreepRheology_CreepStrainRate():
     tolerance = 0.01
     check0 = CreepStress(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 1000.0)
     assert(abs(check0 - 0.2991) / 0.2991 < tolerance)
+    # using the second invariant
+    # here the stress is converted to the 2nd invariant
+    check0_ii_std = CreepStress(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 1000.0) / 3**0.5 
+    # here the strain rate in converted to 2nd invariant as input
+    check0_ii = CreepStress(diffusion_creep, 7.8e-15/(2.0/3**0.5), 1e9,\
+                            1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+    assert(abs(check0_ii - check0_ii_std)/check0_ii_std < 1e-6)
     
     check1 = CreepStress(dislocation_creep, 2.5e-12, 1e9, 1400 + 273.15, 1e4, 1000.0)
     assert(abs((check1 - 0.3006) / 0.3006) < tolerance)
+    # using the second invariant
+    # here the stress is converted to the 2nd invariant
+    check1_ii_std = CreepStress(dislocation_creep, 2.5e-12, 1e9, 1400 + 273.15, 1e4, 1000.0) / 3**0.5
+    check1_ii = CreepStress(dislocation_creep, 2.5e-12/(2.0/3**0.5),\
+                            1e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+    assert(abs(check1_ii - check1_ii_std)/check1_ii_std < 1e-6)
     
     # check for viscosity
     check2 = CreepRheology(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 1000.0)
@@ -71,10 +84,18 @@ def test_CreepStress_CreepRheology_CreepStrainRate():
     # check for strain rate
     check4 = CreepStrainRate(diffusion_creep, 0.2991, 1e9, 1400 + 273.15, 1e4, 1000.0)
     assert(abs(check4 - 7.8e-15) / 7.8e-15 < tolerance)
+    # use the second order invariant
+    check4_ii_std = CreepStrainRate(diffusion_creep, 0.2991, 1e9, 1400 + 273.15, 1e4, 1000.0) * 3**0.5 / 2.0
+    check4_ii = CreepStrainRate(diffusion_creep, 0.2991/3**0.5, 1e9,\
+                                1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+    assert(abs(check4_ii - check4_ii_std)/check4_ii_std < 1e-6)
     
     check5 = CreepStrainRate(dislocation_creep, 0.3006, 1e9, 1400 + 273.15, 1e4, 1000.0)
     assert(abs(check5 - 2.5e-12) / 2.5e-12 < tolerance)
-    
+    # use the second order invariant
+    check5_ii_std = CreepStrainRate(dislocation_creep, 0.3006, 1e9, 1400 + 273.15, 1e4, 1000.0) * 3**0.5/2.0
+    check5_ii = CreepStrainRate(dislocation_creep, 0.3006/3**0.5, 1e9,\
+                               1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
 
 
 def test_CreepComputeA():
@@ -253,8 +274,8 @@ def test_StrengthProfile():
     year = 365.0 * 24.0 * 3600.0
     rheology = 'HK03_wet_mod'
     Operator = STRENGTH_PROFILE(max_depth=40e3)
-    # Operator.SetRheologyByName(disl='ARCAY17', plastic='ARCAY17')
-    Operator.SetRheologyByName(disl=rheology, plastic='ARCAY17')
+    # Operator.SetRheologyByName(disl='ARCAY17', brittle='ARCAY17')
+    Operator.SetRheologyByName(disl=rheology, brittle='ARCAY17')
     Operator.Execute(creep_type='disl')
     # assert 1: check the value of the viscosity from the viscous part
     # the P and T are taken from the variables in the STRENGTH_PROFILE functions

@@ -372,7 +372,7 @@ class RHEOLOGY_PRM():
                 "d" : 1e4, # not dependent on d
                 "Coh" : 1000.0
             }
-        self.ARCAY17_plastic = \
+        self.ARCAY17_brittle = \
         {
             "friction" : 0.05,
             "cohesion": 1e6, # pa
@@ -538,7 +538,7 @@ class RHEOLOGY_PRM():
         '''
         read rheology parameters, and account for effects of water if it is a wet rheology
         '''
-        assert(_type in ['diff', 'disl', 'plastic'])
+        assert(_type in ['diff', 'disl', 'brittle'])
         _attr = _name + "_" + _type
         if not hasattr(self, _attr):
             raise ValueError("RHEOLOGY_PRM object doesn't have attribute %s" % _attr)
@@ -577,7 +577,7 @@ class RHEOLOGY_OPR():
         self.disl = None
         self.diff_type = None
         self.disl_type = None
-        self.plastic = None
+        self.brittle = None
         pass
 
     def SetRheology(self, **kwargs):
@@ -586,7 +586,7 @@ class RHEOLOGY_OPR():
         '''
         self.diff = kwargs.get('diff', None)
         self.disl = kwargs.get('disl', None)
-        self.plastic = kwargs.get('plastic', None)
+        self.brittle = kwargs.get('brittle', None)
         pass
     
     def SetRheologyByName(self, **kwargs):
@@ -595,7 +595,7 @@ class RHEOLOGY_OPR():
         '''
         diff_type = kwargs.get('diff', None)
         disl_type = kwargs.get('disl', None)
-        plastic_type = kwargs.get('plastic', None)
+        brittle_type = kwargs.get('brittle', None)
         self.diff_type = diff_type
         self.disl_type = disl_type
         if diff_type != None and disl_type != None:
@@ -606,8 +606,8 @@ class RHEOLOGY_OPR():
         if disl_type != None:
             _, dislocation_creep = GetRheology(disl_type)
             self.disl = dislocation_creep
-        if plastic_type != None:
-            self.plastic = self.RheologyPrm.get_rheology(plastic_type, 'plastic')
+        if brittle_type != None:
+            self.brittle = self.RheologyPrm.get_rheology(brittle_type, 'brittle')
     
     def ReadProfile(self, file_path):
         '''
@@ -1145,7 +1145,7 @@ def Config(_kwargs, _name, _default):
     return value
 
 
-def CreepStress(creep, strain_rate, P, T, d, Coh):
+def CreepStress(creep, strain_rate, P, T, d, Coh, **kwargs):
     """
     def DislocationCreep(strain_rate, P, T, d, Coh)
 
@@ -1156,6 +1156,8 @@ def CreepStress(creep, strain_rate, P, T, d, Coh):
      - d: mu m
      - Coh: H / 10^6 Si
      - Return value: Mpa
+    kwargs:
+        use_effective_strain_rate - use the second invariant as input
     Pay attention to pass in the right value, this custom is inherited
     """
     A = creep['A']
@@ -1164,12 +1166,18 @@ def CreepStress(creep, strain_rate, P, T, d, Coh):
     n = creep['n']
     E = creep['E']
     V = creep['V']
+    # compute F
+    use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
+    if use_effective_strain_rate:
+        F = 2**(1/n)/3**((n+1)/2/n)
+    else:
+        F = 1.0
     # calculate B
     B = A * d**(-p) * Coh**r
-    return (strain_rate / B)**(1.0 / n) * np.exp((E + P * V) / (n * R * T))
+    return F * (strain_rate / B)**(1.0 / n) * np.exp((E + P * V) / (n * R * T))
 
 
-def CreepStrainRate(creep, stress, P, T, d, Coh):
+def CreepStrainRate(creep, stress, P, T, d, Coh, **kwargs):
     """
     Calculate strain rate by flow law in form of 
         B * sigma^n * exp( - (E + P * V) / (R * T))
@@ -1180,6 +1188,8 @@ def CreepStrainRate(creep, stress, P, T, d, Coh):
      - stress: MPa
      - Coh: H / 10^6 Si
      - Return value: s^-1
+    kwargs:
+        use_effective_strain_rate - use the second invariant as input
     Pay attention to pass in the right value, this custom is inherited
     """
     A = creep['A']
@@ -1189,8 +1199,14 @@ def CreepStrainRate(creep, stress, P, T, d, Coh):
     E = creep['E']
     V = creep['V']
     # calculate B
+    # compute F
+    use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
+    if use_effective_strain_rate:
+        F = 3**((n+1)/2) / 2.0
+    else:
+        F = 1.0
     B = A * d**(-p) * Coh**r
-    return B *stress**n * np.exp(-(E + P * V) / (R * T))
+    return F * B *stress**n * np.exp(-(E + P * V) / (R * T))
 
 
 def CreepRheology(creep, strain_rate, P, T, d=None, Coh=None, **kwargs):
@@ -1722,9 +1738,9 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
         year = 365 * 24 * 3600.0
         self.creep_type = kwargs.get('creep_type', 'diff')
         self.creep = getattr(self, self.creep_type)
-        plastic = self.plastic
+        brittle = self.brittle
         assert(self.creep != None)
-        assert(plastic != None)
+        assert(brittle != None)
         averaging = kwargs.get('averaging', 'harmonic')
         strain_rate = kwargs.get('strain_rate', 1e-14)
         # rheology_prm = RHEOLOGY_PRM()
@@ -1734,18 +1750,18 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
         Tliths = temperature_halfspace(Zs, 40e6*year, Tm=1573.0) # adiabatic temperature
         Ts = 713 * Zs / 78.245e3  + 273.14# geotherm from Arcay 2017 pepi, figure 3d 2
         Ps = pressure_from_lithostatic(Zs, Tliths)
-        # plastic self.plastic
-        if plastic["type"] == "stress dependent":
-            Sigs_plastic = StressDependentYielding(Ps, plastic["cohesion"], plastic["friction"], plastic["ref strain rate"], plastic["n"], strain_rate)
-        elif plastic["type"] == "Coulumb":
-            Sigs_plastic = CoulumbYielding(Ps, plastic["cohesion"], plastic["friction"])
-        self.eta_plastic = Sigs_plastic / 2.0 / strain_rate
+        # brittle self.brittle
+        if brittle["type"] == "stress dependent":
+            Sigs_brittle = StressDependentYielding(Ps, brittle["cohesion"], brittle["friction"], brittle["ref strain rate"], brittle["n"], strain_rate)
+        elif brittle["type"] == "Coulumb":
+            Sigs_brittle = CoulumbYielding(Ps, brittle["cohesion"], brittle["friction"])
+        self.eta_brittle = Sigs_brittle / 2.0 / strain_rate
         # viscous stress
         Sigs_viscous = 1e6 * CreepStress(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0) # change to UI
         self.eta_viscous = Sigs_viscous / 2.0 / strain_rate
-        Sigs = np.minimum(Sigs_plastic, Sigs_viscous)
+        Sigs = np.minimum(Sigs_brittle, Sigs_viscous)
         if averaging == 'harmonic':
-            Etas = self.eta_plastic * self.eta_viscous / (self.eta_viscous + self.eta_plastic)
+            Etas = self.eta_brittle * self.eta_viscous / (self.eta_viscous + self.eta_brittle)
         else:
             raise NotImplementedError()
         self.Sigs = Sigs
@@ -2226,11 +2242,21 @@ def main():
         RheologyPrm = RHEOLOGY_PRM()
         diffusion_creep = getattr(RheologyPrm, rheology + "_diff")
         dislocation_creep = getattr(RheologyPrm, rheology + "_disl")
-        eta_diff = CreepRheology(diffusion_creep, arg.strain_rate, arg.pressure, arg.temperature)
-        eta_disl = CreepRheology(dislocation_creep, arg.strain_rate, arg.pressure, arg.temperature, use_effective_strain_rate=arg.use_effective_strain_rate)
-        # screen output
-        print("eta_diff = %4e" % eta_diff)
-        print("eta_disl = %4e" % eta_disl)
+        if diffusion_creep is not None:
+            eta_diff = CreepRheology(diffusion_creep, arg.strain_rate, arg.pressure, arg.temperature, use_effective_strain_rate=arg.use_effective_strain_rate)
+            stress_diff = CreepStress(diffusion_creep, arg.strain_rate, arg.pressure, arg.temperature, 1e4, 1000.0)
+            print("eta_diff = %4e" % eta_diff) # screen output
+            print("stress_diff = %.4e" % stress_diff)
+        if dislocation_creep is not None:
+            eta_disl = CreepRheology(dislocation_creep, arg.strain_rate, arg.pressure, arg.temperature, use_effective_strain_rate=arg.use_effective_strain_rate)
+            stress_disl = CreepStress(dislocation_creep, arg.strain_rate, arg.pressure, arg.temperature, 1e4, 1000.0)
+            print("eta_disl = %4e" % eta_disl) # screen output
+            print("stress_disl = %.4e" % stress_disl)
+        if (diffusion_creep is not None) and (dislocation_creep is not None):
+            eta_diff = CreepRheology(diffusion_creep, arg.strain_rate, arg.pressure, arg.temperature)
+            eta_disl = CreepRheology(dislocation_creep, arg.strain_rate, arg.pressure, arg.temperature)
+            eta_comp = ComputeComposite(eta_disl, eta_diff)
+            print("eta_comp = %4e" % eta_comp) # screen output
 
     elif _commend == 'compute_ASPECT_viscosity':
         # read from json file
@@ -2268,10 +2294,8 @@ def main():
 
     elif _commend == 'plot_strength_profile':
         Operator = STRENGTH_PROFILE()
-        Operator.SetRheologyByName(disl='ARCAY17', plastic='ARCAY17')
+        Operator.SetRheologyByName(disl='ARCAY17', brittle='ARCAY17')
         Operator.Execute(creep_type='disl')
-        Sigs = Operator.Sigs
-        Zs = Operator.Zs
         fig_path = os.path.join(ASPECT_LAB_DIR, "results", "strength_profile.png")
         PlotShearZoneStrengh(Operator, fig_path)
     

@@ -477,13 +477,13 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             CDPT_assign_yielding(o_dict, cohesion, friction)
         # append to initial condition output
         if sz_viscous_scheme == "stress dependent":
-            plastic_yielding = {}
-            plastic_yielding['cohesion'] = crust_cohesion
-            plastic_yielding['friction'] = np.tan(crust_friction * np.pi / 180.0)
-            plastic_yielding['type'] = 'Coulumb'
+            brittle_yielding = {}
+            brittle_yielding['cohesion'] = crust_cohesion
+            brittle_yielding['friction'] = np.tan(crust_friction * np.pi / 180.0)
+            brittle_yielding['type'] = 'Coulumb'
             Operator_Sp = STRENGTH_PROFILE()
             rheology_experiment_dislocation = ConvertFromAspectInput(rheology['dislocation_creep'])
-            Operator_Sp.SetRheology(disl=rheology_experiment_dislocation, plastic=plastic_yielding)
+            Operator_Sp.SetRheology(disl=rheology_experiment_dislocation, brittle=brittle_yielding)
             fig_path = os.path.join(ASPECT_LAB_DIR, "results", "shear_zone_strength.png")
             PlotShearZoneStrengh(Operator_Sp, fig_path)
             self.output_imgs.append(fig_path)
