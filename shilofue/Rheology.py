@@ -510,6 +510,30 @@ class RHEOLOGY_PRM():
                 "V" : 0.0  # not present in the table
         }
 
+        self.Rybachi_2000_An100_dry_diff = \
+        {
+                # diffusion creep, for the An100 in table 3
+                # note that this is marked as dry, but there
+                # is 640 ppm H/Si in the synthetic anorthite
+                "A" : 1.258925e12, # 10^12.1
+                "p" : 3.0,
+                "r" : 0.0, # dry, not dependent on fugacity
+                "n" : 1.0,
+                "E" : 467e3,
+                "V" : 0.0  # not present in the table
+        }
+        
+        self.Rybachi_2000_An100_dry_disl = \
+        {
+            # dislocation creep, for the An100 in table 3
+                "A" : 5.01187e12,  # 10^12.7
+                "p" : 0.0,
+                "r" : 0.0, # dry, not dependent on fugacity
+                "n" : 3.0,
+                "E" : 648e3,
+                "V" : 0.0  # not present in the table
+        }
+
     def get_rheology(self, _name, _type):
         '''
         read rheology parameters, and account for effects of water if it is a wet rheology
@@ -571,13 +595,17 @@ class RHEOLOGY_OPR():
         '''
         diff_type = kwargs.get('diff', None)
         disl_type = kwargs.get('disl', None)
+        plastic_type = kwargs.get('plastic', None)
         self.diff_type = diff_type
         self.disl_type = disl_type
-        plastic_type = kwargs.get('plastic', None)
+        if diff_type != None and disl_type != None:
+            assert(diff_type == disl_type)  # doesn't make sense to have inconsistent flow laws
         if diff_type != None:
-            self.diff = self.RheologyPrm.get_rheology(diff_type, 'diff')
+            diffusion_creep, _ = GetRheology(diff_type)
+            self.diff = diffusion_creep
         if disl_type != None:
-            self.disl = self.RheologyPrm.get_rheology(disl_type, 'disl')
+            _, dislocation_creep = GetRheology(disl_type)
+            self.disl = dislocation_creep
         if plastic_type != None:
             self.plastic = self.RheologyPrm.get_rheology(plastic_type, 'plastic')
     
@@ -1028,19 +1056,39 @@ class PIEZOMETER():
         returns:
             sigma - stress, MPa
         '''
-        sigma = 237.0 * d**(-0.48)
+        d_min = 10.0
+        d_max = 3000
+        if d < d_min:
+            raise ValueError("value of d smaller than the minimum limit")
+        elif d > d_max:
+            raise ValueError("value of d beyond the maximum limit")
+        else:
+            sigma = 237.0 * d**(-0.48)
         return sigma
     
     def MehlHirth08GabbroMyloniteInvert(self, sigma):
         '''
         Piezometers in mylonite gabbro from the Melh Hirth 08 paper
-        Inverting the relationship
+        Inverting the relationship, if the values of stress is beyond
+        the max / min level, reture the min / max limit of the grain
+        size.
         Inputs:
             sigma - stress, MPa
         returns:
             d - grain size, mu m
         '''
-        d = (sigma / 237.0) ** (-2.08333333333)
+        sigma_min = 5.07843787
+        # sigma_max = 78.4780757914
+        # sigma_max = 50.0
+        sigma_max = 26.0
+        if sigma < sigma_min:
+            d = 3000.0
+        elif sigma > sigma_max:
+            # d = 10.0
+            # d = 35.0
+            d = 100.0
+        else:
+            d = (sigma / 237.0) ** (-2.08333333333)
         return d
 
 
@@ -1656,7 +1704,7 @@ def DeriveMantleRheology(file_path, **kwargs):
 ###
 class STRENGTH_PROFILE(RHEOLOGY_OPR):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         RHEOLOGY_OPR.__init__(self)
         self.Sigs = None
         self.Sigs_viscous = None
@@ -1665,6 +1713,7 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
         self.Computed = False
         self.creep_type = None
         self.creep = None
+        self.max_depth = kwargs.get('max_depth', 80e3)
 
     def Execute(self, **kwargs):
         '''
@@ -1681,7 +1730,7 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
         # rheology_prm = RHEOLOGY_PRM()
         # self.plastic = rheology_prm.ARCAY17_plastic
         # self.dislocation_creep = rheology_prm.ARCAY17_disl
-        Zs = np.linspace(0.0, 40e3, 100)
+        Zs = np.linspace(0.0, self.max_depth, 100)
         Tliths = temperature_halfspace(Zs, 40e6*year, Tm=1573.0) # adiabatic temperature
         Ts = 713 * Zs / 78.245e3  + 273.14# geotherm from Arcay 2017 pepi, figure 3d 2
         Ps = pressure_from_lithostatic(Zs, Tliths)
@@ -1690,13 +1739,13 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
             Sigs_plastic = StressDependentYielding(Ps, plastic["cohesion"], plastic["friction"], plastic["ref strain rate"], plastic["n"], strain_rate)
         elif plastic["type"] == "Coulumb":
             Sigs_plastic = CoulumbYielding(Ps, plastic["cohesion"], plastic["friction"])
-        eta_plastic = Sigs_plastic / 2.0 / strain_rate
+        self.eta_plastic = Sigs_plastic / 2.0 / strain_rate
         # viscous stress
-        Sigs_viscous = CreepStress(self.creep, strain_rate, Ps, Ts, 1e4, 1000)
-        eta_viscous = Sigs_viscous / 2.0 / strain_rate
+        Sigs_viscous = 1e6 * CreepStress(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0) # change to UI
+        self.eta_viscous = Sigs_viscous / 2.0 / strain_rate
         Sigs = np.minimum(Sigs_plastic, Sigs_viscous)
         if averaging == 'harmonic':
-            Etas = eta_plastic * eta_viscous / (eta_viscous + eta_plastic)
+            Etas = self.eta_plastic * self.eta_viscous / (self.eta_viscous + self.eta_plastic)
         else:
             raise NotImplementedError()
         self.Sigs = Sigs
@@ -1850,27 +1899,38 @@ def temperature_halfspace(z, t, **kwargs):
     T = T_s + (T_m - T_s)*erf(z/(2*np.sqrt(kappa*t)))
     return T
 
-###
-# fuctions for plotting a subducting shear zone rheology
-###
-## todo_splot
-def PlotShearZoneRheologySummary():
+
+def PlotShearZoneRheologySummary(**kwargs):
     '''
     A function to plot the shear zone rheology, in a strain rate vs stress plot.
     Different rocks / minerals are considered with their flow laws.
     Options of grain sizes are also included.
     An example is the Figure 13 in the Mehl and Hirth 2008 paper.
+    kwargs:
+        option - option of rheology to use
+            none - use the value presented in experiments
+            Q_503_gabbro - use a 503 kj /mol in the gabbro aggregate rheology
+            Q_473_and_A_gabbro - use a 473 kj /mol and a smaller A in the gabbro aggregate rheology
+            d_100_gabbro - use a 100 mu m grain size in gabbro aggregate rheology
     '''
+    option = kwargs.get('option', None)
+    if option is not None:
+        assert(option in ['Q_503_gabbro', 'Q_473_and_A_gabbro', 'd_100_gabbro'])
     # options for rheologies
     rheology_olivine = "HK03_dry"
+    rheology_wet_olivine = "HK03_dry"
+    rheology_dry_anorthite = "Rybachi_2000_An100_dry"
     rheology_gabbro_mylonite = "Dimanov_Dresen_An50Di35D_dry"
-    # options for strain rates
-    strain_rate_min = 10**(-10)
-    strain_rate_max =  10**(-15)
-    strain_rate_N = 100  # integer, number of sample points for the strain rate
-    # options for the differential stress, only affect ploting
-    stress_min = 5 # Mpa
-    stress_max = 5e2 # Mpa
+    rheology_basalt = "ST1981_basalt"
+    Piezometer = PIEZOMETER()  # a piezometer object
+    ### First part, plot strain rate vs stress (e.g. Mehl & Hirth 2008)
+    # options for stress
+    stress_min = 5.0 # MPa
+    stress_max = 500.0 # MPa
+    stress_N = 100  # integer, number of sample points for the stress
+    # options for the strain rate, only affect ploting
+    strain_rate_min = 10**(-15)  # s^-1
+    strain_rate_max = 10**(-10) # s^-1
     # options for the temperature, pressure
     Ts = np.array([875.0, 925.0])  # C
     T_N = Ts.size
@@ -1881,57 +1941,201 @@ def PlotShearZoneRheologySummary():
     # options for the olivine rheology
     dry_olivine_diff, dry_olivine_disl = GetRheology(rheology_olivine)
     d_olivine_dry = 3000  # mu m
+    # options for the wet olivine rheology
+    # note that we use the rheology in ASPECT here (in UI)
+    source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
+    da_file = os.path.join(source_dir, "depth_average.txt")
+    assert(os.path.isfile(da_file))
+    d_olivine_wet = 10000  # mu m
+    Operator = RHEOLOGY_OPR()
+    Operator.ReadProfile(da_file) # read profile
+    rheology_aspect = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
+    dVdiff=-5.5e-6, dVdisl=2.12e-6, save_profile=1, dAdiff_ratio=0.33333247873, dAdisl_ratio=1.040297619,\
+    jump_lower_mantle=15.0)
+    wet_olivine_diff_aspect = rheology_aspect['diffusion_creep']
+    wet_olivine_diff_aspect['d'] = d_olivine_wet / 1e6 # use m
+    wet_olivine_disl_aspect = rheology_aspect['dislocation_creep']
+    wet_olivine_disl_aspect['d'] = d_olivine_wet / 1e6 # use m
+    # options for the dry anorthite rheology
+    dry_anorthite_diff, dry_anorthite_disl = GetRheology(rheology_dry_anorthite)
+    d_anorthite_mylonite_dry_array = [100.0, 300.0]
     # options for the gabbro rheology
     gabbro_diff, gabbro_disl = GetRheology(rheology_gabbro_mylonite)
-    d_gabbro_mylonite_dry = 35  # mu m
-    d_gabbro_coarse = 3000  # mu m
+    gabbro_small_p_diff, gabbro_small_p_disl = GetRheology(rheology_gabbro_mylonite)
+    # modify to the original flow law
+    if option is None:
+        d_gabbro_mylonite_dry_array = [35.0, 100.0]
+    elif option == 'Q_503_gabbro':
+        # use a big value of activation energy
+        gabbro_diff['E'] = 503e3  # test
+        gabbro_small_p_diff['E'] = 503e3  # test
+        d_gabbro_mylonite_dry_array = [35.0, 100.0]
+    elif option == 'Q_473_and_A_gabbro':
+        # use both a higher value of E and 
+        # a small value of A
+        gabbro_diff['A'] = 2.14375e12  # test
+        gabbro_diff['E'] = 473e3  # test
+        gabbro_small_p_diff['A'] = 2.14375e12  # test
+        gabbro_small_p_diff['E'] = 473e3  # test
+        d_gabbro_mylonite_dry_array = [35.0, 100.0]
+    elif option == 'd_100_gabbro':
+        # use big value of d, even for colder temperature
+        d_gabbro_mylonite_dry_array = [100.0, 100.0]
+    gabbro_small_p_diff['p'] = 2.4  # test
+    # d_gabbro_mylonite_dry = 35.0  # mu m
+    d_gabbro_coarse = 3000.0  # mu m
+    # options for the basalt rheology
+    basalt_diff, basalt_disl = GetRheology(rheology_basalt)
+    d_basalt_coarse = 3000.0 # mu m
     ## initializing
-    fig = plt.figure(tight_layout=True, figsize = (10, 5))
-    gs = gridspec.GridSpec(1, T_N)
-    gridspec
-    strain_rates = np.linspace(strain_rate_min, strain_rate_max, strain_rate_N)
+    fig = plt.figure(tight_layout=True, figsize = (8 * T_N, 10))
+    gs = gridspec.GridSpec(2, T_N)
+    stresses = 10.0**(np.linspace(np.log10(stress_min), np.log10(stress_max), stress_N))
     for i in range(Ts.size):
         # initalize for a subplot
         T = Ts[i]
         P = Ps[i]
         depth = depths[i]
         ax = fig.add_subplot(gs[0, i])
-        stress_dict = {}  # use for storing all the stress results
+        strain_rate_dict = {}  # use for storing all the stress results
         grain_size_dict = {}  # use for stroing all the grain size results
-        stress_array_olivine = np.zeros(strain_rates.shape)
-        stress_array_gabbro_mylonite = np.zeros(strain_rates.shape)
-        stress_array_gabbro_coarse = np.zeros(strain_rates.shape)
-        for j in range(strain_rate_N):
-            strain_rate = strain_rates[j]
+        strain_rate_array_olivine = np.zeros(stresses.shape)
+        strain_rate_array_anorthite = np.zeros(stresses.shape)
+        strain_rate_array_gabbro_mylonite = np.zeros(stresses.shape)
+        strain_rate_array_gabbro_mylonite_small_p = np.zeros(stresses.shape)
+        strain_rate_array_gabbro_coarse = np.zeros(stresses.shape)
+        strain_rate_array_basalt = np.zeros(stresses.shape)
+        for j in range(stress_N):
+            stress = stresses[j]
             # for olivine
-            stress_diff = CreepStress(dry_olivine_diff, strain_rate, P, T + 273.15, d_olivine_dry, 0.0)  # dry rheology, Coh is not dependent
-            stress_disl = CreepStress(dry_olivine_disl, strain_rate, P, T + 273.15, d_olivine_dry, 0.0)  # dry rheology, Coh is not dependent
-            stress_array_olivine[j] =  ComputeComposite(stress_diff, stress_disl)
-            stress_diff = CreepStress(gabbro_diff, strain_rate, P, T + 273.15, d_gabbro_mylonite_dry, 0.0)  # dry rheology, Coh is not dependent
-            stress_disl = CreepStress(gabbro_disl, strain_rate, P, T + 273.15, d_gabbro_mylonite_dry, 0.0)  # dry rheology, Coh is not dependent
-            print("strain_rate: ", strain_rate)  # debug
-            print("stress_disl: ", stress_disl)
-            print("stress_diff: ", stress_diff)
-            stress_array_gabbro_mylonite[j] =  ComputeComposite(stress_diff, stress_disl)
-            stress_diff = CreepStress(gabbro_diff, strain_rate, P, T + 273.15, d_gabbro_coarse, 0.0)  # dry rheology, Coh is not dependent
-            stress_disl = CreepStress(gabbro_disl, strain_rate, P, T + 273.15, d_gabbro_coarse, 0.0)  # dry rheology, Coh is not dependent
-            stress_array_gabbro_coarse[j] =  ComputeComposite(stress_diff, stress_disl)
-        stress_dict['olivine_dry'] = stress_array_olivine
-        stress_dict['gabbro_mylonite'] = stress_array_gabbro_mylonite
-        stress_dict['gabbro_course'] = stress_array_gabbro_coarse
+            strain_rate_diff = CreepStrainRate(dry_olivine_diff, stress, P, T + 273.15, d_olivine_dry, 0.0)  # dry rheology, Coh is not dependent
+            strain_rate_disl = CreepStrainRate(dry_olivine_disl, stress, P, T + 273.15, d_olivine_dry, 0.0)  # dry rheology, Coh is not dependent
+            strain_rate_array_olivine[j] =  strain_rate_diff + strain_rate_disl # the iso stress model
+            # for dry anorthite
+            d_anorthite_mylonite_dry = d_anorthite_mylonite_dry_array[i]  # use a constant grain size
+            strain_rate_diff = CreepStrainRate(dry_anorthite_diff, stress, P, T + 273.15, d_anorthite_mylonite_dry, 0.0)  # dry rheology, Coh is not dependent
+            strain_rate_disl = CreepStrainRate(dry_anorthite_disl, stress, P, T + 273.15, d_anorthite_mylonite_dry, 0.0)  # dry rheology, Coh is not dependent
+            strain_rate_array_anorthite[j] =  strain_rate_diff + strain_rate_disl # the iso stress model
+            # d_gabbro_mylonite_dry = Piezometer.MehlHirth08GabbroMyloniteInvert(stress)  # use piezometer for gabbro mylonite
+            # gabbro and gabbro with a smaller p
+            d_gabbro_mylonite_dry = d_gabbro_mylonite_dry_array[i]  # use a constant grain size
+            strain_rate_diff = CreepStrainRate(gabbro_diff, stress, P, T + 273.15, d_gabbro_mylonite_dry, 0.0)  # dry gabbro rheology, Coh is not dependent
+            strain_rate_disl = CreepStrainRate(gabbro_disl, stress, P, T + 273.15, d_gabbro_mylonite_dry, 0.0)  # dry gabbro rheology, Coh is not dependent
+            strain_rate_array_gabbro_mylonite[j] =  strain_rate_diff + strain_rate_disl # the iso stress model
+            # print("strain_rate_diff: ", strain_rate_diff, ", strain_rate_disl: ", strain_rate_disl)  # debug
+            strain_rate_diff = CreepStrainRate(gabbro_small_p_diff, stress, P, T + 273.15, d_gabbro_mylonite_dry, 0.0)  # dry gabbro rheology, Coh is not dependent
+            strain_rate_disl = CreepStrainRate(gabbro_small_p_disl, stress, P, T + 273.15, d_gabbro_mylonite_dry, 0.0)  # dry gabbro rheology, Coh is not dependent
+            strain_rate_array_gabbro_mylonite_small_p[j] =  strain_rate_diff + strain_rate_disl # the iso stress model
+            # coarse gabbro
+            strain_rate_diff = CreepStrainRate(gabbro_diff, stress, P, T + 273.15, d_gabbro_coarse, 0.0)  # dry gabbro rheology, Coh is not dependent
+            strain_rate_disl = CreepStrainRate(gabbro_disl, stress, P, T + 273.15, d_gabbro_coarse, 0.0)  # dry gabbro rheology, Coh is not dependent
+            strain_rate_array_gabbro_coarse[j] =  strain_rate_diff + strain_rate_disl # the iso stress model
+            # for basalt, only dislocation
+            strain_rate_disl = CreepStrainRate(basalt_disl, stress, P, T + 273.15, d_basalt_coarse, 0.0)  # basalt rheology
+            strain_rate_array_basalt[j] = strain_rate_disl
+        strain_rate_dict['olivine_dry'] = strain_rate_array_olivine
+        strain_rate_dict['anorthite_mylonite_dry'] = strain_rate_array_anorthite
+        strain_rate_dict['gabbro_mylonite'] = strain_rate_array_gabbro_mylonite
+        strain_rate_dict['gabbro_mylonite_small_p'] = strain_rate_array_gabbro_mylonite_small_p
+        strain_rate_dict['gabbro_course'] = strain_rate_array_gabbro_coarse
+        strain_rate_dict['basalt'] = strain_rate_array_basalt
         grain_size_dict['olivine_dry'] = d_olivine_dry
+        grain_size_dict['anorthite_mylonite_dry'] = d_anorthite_mylonite_dry
         grain_size_dict['gabbro_mylonite'] = d_gabbro_mylonite_dry
+        grain_size_dict['gabbro_mylonite_small_p'] = d_gabbro_mylonite_dry
         grain_size_dict['gabbro_course'] = d_gabbro_coarse
-        for key, value in stress_dict.items():
+        grain_size_dict['basalt'] = d_basalt_coarse
+        for key, value in strain_rate_dict.items():
             _label = key + ", d = " + str(grain_size_dict[key]) + " um"
-            ax.loglog(value, strain_rates, label=_label)
+            ax.loglog(stresses, value, label=_label)
         ax.legend()
         ax.set_xlabel("Stress (MPa)")
         ax.set_xlim([stress_min, stress_max])
-        ax.set_ylim([strain_rate_max, strain_rate_min])
+        ax.set_ylim([strain_rate_min, strain_rate_max])
         ax.set_ylabel('Strain Rate (s^-1)')
         ax.set_title("%.2e m, %.2e C, %.2e Pa" % (depth, T, P))
-    fig_path = os.path.join(RESULT_DIR, "shear_zone_rheology_summary.png") # path to save the figure 
+    ### second part: plot viscosity vs temperature (e.g. Agard 2016, fig 4)
+    # options for temperature
+    T_min = 400 # C
+    T_max = 1000 # C
+    T_N = 1000
+    # options for viscosity (only affects plotting)
+    eta_min = 1e17
+    eta_max = 1e25
+    # options fot the strain rate
+    strain_rates = np.array([1e-15, 1e-13])
+    # Options for the pressure
+    P = 1.6e3 # 50 km
+    Ts = np.linspace(T_min, T_max, T_N)
+    for i in range(strain_rates.size):
+        strain_rate = strain_rates[i]
+        ax = fig.add_subplot(gs[1, i])
+        eta_dict = {}  # use for storing all the stress results
+        grain_size_dict = {}  # use for stroing all the grain size results
+        eta_array_olivine = np.zeros(Ts.shape)
+        eta_array_olivine_wet = np.zeros(Ts.shape)
+        eta_array_anorthite = np.zeros(Ts.shape)
+        eta_array_gabbro_mylonite = np.zeros(Ts.shape)
+        eta_array_gabbro_mylonite_small_p = np.zeros(Ts.shape)
+        eta_array_gabbro_coarse = np.zeros(Ts.shape)
+        eta_array_basalt = np.zeros(Ts.shape)
+        for j in range(Ts.size):
+            T = Ts[j] + 273.15  # convert to K
+            # option of the dry olivine
+            eta_diff =  CreepRheology(dry_olivine_diff, strain_rate, P, T, d_olivine_dry, 1.0)
+            eta_disl =  CreepRheology(dry_olivine_disl, strain_rate, P, T, d_olivine_dry, 1.0)
+            eta_array_olivine[j] = ComputeComposite(eta_diff, eta_disl)
+            # option of the wet olivine
+            eta_diff = CreepRheologyInAspectViscoPlastic(wet_olivine_diff_aspect, strain_rate, P*1e6, T)
+            eta_disl = CreepRheologyInAspectViscoPlastic(wet_olivine_disl_aspect, strain_rate, P*1e6, T)  # use the UI 
+            eta_array_olivine_wet[j] = ComputeComposite(eta_diff, eta_disl)
+            # for dry anorthite
+            d_anorthite_mylonite_dry = d_anorthite_mylonite_dry_array[0]  # use a constant grain size
+            eta_diff =  CreepRheology(dry_anorthite_diff, strain_rate, P, T, d_anorthite_mylonite_dry, 1.0)
+            eta_disl =  CreepRheology(dry_anorthite_disl, strain_rate, P, T, d_anorthite_mylonite_dry, 1.0)
+            eta_array_anorthite[j] = ComputeComposite(eta_diff, eta_disl)
+            # gabbro and gabbro with a smaller p
+            d_gabbro_mylonite_dry = d_gabbro_mylonite_dry_array[0]  # use a constant grain size
+            eta_diff =  CreepRheology(gabbro_diff, strain_rate, P, T, d_gabbro_mylonite_dry, 1.0)
+            eta_disl =  CreepRheology(gabbro_disl, strain_rate, P, T, d_gabbro_mylonite_dry, 1.0)
+            eta_array_gabbro_mylonite[j] = ComputeComposite(eta_diff, eta_disl)
+            eta_diff =  CreepRheology(gabbro_small_p_diff, strain_rate, P, T, d_gabbro_mylonite_dry, 1.0)
+            eta_disl =  CreepRheology(gabbro_small_p_disl, strain_rate, P, T, d_gabbro_mylonite_dry, 1.0)
+            eta_array_gabbro_mylonite_small_p[j] = ComputeComposite(eta_diff, eta_disl)
+            # coarse gabbro
+            eta_diff =  CreepRheology(gabbro_diff, strain_rate, P, T, d_gabbro_coarse, 1.0)
+            eta_disl =  CreepRheology(gabbro_disl, strain_rate, P, T, d_gabbro_coarse, 1.0)
+            eta_array_gabbro_coarse[j] = ComputeComposite(eta_diff, eta_disl)
+            # basalt, this only has dislocation creep
+            eta_disl =  CreepRheology(basalt_disl, strain_rate, P, T, d_basalt_coarse, 1.0)
+            eta_array_basalt[j] = eta_disl 
+        eta_dict['olivine_dry'] = eta_array_olivine
+        eta_dict['olivine_wet'] = eta_array_olivine_wet
+        eta_dict['anorthite_mylonite_dry'] = eta_array_anorthite
+        eta_dict['gabbro_mylonite'] = eta_array_gabbro_mylonite
+        eta_dict['gabbro_mylonite_small_p'] = eta_array_gabbro_mylonite_small_p
+        eta_dict['gabbro_course'] = eta_array_gabbro_coarse
+        eta_dict['basalt'] = eta_array_basalt
+        grain_size_dict['olivine_dry'] = d_olivine_dry
+        grain_size_dict['olivine_wet'] = d_olivine_wet
+        grain_size_dict['anorthite_mylonite_dry'] = d_anorthite_mylonite_dry
+        grain_size_dict['gabbro_mylonite'] = d_gabbro_mylonite_dry
+        grain_size_dict['gabbro_mylonite_small_p'] = d_gabbro_mylonite_dry
+        grain_size_dict['gabbro_course'] = d_gabbro_coarse 
+        grain_size_dict['basalt'] = d_basalt_coarse
+        for key, value in eta_dict.items():
+            _label = key + ", d = " + str(grain_size_dict[key]) + " um"
+            ax.semilogy(Ts, value, label=_label)
+        ax.legend()
+        ax.set_xlabel("Temperature (C)")
+        ax.set_xlim([T_min, T_max])
+        ax.set_ylim([eta_min, eta_max])
+        ax.set_ylabel('Viscosity (Pa s)')
+        ax.set_title("%.2e s^-1" % strain_rate)  
+    if option is not None:
+        fig_path = os.path.join(RESULT_DIR, "shear_zone_rheology_summary_%s.png" % option) # path to save the figure 
+    else:
+        fig_path = os.path.join(RESULT_DIR, "shear_zone_rheology_summary.png") # path to save the figure 
     print("%s: generate figure %s" % (Utilities.func_name(), fig_path))
     fig.savefig(fig_path)
 

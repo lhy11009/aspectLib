@@ -19,7 +19,7 @@ descriptions:
 
 
 import os
-# import pytest
+import pytest
 # import filecmp  # for compare file contents
 # import numpy as np
 # import shilofue.Foo as Foo  # import test module
@@ -214,6 +214,17 @@ def test_Convert2AspectInput():
     dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=True)
     check2 = CreepRheologyInAspectViscoPlastic(dislocation_creep_aspect, 1e-15, 10e9, 1300 + 273.15)
     assert(abs((check2 - check_result_std) / check_result_std) < tolerance)
+    # test 3: the function of ConvertFromAspectInput
+    diffusion_creep_1 = ConvertFromAspectInput(diffusion_creep_aspect)
+    check3_diff = CreepRheology(diffusion_creep_1, 1e-15, 10e9, 1300 + 273.15)
+    assert(abs((check3_diff - check_result[0]) / check_result[0]) < tolerance)
+    diffusion_creep_2 = ConvertFromAspectInput(diffusion_creep_aspect, use_effective_strain_rate=True)
+    check3_diff_2 = CreepRheology(diffusion_creep_2, 1e-15, 10e9, 1300 + 273.15, use_effective_strain_rate=True)
+    assert(abs((check3_diff_2 - check_result[0]) / check_result[0]) < tolerance)
+    dislocation_creep_1 = ConvertFromAspectInput(dislocation_creep_aspect, use_effective_strain_rate=True)
+    check3_disl_1 = CreepRheology(dislocation_creep_1, 1e-15, 10e9, 1300 + 273.15)
+    assert(abs((check3_disl_1 - check_result[1]) / check_result[1]) < tolerance)
+
 
 
 def test_Convert2AspectInputLowerMantle():
@@ -239,12 +250,17 @@ def test_Convert2AspectInputLowerMantle():
 
 
 def test_StrengthProfile():
-    Operator = STRENGTH_PROFILE()
-    Operator.SetRheologyByName(disl='ARCAY17', plastic='ARCAY17')
+    year = 365.0 * 24.0 * 3600.0
+    rheology = 'HK03_wet_mod'
+    Operator = STRENGTH_PROFILE(max_depth=40e3)
+    # Operator.SetRheologyByName(disl='ARCAY17', plastic='ARCAY17')
+    Operator.SetRheologyByName(disl=rheology, plastic='ARCAY17')
     Operator.Execute(creep_type='disl')
-    Sigs = Operator.Sigs
-    Zs = Operator.Zs
-    assert((Sigs[-1] - 6420880.603595899)/6420880.603595899 < 1e-6)
+    # assert 1: check the value of the viscosity from the viscous part
+    # the P and T are taken from the variables in the STRENGTH_PROFILE functions
+    _, dislocation_creep = GetRheology(rheology)
+    eta_std = CreepRheology(dislocation_creep, 1e-14, 1335363814.8378572, 637.6361339382709, 1e4, 1000.0)
+    assert(abs(eta_std - Operator.eta_viscous[-1])/eta_std < 1e-6)
 
 
 def test_ST1981_basalt():
@@ -387,6 +403,32 @@ def test_Dimanov_Dresen():
     print("diff_strain_rate: ", diff_strain_rate)  # debug
     print("disl_strain_rate: ", disl_strain_rate)  # debug
 
+def test_Rybachi_2000_An100_dry():
+    '''
+    test the rheology of the Rybachi_2000_An100_dry rheology
+    assert:
+        1. diffusion creep
+        2. dislocation creep
+    '''
+    rheology = "Rybachi_2000_An100_dry"
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+    # 1. diffusion creep
+    P = 1.0  # pa, not dependent on the value of P
+    T1 = 1428.57 # K
+    d = 2.65 # mu m, a choice that I picked up myself
+    stress = 10.0 # MPa
+    diff_strain_rate =  CreepStrainRate(diffusion_creep, stress, P, T1, d, 0.0)
+    assert(abs(diff_strain_rate - 5.6770749020979755e-06)/5.6770749020979755e-06 < 1e-6)
+    T2 = 1388.88 # K, test another T
+    diff_strain_rate =  CreepStrainRate(diffusion_creep, stress, P, T2, d, 0.0)
+    assert(abs(diff_strain_rate - 1.8456108380428797e-06)/1.8456108380428797e-06 < 1e-6)
+    # 2. dislocation creep
+    T1 = 1428.57 # K
+    disl_strain_rate =  CreepStrainRate(dislocation_creep, stress, P, T1, d, 0.0)
+    assert(abs(disl_strain_rate - 1.012715951918425e-08)/1.012715951918425e-08 < 1e-6)
+    T2 = 1388.88 # K, test another T
+    disl_strain_rate =  CreepStrainRate(dislocation_creep, stress, P, T2, d, 0.0)
+    assert(abs(disl_strain_rate - 2.129952815104616e-09)/2.129952815104616e-09 < 1e-6)
 
 def test_MehlHirth08GabbroMylonite():
     '''
@@ -395,6 +437,8 @@ def test_MehlHirth08GabbroMylonite():
         1. a grain size is converted to the right stress
         2. the stress could be converted back to the original grain size
         3 & 4, with a different grain size of 100 mu m
+        5 & 6, test the values beyond the range - a error will be raised
+        7 & 8, invert 5 & 6, this time the values of d will be given with a stress beyond the range
     '''
     Piezometer = PIEZOMETER()
     d = 35 # mu m
@@ -410,6 +454,23 @@ def test_MehlHirth08GabbroMylonite():
     sigma = 25.986533248593485 # invert the relation
     d = Piezometer.MehlHirth08GabbroMyloniteInvert(sigma)
     assert(abs((d - 100.0)/100.0) < 1e-6)
+    # 5 & 6 
+    d = 4000 # mu m, value beyond the maximum
+    with pytest.raises(ValueError) as excinfo:
+        sigma = Piezometer.MehlHirth08GabbroMylonite(d)
+        assert('maximum limit' in str(excinfo.value))
+    d = 5 # mu m, value smaller than the minimum
+    with pytest.raises(ValueError) as excinfo:
+        sigma = Piezometer.MehlHirth08GabbroMylonite(d)
+        assert('minimum limit' in str(excinfo.value))
+    # 7 & 8
+    sigma = 200 # invert the relation
+    d = Piezometer.MehlHirth08GabbroMyloniteInvert(sigma)
+    assert(abs((d - 10.0)/10.0) < 1e-6)
+    sigma = 5 # invert the relation
+    d = Piezometer.MehlHirth08GabbroMyloniteInvert(sigma)
+    assert(abs((d - 3000.0)/3000.0) < 1e-6)
+
 # notes
     
 # to check for error message
