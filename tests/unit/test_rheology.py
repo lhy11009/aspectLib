@@ -276,7 +276,7 @@ def test_StrengthProfile():
     '''
     year = 365.0 * 24.0 * 3600.0
     rheology = 'HK03_wet_mod'
-    Operator = STRENGTH_PROFILE(max_depth=40e3)
+    Operator = STRENGTH_PROFILE(max_depth=40e3, T_type='ARCAY17')
     # Operator.SetRheologyByName(disl='ARCAY17', brittle='ARCAY17')
     Operator.SetRheologyByName(disl=rheology, brittle='ARCAY17')
     Operator.Execute(creep_type='disl')
@@ -500,6 +500,53 @@ def test_MehlHirth08GabbroMylonite():
     sigma = 5 # invert the relation
     d = Piezometer.MehlHirth08GabbroMyloniteInvert(sigma)
     assert(abs((d - 3000.0)/3000.0) < 1e-6)
+
+def test_MK10_peierls():
+    '''
+    test the MK10 rheology
+    assert:
+        1. strain rates match with the values from the figure 5 in the original figure
+        2. stress value could match vice versa
+        3. the viscosity
+    '''
+    creep = GetPeierlsRheology("MK10")
+    # assert 1.1, values at a strain rate = 3e-5
+    strain_rate_std = 2.7778604629458894e-05
+    stress = 3.82e3 # MPa
+    T = 671.0 # K
+    P = 0 # not dependent on P (V = 0)
+    strain_rate = PeierlsCreepStrainRate(creep, stress, P, T)
+    assert(abs(strain_rate_std - strain_rate)/strain_rate_std < 1e-6)
+    # assert 1.2
+    strain_rate_std = 2.6215973389278528e-05
+    stress = 3.25e3 # MPa
+    T = 907.0 # K
+    P = 0 # not dependent on P (V = 0)
+    strain_rate = PeierlsCreepStrainRate(creep, stress, P, T)
+    assert(abs(strain_rate_std - strain_rate)/strain_rate_std < 1e-6)
+    # assert 2.1
+    strain_rate = 2.7778604629458894e-05
+    T = 671.0 # K
+    P = 0 # not dependent on P (V = 0)
+    stress_std = 3.82e3 # MPa
+    stress = PeierlsCreepStress(creep, strain_rate, P, T)
+    assert(abs(np.log(stress_std/stress)) < 0.05)  # a bigger tolerance, check the log value
+    # assert 2.2
+    strain_rate = 2.6215973389278528e-05
+    T = 907.0 # K
+    P = 0 # not dependent on P (V = 0)
+    stress_std = 3.25e3 # MPa
+    stress = PeierlsCreepStress(creep, strain_rate, P, T)
+    assert(abs(np.log(stress_std/stress)) < 0.05)  # a bigger tolerance, check the log value
+    # assert 3.1: viscosity
+    strain_rate = 2.7778604629458894e-05
+    T = 671.0 # K
+    P = 0 # not dependent on P (V = 0)
+    eta_std = 6.8757953e13
+    eta = PeierlsCreepRheology(creep, strain_rate, P, T)
+    assert(abs(np.log(eta_std/eta)) < 0.05)  # a bigger tolerance, check the log value
+    
+
 
 # notes
     

@@ -542,14 +542,16 @@ class RHEOLOGY_PRM():
                 "V" : 0.0  # not present in the table
         }
 
+        # todo_peierls 
         self.MK10_peierls = \
         {
-            'q': 1.0
-            'p': 0.5
-            'n': 2.0
-            'peierls_stress' = 5.9e3					# MPa (+/- 0.2e3 Pa)
-            'A': 1.4e-7  	# s^-1 MPa^-2
-            'E' = 320e3  					# J/mol (+/-50e3 J/mol)
+            'q': 1.0,
+            'p': 0.5,
+            'n': 2.0,
+            'sigp0': 5.9e3,					# MPa (+/- 0.2e3 Pa)
+            'A': 1.4e-7,  	# s^-1 MPa^-2
+            'E': 320e3,  					# J/mol (+/-50e3 J/mol)
+            'V' : 0.0  # not dependent on the pressure
         }
 
     def get_rheology(self, _name, _type):
@@ -1154,6 +1156,22 @@ def GetRheology(rheology):
     return diffusion_creep, dislocation_creep
 
 
+def GetPeierlsRheology(rheology):
+    '''
+    read the peierls rheology parameters
+    Inputs:
+        rheology: a string of the type of rheology to use.
+    Returns:
+        peierls_creep: a dict of the flow law variables for the peierls creep
+    '''
+    RheologyPrm = RHEOLOGY_PRM()
+    Utilities.my_assert(hasattr(RheologyPrm, rheology + "_peierls"), ValueError,\
+    "The %s is not a valid option for the peierls rheology" % rheology)
+    peierls_creep = getattr(RheologyPrm, rheology + "_peierls")
+    return peierls_creep
+
+
+
 def Config(_kwargs, _name, _default):
     """    def ReadProfile(self, file_path):
         self.depths, self.pressures, self.temperatures = ReadAspectProfile(file_path)ble value and assign default if not found
@@ -1501,6 +1519,111 @@ def ComputeComposite(eta_diff, eta_disl):
     '''
     eta = 1.0 / (1.0/eta_diff + 1.0/eta_disl)
     return eta
+
+
+#### functions for the peierls rheology
+
+# todo_peierls
+def PeierlsCreepStrainRate(creep, stress, P, T):
+    """
+    Calculate strain rate by flow law in form of 
+        Ap * sigma^n * exp( - (E) / (R * T) * (1 - (sigma / sigmap)^p)^q)
+    Units:
+     - P: Pa
+     - T: K
+     - stress: MPa
+     - Return value: s^-1
+    Pay attention to pass in the right value, this custom is inherited
+    """
+    A = creep['A']
+    p = creep['p']
+    q = creep['q']
+    n = creep['n']
+    E = creep['E']
+    V = creep['V']
+    sigp0 = creep['sigp0']
+    # calculate B
+    # compute F
+    expo = np.exp(-(E + P*V) / (R*T) * (1 - (stress/sigp0)**p)**q)
+    strain_rate = A * expo * stress ** n
+    return strain_rate
+
+
+# todo_peierls
+def PeierlsCreepStress(creep, strain_rate, P, T, **kwargs):
+    """
+    Calculate stress by inverting the flow law in form of 
+        Ap * sigma^n * exp( - (E) / (R * T) * (1 - (sigma / sigmap)^p)^q)
+    Units:
+     - P: Pa
+     - T: K
+     - strain_rate : s^-1
+     - Return value: MPa
+     - kwargs:
+        - tolerance: the tolerance on the difference between iterations
+        - iteration: number of the maximum iteration
+    Pay attention to pass in the right value, this custom is inherited,
+    note that the difference in the iteration is defined as the log value
+    of the stress.
+    """
+    A = creep['A']
+    p = creep['p']
+    q = creep['q']
+    n = creep['n']
+    E = creep['E']
+    V = creep['V']
+    sigp0 = creep['sigp0']
+    tolerance = kwargs.get('tolerance', 0.05)
+    maximum_iteration = kwargs.get('iteration', 1000)
+    # initialization
+    difference = 1e6  # a big initial value
+    stress_l = 1e-5
+    stress_u = 1e12
+    is_first = True
+    n = 0
+    while (abs(difference) > tolerance and n < maximum_iteration):
+        if is_first:
+            is_first = False
+        else:
+            # update the value of stress
+            if difference > 0.0:
+                stress_u = stress
+            else:
+                stress_l = stress
+        exponential = (np.log(stress_u) + np.log(stress_l)) / 2.0
+        stress = np.exp(exponential)
+        strain_rate_1 = PeierlsCreepStrainRate(creep, stress, P, T)
+        difference = np.log(strain_rate_1 / strain_rate)
+        n += 1
+    if n == maximum_iteration:
+        raise(ValueError,\
+            'tolerance (%f) is not reached at the end of iteration, the remanant difference is %f'\
+            % (tolerance, difference))
+    return stress
+
+# todo_peierls
+def PeierlsCreepRheology(creep, strain_rate, P, T, **kwargs):
+    """
+    Calculate stress by inverting the flow law in form of 
+        Ap * sigma^n * exp( - (E) / (R * T) * (1 - (sigma / sigmap)^p)^q)
+    Units:
+     - P: Pa
+     - T: K
+     - strain_rate : s^-1
+     - Return value: Pa * s
+     - kwargs:
+        - tolerance: the tolerance on the difference between iterations
+        - iteration: number of the maximum iteration
+    Pay attention to pass in the right value, this custom is inherited,
+    note that the difference in the iteration is defined as the log value
+    of the stress.
+    """
+    tolerance = kwargs.get('tolerance', 0.05)
+    maximum_iteration = kwargs.get('iteration', 1000)
+    stress = PeierlsCreepStress(creep, strain_rate, P, T, iteration=maximum_iteration, tolerance=tolerance)
+    eta = 1e6 * stress / 2.0 / strain_rate
+    return eta
+
 
 
 def ReadAspectProfile(depth_average_path):
