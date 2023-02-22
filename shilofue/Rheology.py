@@ -65,6 +65,14 @@ Examples of usage:
 
         python -m shilofue.Rheology derive_mantle_rheology -i files/TwoDSubduction/reference/depth_average.txt  -v 1 --save_profile 1 -r HK03_wet_mod --diff "0.33333333333,-40e3,-5.5e-6,1.73205080757,20e3,0.0"
 
+  - Plot the shear-zone strength
+
+        - plot for a specific strain rate
+        python -m shilofue.Rheology plot_strength_profile -S 1e-15
+
+        - plot it for a range of strain rate [1e-13, 1e-14, 1e-15] 
+        python -m shilofue.Rheology plot_strength_profile -S -1.0
+
 descriptions
 """ 
 
@@ -534,6 +542,16 @@ class RHEOLOGY_PRM():
                 "V" : 0.0  # not present in the table
         }
 
+        self.MK10_peierls = \
+        {
+            'q': 1.0
+            'p': 0.5
+            'n': 2.0
+            'peierls_stress' = 5.9e3					# MPa (+/- 0.2e3 Pa)
+            'A': 1.4e-7  	# s^-1 MPa^-2
+            'E' = 320e3  					# J/mol (+/-50e3 J/mol)
+        }
+
     def get_rheology(self, _name, _type):
         '''
         read rheology parameters, and account for effects of water if it is a wet rheology
@@ -573,10 +591,11 @@ class RHEOLOGY_OPR():
         self.output_profile = None # for the figure plotted
         self.output_json = None
         self.output_aspect_json = None
-        self.diff = None
-        self.disl = None
         self.diff_type = None
+        self.diff = None
         self.disl_type = None
+        self.disl = None
+        self.brittle_type = None
         self.brittle = None
         pass
 
@@ -598,6 +617,7 @@ class RHEOLOGY_OPR():
         brittle_type = kwargs.get('brittle', None)
         self.diff_type = diff_type
         self.disl_type = disl_type
+        self.brittle_type = brittle_type
         if diff_type != None and disl_type != None:
             assert(diff_type == disl_type)  # doesn't make sense to have inconsistent flow laws
         if diff_type != None:
@@ -1730,6 +1750,7 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
         self.creep_type = None
         self.creep = None
         self.max_depth = kwargs.get('max_depth', 80e3)
+        self.T_type = kwargs.get("T_type", "hpc")
 
     def Execute(self, **kwargs):
         '''
@@ -1737,6 +1758,7 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
         '''
         year = 365 * 24 * 3600.0
         self.creep_type = kwargs.get('creep_type', 'diff')
+        compute_second_invariant = kwargs.get('compute_second_invariant', False)
         self.creep = getattr(self, self.creep_type)
         brittle = self.brittle
         assert(self.creep != None)
@@ -1747,8 +1769,14 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
         # self.plastic = rheology_prm.ARCAY17_plastic
         # self.dislocation_creep = rheology_prm.ARCAY17_disl
         Zs = np.linspace(0.0, self.max_depth, 100)
+        if self.T_type == 'hpc':
+            # use a half space cooling
+            Ts = temperature_halfspace(Zs, 40e6*year, Tm=1573.0) # adiabatic temperature
+        elif self.T_type == 'ARCAY17':
+            Ts = 713 * Zs / 78.245e3  + 273.14# geotherm from Arcay 2017 pepi, figure 3d 2
+        else:
+            raise NotImplementedError
         Tliths = temperature_halfspace(Zs, 40e6*year, Tm=1573.0) # adiabatic temperature
-        Ts = 713 * Zs / 78.245e3  + 273.14# geotherm from Arcay 2017 pepi, figure 3d 2
         Ps = pressure_from_lithostatic(Zs, Tliths)
         # brittle self.brittle
         if brittle["type"] == "stress dependent":
@@ -1757,8 +1785,17 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
             Sigs_brittle = CoulumbYielding(Ps, brittle["cohesion"], brittle["friction"])
         self.eta_brittle = Sigs_brittle / 2.0 / strain_rate
         # viscous stress
-        Sigs_viscous = 1e6 * CreepStress(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0) # change to UI
-        self.eta_viscous = Sigs_viscous / 2.0 / strain_rate
+        # Note on the d and coh:
+        #      disl - not dependent on d;
+        #      coh - the one in the Arcay paper doesn't depend on Coh
+        if compute_second_invariant:
+            Sigs_viscous = 1e6 * CreepStress(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0, use_effective_strain_rate=True) # change to UI
+            self.eta_viscous = CreepRheology(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0, use_effective_strain_rate=True)
+        else:
+            Sigs_viscous = 1e6 *CreepStress(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0) # change to UI
+            self.eta_viscous = CreepRheology(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0)
+            # self.eta_viscous = Sigs_viscous / 2.0 / strain_rate
+        # Sigs_viscous = CreepStress(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0) # change to UI
         Sigs = np.minimum(Sigs_brittle, Sigs_viscous)
         if averaging == 'harmonic':
             Etas = self.eta_brittle * self.eta_viscous / (self.eta_viscous + self.eta_brittle)
@@ -1780,7 +1817,8 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
         # make plots
         ax.plot(self.Sigs/1e6, self.Zs/1e3, color=_color, label=label)
         ax.plot(self.Sigs_viscous/1e6, self.Zs/1e3, '--', color=_color, label=label_viscous)
-        ax.set_xlim([0.0, 100.0])
+        x_max = np.ceil(np.max(self.Sigs)/1e6/100.0) * 100.0
+        ax.set_xlim([0.0, x_max])
         ax.set_xlabel("Second invariant of the stress tensor (MPa)")
         ax.set_ylabel("Depth (km)")
     
@@ -1796,21 +1834,29 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
         ax.set_ylabel("Depth (km)")
         
 
-def PlotShearZoneStrengh(Operator, fig_path_base):
+def PlotStrengh(Operator, fig_path_base, **kwargs):
     '''
     Plot the shear zone strenght profile
+    kwargs:
+        compute_second_invariant: whether using the second invariant as the stress.
     '''
+    compute_second_invariant = kwargs.get('compute_second_invariant', False)
+    strain_rate = kwargs.get('strain_rate', None)
+    if strain_rate is None:
+        strain_rates = [1e-13, 1e-14, 1e-15]
+    else:
+        strain_rates = [strain_rate]
     fig = plt.figure(tight_layout=True, figsize=[5, 10])
     gs = gridspec.GridSpec(2, 1)
     ax0 = fig.add_subplot(gs[0, 0])
     ax1 = fig.add_subplot(gs[1, 0])
-    strain_rates = [1e-13, 1e-14, 1e-15]
     colors = ['b', 'g', 'r']
     # 1e-13 
     i = 0
     for strain_rate in strain_rates:
         _color = colors[i]
-        Operator.Execute(creep_type='disl', strain_rate=strain_rate)
+        Operator.Execute(creep_type='disl', strain_rate=strain_rate,\
+        compute_second_invariant=compute_second_invariant)
         # plot stress
         label = "Strain Rate = %.1e" % strain_rate
         Operator.PlotStress(ax=ax0, color=_color, label_viscous=label)
@@ -1821,6 +1867,13 @@ def PlotShearZoneStrengh(Operator, fig_path_base):
     ax0.legend()
     ax1.invert_yaxis()
     ax1.legend()
+    # title, add the name of the rheology being used
+    fig_title = "brittle type: " + Operator.brittle_type
+    if Operator.creep_type == 'diff':
+        fig_title += ', creep (diff): ' + Operator.diff_type
+    elif Operator.creep_type == 'disl':
+        fig_title += ', creep (disl): ' + Operator.disl_type
+    ax0.set_title(fig_title)
     # figure path
     fig_path = fig_path_base.split('.')[0]
     try:
@@ -1835,6 +1888,7 @@ def PlotShearZoneStrengh(Operator, fig_path_base):
     except TypeError:
         # there is no "disl_type" for the operator
         fig_path = fig_path_base
+    fig_path += ("_T_" + Operator.T_type)
     fig_path += '.' + fig_path_base.split('.')[1]
     fig.savefig(fig_path)
     print("figure saved: ", fig_path)
@@ -2207,6 +2261,9 @@ def main():
     parser.add_argument('-df', '--diff', type=str,
                         default="1.0,0.0,0.0,1.0,0.0,0.0",
                         help='Differences from the default values in a rheology')
+    parser.add_argument('-th', '--thermal', type=str,
+                        default="hpc",
+                        help='the thermal profile to use')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -2293,11 +2350,15 @@ def main():
         DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version, rheology=arg.rheology, diff=diff)
 
     elif _commend == 'plot_strength_profile':
-        Operator = STRENGTH_PROFILE()
+        Operator = STRENGTH_PROFILE(T_type=arg.thermal)
         Operator.SetRheologyByName(disl='ARCAY17', brittle='ARCAY17')
-        Operator.Execute(creep_type='disl')
+        # Operator.Execute(creep_type='disl')
         fig_path = os.path.join(ASPECT_LAB_DIR, "results", "strength_profile.png")
-        PlotShearZoneStrengh(Operator, fig_path)
+        if arg.strain_rate > 0.0:
+            PlotStrengh(Operator, fig_path, compute_second_invariant=True, strain_rate=arg.strain_rate)
+        else:
+            # with an unrealist value of strain_rate, take a range o strain_rate
+            PlotStrengh(Operator, fig_path, compute_second_invariant=True)
     
     elif _commend == "plot_shear_zone_rheology_summary":
         ## todo_splot
