@@ -37,7 +37,7 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
-def test_CreepStress_CreepRheology_CreepStrainRate():
+def test_CreepStress_CreepRheology_CreepStrainRate_ComputeComposite():
     """
     test the implementation of equations from Hirth & Kohlstedt, 2003(filename='Hirth_Kohlstedt.json')
     Tolerence set to be 1%
@@ -45,6 +45,7 @@ def test_CreepStress_CreepRheology_CreepStrainRate():
         1. values of stress
         2. values computed from the rheology
         3. values of strain rate
+        4. composite rheology
     """
     # read parameters
     RheologyPrm = RHEOLOGY_PRM()
@@ -96,6 +97,13 @@ def test_CreepStress_CreepRheology_CreepStrainRate():
     check5_ii_std = CreepStrainRate(dislocation_creep, 0.3006, 1e9, 1400 + 273.15, 1e4, 1000.0) * 3**0.5/2.0
     check5_ii = CreepStrainRate(dislocation_creep, 0.3006/3**0.5, 1e9,\
                                1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+
+    # check for the composite rheology
+    check6_i = ComputeComposite(check2, None, None) # None inputs, should return the 1st value
+    assert(abs(check6_i - check2)/check2 < 1e-6) 
+    check6_ii_std = 5.99315e16
+    check6_ii = ComputeComposite(check2, check3)  # returns the composite value
+    assert(abs(check6_ii - check6_ii_std)/check6_ii_std < 1e-6) 
 
 
 def test_CreepComputeA():
@@ -284,12 +292,12 @@ def test_StrengthProfile():
     # the P and T are taken from the variables in the STRENGTH_PROFILE functions
     _, dislocation_creep = GetRheology(rheology)
     eta_std = CreepRheology(dislocation_creep, 1e-14, 1335363814.8378572, 637.6361339382709, 1e4, 1000.0)
-    assert(abs(eta_std - Operator.eta_viscous[-1])/eta_std < 1e-6)
+    assert(abs(eta_std - Operator.etas_viscous[-1])/eta_std < 1e-6)
     # assert 2: check the value of the viscosity using the 2nd invariant of stress and the strain rate
     # the P and T are taken from the variables in the STRENGTH_PROFILE functions
     eta_std = CreepRheology(dislocation_creep, 1e-14, 1335363814.8378572, 637.6361339382709, 1e4, 1000.0, use_effective_strain_rate=True)
     Operator.Execute(creep_type='disl', compute_second_invariant=True)
-    assert(abs(eta_std - Operator.eta_viscous[-1])/eta_std < 1e-6)
+    assert(abs(eta_std - Operator.etas_viscous[-1])/eta_std < 1e-6)
 
 
 def test_ST1981_basalt():
@@ -545,7 +553,40 @@ def test_MK10_peierls():
     eta_std = 6.8757953e13
     eta = PeierlsCreepRheology(creep, strain_rate, P, T)
     assert(abs(np.log(eta_std/eta)) < 0.05)  # a bigger tolerance, check the log value
+    # assert 3.2: viscosity, a realistic scenario
+    strain_rate = 1e-13
+    T = 800.0 + 273.15 # K
+    P = 0 # not dependent on P (V = 0)
+    eta_std = 2.125142090914006e+21
+    eta = PeierlsCreepRheology(creep, strain_rate, P, T)
+    assert(abs(np.log(eta_std/eta)) < 0.05)  # a bigger tolerance, check the log value
     
+
+def test_Idrissi16_peierls():
+    '''
+    test the Idrissi16 rheology
+    assert:
+        1. strain rates match with the values from the figure 1 in the original figure
+        2. stress value could match vice versa
+        3. the viscosity
+    '''
+    creep = GetPeierlsRheology("Idrissi16")
+    # assert 1.1, values at a strain rate = 3e-5
+    strain_rate_std = 1.0e-05
+    stress = 1.61e3 # MPa
+    T = 318 # K
+    P = 0 # not dependent on P (V = 0)
+    strain_rate = PeierlsCreepStrainRate(creep, stress, P, T)
+    assert(abs(strain_rate_std - strain_rate)/strain_rate_std < 1e-6)
+    # assert 1.2, values at a strain rate = 
+    strain_rate_std = 1.0e-05
+    stress = 0.61e3 # MPa
+    T = 909 # K
+    P = 0 # not dependent on P (V = 0)
+    strain_rate = PeierlsCreepStrainRate(creep, stress, P, T)
+    assert(abs(strain_rate_std - strain_rate)/strain_rate_std < 1e-6)
+
+
 
 
 # notes

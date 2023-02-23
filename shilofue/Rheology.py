@@ -84,7 +84,7 @@ import argparse
 import numpy as np
 from scipy.special import erf
 from matplotlib import pyplot as plt
-from matplotlib import gridspec
+from matplotlib import gridspec, cm
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.FlowLaws import visc_diff_HK
 from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic
@@ -553,6 +553,23 @@ class RHEOLOGY_PRM():
             'E': 320e3,  					# J/mol (+/-50e3 J/mol)
             'V' : 0.0  # not dependent on the pressure
         }
+        
+        self.Idrissi16_peierls = \
+        {
+            'q': 2.0,
+            'p': 0.5,
+            'n': 0.0,
+            'sigp0': 3.8e3,					# MPa (+/- 0.2e3 Pa)
+            'A': 1e6,  	# s^-1 MPa^-2
+            'E': 566e3,  					# J/mol (+/-50e3 J/mol)
+            'V' : 0.0  # not dependent on the pressure
+        }
+
+
+        self.Byerlee_brittle = \
+        {
+            "type": "Byerlee"
+        }
 
     def get_rheology(self, _name, _type):
         '''
@@ -582,9 +599,9 @@ class RHEOLOGY_OPR():
         depths(ndarray): depth profile (all these 3 profiles are loaded from a depth_average outputs of ASPECT)
         pressures: pressure profile
         temperatures: temperature profile
+        peierls_type: a string, type of the peierls rheology
+        peierls: the dictionary of variables to be used for the peierls rheology
     '''
-    pass
-
     def __init__(self):
         self.RheologyPrm = RHEOLOGY_PRM()
         self.depths = None
@@ -599,8 +616,11 @@ class RHEOLOGY_OPR():
         self.disl = None
         self.brittle_type = None
         self.brittle = None
+        self.peierls_type = None
+        self.peierls = None
         pass
 
+    # todo_peierls
     def SetRheology(self, **kwargs):
         '''
         set rheology type with instances of rheology (i.e. a dictionary)
@@ -608,6 +628,7 @@ class RHEOLOGY_OPR():
         self.diff = kwargs.get('diff', None)
         self.disl = kwargs.get('disl', None)
         self.brittle = kwargs.get('brittle', None)
+        self.peierls = kwargs.get('peierls', None)
         pass
     
     def SetRheologyByName(self, **kwargs):
@@ -617,9 +638,11 @@ class RHEOLOGY_OPR():
         diff_type = kwargs.get('diff', None)
         disl_type = kwargs.get('disl', None)
         brittle_type = kwargs.get('brittle', None)
+        peierls_type = kwargs.get('peierls', None)
         self.diff_type = diff_type
         self.disl_type = disl_type
         self.brittle_type = brittle_type
+        self.peierls_type = peierls_type
         if diff_type != None and disl_type != None:
             assert(diff_type == disl_type)  # doesn't make sense to have inconsistent flow laws
         if diff_type != None:
@@ -630,6 +653,9 @@ class RHEOLOGY_OPR():
             self.disl = dislocation_creep
         if brittle_type != None:
             self.brittle = self.RheologyPrm.get_rheology(brittle_type, 'brittle')
+        if self.peierls_type != None:
+            self.peierls = GetPeierlsRheology(peierls_type)
+
     
     def ReadProfile(self, file_path):
         '''
@@ -1512,13 +1538,28 @@ def GetLowerMantleRheology(upper_mantle_creep_method, jump, T, P, **kwargs):
     return lower_mantle_creep_method
 
 
-def ComputeComposite(eta_diff, eta_disl):
+def ComputeComposite(*Args):
     '''
     compute value of composite viscosity from value of diffusion creep and 
-    dislocation creep.
+    dislocation creep. This will check that at least one entry is not None.
+    If one of them is none, then the other entry will be directly returned
     '''
-    eta = 1.0 / (1.0/eta_diff + 1.0/eta_disl)
-    return eta
+    i = 0
+    indexes = []
+    for Arg in Args:
+        if Arg is not None:
+            indexes.append(i)
+        i += 1
+    assert(len(indexes) > 0)  # check their is valid inputs
+    if len(indexes) == 1:
+        # if there is only 1 entry, just return it
+        return Args[indexes[0]]
+    else:
+        reciprocal = 0.0
+        for index in indexes:
+            reciprocal += 1.0 / Args[index]
+        eta_comp = 1.0 / reciprocal
+        return eta_comp
 
 
 #### functions for the peierls rheology
@@ -1544,7 +1585,9 @@ def PeierlsCreepStrainRate(creep, stress, P, T):
     sigp0 = creep['sigp0']
     # calculate B
     # compute F
-    expo = np.exp(-(E + P*V) / (R*T) * (1 - (stress/sigp0)**p)**q)
+    exponential = -(E + P*V) / (R*T) * (1 - (stress/sigp0)**p)**q
+    print('exponential: ', exponential) # debug
+    expo = np.exp(exponential)
     strain_rate = A * expo * stress ** n
     return strain_rate
 
@@ -1866,25 +1909,31 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
     def __init__(self, **kwargs):
         RHEOLOGY_OPR.__init__(self)
         self.Sigs = None
+        self.Sigs_brittle = None
+        self.etas_brittle = None
         self.Sigs_viscous = None
+        self.etas_viscous = None
+        self.etas_peierls = None
         self.Zs = None
         self.Etas = None
         self.Computed = False
-        self.creep_type = None
-        self.creep = None
+        # todo_peierls
+        self.peierls_type = None
         self.max_depth = kwargs.get('max_depth', 80e3)
         self.T_type = kwargs.get("T_type", "hpc")
+        self.SetRheologyByName(diff=kwargs.get("diff", None),\
+                               disl=kwargs.get("disl", None),\
+                               brittle=kwargs.get("brittle", None),\
+                               peierls=kwargs.get("peierls", None))
 
     def Execute(self, **kwargs):
         '''
         Compute the strength profile
         '''
         year = 365 * 24 * 3600.0
-        self.creep_type = kwargs.get('creep_type', 'diff')
         compute_second_invariant = kwargs.get('compute_second_invariant', False)
-        self.creep = getattr(self, self.creep_type)
         brittle = self.brittle
-        assert(self.creep != None)
+        assert(self.diff_type != None or self.disl_type != None)
         assert(brittle != None)
         averaging = kwargs.get('averaging', 'harmonic')
         strain_rate = kwargs.get('strain_rate', 1e-14)
@@ -1903,58 +1952,111 @@ class STRENGTH_PROFILE(RHEOLOGY_OPR):
         Ps = pressure_from_lithostatic(Zs, Tliths)
         # brittle self.brittle
         if brittle["type"] == "stress dependent":
-            Sigs_brittle = StressDependentYielding(Ps, brittle["cohesion"], brittle["friction"], brittle["ref strain rate"], brittle["n"], strain_rate)
+            # note this is questionable, is this second order invariant
+            self.Sigs_brittle = StressDependentYielding(Ps, brittle["cohesion"], brittle["friction"], brittle["ref strain rate"], brittle["n"], strain_rate)
         elif brittle["type"] == "Coulumb":
-            Sigs_brittle = CoulumbYielding(Ps, brittle["cohesion"], brittle["friction"])
-        self.eta_brittle = Sigs_brittle / 2.0 / strain_rate
+            self.Sigs_brittle = CoulumbYielding(Ps, brittle["cohesion"], brittle["friction"])
+        elif brittle["type"] == "Byerlee":
+            self.Sigs_brittle = Byerlee(Ps)
+        else:
+            raise NotImplementedError()
+        self.etas_brittle = self.Sigs_brittle / 2.0 / strain_rate
         # viscous stress
         # Note on the d and coh:
         #      disl - not dependent on d;
         #      coh - the one in the Arcay paper doesn't depend on Coh
-        if compute_second_invariant:
-            Sigs_viscous = 1e6 * CreepStress(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0, use_effective_strain_rate=True) # change to UI
-            self.eta_viscous = CreepRheology(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0, use_effective_strain_rate=True)
-        else:
-            Sigs_viscous = 1e6 *CreepStress(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0) # change to UI
-            self.eta_viscous = CreepRheology(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0)
-            # self.eta_viscous = Sigs_viscous / 2.0 / strain_rate
+        etas_diff = None
+        etas_disl = None
+        etas_peierls = None
+        if self.diff_type is not None:
+            etas_diff = CreepRheology(self.diff, strain_rate, Ps, Ts,\
+                                          1e4, 1000.0, use_effective_strain_rate=compute_second_invariant)
+        if self.disl_type is not None:
+            etas_disl = CreepRheology(self.disl, strain_rate, Ps, Ts,\
+                                          1e4, 1000.0, use_effective_strain_rate=compute_second_invariant)
+        if self.peierls_type is not None:
+            self.etas_peierls = np.zeros(Ts.size)
+            for i in range(Ts.size):
+                P = Ps[i]
+                T = Ts[i]
+                self.etas_peierls[i] = PeierlsCreepRheology(self.peierls, strain_rate, P, T)
+            self.Sigs_peierls = 2.0 * strain_rate * self.etas_peierls
+        self.etas_viscous = ComputeComposite(etas_diff, etas_disl)
+        self.Sigs_viscous = 2.0 * strain_rate * self.etas_viscous
         # Sigs_viscous = CreepStress(self.creep, strain_rate, Ps, Ts, 1e4, 1000.0) # change to UI
-        Sigs = np.minimum(Sigs_brittle, Sigs_viscous)
         if averaging == 'harmonic':
-            Etas = self.eta_brittle * self.eta_viscous / (self.eta_viscous + self.eta_brittle)
+            self.Etas = ComputeComposite(self.etas_viscous, self.etas_brittle, self.etas_peierls)
         else:
             raise NotImplementedError()
-        self.Sigs = Sigs
-        self.Sigs_viscous = Sigs_viscous
-        self.Etas = Etas
+        self.Sigs = 2 * strain_rate * self.Etas
         self.Zs = Zs
         self.computed = True
 
     def PlotStress(self, **kwargs):
         ax = kwargs.get('ax', None)
         label = kwargs.get('label', None)
-        label_viscous = kwargs.get('label_viscous', None)
+        label_components = kwargs.get('label_components', False)
+        plot_stress_by_log = kwargs.get('plot_stress_by_log', False)
+        if label_components:
+            label_brittle = "brittle"
+            label_viscous = "viscous"
+            label_peierls = "peierls"
+        else:
+            label_brittle = None
+            label_viscous = None
+            label_peierls = None
         _color = kwargs.get('color', 'b')
         if ax == None:
             raise NotImplementedError()
         # make plots
-        ax.plot(self.Sigs/1e6, self.Zs/1e3, color=_color, label=label)
-        ax.plot(self.Sigs_viscous/1e6, self.Zs/1e3, '--', color=_color, label=label_viscous)
-        x_max = np.ceil(np.max(self.Sigs)/1e6/100.0) * 100.0
-        ax.set_xlim([0.0, x_max])
+        mask = (self.Etas > 1e-32) # get the reasonable values, the peierls creep may return inf values
+        if plot_stress_by_log:
+            # plot the log values of the stress on the x axis
+            ax.semilogx(self.Sigs[mask]/1e6, self.Zs[mask]/1e3, color=_color, label=label)
+            ax.semilogx(self.Sigs_brittle[mask]/1e6, self.Zs[mask]/1e3, '.', color=_color, label=label_brittle)
+            ax.semilogx(self.Sigs_viscous[mask]/1e6, self.Zs[mask]/1e3, '--', color=_color, label=label_viscous)
+            if self.peierls_type is not None:
+                ax.semilogx(self.Sigs_peierls[mask]/1e6, self.Zs[mask]/1e3, '-.', color=_color, label=label_peierls)
+            ax.set_xlim([0.0, 10**(3.5)])
+        else:
+            # plot the log values of the stress on the x axis
+            ax.plot(self.Sigs[mask]/1e6, self.Zs[mask]/1e3, color=_color, label=label)
+            ax.plot(self.Sigs_brittle[mask]/1e6, self.Zs[mask]/1e3, '.', color=_color, label=label_brittle)
+            ax.plot(self.Sigs_viscous[mask]/1e6, self.Zs[mask]/1e3, '--', color=_color, label=label_viscous)
+            if self.peierls_type is not None:
+                ax.plot(self.Sigs_peierls[mask]/1e6, self.Zs[mask]/1e3, '-.', color=_color, label=label_peierls)
+            x_max = np.ceil(np.max(self.Sigs[mask]/1e6) / 100.0) * 100.0
+            ax.set_xlim([0.0, x_max])
         ax.set_xlabel("Second invariant of the stress tensor (MPa)")
         ax.set_ylabel("Depth (km)")
     
     def PlotViscosity(self, **kwargs):
         ax = kwargs.get('ax', None)
         label = kwargs.get('label', None)
+        label_components = kwargs.get('label_components', False)
+        if label_components:
+            label_brittle = "brittle"
+            label_viscous = "viscous"
+            label_peierls = "peierls"
+        else:
+            label_brittle = None
+            label_viscous = None
+            label_peierls = None
         _color = kwargs.get('color', 'b')
         if ax == None:
             raise NotImplementedError()
         # plot viscosity
-        ax.semilogx(self.Etas, self.Zs/1e3, color=_color, label=label)
+        mask = (self.Etas > 1e-32) # get the reasonable values, the peierls creep may return inf values
+        ax.semilogx(self.Etas[mask], self.Zs[mask]/1e3, color=_color, label=label)
+        ax.semilogx(self.etas_brittle[mask], self.Zs[mask]/1e3, '.', color=_color, label=label_brittle)
+        ax.semilogx(self.etas_viscous[mask], self.Zs[mask]/1e3, '--', color=_color, label=label_viscous)
+        if self.peierls_type is not None:
+            ax.semilogx(self.etas_peierls[mask], self.Zs[mask]/1e3, '-.', color=_color, label=label_peierls)
         ax.set_xlabel("Viscosity (Pa * s)")
         ax.set_ylabel("Depth (km)")
+        x_min = 1e18
+        x_max = 1e24
+        ax.set_xlim([x_min, x_max])
         
 
 def PlotStrengh(Operator, fig_path_base, **kwargs):
@@ -1969,10 +2071,11 @@ def PlotStrengh(Operator, fig_path_base, **kwargs):
         strain_rates = [1e-13, 1e-14, 1e-15]
     else:
         strain_rates = [strain_rate]
-    fig = plt.figure(tight_layout=True, figsize=[5, 10])
-    gs = gridspec.GridSpec(2, 1)
+    fig = plt.figure(tight_layout=True, figsize=[10, 10])
+    gs = gridspec.GridSpec(2, 2)
     ax0 = fig.add_subplot(gs[0, 0])
-    ax1 = fig.add_subplot(gs[1, 0])
+    ax1 = fig.add_subplot(gs[0, 1])
+    ax2 = fig.add_subplot(gs[1, 0])
     colors = ['b', 'g', 'r']
     # 1e-13 
     i = 0
@@ -1982,32 +2085,36 @@ def PlotStrengh(Operator, fig_path_base, **kwargs):
         compute_second_invariant=compute_second_invariant)
         # plot stress
         label = "Strain Rate = %.1e" % strain_rate
-        Operator.PlotStress(ax=ax0, color=_color, label_viscous=label)
+        Operator.PlotStress(ax=ax0, color=_color, label=label, label_components=(i==0))
+        Operator.PlotStress(ax=ax1, color=_color, plot_stress_by_log=True)
         # plot viscosity
-        Operator.PlotViscosity(ax=ax1, color=_color)
+        Operator.PlotViscosity(ax=ax2, color=_color)
         i += 1
     ax0.invert_yaxis()
     ax0.legend()
     ax1.invert_yaxis()
     ax1.legend()
+    ax2.invert_yaxis()
+    ax2.legend()
     # title, add the name of the rheology being used
     fig_title = "brittle type: " + Operator.brittle_type
-    if Operator.creep_type == 'diff':
+    if Operator.diff_type is not None:
         fig_title += ', creep (diff): ' + Operator.diff_type
-    elif Operator.creep_type == 'disl':
+    if Operator.disl_type is not None:
         fig_title += ', creep (disl): ' + Operator.disl_type
-    ax0.set_title(fig_title)
+    if Operator.peierls_type is not None:
+        fig_title += ', peierls: ' + Operator.peierls_type
+    fig.suptitle(fig_title)
     # figure path
     fig_path = fig_path_base.split('.')[0]
+    fig_path += ('_brittle_' + Operator.brittle_type)
     try:
-        if Operator.creep_type == 'diff':
+        if Operator.diff_type is not None:
             fig_path += ("_diff_" + Operator.diff_type)
-        elif Operator.creep_type == 'disl':
+        if Operator.disl_type is not None:
             fig_path += ("_disl_" + Operator.disl_type)
-        elif Operator.creep_type == 'comp':
-            fig_path += (("_diff_" + Operator.diff_type) + ("_disl_" + Operator.disl_type))
-        else:
-            raise TypeError("Wrong type of creep type %s" % Operator.creep_type)
+        if Operator.peierls_type is not None:
+            fig_path += ("_peierls_" + Operator.peierls_type)
     except TypeError:
         # there is no "disl_type" for the operator
         fig_path = fig_path_base
@@ -2473,8 +2580,7 @@ def main():
         DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version, rheology=arg.rheology, diff=diff)
 
     elif _commend == 'plot_strength_profile':
-        Operator = STRENGTH_PROFILE(T_type=arg.thermal)
-        Operator.SetRheologyByName(disl='ARCAY17', brittle='ARCAY17')
+        Operator = STRENGTH_PROFILE(T_type=arg.thermal, brittle="Byerlee", disl="ARCAY17", peierls="MK10")
         # Operator.Execute(creep_type='disl')
         fig_path = os.path.join(ASPECT_LAB_DIR, "results", "strength_profile.png")
         if arg.strain_rate > 0.0:
