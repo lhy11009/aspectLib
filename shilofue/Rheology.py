@@ -548,9 +548,9 @@ class RHEOLOGY_PRM():
             'q': 1.0,
             'p': 0.5,
             'n': 2.0,
-            'sigp0': 5.9e3,					# MPa (+/- 0.2e3 Pa)
-            'A': 1.4e-7,  	# s^-1 MPa^-2
-            'E': 320e3,  					# J/mol (+/-50e3 J/mol)
+            'sigp0': 5.9e3,    				# MPa (+/- 0.2e3 Pa)
+            'A': 1.4e-7,      # s^-1 MPa^-2
+            'E': 320e3,      				# J/mol (+/-50e3 J/mol)
             'V' : 0.0  # not dependent on the pressure
         }
         
@@ -559,9 +559,9 @@ class RHEOLOGY_PRM():
             'q': 2.0,
             'p': 0.5,
             'n': 0.0,
-            'sigp0': 3.8e3,					# MPa (+/- 0.2e3 Pa)
-            'A': 1e6,  	# s^-1 MPa^-2
-            'E': 566e3,  					# J/mol (+/-50e3 J/mol)
+            'sigp0': 3.8e3,    				# MPa (+/- 0.2e3 Pa)
+            'A': 1e6,      # s^-1 MPa^-2
+            'E': 566e3,      				# J/mol (+/-50e3 J/mol)
             'V' : 0.0  # not dependent on the pressure
         }
 
@@ -667,9 +667,15 @@ class RHEOLOGY_OPR():
     def MantleRheology(self, **kwargs):
         '''
         Derive mantle rheology from an aspect profile
-        In this version, I would use the F factor as the default for computing the viscosity.
-        Also I am going to use CreepRheology_v1 function rather thant the CreepRheology function,
-        where the factor of F is dealt with correctly.
+        In this version, I would use the F factor (second invariant) as the default for computing the viscosity.
+        Inputs:
+            kwargs:
+                rheology - type of rheology to use
+                strain_rate - the strain rate used for viscosity estimation
+                dEdiff, dVdiff, dAdiff_ratio, dAdisl_ratio, dEdisl, dVdisl - these factors
+                    would apply a differences to the medium value in the flow law.
+                save_profile - if the mantle profile of viscosity is saved as plot.
+                save_json - if the derived mantle rheology is saved as a json file
         '''
         strain_rate = kwargs.get('strain_rate', 1e-15)
         use_effective_strain_rate = kwargs.get('use_effective_strain_rate', True)
@@ -677,7 +683,8 @@ class RHEOLOGY_OPR():
         eta_disl = np.ones(self.depths.size)
         eta_disl13 = np.ones(self.depths.size)
         eta13 = np.ones(self.depths.size)
-        eta = np.ones(self.depths.size)
+        eta = np.ones(self.depths.size) 
+        # these options are for a differences from the central value
         dEdiff = float(kwargs.get('dEdiff', 0.0))  # numbers for the variation in the rheology
         dVdiff = float(kwargs.get('dVdiff', 0.0))
         dAdiff_ratio = float(kwargs.get("dAdiff_ratio", 1.0))
@@ -688,7 +695,8 @@ class RHEOLOGY_OPR():
         save_profile = kwargs.get('save_profile', 0)
         save_json = kwargs.get('save_json', 0)
         debug = kwargs.get('debug', False)
-        
+
+        # First, read in the flow law and apply the difference to the medium value 
         diffusion_creep, dislocation_creep = GetRheology(rheology)
         diffusion_creep['A'] *= dAdiff_ratio
         diffusion_creep['E'] += dEdiff
@@ -697,12 +705,13 @@ class RHEOLOGY_OPR():
         diffusion_creep['V'] += dVdiff
         dislocation_creep['V'] += dVdisl
 
-        # convert T, P as function. The T_func and P_func are used
+        # Then, convert T, P as function. The T_func and P_func are used
         # in the following code to get the values
         T_func = interp1d(self.depths, self.temperatures, assume_sorted=True)
         P_func = interp1d(self.depths, self.pressures, assume_sorted=True)
 
-        # < 410 km
+        # okay, we are ready
+        # Start by getting the rheology < 410 km
         depth_up = 410e3
         depth_low = 660e3
         mask_up = (self.depths < depth_up)
@@ -713,7 +722,9 @@ class RHEOLOGY_OPR():
         eta13[mask_up] = ComputeComposite(eta_diff[mask_up], eta_disl13[mask_up])
 
 
-        # MTZ
+        # then, the rheology in the MTZ
+        # Now there is no differences from the scenario we used in the upper mantle
+        # in the future, more will be added.
         mask_mtz = (self.depths > depth_up) & (self.depths < depth_low)
         if True:
             # MTZ from olivine rheology
@@ -723,8 +734,8 @@ class RHEOLOGY_OPR():
             eta[mask_mtz] = ComputeComposite(eta_diff[mask_mtz], eta_disl[mask_mtz])
             eta13[mask_mtz] = ComputeComposite(eta_diff[mask_mtz], eta_disl13[mask_mtz])
         
-        # lower mantle
-        # diffusion creep
+        # At last, the lower mantle
+        # The diffusion creep is assumed to be the only activated mechanism in the lower mantle.
         mask_low = (self.depths > depth_low)
         jump_lower_mantle = kwargs.get('jump_lower_mantle', 30.0)
         # Computing V in the lower mantle.
@@ -744,21 +755,31 @@ class RHEOLOGY_OPR():
         diff_lm = diffusion_creep.copy()
         diff_lm['V'] = 3e-6  # assign a value
         diff_lm['A'] = CreepComputeA(diff_lm, strain_rate, P660, T660, eta660*jump_lower_mantle, use_effective_strain_rate=use_effective_strain_rate)
+        
         # dump json file 
         constrained_rheology = {'diffusion_creep': diffusion_creep, 'dislocation_creep': dislocation_creep, 'diffusion_lm': diff_lm}
+        
         # convert aspect rheology
         print('diffusion_creep: ', diffusion_creep) # debug
         diffusion_creep_aspect = Convert2AspectInput(diffusion_creep, use_effective_strain_rate=use_effective_strain_rate)
         diffusion_lm_aspect = Convert2AspectInput(diff_lm, use_effective_strain_rate=use_effective_strain_rate)
         dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=use_effective_strain_rate)
         constrained_rheology_aspect = {'diffusion_creep': diffusion_creep_aspect, 'dislocation_creep': dislocation_creep_aspect, 'diffusion_lm': diffusion_lm_aspect}
+        constrained_viscosity_profile = {'T': None, 'P': None, 'diffusion': None, 'dislocation': None,\
+                                        'composite': None, 'dislocation_13': None,\
+                                        'composite_13': None, 'depth': None}
+        
+        
         # lower mnatle rheology
         eta_diff[mask_low] = CreepRheologyInAspectViscoPlastic(diffusion_lm_aspect, strain_rate, self.pressures[mask_low], self.temperatures[mask_low])
         eta_disl[mask_low] = None  # this is just for visualization
         eta_disl13[mask_low] = None  # this is just for visualization
         eta[mask_low] = eta_diff[mask_low]  # diffusion creep is activated in lower mantle
         eta13[mask_low] = eta_diff[mask_low]  # diffusion creep is activated in lower mantle
-        # haskel constraint
+        
+        # Next, we visit some constraints for whole manlte rheology 
+        # to see whether we match them
+        # The haskel constraint
         radius = 6371e3
         lith_depth = 100e3
         integral_depth = 1400e3
@@ -781,7 +802,18 @@ class RHEOLOGY_OPR():
             print("New json: %s" % json_path_aspect)
             self.output_json = json_path
             self.output_json_aspect = json_path_aspect
-        # plot
+
+        # save the constrained viscosity profile
+        constrained_viscosity_profile['depth'] = self.depths.copy() 
+        constrained_viscosity_profile['T'] = self.temperatures.copy() 
+        constrained_viscosity_profile['P'] = self.pressures.copy() 
+        constrained_viscosity_profile['diffusion'] = eta_diff.copy()
+        constrained_viscosity_profile['dislocation'] = eta_disl.copy()
+        constrained_viscosity_profile['composite'] = eta.copy()
+        constrained_viscosity_profile['composite_13'] = eta13.copy()
+        constrained_viscosity_profile['dislocation_13'] = eta_disl13.copy()
+        
+        # plot the profile of viscosity if it's required
         if save_profile == 1:
             # plots
             fig, axs = plt.subplots(1, 3, figsize=(15, 5))
@@ -828,7 +860,7 @@ class RHEOLOGY_OPR():
             plt.close()
             self.output_profile = fig_path
             pass
-        return constrained_rheology_aspect
+        return constrained_rheology_aspect, constrained_viscosity_profile
     
     def ConstrainRheology(self, **kwargs):
         '''
@@ -2167,8 +2199,8 @@ def pressure_from_lithostatic(z,Tad):
     '''
     A lithostatic pressure profile
     Inputs:
-	z (float) - depth in m
-	Tad (float) - adiabatic temperature
+    z (float) - depth in m
+    Tad (float) - adiabatic temperature
     '''
     # Density Profile
     refrho = 3300  # kg/m^3
@@ -2187,8 +2219,8 @@ def temperature_halfspace(z, t, **kwargs):
     '''
     temperature from a half-space cooling model
     Inputs:
-	z (float) - depth (m)
-	t - age (s)
+    z (float) - depth (m)
+    t - age (s)
     kwargs (dict):
         Tm (float) - mantle temperature
     '''
@@ -2249,7 +2281,7 @@ def PlotShearZoneRheologySummary(**kwargs):
     d_olivine_wet = 10000  # mu m
     Operator = RHEOLOGY_OPR()
     Operator.ReadProfile(da_file) # read profile
-    rheology_aspect = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
+    rheology_aspect, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
     dVdiff=-5.5e-6, dVdisl=2.12e-6, save_profile=1, dAdiff_ratio=0.33333247873, dAdisl_ratio=1.040297619,\
     jump_lower_mantle=15.0)
     wet_olivine_diff_aspect = rheology_aspect['diffusion_creep']
@@ -2440,6 +2472,172 @@ def PlotShearZoneRheologySummary(**kwargs):
     fig.savefig(fig_path)
 
 
+def GetMantleScenario(scenario):
+    '''
+    A wrapper for the rheology scenario in the mantle
+    Inputs:
+        scenario - the scenario of mantle rheology to use
+    '''
+    rheology_aspect = None
+    viscosity_profile = None
+    Operator = RHEOLOGY_OPR()
+    all_scenarios = ("wet_modified_medium", "wet_modified_two_d_subduction")
+    if  scenario == "two_d_subduction":
+        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
+        da_file = os.path.join(source_dir, "depth_average.txt")
+        assert(os.path.isfile(da_file))
+        # read profile
+        Operator.ReadProfile(da_file)
+        rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
+        dVdiff=-5.5e-6, dVdisl=2.12e-6, dAdiff_ratio=0.33333247873, dAdisl_ratio=1.040297619,\
+        jump_lower_mantle=15.0)
+    elif  scenario == "wet_modified_medium":
+        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
+        da_file = os.path.join(source_dir, "depth_average.txt")
+        assert(os.path.isfile(da_file))
+        # read profile
+        Operator.ReadProfile(da_file)
+        rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod", jump_lower_mantle=15.0)
+    elif  scenario == "wet_modified_modified":
+        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
+        da_file = os.path.join(source_dir, "depth_average.txt")
+        assert(os.path.isfile(da_file))
+        # read profile
+        Operator.ReadProfile(da_file)
+        rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
+                                                                    dVdiff=-5.5e-6, dVdisl=-1.2e-6, save_profile=1, debug=True)
+    elif  scenario == "HK03_wet":
+        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
+        da_file = os.path.join(source_dir, "depth_average.txt")
+        assert(os.path.isfile(da_file))
+        # read profile
+        Operator.ReadProfile(da_file)
+        rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0, use_effective_strain_rate=False)
+    elif  scenario == "HK03_dry":
+        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
+        da_file = os.path.join(source_dir, "depth_average.txt")
+        assert(os.path.isfile(da_file))
+        # read profile
+        Operator.ReadProfile(da_file)
+        rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_dry", jump_lower_mantle=30.0, use_effective_strain_rate=False)
+    else:
+        raise NotImplementedError('scenario needs to be one of ' + str(all_scenarios))
+    return rheology_aspect, viscosity_profile
+    
+
+
+def CompareMantleRheology():
+    '''
+    compare different scenario of mantle rheology
+    '''
+    # initiate the canvas
+    fig = plt.figure(tight_layout=True, figsize=(12, 10))
+    gs = gridspec.GridSpec(2, 2)    
+
+    # scenarios = ["wet_modified_medium", "wet_modified_modified", "two_d_subduction"]
+    scenarios = ["HK03_wet", "HK03_dry", "two_d_subduction"]
+    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray']
+
+    ax1 = fig.add_subplot(gs[0, 0])  # plot of temperature, pressure
+    ax1_p = ax1.twiny()
+    ax2 = fig.add_subplot(gs[0, 1])  # plot of viscosity
+    ax3 = fig.add_subplot(gs[1, 0])  # plot of viscosity in the upper mantle
+    ax4 = fig.add_subplot(gs[1, 1])  # plot of viscosity in the upper mantle, 1e-13 strain rate
+    i = 0
+    for scenario in scenarios:
+        _color = colors[i]
+        _, viscosity_profile = GetMantleScenario(scenario)
+        # get all the variables
+        eta = viscosity_profile['composite']
+        eta_13 = viscosity_profile['composite_13']
+        eta_diff = viscosity_profile['diffusion']
+        eta_disl = viscosity_profile['dislocation']
+        eta_disl_13 = viscosity_profile['dislocation_13']
+        depths = viscosity_profile['depth']
+        mask_upper = (depths < 660e3)
+        Ps = viscosity_profile['P']
+        Ts = viscosity_profile['T']
+        # plot temperature and pressure
+        label_T = None
+        label_P = None
+        if i==0:
+            ln1_1 = ax1.plot(Ts, depths/1e3, color=_color, label='temperature')
+            ln1_2 = ax1_p.plot(Ps/1e9, depths/1e3, '--', color=_color, label='pressure')
+            lns1 = ln1_1 + ln1_2
+        else:
+            ax1.plot(Ts, depths/1e3, color=_color)
+            ax1_p.plot(Ps/1e9, depths/1e3, '--', color=_color)
+        # plot of viscosity
+        ax2.semilogx(eta, depths/1e3, color=_color, label=scenario)
+        # plot of viscosity in the upper mantle
+        label_diff = None
+        label_disl = None
+        if i== 0:
+            label_diff = "diffusion"
+            label_disl = "dislocation"
+        ax3.semilogx(eta[mask_upper], depths[mask_upper]/1e3, color=_color)
+        ax3.semilogx(eta_diff[mask_upper], depths[mask_upper]/1e3, '--', color=_color, label=label_diff)
+        ax3.semilogx(eta_disl[mask_upper], depths[mask_upper]/1e3, '-.', color=_color, label=label_disl)
+        # plot of viscosity in the upper mantle, strain rate = 1e-13
+        label_disl = None
+        if i == 0:
+            label_disl = "dislocation"
+        ax4.semilogx(eta_13[mask_upper], depths[mask_upper]/1e3, color=_color)
+        ax4.semilogx(eta_disl_13[mask_upper], depths[mask_upper]/1e3, '-.', color=_color, label=label_disl)
+        i += 1
+
+    # options for plot
+    # plot of temperature
+    ax1.grid()
+    ax1.set_xlim([0, 3500.0])
+    ax1.set_ylim([3000.0, 0.0])
+    ax1_p.set_xlabel('P (GPa)')
+    ax1.set_xlabel('T (K)')
+    ax1.set_ylabel('Depth (km)')
+    ax1.text(-0.1, 1.1, 'A', transform=ax1.transAxes,
+            size=20, weight='bold')
+    labs = [i.get_label() for i in lns1]
+    ax1.legend(lns1, labs)
+    # plot of viscosity 
+    ax2.grid()
+    ax2.set_xlim([1e18, 1e24])
+    ax2.set_ylim([3000.0, 0.0])
+    ax2.set_xlabel('Viscosity (Pa*s)')
+    ax2.set_ylabel('Depth (km)')
+    ax2.text(-0.1, 1.1, 'B', transform=ax2.transAxes,
+            size=20, weight='bold')
+    ax2.legend()
+    # plot of viscosity in the upper mantle 
+    ax3.grid()
+    ax3.set_xlim([1e18, 1e24])
+    ax3.set_ylim([660.0, 0.0])
+    ax3.set_xlabel('Viscosity (Pa*s)')
+    ax3.set_ylabel('Depth (km)')
+    ax3.text(-0.1, 1.1, 'C', transform=ax3.transAxes,
+            size=20, weight='bold')
+    ax3.legend()
+    # plot of viscosity in the upper mantle, strain rate = 1e-13
+    ax4.grid()
+    ax4.set_xlim([1e18, 1e24])
+    ax4.set_ylim([660.0, 0.0])
+    ax4.set_xlabel('Viscosity (Pa*s)')
+    ax4.set_ylabel('Depth (km)')
+    ax4.text(-0.1, 1.1, 'D', transform=ax4.transAxes,
+            size=20, weight='bold')
+    ax4.legend()
+    
+
+    # save figure & json files
+    o_dir = os.path.join(ASPECT_LAB_DIR, 'results', 'compare_mantle_rheology')
+    if os.path.isdir(o_dir):
+        rmtree(o_dir)
+    os.mkdir(o_dir)
+    figure_path = os.path.join(o_dir, 'compare.png')
+    fig.savefig(figure_path)
+    print("%s: figure saved %s" % (Utilities.func_name(), figure_path))
+
+
+
 def main():
     '''
     main function of this module
@@ -2592,6 +2790,9 @@ def main():
     elif _commend == "plot_shear_zone_rheology_summary":
         ## todo_splot
         PlotShearZoneRheologySummary()
+    
+    elif _commend == "compare_mantle_rheology":
+        CompareMantleRheology()
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)
 

@@ -446,20 +446,20 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         Operator.ReadProfile(da_file)
         if mantle_rheology_scheme == "HK03_wet_mod":  # get the type of rheology
             # note that the jump on 660 is about 15.0 in magnitude
-            rheology = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
+            rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
     dVdiff=-5.5e-6, dVdisl=2.12e-6, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.040297619, save_json=1,\
     jump_lower_mantle=15.0)
         elif mantle_rheology_scheme == "HK03_wet_mod_no_dA":
             # in this rheology, I maintained the prefactors from the derivation of the "HK03_wet_mod" rheology
-            rheology = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
+            rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
     dVdiff=-5.5e-6, dVdisl=-1.2e-6, save_profile=1, save_json=1, jump_lower_mantle=15.0)
         elif mantle_rheology_scheme == "HK03":
             # in this one, I don't include F because of the issue related to pressure calibration
-            rheology = Operator.MantleRheology(rheology=mantle_rheology_scheme, use_effective_strain_rate=False, save_profile=1, save_json=1,\
+            rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, use_effective_strain_rate=False, save_profile=1, save_json=1,\
     jump_lower_mantle=15.0)
         else:
             # default is to fix F
-            rheology = Operator.MantleRheology(rheology=mantle_rheology_scheme, save_profile=1, save_json=1)
+            rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, save_profile=1, save_json=1)
         if mantle_rheology_scheme == "HK03_wet_mod" and sz_viscous_scheme == "constant" and\
             abs(sz_constant_viscosity - 1e20)/1e20 < 1e-6:  # assign the rheology
             pass # this is just the default, so skip. Note here we just skip assigning the mantle rheology in the prm

@@ -48,7 +48,7 @@ def test_HK03_mod_whole_mantle_apsect():
     Operator = RHEOLOGY_OPR()
     # read profile
     Operator.ReadProfile(da_file)
-    rheology_aspect = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
+    rheology_aspect, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
     dVdiff=-5.5e-6, dVdisl=-1.2e-6, save_profile=1, debug=True)
     diffusion_creep = rheology_aspect['diffusion_creep']
     diffusion_A = diffusion_creep['A']
@@ -86,7 +86,7 @@ def test_HK03_mod_whole_mantle_apsect_TwoDSubdution():
     Operator = RHEOLOGY_OPR()
     # read profile
     Operator.ReadProfile(da_file)
-    rheology_aspect = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
+    rheology_aspect, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
     dVdiff=-5.5e-6, dVdisl=2.12e-6, save_profile=1, dAdiff_ratio=0.33333247873, dAdisl_ratio=1.040297619,\
     jump_lower_mantle=15.0, debug=True)
     diffusion_creep = rheology_aspect['diffusion_creep']
@@ -122,7 +122,7 @@ def test_AB17_wet_whole_mantle_apsect_prm():
     Operator = RHEOLOGY_OPR()
     # read profile
     Operator.ReadProfile(da_file)
-    rheology_aspect = Operator.MantleRheology(rheology="AB17", save_profile=1)
+    rheology_aspect, _ = Operator.MantleRheology(rheology="AB17", save_profile=1)
     diffusion_creep = rheology_aspect['diffusion_creep']
     diffusion_A = diffusion_creep['A']
     diffusion_E = diffusion_creep['E']
