@@ -47,6 +47,58 @@ Examples of usage: \n\
         python -m \
         ")
 
+class MANTLE_ADIABAT():
+    '''
+    Class for getting the mantle adiabatic temperature
+    Attributs:
+        cp - heat capacity
+        alpha - thermal expansivity
+        g - gravitational acceleration
+        Ts = surface adiabatic temperature
+    '''
+    def __init__(self, cp, alpha, g, Ts, **kwargs):
+        '''
+        Initiation
+        Inputs:
+            cp - heat capacity
+            alpha - thermal expansivity
+            g - gravitational acceleration
+            Ts = surface adiabatic temperature
+            kwargs:
+                approx - type of approximation
+                approx_scheme - the index of this approximation
+        '''
+        self.cp = cp
+        self.alpha = alpha
+        self.g = g
+        self.Ts = Ts
+        self.approx = kwargs.get('approx', 'constant variables')
+        if self.approx == 'constant variables':
+            self.approx_scheme = 0
+        elif self.approx == "constant variables and gradient":
+            self.approx_scheme = 1
+        else:
+            raise NotImplementedError()
+    
+    def Temperature(self, z):
+        '''
+        derive temperature at depth
+        Inputs:
+            z - depth in m
+                z could be given as value or as np.array
+        '''
+        if self.approx_scheme == 0:
+            # cp, alpha and g are constant, approximation for the eartch condition
+            T = self.Ts * np.exp(self.alpha * self.g / self.cp * z)
+        elif self.approx_scheme == 1:
+            # assume the thermal gradient is a constant from the surface value
+            gradient = self.alpha * self.g / self.cp * self.Ts
+            T = gradient * z + self.Ts
+        else:
+            return NotImplementedError()
+        return T
+
+
 class PLATE_MODEL():
     '''
     Class for the plate model temperature

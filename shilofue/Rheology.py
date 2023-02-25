@@ -88,6 +88,7 @@ from matplotlib import gridspec, cm
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.FlowLaws import visc_diff_HK
 from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic
+from shilofue.ThermalModel import MANTLE_ADIABAT
 from scipy.interpolate import interp1d
 from mpl_toolkits.mplot3d import Axes3D
 from shutil import rmtree
@@ -197,8 +198,8 @@ class RHEOLOGY_PRM():
         # diffusion creep in Arredondo & Billen 2017
         self.AB17_diff = \
             {
-                "A" : 2.85e6,
-                "p" : 3.0,
+                "A" : 2.85e5,  # note: their number in the 2017 appendix is wrong,
+                "p" : 3.0, #  but it's right in the 2016 paper.
                 "r" : 1.0,
                 "n" : 1.0,
                 "E" : 317e3,
@@ -656,6 +657,9 @@ class RHEOLOGY_OPR():
         if self.peierls_type != None:
             self.peierls = GetPeierlsRheology(peierls_type)
 
+
+    
+    
     
     def ReadProfile(self, file_path):
         '''
@@ -663,6 +667,7 @@ class RHEOLOGY_OPR():
         These values are saved as class variables
         '''
         self.depths, self.pressures, self.temperatures = ReadAspectProfile(file_path)
+        
     
     def MantleRheology(self, **kwargs):
         '''
@@ -2513,6 +2518,30 @@ def GetMantleScenario(scenario):
         # read profile
         Operator.ReadProfile(da_file)
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0, use_effective_strain_rate=False)
+    elif  scenario == "HK03_wet_with_synthetic_adiabat":
+        depths = np.linspace(0.0, 2890e3, 3000)
+        Operator.depths = depths.copy()
+        rho_ref = 3416.0
+        cp = 1250.0
+        alpha = 3.1e-5
+        g = 10.0
+        Ts = 1573.0
+        MantleAdiabat = MANTLE_ADIABAT(cp, alpha, g, Ts, approx="constant variables")
+        Operator.temperatures = MantleAdiabat.Temperature(depths)
+        Operator.pressures = rho_ref * g * depths
+        rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0, use_effective_strain_rate=False)
+    elif  scenario == "HK03_wet_with_synthetic_adiabat_constant_gradient":
+        depths = np.linspace(0.0, 2890e3, 3000)
+        Operator.depths = depths.copy()
+        rho_ref = 3416.0
+        cp = 1250.0
+        alpha = 3.1e-5
+        g = 10.0
+        Ts = 1573.0
+        MantleAdiabat = MANTLE_ADIABAT(cp, alpha, g, Ts, approx="constant variables and gradient")
+        Operator.temperatures = MantleAdiabat.Temperature(depths)
+        Operator.pressures = rho_ref * g * depths
+        rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0, use_effective_strain_rate=False)
     elif  scenario == "HK03_dry":
         source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
@@ -2535,7 +2564,8 @@ def CompareMantleRheology():
     gs = gridspec.GridSpec(2, 2)    
 
     # scenarios = ["wet_modified_medium", "wet_modified_modified", "two_d_subduction"]
-    scenarios = ["HK03_wet", "HK03_dry", "two_d_subduction"]
+    # scenarios = ["HK03_wet", "HK03_dry", "two_d_subduction"]
+    scenarios = ["HK03_wet_with_synthetic_adiabat", "HK03_wet_with_synthetic_adiabat_constant_gradient"]
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray']
 
     ax1 = fig.add_subplot(gs[0, 0])  # plot of temperature, pressure
