@@ -36,7 +36,7 @@ from matplotlib import gridspec
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 import shilofue.FlowLaws as flf
-from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput, STRENGTH_PROFILE, PlotShearZoneStrengh
+from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput, STRENGTH_PROFILE
 from shilofue.WorldBuilder import slab_surface_profile
 
 # directory to the aspect Lab
@@ -485,7 +485,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             rheology_experiment_dislocation = ConvertFromAspectInput(rheology['dislocation_creep'])
             Operator_Sp.SetRheology(disl=rheology_experiment_dislocation, brittle=brittle_yielding)
             fig_path = os.path.join(ASPECT_LAB_DIR, "results", "shear_zone_strength.png")
-            PlotShearZoneStrengh(Operator_Sp, fig_path)
+            # PlotShearZoneStrengh(Operator_Sp, fig_path) # deprecated
             self.output_imgs.append(fig_path)
 
         # Include peierls rheology

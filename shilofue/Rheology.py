@@ -154,6 +154,7 @@ class RHEOLOGY_PRM():
             }
 
         # dislocation creep in Hirth & Kohlstedt 2003
+        # with constant Coh
         self.HK03_disl = \
             {
                 "A": 90,
@@ -175,6 +176,33 @@ class RHEOLOGY_PRM():
                 "n" : 1.0,
                 "E" : 335e3,
                 "V" : 4e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0
+            }
+        
+        # dislocation creep in Hirth & Kohlstedt 2003
+        # with varied Coh
+        self.HK03_w_disl = \
+            {
+                "A": 1600.0,
+                "p": 0.0,
+                "r": 1.2,
+                "n": 3.5,
+                "E": 520e3,
+                "V": 22e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0
+            }
+
+        # diffusion creep in Hirth & Kohlstedt 2003
+        self.HK03_w_diff = \
+            {
+                "A" : 2.5e7,
+                "p" : 3.0,
+                "r" : 1.0,
+                "n" : 1.0,
+                "E" : 375e3,
+                "V" : 10e-6,
                 "d" : 1e4,
                 "Coh" : 1000.0
             }
@@ -251,6 +279,35 @@ class RHEOLOGY_PRM():
             }
 
         self.HK03_wet_mod_disl = \
+            {
+                "A" : 457.142857143,
+                "p" : 0.0,
+                "r" : 1.2,
+                "n" : 3.5,
+                "E" : 520e3,
+                "V" : 24e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0,
+                "wet" : 1.0
+            }
+        
+        # modified creep laws from Hirth & Kohlstedt 2003
+        # for detail, refer to magali's explain_update_modHK03_rheology.pdf file
+        # 'wet' indicates this has to applied with a rheology of water
+        self.HK03_wet_mod_ln_diff = \
+            {
+                "A" : 7.1768184e6,  
+                "p" : 3.0,
+                "r" : 1.0,
+                "n" : 1.0,
+                "E" : 375e3,
+                "V" : 23e-6,
+                "d" : 1e4,
+                "Coh" : 1000.0,
+                "wet": 1.0  # I use this to mark this is a wet rheology, so I need to account for V and E for water later.
+            }
+
+        self.HK03_wet_mod_ln_disl = \
             {
                 "A" : 457.142857143,
                 "p" : 0.0,
@@ -597,14 +654,17 @@ class RHEOLOGY_OPR():
     rheology operation, do some complex staff
     Attributes:
         RheologyPrm: an initiation of the class RHEOLOGY_PRM
-        depths(ndarray): depth profile (all these 3 profiles are loaded from a depth_average outputs of ASPECT)
-        pressures: pressure profile
-        temperatures: temperature profile
+        depths(ndarray), pressures, temperatures: depth, pressure, temperature profile
+            (all these 3 profiles are loaded from a depth_average outputs of ASPECT)
         peierls_type: a string, type of the peierls rheology
         peierls: the dictionary of variables to be used for the peierls rheology
     '''
     def __init__(self):
+        '''
+        Initiation
+        '''
         self.RheologyPrm = RHEOLOGY_PRM()
+        # set of variables for mantle profile
         self.depths = None
         self.pressures = None
         self.tempertures = None
@@ -655,10 +715,7 @@ class RHEOLOGY_OPR():
         if brittle_type != None:
             self.brittle = self.RheologyPrm.get_rheology(brittle_type, 'brittle')
         if self.peierls_type != None:
-            self.peierls = GetPeierlsRheology(peierls_type)
-
-
-    
+            self.peierls = GetPeierlsRheology(peierls_type) 
     
     
     def ReadProfile(self, file_path):
@@ -667,7 +724,86 @@ class RHEOLOGY_OPR():
         These values are saved as class variables
         '''
         self.depths, self.pressures, self.temperatures = ReadAspectProfile(file_path)
+
+
+    # todo_HK03
+    def VaryWithStress(self, P, T, d, Coh, stress_range, **kwargs):
+        '''
+        With a set of variables, compare to the data points reported
+        in experimental publications.
+        Inputs:
+            stress_range - a range of stress for the strain rate - stress plot
+            strain_rate_range - a range of strain_rate, only affects plot
+            P,d,Coh - samples of variables for the strain rate - stress plot
+            kwargs:
+                ax - an axis for plot
+                label - label for the curve
+                color - the color used for plotting
+                
+        '''
+        assert(self.diff is not None and self.disl is not None)
+        stress_range = kwargs.get("stress_range", [10.0, 1000.0])  # Mpa
+        strain_rate_range = kwargs.get("strain_rate_range", None)  # s^{-1}
+        ax = kwargs.get('ax', None)
+        label = kwargs.get('label', None)
+        _color = kwargs.get('color', 'b')
+        use_effective_strain_rate = kwargs.get('use_effective_strain_rate', True)
+
+        stresses = np.linspace(stress_range[0], stress_range[1], 1000)
+        strain_rates_diff = CreepStrainRate(self.diff, stresses, P, T, d, Coh, use_effective_strain_rate=use_effective_strain_rate)
+        strain_rates_disl = CreepStrainRate(self.disl, stresses, P, T, d, Coh, use_effective_strain_rate=use_effective_strain_rate)
+        strain_rates = strain_rates_diff + strain_rates_disl  # apply the isostress model
+        if ax is not None:
+            ax.loglog(stresses, strain_rates, '-', color=_color, label=(label + "comp"))
+            ax.loglog(stresses, strain_rates_diff, '--', color=_color, label=(label + "diff"))
+            ax.loglog(stresses, strain_rates_disl, '-.', color=_color, label=(label + "disl"))
+        ax.set_xlabel("Stress (Mpa)")
+        ax.set_xlim(stress_range[0], stress_range[1])
+        if strain_rate_range is not None:
+            ax.set_ylim(strain_rate_range[0], strain_rate_range[1])
+        ax.set_ylabel("Strain Rate (s^-1)")
+        _title = "P = %.4e, T = %.4e, d = %.4e, Coh = %.4e" % (P/1e6, T, d, Coh)
+        ax.set_title(_title)
+
+    
+    def VaryWithT(self, P, stress, d, Coh, T_range, **kwargs):
+        '''
+        With a set of variables, compare to the data points reported
+        in experimental publications.
+        Inputs:
+            P - a pressure to compute the strain rate
+            stress - a sample of stress for the strain rate - 10^4/T plot
+            d - a sample of grain size for the strain rate - 10^4/T plot
+            Coh - a sample of Coh for the strain rate - 10^4/T plot
+            T_range - a range of T for the strain rate - 10^4/T plot
+            kwargs:
+                ax - an axis for plot
+                label - label for the curve
+                color - the color used for plotting
+        '''
+        assert(self.diff is not None and self.disl is not None)
+        strain_rate_range = kwargs.get("strain_rate_range", None)  # s^{-1}
+        ax = kwargs.get('ax', None)
+        label = kwargs.get('label', None)
+        _color = kwargs.get('color', 'b')
+        use_effective_strain_rate = kwargs.get('use_effective_strain_rate', True)
         
+        Ts = np.linspace(T_range[0], T_range[1], 1000)
+        strain_rates_diff = CreepStrainRate(self.diff, stress, P, Ts, d, Coh, use_effective_strain_rate=use_effective_strain_rate)
+        strain_rates_disl = CreepStrainRate(self.disl, stress, P, Ts, d, Coh, use_effective_strain_rate=use_effective_strain_rate)
+        strain_rates = strain_rates_diff + strain_rates_disl  # apply the isostress model
+        if ax is not None:
+            ax.semilogy(1e4/Ts, strain_rates, '-', color=_color, label=(label + "comp"))
+            ax.semilogy(1e4/Ts, strain_rates_diff, '--', color=_color, label=(label + "diff"))
+            ax.semilogy(1e4/Ts, strain_rates_disl, '-.', color=_color, label=(label + "disl"))
+        ax.set_xlabel("10^4 / T (K^-1)")
+        ax.set_xlim(1e4 / T_range[1], 1e4 / T_range[0])
+        if strain_rate_range is not None:
+            ax.set_ylim(strain_rate_range[0], strain_rate_range[1])
+        ax.set_ylabel("Strain Rate (s^-1)")
+        _title = "P = %.4e, Stress = %.4e, d = %.4e, Coh = %.4e" % (P/1e6, stress, d, Coh)
+        ax.set_title(_title)
+
     
     def MantleRheology(self, **kwargs):
         '''
@@ -681,6 +817,8 @@ class RHEOLOGY_OPR():
                     would apply a differences to the medium value in the flow law.
                 save_profile - if the mantle profile of viscosity is saved as plot.
                 save_json - if the derived mantle rheology is saved as a json file
+                fig_path - if the save_profile is true, then a path of figure could be given
+                    otherwise, a default path will be adapted.
         '''
         strain_rate = kwargs.get('strain_rate', 1e-15)
         use_effective_strain_rate = kwargs.get('use_effective_strain_rate', True)
@@ -700,6 +838,7 @@ class RHEOLOGY_OPR():
         save_profile = kwargs.get('save_profile', 0)
         save_json = kwargs.get('save_json', 0)
         debug = kwargs.get('debug', False)
+        fig_path = kwargs.get("fig_path", None)
 
         # First, read in the flow law and apply the difference to the medium value 
         diffusion_creep, dislocation_creep = GetRheology(rheology)
@@ -709,6 +848,8 @@ class RHEOLOGY_OPR():
         dislocation_creep['E'] += dEdisl
         diffusion_creep['V'] += dVdiff
         dislocation_creep['V'] += dVdisl
+        self.diff = diffusion_creep  # record these with the class variables
+        self.disl = dislocation_creep
 
         # Then, convert T, P as function. The T_func and P_func are used
         # in the following code to get the values
@@ -857,9 +998,10 @@ class RHEOLOGY_OPR():
             axs[2].legend()
             axs[2].set_title('strain_rate1.0e-13')
             # save figure
-            fig_path = os.path.join(RESULT_DIR,\
-                "mantle_profile_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e_dAdiff%.4e_dAdisl%.4e.png"\
-                % (rheology, dEdiff, dEdisl, dVdiff, dVdisl, dAdiff_ratio, dAdisl_ratio))
+            if fig_path == None:
+                fig_path = os.path.join(RESULT_DIR,\
+                    "mantle_profile_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e_dAdiff%.4e_dAdisl%.4e.png"\
+                    % (rheology, dEdiff, dEdisl, dVdiff, dVdisl, dAdiff_ratio, dAdisl_ratio))
             fig.savefig(fig_path)
             print("New figure: %s" % fig_path)
             plt.close()
@@ -1907,6 +2049,7 @@ def ConstrainASPECT(file_path, **kwargs):
     Operator.ConstrainRheology(save_profile=save_profile, include_lower_mantle=include_lower_mantle)
 
 
+# todo_HK03
 def DeriveMantleRheology(file_path, **kwargs):
     '''
     Derive a Mantle rheology profile following certain procedures
@@ -1914,6 +2057,7 @@ def DeriveMantleRheology(file_path, **kwargs):
         file_path(str): a profile from ASPECT
     '''
     mantle_rheology_scheme = kwargs.get("rheology", "HK03_wet_mod")
+    use_effective_strain_rate = kwargs.get("use_effective_strain_rate", True)
     diff = kwargs.get("diff", [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
     assert(type(diff) == list)
     dAdiff_ratio = diff[0]
@@ -1929,14 +2073,119 @@ def DeriveMantleRheology(file_path, **kwargs):
     save_profile = kwargs.get('save_profile', 0)
     include_lower_mantle = kwargs.get('include_lower_mantle', None)
     version = kwargs.get('version', 0)
+    print("use_effective_strain_rate: ", use_effective_strain_rate)
+    fig_dir = os.path.join(RESULT_DIR, 
+                    "%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e_dAdiff%.4e_dAdisl%.4e"\
+                    % (mantle_rheology_scheme, dEdiff, dEdisl, dVdiff, dVdisl, dAdiff_ratio, dAdisl_ratio))
+    if os.path.isdir(fig_dir):
+        rmtree(fig_dir)
+    os.mkdir(fig_dir)
+    fig_path = os.path.join(fig_dir, "mantle_profile.png")
     if version == 0:
-        Operator.MantleRheology(rheology=mantle_rheology_scheme,save_profile=save_profile)
+        Operator.MantleRheology(rheology=mantle_rheology_scheme,save_profile=save_profile,\
+        use_effective_strain_rate=use_effective_strain_rate, save_json=True, fig_path=fig_path)
     elif version == 1:
         Operator.MantleRheology(rheology=mantle_rheology_scheme,save_profile=save_profile,\
             dEdiff=dEdiff, dEdisl=dEdisl, dVdiff=dVdiff, dVdisl=dVdisl,\
-                dAdiff_ratio=dAdiff_ratio, dAdisl_ratio=dAdisl_ratio)
+                dAdiff_ratio=dAdiff_ratio, dAdisl_ratio=dAdisl_ratio,
+                use_effective_strain_rate=use_effective_strain_rate, save_json=True, fig_path=fig_path)
     else:
         raise CheckValueError('%d is not a valid version of Mantle Rheology' % version)
+
+    fig = plt.figure(tight_layout=True, figsize=(8, 10))
+    
+    # strain rate vs stress
+    gs = gridspec.GridSpec(2, 1)
+    ax = fig.add_subplot(gs[0, 0])
+    # plot reference point
+    # note that the option of use_effective_strain_rate
+    # is set as False to compare with the HK03 experiments
+    PlotHK03DataFig2(ax, "wet")
+    P = 300e6 # Pa
+    T = 1250 + 273.15 # K
+    d = 15 # um
+    coh = 125.0 # / 10^ Si
+    stress_range = [10.0, 1000.0]  # MPa
+    strain_rate_range = [1e-7, 1e-1]  # s^-1, for plotting
+    Operator.VaryWithStress(P, T, d, coh, stress_range, ax=ax,\
+                            strain_rate_range=strain_rate_range, use_effective_strain_rate=False,\
+                            label="")
+    ax.legend()
+    # strain rate vs 10^4/T
+    ax = fig.add_subplot(gs[1, 0])
+    # plot reference point, from figure 3
+    PlotHK03DataFig3(ax, "wet") 
+    P = 100e6 # Pa
+    stress = 50.0 # Mpa
+    d = 15 # um
+    coh = 40.0 # / 10^ Si
+    strain_rate_range = [1e-7, 1e-3]  # s^-1, for plotting
+    T_range = [1000.0 + 273.15, 1400.0 + 273.15]
+    Operator.VaryWithT(P, stress, d, coh, T_range, ax=ax,\
+                            strain_rate_range=strain_rate_range, use_effective_strain_rate=False,
+                            label="")
+    ax.legend()
+    fig_path = os.path.join(fig_dir, 'fit_HK03_fig2.png')
+    fig.savefig(fig_path)
+    print("New figure: ", fig_path)  # screen output
+
+
+def PlotHK03DataFig2(ax, _type, **kwargs):
+    '''
+    Inputs:
+        ax - an axis to plot
+        _type - "dry" or "wet"
+        kwargs:
+            color - color of plotting
+    '''
+    if _type == 'dry':
+        raise NotImplementedError()
+    if _type == 'wet':
+        file_path = os.path.join(ASPECT_LAB_DIR, "files", "ref_data", "HK03_fig2b_comp")
+        file_path_disl = os.path.join(ASPECT_LAB_DIR, "files", "ref_data", "HK03_fig2b_disl")
+    assert(os.path.isfile(file_path))
+    assert(os.path.isfile(file_path_disl))
+    _color = kwargs.get("color", 'b')
+
+    # composite strain rate
+    data = np.loadtxt(file_path)
+    stress = 10**data[:, 0]  # MPa
+    strain_rate = 10**data[:, 1] # s^-1
+    ax.loglog(stress, strain_rate, '*', color=_color)
+    # dislocation strain rate
+    data = np.loadtxt(file_path_disl)
+    stress = 10**data[:, 0]  # MPa
+    strain_rate = 10**data[:, 1] # s^-1
+    ax.loglog(stress, strain_rate, 'o', color=_color)
+
+
+def PlotHK03DataFig3(ax, _type, **kwargs):
+    '''
+    Inputs:
+        ax - an axis to plot
+        _type - "dry" or "wet"
+        kwargs:
+            color - color of plotting
+    '''
+    if _type == 'dry':
+        raise NotImplementedError()
+    if _type == 'wet':
+        file_path_diff = os.path.join(ASPECT_LAB_DIR, "files", "ref_data", "HK03_fig3b_diff_100")
+        file_path_disl = os.path.join(ASPECT_LAB_DIR, "files", "ref_data", "HK03_fig3b_disl_100")
+    assert(os.path.isfile(file_path_diff))
+    assert(os.path.isfile(file_path_disl))
+    _color = kwargs.get("color", 'b')
+
+    # diffusion strain rate
+    data = np.loadtxt(file_path_diff)
+    Ts = 1e4 / data[:, 0]  # K
+    strain_rate = 10**data[:, 1] # s^-1
+    ax.semilogy(1e4 / Ts, strain_rate, 's', color=_color, label="diffusion, P = 100 MPa")
+    # dislocation strain rate
+    data = np.loadtxt(file_path_disl)
+    Ts = 1e4 / data[:, 0]  # K
+    strain_rate = 10**data[:, 1] # s^-1
+    ax.semilogy(1e4 / Ts, strain_rate, 'o', color=_color, label="dislocation, P = 100 MPa")
 
 ###
 # functions for deriving the strenght profile
@@ -2518,6 +2767,13 @@ def GetMantleScenario(scenario):
         # read profile
         Operator.ReadProfile(da_file)
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0, use_effective_strain_rate=False)
+    elif  scenario == "HK03_wet_F":
+        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
+        da_file = os.path.join(source_dir, "depth_average.txt")
+        assert(os.path.isfile(da_file))
+        # read profile
+        Operator.ReadProfile(da_file)
+        rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0)
     elif  scenario == "HK03_wet_with_synthetic_adiabat":
         depths = np.linspace(0.0, 2890e3, 3000)
         Operator.depths = depths.copy()
@@ -2549,6 +2805,13 @@ def GetMantleScenario(scenario):
         # read profile
         Operator.ReadProfile(da_file)
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_dry", jump_lower_mantle=30.0, use_effective_strain_rate=False)
+    elif  scenario == "AB17":
+        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
+        da_file = os.path.join(source_dir, "depth_average.txt")
+        assert(os.path.isfile(da_file))
+        # read profile
+        Operator.ReadProfile(da_file)
+        rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="AB17", jump_lower_mantle=30.0)
     else:
         raise NotImplementedError('scenario needs to be one of ' + str(all_scenarios))
     return rheology_aspect, viscosity_profile
@@ -2564,8 +2827,8 @@ def CompareMantleRheology():
     gs = gridspec.GridSpec(2, 2)    
 
     # scenarios = ["wet_modified_medium", "wet_modified_modified", "two_d_subduction"]
-    # scenarios = ["HK03_wet", "HK03_dry", "two_d_subduction"]
-    scenarios = ["HK03_wet_with_synthetic_adiabat", "HK03_wet_with_synthetic_adiabat_constant_gradient"]
+    scenarios = ["HK03_wet", "HK03_wet_F", "HK03_dry", "two_d_subduction", "AB17"]
+    # scenarios = ["HK03_wet_with_synthetic_adiabat", "HK03_wet_with_synthetic_adiabat_constant_gradient"]
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray']
 
     ax1 = fig.add_subplot(gs[0, 0])  # plot of temperature, pressure
@@ -2805,7 +3068,8 @@ def main():
     elif _commend == 'derive_mantle_rheology':
         diff_str = arg.diff.split(',')
         diff = [float(entry) for entry in diff_str]
-        DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version, rheology=arg.rheology, diff=diff)
+        DeriveMantleRheology(arg.inputs, save_profile=arg.save_profile, version=arg.version,\
+        rheology=arg.rheology, diff=diff, use_effective_strain_rate=arg.use_effective_strain_rate)
 
     elif _commend == 'plot_strength_profile':
         Operator = STRENGTH_PROFILE(T_type=arg.thermal, brittle="Byerlee", disl="ARCAY17", peierls="MK10")

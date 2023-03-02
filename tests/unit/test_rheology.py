@@ -155,6 +155,7 @@ def test_AB17():
     '''
     rheology = 'AB17'
     diffusion_creep, dislocation_creep = GetRheology(rheology)
+    # Assert 1: temperature around 300 km depth
     diff_eta_1 = CreepRheology(diffusion_creep, 1e-15, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
     diff_eta_1_std = 8.179204748483643e+19
     assert(abs(diff_eta_1 - diff_eta_1_std)/diff_eta_1_std < 1e-6)
@@ -162,6 +163,16 @@ def test_AB17():
     disl_eta_1 = CreepRheology(dislocation_creep, 1e-15, 10e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
     eta_1 = ComputeComposite(diff_eta_1, disl_eta_1)
     eta_1_std = 3.868498618895726e+19
+    assert(abs(eta_1 - eta_1_std)/eta_1_std < 1e-6)
+    # Assert 2: temperature around 660 km depth
+    diff_eta_1_std = 2.420023298875392e+21
+    diff_eta_1 = CreepRheology(diffusion_creep, 1e-15, 6.6*3.3e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+    assert(abs(diff_eta_1 - diff_eta_1_std)/diff_eta_1_std < 1e-6)
+    disl_eta_1_std = 1.0509354639182787e+21
+    disl_eta_1 = CreepRheology(dislocation_creep, 1e-15, 6.6*3.3e9, 1400 + 273.15, 1e4, 1000.0, use_effective_strain_rate=True)
+    assert(abs(disl_eta_1 - disl_eta_1_std)/disl_eta_1_std < 1e-6)
+    eta_1 = ComputeComposite(diff_eta_1, disl_eta_1)
+    eta_1_std = 7.327336572128091e+20
     assert(abs(eta_1 - eta_1_std)/eta_1_std < 1e-6)
 
 
