@@ -29,7 +29,8 @@ from shilofue.ParsePrm import ReadPrmFile
 from shilofue.PlotVisit import RunScripts
 import shilofue.PlotCombine as PlotCombine
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS, PREPARE_RESULT_OPTIONS
-from shilofue.TwoDSubduction0.PlotSlab import vtk_and_slab_morph_case, SLABPLOT
+from shilofue.TwoDSubduction0.PlotSlab import vtk_and_slab_morph_case, SLABPLOT 
+from shilofue.TwoDSubduction0.VtkPp import SlabMorphologyCase, PlotWedgeTCase, WedgeTCase
 import shilofue.PlotCase as PlotCase
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
@@ -239,6 +240,26 @@ def main():
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
         SlabPlot.PlotMorph(arg.inputs)
+    elif _commend == 'plot_case_composite':
+        # todo_composite
+        # plot case composite
+        # plot the linear plot and visualization
+        time_interval_visual = 0.5e6
+        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun],\
+                                  arg.inputs,\
+                                  time_range=time_range, \
+                                  run_visual=arg.run_visualization,\
+                                  time_interval=time_interval_visual)
+        # plot the slab morphology
+        time_interval_morph = 0.5e6 
+        SlabMorphologyCase(arg.inputs, rewrite=1, time_interval=time_interval_morph)
+        SlabPlot = SLABPLOT('slab')
+        SlabPlot.PlotTrenchPosition(arg.inputs, time_interval=arg.time_interval)
+        # plot the wedge T
+        time_interval_wedgt_T = 0.5e6 
+        WedgeTCase(arg.inputs, time_interval=time_interval_wedgt_T)
+        PlotWedgeTCase(arg.inputs, time_interval=time_interval_wedgt_T)
+
     elif (_commend in ['-h', '--help']):
         # example:
         Usage()
