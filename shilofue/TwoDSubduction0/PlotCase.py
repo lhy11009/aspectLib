@@ -29,8 +29,8 @@ from shilofue.ParsePrm import ReadPrmFile
 from shilofue.PlotVisit import RunScripts
 import shilofue.PlotCombine as PlotCombine
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS, PREPARE_RESULT_OPTIONS
-from shilofue.TwoDSubduction0.PlotSlab import vtk_and_slab_morph_case, SLABPLOT 
-from shilofue.TwoDSubduction0.VtkPp import SlabMorphologyCase, PlotWedgeTCase, WedgeTCase
+from shilofue.TwoDSubduction0.PlotSlab import vtk_and_slab_morph_case
+from shilofue.TwoDSubduction0.VtkPp import SlabMorphologyCase, PlotWedgeTCase, WedgeTCase, SLABPLOT
 import shilofue.PlotCase as PlotCase
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
@@ -81,6 +81,9 @@ Examples of usage: \n\
 \n\
   - generate slab_morph.txt for cases in a directory: \n\
     Lib_TwoDSubduction0_PlotCase morph_case_in_dir -i ~/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT1 \n\
+\n\
+  - combine a few steps (visualization, morphology, wedge T, etc): \n\
+    Lib_TwoDSubduction0_PlotCase plot_case_composite -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT4/eba_cdpt_SA80.0_OA40.0_CpEcl \n\
         ")
 
 
@@ -207,6 +210,7 @@ def main():
     else:
         assert(type(arg.time) == float and type(arg.time1) == float)
         time_range = [arg.time, arg.time1]
+
     if _commend == 'plot_case':
         PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization, time_interval=arg.time_interval)
     elif _commend == 'plot_case_in_dir':
@@ -254,7 +258,7 @@ def main():
         time_interval_morph = 0.5e6 
         SlabMorphologyCase(arg.inputs, rewrite=1, time_interval=time_interval_morph)
         SlabPlot = SLABPLOT('slab')
-        SlabPlot.PlotTrenchPosition(arg.inputs, time_interval=arg.time_interval)
+        SlabPlot.PlotMorph(arg.inputs)
         # plot the wedge T
         time_interval_wedgt_T = 0.5e6 
         WedgeTCase(arg.inputs, time_interval=time_interval_wedgt_T)
