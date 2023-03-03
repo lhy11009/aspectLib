@@ -30,7 +30,7 @@ from shilofue.PlotVisit import RunScripts
 import shilofue.PlotCombine as PlotCombine
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS, PREPARE_RESULT_OPTIONS
 from shilofue.TwoDSubduction0.PlotSlab import vtk_and_slab_morph_case
-from shilofue.TwoDSubduction0.VtkPp import SlabMorphologyCase, PlotWedgeTCase, WedgeTCase, SLABPLOT
+from shilofue.TwoDSubduction0.VtkPp import SlabMorphologyCase, PlotWedgeTCase, WedgeTCase, SLABPLOT, PlotTrenchThermalState
 import shilofue.PlotCase as PlotCase
 import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
@@ -263,6 +263,9 @@ def main():
         time_interval_wedgt_T = 0.5e6 
         WedgeTCase(arg.inputs, time_interval=time_interval_wedgt_T)
         PlotWedgeTCase(arg.inputs, time_interval=time_interval_wedgt_T)
+        # plot the thermal state
+        # this has to use the same interval as the plot morphology 
+        PlotTrenchThermalState(arg.inputs, time_interval=time_interval_morph)
 
     elif (_commend in ['-h', '--help']):
         # example:
