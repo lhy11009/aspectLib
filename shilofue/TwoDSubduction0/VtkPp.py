@@ -2882,9 +2882,14 @@ class SLABPLOT(LINEARPLOT):
         if time_stable is not None:
             # focus on the range of thermal parameter in the stable regem
             mask = (times > time_stable)
-            ymax = np.ceil(np.max(thermal_parameters[mask]) / 1e6) * 1e6
-            ymin = np.floor(np.min(thermal_parameters[mask]) / 1e6) * 1e6
-            ax.set_ylim([ymin/1e3, ymax/1e3])
+            # the ValueError would be induced if the model hasn't reached
+            # the stage of stable subduction
+            try:
+                ymax = np.ceil(np.max(thermal_parameters[mask]) / 1e6) * 1e6
+                ymin = np.floor(np.min(thermal_parameters[mask]) / 1e6) * 1e6
+                ax.set_ylim([ymin/1e3, ymax/1e3])
+            except ValueError:
+                pass
         # converging velocity
         if plot_velocity:
             ax1 = ax.twinx()
@@ -2893,9 +2898,12 @@ class SLABPLOT(LINEARPLOT):
             if time_stable is not None:
                 # focus on the range of thermal parameter in the stable regem
                 mask = (times > time_stable)
-                ymax1 = np.ceil(np.max(conv_velocities[mask]) / 1e-3) * 1e-3
-                ymin1 = np.floor(np.min(conv_velocities[mask]) / 1e-3) * 1e-3
-                ax1.set_ylim([ymin1/1e3, ymax1/1e3])
+                try:
+                    ymax1 = np.ceil(np.max(conv_velocities[mask]) / 1e-3) * 1e-3
+                    ymin1 = np.floor(np.min(conv_velocities[mask]) / 1e-3) * 1e-3
+                    ax1.set_ylim([ymin1/1e3, ymax1/1e3])
+                except ValueError:
+                    pass
         if plot_dip:
             ax2 = ax.twinx()
             ax2.plot(times/1e6, np.sin(dips), '--', label="sin(dip angle)", color='tab:red')
@@ -2903,9 +2911,12 @@ class SLABPLOT(LINEARPLOT):
             if time_stable is not None:
                 # focus on the range of thermal parameter in the stable regem
                 mask = (times > time_stable)
-                ymax2 = np.ceil(np.max(np.sin(dips[mask])) / 1e-2) * 1e-2
-                ymin2 = np.floor(np.min(np.sin(dips[mask])) / 1e-2) * 1e-2
-                ax2.set_ylim([ymin2, ymax2])
+                try:
+                    ymax2 = np.ceil(np.max(np.sin(dips[mask])) / 1e-2) * 1e-2
+                    ymin2 = np.floor(np.min(np.sin(dips[mask])) / 1e-2) * 1e-2
+                    ax2.set_ylim([ymin2, ymax2])
+                except ValueError:
+                    pass
 
         
 
@@ -3052,10 +3063,12 @@ class PLOT_COMBINE_SLAB_MORPH(PLOT_COMBINE):
         Inputs:
             sizes: (list of 2) - size of the plot
             output_dir: directory to output to
+        kwargs:
+            color_method: use a list of color or the generated values
         '''
         _name = "combine_morphology"
         _title = "Comparing slab morphology results"
-        color_method = kwargs.get('color_method', 'generated')
+        color_method = kwargs.get('color_method', 'list')
         dump_color_to_json = kwargs.get('dump_color_to_json', None)
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
@@ -3191,23 +3204,26 @@ def PlotTrenchThermalState(case_dir, **kwargs):
     Inputs:
         kwargs:
             time_interval - interval between steps
+            silent - function would not ask user input to progress
     '''
     use_thermal = False  # twik options between thermally interpretation and motion reconstruction
+    silent = kwargs.get('silent', False)
     # let the user check these options
-    if use_thermal:
-        # use thermal option would fit the temperature at the trench for the individual steps
-        # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
-        _continue = input("This option will plot the data in the vtk_outputs/trench_T.txt file, \
-but will not generarte that file. Make sure all these files are updated, proceed (y/n)?")
-        if _continue != 'y':
-            print('abort')
-            exit(0)
-    else:
-        _continue = input("This option requires the data in the vtk_outputs/slab_morph.txt file, \
-but will not generarte that file. Make sure all these files are updated, proceed (y/n)?")
-        if _continue != 'y':
-            print('abort')
-            exit(0) 
+    if not silent:
+        if use_thermal:
+            # use thermal option would fit the temperature at the trench for the individual steps
+            # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+            _continue = input("This option will plot the data in the vtk_outputs/trench_T.txt file, \
+    but will not generarte that file. Make sure all these files are updated, proceed (y/n)?")
+            if _continue != 'y':
+                print('abort')
+                exit(0)
+        else:
+            _continue = input("This option requires the data in the vtk_outputs/slab_morph.txt file, \
+    but will not generarte that file. Make sure all these files are updated, proceed (y/n)?")
+            if _continue != 'y':
+                print('abort')
+                exit(0) 
     time_interval = kwargs.get('time_interval', 0.5e6)
     img_dir = os.path.join(case_dir, "img")
     if not os.path.isdir(img_dir):
@@ -3219,20 +3235,25 @@ but will not generarte that file. Make sure all these files are updated, proceed
     # 0. age
     ax = fig.add_subplot(gs[0, 0])
     plotter.PlotTrenchAge(case_dir, axis=ax, time_interval=time_interval, use_thermal=use_thermal)
+    ax.legend()
     # 1. thermal parameter
     ax = fig.add_subplot(gs[1, 0])
     plotter.PlotThermalParameter(case_dir, axis=ax, time_interval=time_interval, use_thermal=use_thermal)
+    ax.legend()
     # 2. thermal parameter, focusing on the stable subduction regem
     ax = fig.add_subplot(gs[2, 0])
     plotter.PlotThermalParameter(case_dir, axis=ax, time_interval=time_interval, use_thermal=use_thermal, time_stable=10e6)
+    ax.legend()
     # 3. thermal parameter with the subducting plate velocity
     ax = fig.add_subplot(gs[0, 1])
     plotter.PlotThermalParameter(case_dir, axis=ax, time_interval=time_interval,\
     use_thermal=use_thermal, time_stable=10e6, plot_velocity=True)
+    ax.legend()
     # 4. thermal parameter with the dip angle
     ax = fig.add_subplot(gs[1, 1])
     plotter.PlotThermalParameter(case_dir, axis=ax, time_interval=time_interval,\
     use_thermal=use_thermal, time_stable=10e6, plot_dip=True)
+    ax.legend()
 
     fig_path = os.path.join(img_dir, "trench_thermal_state.png") 
     fig.savefig(fig_path)

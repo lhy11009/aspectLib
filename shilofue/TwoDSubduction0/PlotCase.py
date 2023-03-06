@@ -265,8 +265,7 @@ def main():
         PlotWedgeTCase(arg.inputs, time_interval=time_interval_wedgt_T)
         # plot the thermal state
         # this has to use the same interval as the plot morphology 
-        PlotTrenchThermalState(arg.inputs, time_interval=time_interval_morph)
-
+        PlotTrenchThermalState(arg.inputs, time_interval=time_interval_morph, silent=True)
     elif (_commend in ['-h', '--help']):
         # example:
         Usage()

@@ -363,7 +363,6 @@ class PLOT_COMBINE():
             locations[1].append(locations[1][j] + length)   # later one, add the previous location
         total_size.append(width*self.n_cases)
         total_size.append(locations[-1])
-        print("locations: ", locations) # debug
         return locations, width
         
     def draw_title(self, image, _title, if_include_case_names, w_locations):
@@ -399,6 +398,8 @@ class PLOT_COMBINE():
     def initiate_combined_plotting(self, shape, color_method, dump_color_to_json):
         '''
         Initiate options for combining plots
+        Inputs:
+            color_method: generated, list or check_first
         '''
         n_color_max = 5
         ni = shape[0]
@@ -415,10 +416,15 @@ class PLOT_COMBINE():
             for i in range(self.n_cases):
                 case_name = os.path.basename(self.cases[i])
                 colors_dict[case_name] = list(colors[i])
+        elif color_method == 'list':
+            colors_dict['max'] = 8
+            colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray']
+            for i in range(self.n_cases):
+                case_name = os.path.basename(self.cases[i])
+                colors_dict[case_name] = list(colors[i])
         elif color_method == 'check_first':
             colors = []
             if dump_color_to_json is not None:
-                print("dump_color_to_json: ", dump_color_to_json) # debug
                 if os.path.isfile(dump_color_to_json):
                     with open(dump_color_to_json, 'r') as fin:
                         colors_dict = json.load(fin)
@@ -695,7 +701,7 @@ def PlotColorLabels(ax, case_names, colors):
     ax.axis("off")
 
 
-def PlotCombineExecute(PLOT_COMBINE_CLASS, PLOT_COMBINE_OPT, _name, json_path):
+def PlotCombineExecute(PLOT_COMBINE_CLASS, PLOT_COMBINE_OPT, _name, json_path, **kwargs):
     '''
     Combine runtime plot
     Inputs:
@@ -707,7 +713,7 @@ def PlotCombineExecute(PLOT_COMBINE_CLASS, PLOT_COMBINE_OPT, _name, json_path):
     # plot the combined figure
     PlotCombiner = PLOT_COMBINE_CLASS(Pc_opt.to_init())
     PlotCombiner(*Pc_opt.to_call(), dump_color_to_json=Pc_opt.get_color_json_output_path(),\
-    color_method='check_first')
+    color_method='list')
     # save the configuration file
     json_copy_path = os.path.join(Pc_opt.get_output_dir(), '%s.json' % _name)
     try:
