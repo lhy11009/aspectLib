@@ -135,7 +135,6 @@ class RHEOLOGY_PRM():
                 "E": 530e3,
                 "V": 12e-6,
                 "d" : 1e4,
-                "Coh" : 0.0
             }
         
         # dry diffusion creep in Hirth & Kohlstedt 2003)
@@ -150,7 +149,6 @@ class RHEOLOGY_PRM():
                 "E": 375e3,
                 "V": 4e-6,
                 "d" : 1e4,
-                "Coh" : 0.0
             }
 
         # dislocation creep in Hirth & Kohlstedt 2003
@@ -191,7 +189,8 @@ class RHEOLOGY_PRM():
                 "E": 520e3,
                 "V": 22e-6,
                 "d" : 1e4,
-                "Coh" : 1000.0
+                "Coh" : 1000.0,
+                "wet": 1.0
             }
 
         # diffusion creep in Hirth & Kohlstedt 2003
@@ -204,7 +203,8 @@ class RHEOLOGY_PRM():
                 "E" : 375e3,
                 "V" : 10e-6,
                 "d" : 1e4,
-                "Coh" : 1000.0
+                "Coh" : 1000.0,
+                "wet": 1.0
             }
         
         # dislocation creep in Arredondo & Billen 2017
@@ -231,32 +231,6 @@ class RHEOLOGY_PRM():
                 "r" : 1.0,
                 "n" : 1.0,
                 "E" : 317e3,
-                "V" : 4e-6,
-                "d" : 1e4,
-                "Coh" : 1000.0
-            }
-        
-        # modify dislocation creep in Hirth & Kohlstedt 2003
-        self.HK03v1_disl = \
-            {
-                "A": 0.9,
-                "p": 0.0,
-                "r": 1.2,
-                "n": 3.5,
-                "E": 480e3,
-                "V": 11e-6,
-                "d" : 1e4,
-                "Coh" : 1000.0
-            }
-
-        # diffusion creep in Hirth & Kohlstedt 2003
-        self.HK03v1_diff = \
-            {
-                "A" : 1.0e6,
-                "p" : 3.0,
-                "r" : 1.0,
-                "n" : 1.0,
-                "E" : 335e3,
                 "V" : 4e-6,
                 "d" : 1e4,
                 "Coh" : 1000.0
