@@ -2800,8 +2800,8 @@ def CompareMantleRheology():
     fig = plt.figure(tight_layout=True, figsize=(12, 10))
     gs = gridspec.GridSpec(2, 2)    
 
-    # scenarios = ["wet_modified_medium", "wet_modified_modified", "two_d_subduction"]
-    scenarios = ["HK03_wet", "HK03_wet_F", "HK03_dry", "two_d_subduction", "AB17"]
+    scenarios = ["HK03_wet", "wet_modified_medium", "wet_modified_modified", "two_d_subduction"]
+    # scenarios = ["HK03_wet", "HK03_wet_F", "HK03_dry", "two_d_subduction", "AB17"]
     # scenarios = ["HK03_wet_with_synthetic_adiabat", "HK03_wet_with_synthetic_adiabat_constant_gradient"]
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray']
 
