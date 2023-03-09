@@ -102,8 +102,8 @@ class SLAB_SPH(VISIT_PLOT):
             plot_types(list)
             vars_(list): variables to plot
         """
-        plot_types = ["Mesh", "Pseudocolor", "Pseudocolor", "Pseudocolor", "Pseudocolor", "Vector"]
-        vars_ = ["mesh", "spcrust", "spharz", "T", "viscosity", "velocity"]
+        plot_types = ["Mesh", "Pseudocolor", "Pseudocolor", "Pseudocolor", "Pseudocolor", "Pseudocolor", "Vector"]
+        vars_ = ["mesh", "spcrust", "spharz", "T", "viscosity", "strain_rate","velocity"]
         if HAS_DYNAMIC_PRESSURE==1:
             plot_types.append("Pseudocolor")
             vars_.append("nonadiabatic_pressure")
@@ -124,6 +124,7 @@ class SLAB_SPH(VISIT_PLOT):
         # plot upper mantle
         # viscosity
         self.plot_viscosity_upper_mantle()
+        self.plot_strain_rate_upper_mantle()
         self.plot_temperature_upper_mantle()  # temperature
         # deform mechanism 
         if IF_DEFORM_MECHANISM:
@@ -231,6 +232,37 @@ class SLAB_SPH(VISIT_PLOT):
         HideActivePlots()
         # save plot 
         self.save_window('um_viscosity_snap')
+        HideActivePlots()
+    
+    def plot_strain_rate_upper_mantle(self):
+        '''
+        plot the strain rate
+        '''
+
+        # set camera
+        self.set_view_attrs(global_upper_mantle_view)
+        
+        # set up viscosity
+        # change to log scale and invert the color table
+        self.set_pseudo_color('strain_rate', color_table="SCM_batlow", invert_color=False, log=True, limits=[1e-18, 1e-12])
+       
+        # set up velocity
+        SetActivePlots(self.idxs['strain_rate'])
+        VectorAtts = VectorAttributes()
+        VectorAtts = VectorAttributes( )
+        VectorAtts.glyphLocation = VectorAtts.UniformInSpace # AdaptsToMeshResolution, UniformInSpace
+        VectorAtts.colorTableName = "BrBG"
+        VectorAtts.nVectors = 20000
+        VectorAtts.lineWidth = 0
+        VectorAtts.scale = 0.05
+        VectorAtts.scaleByMagnitude = 1
+        VectorAtts.autoScale = 1
+        SetPlotOptions(VectorAtts)
+
+        SetActivePlots((self.idxs['strain_rate'], self.idxs['velocity']))
+        HideActivePlots()
+        # save plot 
+        self.save_window('um_strain_rate_snap')
         HideActivePlots()
     
     def plot_deform_mechanism_upper_mantle(self):
