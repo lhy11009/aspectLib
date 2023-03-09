@@ -350,6 +350,10 @@ def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
     # manage data
     DepthAverage.SplitTimeStep()
     names = ['depth', 'adiabatic_pressure', 'temperature', 'adiabatic_temperature', 'viscosity', 'vertical_heat_flux', 'vertical_mass_flux', 'adiabatic_density']
+    # plot the outputs of the log value of the viscosity if data presents
+    plot_log_viscosity = DepthAverage.Has("log_viscosity")
+    if plot_log_viscosity:
+        names.append("log_viscosity")
     data, exact_time = DepthAverage.ExportDataByTime(time, names)
 
     # get depth
@@ -367,6 +371,10 @@ def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
     mf = data[:, 6]
     # density
     densities = data[:, 7]
+    if plot_log_viscosity:
+        log_eta = data[:, 8]
+    else:
+        log_eta = None
 
     # plot
     fig, axs = plt.subplots(3, 2, figsize=(10, 10))
@@ -385,6 +393,8 @@ def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
     ax2.legend()
     # second: viscosity
     axs[0, 1].semilogx(eta, depths/1e3, 'c', label='Viscosity')
+    if plot_log_viscosity:
+        axs[0, 1].semilogx(10**log_eta, depths/1e3, 'c--', label='Viscosity (from log)')
     axs[0, 1].set_xlim([1e18,1e25])
     axs[0, 1].invert_yaxis()
     axs[0, 1].grid()

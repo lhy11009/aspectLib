@@ -173,7 +173,21 @@ class LINEARPLOT():
         for i in range(self.data.shape[1]):
             _data_list.append(self.data[:, i])
         return _data_list
-    
+
+
+    def Has(self, field_name):
+        '''
+        check if data has entry of field
+        Inputs:
+            field_name: name of field
+        Returns:
+            true: if field is present
+            false: if field is not present
+        '''
+        has_field = (field_name in self.header)
+        return has_field
+
+
     def HasData(self):
         '''
         Return true if there is data
