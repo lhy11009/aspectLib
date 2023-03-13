@@ -58,7 +58,10 @@ def test_fast_first_step():
     '''
     (description)
     Asserts:
+        1. the output file matches the std file
+        2. same, but with the option of output_first_step
     '''
+    # assert 1
     _path = os.path.join(source_dir, 'case0.prm')
     std_path = os.path.join(source_dir, 'case0_std.prm')
     out_path = os.path.join(test_dir, 'fast_first_step.prm')
@@ -67,6 +70,15 @@ def test_fast_first_step():
     ParsePrm.WritePrmFile(out_path, inputs)
     # assert something 
     assert(filecmp.cmp(out_path, std_path))
+    # assert 2
+    _path = os.path.join(source_dir, 'case0.prm')
+    std_path1 = os.path.join(source_dir, 'case0_1_std.prm')
+    out_path = os.path.join(test_dir, 'fast_first_step_1.prm')
+    inputs = ParsePrm.ReadPrmFile(_path)
+    ParsePrm.FastZeroStep(inputs, True)
+    ParsePrm.WritePrmFile(out_path, inputs)
+    # assert something 
+    assert(filecmp.cmp(out_path, std_path1))
 
 
 def test_UpperMantleRheologyViscoPlastic():

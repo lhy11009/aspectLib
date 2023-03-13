@@ -293,6 +293,25 @@ def test_sp_side():
     assert(filecmp.cmp(prm_path, prm_std_path))
     assert(filecmp.cmp(wb_path, wb_std_path))
 
+
+def test_fast_first_step_paraview():
+    '''
+    test for output the fast_first_step when paraview is used as the visualization software
+    Asserts:
+        the contants in the case_f.prm 
+    '''
+    # test 0
+    source_case_dir = os.path.join(source_dir, "test_fast_first_step_paraview")
+    json_path = os.path.join(source_case_dir, 'case.json')
+    output_dir = os.path.join(test_dir,'test_fast_first_step_paraview')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_f_std.prm')
+    prm_path = os.path.join(output_dir, 'case_f.prm')
+    assert(filecmp.cmp(prm_path, prm_std_path))
+
 # notes
     
 # to check for error message

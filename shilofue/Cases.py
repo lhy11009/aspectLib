@@ -94,8 +94,9 @@ it only takes effect if the input is positiveh",\
         self.add_key("if a test case is generated for the initial steps", int, ['test initial steps', 'number of outputs'], -1, nick='test_initial_n_outputs')
         self.add_key("interval of outputs for the initial steps", float, ['test initial steps', 'interval of outputs'], 1e5, nick='test_initial_outputs_interval')
         self.add_key("Version number", float, ["version"], 0.1, nick="version")
-
-        pass
+        # todo_fast
+        self.add_key("Type of visualization software for post-process", str,\
+         ["post process", "visualization software"], "visit", nick="visual_software")
     
     def check(self):
         '''
@@ -110,7 +111,10 @@ it only takes effect if the input is positiveh",\
         # type of the stokes solver
         stokes_solver_type = self.values[18]
         assert (stokes_solver_type in ["block AMG", "block GMG"])
-        pass
+        # type of the visualization software
+        # todo_fast
+        visual_software = self.values[24] 
+        assert (visual_software in ["paraview", "visit"])
 
     def to_init(self):
         '''
@@ -176,6 +180,17 @@ it only takes effect if the input is positiveh",\
             "Additional file %s is not found" % _path)
             files.append(_path)
         return files
+
+    # todo_fast 
+    def output_step_one_with_fast_first_step(self):
+        '''
+        If we generate a case with fast-first-step computation
+        and output the 1st step as well
+        '''
+        if_fast_first_step = self.values[5]
+        if if_fast_first_step:
+            self.values[5] = 2
+        return self.values[5]
     
     def if_fast_first_step(self):
         '''
@@ -352,11 +367,22 @@ class CASE():
                 ParsePrm.WritePrmFile(prm_out_path, self.additional_idicts[i])
         # fast first step
         fast_first_step = kwargs.get('fast_first_step', 0) 
-        if fast_first_step == 1:
+        if fast_first_step == 0:
+            pass
+        elif fast_first_step == 1:
             outputs = deepcopy(self.idict)
             prm_fast_out_path = os.path.join(case_dir, "case_f.prm")
             ParsePrm.FastZeroStep(outputs)  # generate another file for fast running the 0th step
             ParsePrm.WritePrmFile(prm_fast_out_path, outputs)
+        elif fast_first_step == 2:
+            # todo_fast
+            outputs = deepcopy(self.idict)
+            prm_fast_out_path = os.path.join(case_dir, "case_f.prm")
+            ParsePrm.FastZeroStep(outputs, True)  # generate another file for fast running the 0th step
+            ParsePrm.WritePrmFile(prm_fast_out_path, outputs)
+        else:
+            raise ValueError("The option for fast_first_step must by 0, 1, 2")
+
         # test initial steps
         test_initial_steps = kwargs.get('test_initial_steps', (-1, 0.0))
         Utilities.my_assert(len(test_initial_steps)==2, ValueError, "test_initial_steps needs to have two components")

@@ -460,14 +460,23 @@ def UpperMantleRheologyViscoPlastic(Inputs):
     return backgroud_upper_mantle_diffusion, backgroud_upper_mantle_dislocation
 
 
-def FastZeroStep(Inputs):
+def FastZeroStep(Inputs, output_first_step = False):
     '''
     Generate a prm file to run only the 0th step, and real fast
-    todo
+    Inputs:
+        output_first_step: if true, then output the 1st step as well.
     '''
-    Inputs['End time'] = '0' # end time is 0
-    # don't solve it
     Inputs['Nonlinear solver scheme'] = 'no Advection, no Stokes'
+    if output_first_step:
+        time_between_graphical_output = None
+        try:
+            time_between_graphical_output = Inputs['Postprocess']['Visualization']['Time between graphical output']
+        except KeyError:
+            raise KeyError("input file has to have \'Time between graphical output\' if the option of output_first_step is True")
+        Inputs['End time'] = time_between_graphical_output
+    else:
+        Inputs['End time'] = '0' # end time is 0
+        # don't solve it
 
 
 def TestInitalSteps(Inputs, n_outputs, output_interval):

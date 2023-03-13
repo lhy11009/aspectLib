@@ -176,6 +176,10 @@ different age will be adjusted.",\
         prescribe_mantle_sp = self.values[self.start+39]
         prescribe_mantle_ov = self.values[self.start+40]
         mantle_minimum_init = self.values[self.start+41]
+        visual_software = self.values[24] 
+        if visual_software == 'paraview':
+            # output the step 1 if the fast_first_step is processed
+            self.output_step_one_with_fast_first_step()
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
