@@ -126,6 +126,14 @@ def test_CreepComputeA():
     assert(abs(dislocation_creep_A-dislocation_creep['A'])/dislocation_creep['A']<1e-6)
 
 
+# todo_r_json
+def test_GetRheology():
+    '''
+    test the function of GetRheology
+    '''
+    pass
+
+
 def test_HirthKohlstedt_wet_modified():
     """
     test the implementation of equations from Hirth & Kohlstedt, 2003(filename='Hirth_Kohlstedt.json')
@@ -600,7 +608,6 @@ def test_Idrissi16_peierls():
     P = 0 # not dependent on P (V = 0)
     strain_rate = PeierlsCreepStrainRate(creep, stress, P, T)
     assert(abs(strain_rate_std - strain_rate)/strain_rate_std < 1e-6)
-
 
 
 

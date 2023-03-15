@@ -1,0 +1,9 @@
+{
+    "rheologies" : [
+        {
+            "diffusion": "HK03_dry",
+            "dislocation": "HK03_dry",
+            "d": 3e3
+        }
+    ]
+}

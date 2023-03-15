@@ -623,6 +623,67 @@ class RHEOLOGY_PRM():
         return creep
 
 
+# todo_r_json
+class RHEOLOGY_OPT(Utilities.JSON_OPT):
+    '''
+    Define a complex class for using the json files for testing the rheologies.
+    '''
+    def __init__(self):
+        '''
+        initiation
+        '''
+        Utilities.JSON_OPT.__init__(self)
+        self.add_key("Type of diffusion creep", str, ["diffusion"], "HK03", nick='diffusion')
+        self.add_key("Type of dislocation creep", str, ["dislocation"], "HK03", nick='dislocation')
+        self.add_key("Grain size", float, ["d"], 1e4, nick='grain_size')
+    
+    def check(self):
+        '''
+        check values are validate
+        '''
+        RheologyPrm = RHEOLOGY_PRM()
+        diffusion = self.values[0]
+        diffusion_creep_key = (diffusion + "_diff") 
+        assert(hasattr(RheologyPrm, diffusion_creep_key))
+        dislocation = self.values[1]
+        dislocation_creep_key = (dislocation + "_disl") 
+        assert(hasattr(RheologyPrm, dislocation_creep_key))
+
+    def to_PlotStrainRateStressSummaryJson(self):
+        diffusion = self.values[0]
+        dislocation = self.values[1]
+        grain_size = self.values[2]
+        return diffusion, dislocation, grain_size
+
+
+# todo_r_json
+class RHEOLOGY_JSON(Utilities.JSON_OPT):
+    '''
+    Define a complex class for using the json files for testing the rheologies.
+    '''
+    def __init__(self):
+        '''
+        initiation
+        '''
+        Utilities.JSON_OPT.__init__(self)
+        self.add_features('Rheology options', ['rheologies'], RHEOLOGY_OPT)
+
+
+    def GetRheologyFeatures(self):
+        '''
+        Return the rheology features in an array
+        '''
+        rheology_features = self.values[0]
+        return rheology_features
+    
+    def to_PlotStrainRateStressSummaryJson(self):
+        '''
+        todo_r_json
+        Prepare inputs for PlotStrainRateStressSummaryJson
+        '''
+        pass
+
+
 class RHEOLOGY_OPR():
     '''
     rheology operation, do some complex staff
@@ -778,7 +839,6 @@ class RHEOLOGY_OPR():
         _title = "P = %.4e, Stress = %.4e, d = %.4e, Coh = %.4e" % (P/1e6, stress, d, Coh)
         ax.set_title(_title)
 
-    
     def MantleRheology(self, **kwargs):
         '''
         Derive mantle rheology from an aspect profile
@@ -1293,7 +1353,7 @@ class PIEZOMETER():
         return d
 
 
-
+# todo_r_json
 def GetRheology(rheology):
     '''
     read rheology parameters, and account for effects of water if it is a wet rheology
@@ -2460,6 +2520,59 @@ def temperature_halfspace(z, t, **kwargs):
     return T
 
 
+def PlotStrainRateStress(diff, disl, grain_size, **kwargs):
+    '''
+    Plot a strain rate - stress profile
+    using a json file as input.
+    '''
+    axs = kwargs['axs']
+    # options for the range of stress
+    stress_min = 5.0 # MPa
+    stress_max = 500.0 # MPa
+    stress_N = 100  # integer, number of sample points for the stress
+    # options for the range of strain rate 
+    strain_rate_min = 10**(-15)  # s^-1
+    strain_rate_max = 10**(-10) # s^-1
+    # options for the temperature
+    Ts = np.array([875.0, 925.0])  # C
+    T_N = Ts.size
+    assert(len(axs) == T_N)
+    # options for the pressure 
+    depths = np.array([2500, 3000])
+    Ps = depths * 10 * 3000.0 # Pa, has to be the same shape as Ts
+    # options of rheology 
+    rheology_diff, _  = GetRheology(diff)
+    _, rheology_disl = GetRheology(disl)
+    grain_size = grain_size
+    # initiation 
+    stresses = 10.0**(np.linspace(np.log10(stress_min), np.log10(stress_max), stress_N))
+    # plot
+    for i in range(Ts.size):
+        # initalize for a subplot
+        T = Ts[i]
+        P = Ps[i]
+        # compute strain rates
+        strain_rates = np.zeros(stresses.shape)
+        for j in range(stress_N):
+            stress = stresses[j]
+            # for olivine
+            strain_rate_diff = CreepStrainRate(rheology_diff, stress, P, T + 273.15, grain_size, 1000.0)  # dry rheology, Coh is not dependent
+            strain_rate_disl = CreepStrainRate(rheology_disl, stress, P, T + 273.15, grain_size, 1000.0)  # dry rheology, Coh is not dependent
+            strain_rates[j] =  strain_rate_diff + strain_rate_disl # the iso stress model
+        # plot stress vs strain_rate
+        ax = axs[i] 
+        ax.loglog(stresses, strain_rates)
+    # add plot options
+    for i in range(T_N):
+        ax = axs[i] 
+        ax.legend()
+        ax.set_xlabel("Stress (MPa)")
+        ax.set_ylabel('Strain Rate (s^-1)')
+        ax.set_xlim([stress_min, stress_max])
+        ax.set_ylim([strain_rate_min, strain_rate_max])
+        ax.set_title("%.2e C, %.2e Pa" % (Ts[i], Ps[i]))
+
+
 def PlotShearZoneRheologySummary(**kwargs):
     '''
     A function to plot the shear zone rheology, in a strain rate vs stress plot.
@@ -2616,7 +2729,7 @@ def PlotShearZoneRheologySummary(**kwargs):
         ax.set_title("%.2e m, %.2e C, %.2e Pa" % (depth, T, P))
     ### second part: plot viscosity vs temperature (e.g. Agard 2016, fig 4)
     # options for temperature
-    T_min = 400 # C
+    T_min = 0.0 # C
     T_max = 1000 # C
     T_N = 1000
     # options for viscosity (only affects plotting)
@@ -2691,7 +2804,8 @@ def PlotShearZoneRheologySummary(**kwargs):
         ax.set_xlim([T_min, T_max])
         ax.set_ylim([eta_min, eta_max])
         ax.set_ylabel('Viscosity (Pa s)')
-        ax.set_title("%.2e s^-1" % strain_rate)  
+        ax.set_title("%.2e s^-1" % strain_rate)
+        ax.grid() 
     if option is not None:
         fig_path = os.path.join(RESULT_DIR, "shear_zone_rheology_summary_%s.png" % option) # path to save the figure 
     else:

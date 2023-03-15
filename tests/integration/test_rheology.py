@@ -27,7 +27,7 @@ import numpy as np
 from shilofue.Rheology import *  # import test module
 # from shilofue.Utilities import 
 # from matplotlib import pyplot as plt
-# from shutil import rmtree  # for remove directories
+from shutil import rmtree  # for remove directories
 
 test_dir = ".test"
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_rheology')
@@ -35,6 +35,39 @@ source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_rheology'
 if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
+
+
+# todo_r_json
+def test_rheology_json():
+    '''
+    Test the implementation of the class RHEOLOGY_JSON
+    '''
+    # make a directory for the testing
+    test_output_dir = os.path.join(test_dir, "test_rheology_json")
+    if os.path.isdir(test_output_dir):
+        rmtree(test_output_dir)
+    os.mkdir(test_output_dir)
+
+    json_file = os.path.join(source_dir, "test_rheology.json")
+    RheologyJson = RHEOLOGY_JSON()
+    RheologyJson.read_json(json_file)
+    RheologyJson.check()
+
+    # test utilities for PlotShearZoneRheologySummaryJson
+    fig_path = os.path.join(test_output_dir, "test_plot_shear_zone_rheology_summary.png")
+    rheologies = RheologyJson.GetRheologyFeatures()
+    rheologyOpt = rheologies[0]
+    fig = plt.figure(tight_layout=True, figsize=(5, 10)) 
+    gs = gridspec.GridSpec(2, 1) 
+    axs = []
+    axs.append(fig.add_subplot(gs[0, 0]))
+    axs.append(fig.add_subplot(gs[1, 0]))
+    PlotStrainRateStress(*rheologyOpt.to_PlotStrainRateStressSummaryJson(), axs=axs)
+    fig.savefig(fig_path)
+    print("Save figure: ", fig_path)
+    assert(os.path.isfile(fig_path))
+
+    fig.savefig(fig_path)
 
 
 def test_HK03_mod_whole_mantle_apsect():
@@ -143,6 +176,7 @@ def test_AB17_wet_whole_mantle_apsect_prm():
     # assert(abs(diffusion_lm_A - 1.0225822662706545e-16)/1.0225822662706545e-16 < 1e-6)
     # assert(abs(diffusion_lm_V - 3e-6)/3e-6 < 1e-6)
     pass
+
 
     
 # notes
