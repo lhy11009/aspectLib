@@ -2525,7 +2525,7 @@ def PlotStrainRateStress(diff, disl, grain_size, **kwargs):
     Plot a strain rate - stress profile
     using a json file as input.
     '''
-    axs = kwargs['axs']
+    ax = kwargs['ax']
     # options for the range of stress
     stress_min = 5.0 # MPa
     stress_max = 500.0 # MPa
@@ -2534,12 +2534,9 @@ def PlotStrainRateStress(diff, disl, grain_size, **kwargs):
     strain_rate_min = 10**(-15)  # s^-1
     strain_rate_max = 10**(-10) # s^-1
     # options for the temperature
-    Ts = np.array([875.0, 925.0])  # C
-    T_N = Ts.size
-    assert(len(axs) == T_N)
+    T = 875  # C
     # options for the pressure 
-    depths = np.array([2500, 3000])
-    Ps = depths * 10 * 3000.0 # Pa, has to be the same shape as Ts
+    P = 2500 * 10 * 3000.0 # Pa, has to be the same shape as Ts
     # options of rheology 
     rheology_diff, _  = GetRheology(diff)
     _, rheology_disl = GetRheology(disl)
@@ -2547,30 +2544,23 @@ def PlotStrainRateStress(diff, disl, grain_size, **kwargs):
     # initiation 
     stresses = 10.0**(np.linspace(np.log10(stress_min), np.log10(stress_max), stress_N))
     # plot
-    for i in range(Ts.size):
-        # initalize for a subplot
-        T = Ts[i]
-        P = Ps[i]
-        # compute strain rates
-        strain_rates = np.zeros(stresses.shape)
-        for j in range(stress_N):
-            stress = stresses[j]
-            # for olivine
-            strain_rate_diff = CreepStrainRate(rheology_diff, stress, P, T + 273.15, grain_size, 1000.0)  # dry rheology, Coh is not dependent
-            strain_rate_disl = CreepStrainRate(rheology_disl, stress, P, T + 273.15, grain_size, 1000.0)  # dry rheology, Coh is not dependent
-            strain_rates[j] =  strain_rate_diff + strain_rate_disl # the iso stress model
-        # plot stress vs strain_rate
-        ax = axs[i] 
-        ax.loglog(stresses, strain_rates)
+    # compute strain rates
+    strain_rates = np.zeros(stresses.shape)
+    for j in range(stress_N):
+        stress = stresses[j]
+        # for olivine
+        strain_rate_diff = CreepStrainRate(rheology_diff, stress, P, T + 273.15, grain_size, 1000.0)  # dry rheology, Coh is not dependent
+        strain_rate_disl = CreepStrainRate(rheology_disl, stress, P, T + 273.15, grain_size, 1000.0)  # dry rheology, Coh is not dependent
+        strain_rates[j] =  strain_rate_diff + strain_rate_disl # the iso stress model
+    # plot stress vs strain_rate
+    ax.loglog(stresses, strain_rates)
     # add plot options
-    for i in range(T_N):
-        ax = axs[i] 
-        ax.legend()
-        ax.set_xlabel("Stress (MPa)")
-        ax.set_ylabel('Strain Rate (s^-1)')
-        ax.set_xlim([stress_min, stress_max])
-        ax.set_ylim([strain_rate_min, strain_rate_max])
-        ax.set_title("%.2e C, %.2e Pa" % (Ts[i], Ps[i]))
+    ax.legend()
+    ax.set_xlabel("Stress (MPa)")
+    ax.set_ylabel('Strain Rate (s^-1)')
+    ax.set_xlim([stress_min, stress_max])
+    ax.set_ylim([strain_rate_min, strain_rate_max])
+    ax.set_title("%.2e C, %.2e Pa" % (T, P))
 
 
 def PlotShearZoneRheologySummary(**kwargs):

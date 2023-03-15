@@ -54,15 +54,11 @@ def test_rheology_json():
     RheologyJson.check()
 
     # test utilities for PlotShearZoneRheologySummaryJson
-    fig_path = os.path.join(test_output_dir, "test_plot_shear_zone_rheology_summary.png")
+    fig_path = os.path.join(test_output_dir, "test_plot_rate_stress.png")
     rheologies = RheologyJson.GetRheologyFeatures()
     rheologyOpt = rheologies[0]
-    fig = plt.figure(tight_layout=True, figsize=(5, 10)) 
-    gs = gridspec.GridSpec(2, 1) 
-    axs = []
-    axs.append(fig.add_subplot(gs[0, 0]))
-    axs.append(fig.add_subplot(gs[1, 0]))
-    PlotStrainRateStress(*rheologyOpt.to_PlotStrainRateStressSummaryJson(), axs=axs)
+    fig, ax = plt.subplots()
+    PlotStrainRateStress(*rheologyOpt.to_PlotStrainRateStressSummaryJson(), ax=ax)
     fig.savefig(fig_path)
     print("Save figure: ", fig_path)
     assert(os.path.isfile(fig_path))
