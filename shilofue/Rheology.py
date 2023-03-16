@@ -622,7 +622,7 @@ class RHEOLOGY_PRM():
             creep['E'] = creep['E'] - water_creep['E'] * creep['r']
         return creep
 
-
+# todo_r_json
 class RHEOLOGY_OPT(Utilities.JSON_OPT):
     '''
     Define a complex class for using the json files for testing the rheologies.
@@ -653,7 +653,6 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         return diffusion, dislocation
 
 
-# todo_r_json
 class RHEOLOGY_PLOT_OPT(Utilities.JSON_OPT):
     '''
 
@@ -693,7 +692,6 @@ class RHEOLOGY_PLOT_OPT(Utilities.JSON_OPT):
         return self.values[2]
         
 
-# todo_r_json
 class RHEOLOGY_JSON(Utilities.JSON_OPT):
     '''
     Define a complex class for using the json files for testing the rheologies.
@@ -726,7 +724,7 @@ class RHEOLOGY_JSON(Utilities.JSON_OPT):
     
     def GetPlotFeatures(self):
         '''
-        todo_r_json
+        return the features of plot
         '''
         plot_features = self.values[1]
         return plot_features
@@ -1409,10 +1407,25 @@ class PIEZOMETER():
 
 
 # todo_r_json
-def GetRheology(rheology):
+def GetRheology(rheology, **kwargs):
     '''
     read rheology parameters, and account for effects of water if it is a wet rheology
+    Inputs:
+        kwargs:
+            dEdiff - a difference between the activation energy and the medium value in experiment
+                (dVdiff, dEdisl, dVdisl) are defined in the same way
+            dAdiff_ratio - a ratio of (A / A_medium) for the prefactor of the diffusion creep
+                dAdisl_ratio is defined in the same way.
     '''
+
+    # these options are for a differences from the central value
+    dEdiff = kwargs.get('dEdiff', 0.0)  # numbers for the variation in the rheology
+    dVdiff = kwargs.get('dVdiff', 0.0)
+    dAdiff_ratio = kwargs.get("dAdiff_ratio", 1.0)
+    dAdisl_ratio = kwargs.get("dAdisl_ratio", 1.0)
+    dEdisl = kwargs.get('dEdisl', 0.0)
+    dVdisl = kwargs.get('dVdisl', 0.0)
+
     RheologyPrm = RHEOLOGY_PRM()
     # if the diffusion creep flow law is specified, then include it here
     if hasattr(RheologyPrm, rheology + "_diff"):
@@ -1428,6 +1441,9 @@ def GetRheology(rheology):
                 diffusion_creep['A'] = diffusion_creep['A'] / (water_creep['A'] ** diffusion_creep['r'])
                 diffusion_creep['V'] = diffusion_creep['V'] - water_creep['V'] * diffusion_creep['r']
                 diffusion_creep['E'] = diffusion_creep['E'] - water_creep['E'] * diffusion_creep['r']
+            diffusion_creep['A'] *= dAdiff_ratio
+            diffusion_creep['E'] += dEdiff
+            diffusion_creep['V'] += dVdiff
     else:
         diffusion_creep = None
     # if the dislocation creep flow law is specified, then include it here
@@ -1444,6 +1460,10 @@ def GetRheology(rheology):
                 dislocation_creep['A'] = dislocation_creep['A'] / (water_creep['A'] ** dislocation_creep['r'])
                 dislocation_creep['V'] = dislocation_creep['V'] - water_creep['V'] * dislocation_creep['r']
                 dislocation_creep['E'] = dislocation_creep['E'] - water_creep['E'] * dislocation_creep['r']
+
+            dislocation_creep['A'] *= dAdisl_ratio
+            dislocation_creep['E'] += dEdisl
+            dislocation_creep['V'] += dVdisl
     else:
         dislocation_creep = None
     
@@ -2658,23 +2678,31 @@ def PlotViscosityTemperature(diff, disl, **kwargs):
     ax.set_title("%.2e s^-1, %.2e Pa" % (strain_rate, P))
 
 
-# todo_r_json
 def PlotRheologySummaryJson(json_file):
 
     assert(os.path.isfile(json_file))
-
+    # parse the inputs from the json file
     RheologyJson = RHEOLOGY_JSON()
     RheologyJson.read_json(json_file)
     RheologyJson.check()
-    
+    # inputs from the plot features
     plots = RheologyJson.GetPlotFeatures()
+    n_plots = len(plots)
+    n_plot_col = 2
+    n_plot_row = int(np.ceil(n_plots / n_plot_col))
+    # inputs from the rheology features
     rheologies = RheologyJson.GetRheologyFeatures()
-
-    fig = plt.figure(tight_layout=True)
-    gs = gridspec.GridSpec(2, 2)
-    ax = fig.add_subplot(gs[0, :])
+    # initiate the plot
+    fig = plt.figure(tight_layout=True, figsize=(n_plot_col*5, n_plot_row*5))
+    gs = gridspec.GridSpec(n_plot_row, n_plot_col)
     # plot figures
+    i_plot = 0
     for plotOpt in plots:
+        # figure out the col and row
+        plot_col = i_plot % n_plot_col
+        plot_row = int(np.floor(i_plot / n_plot_col))
+        # get the axis & values to plot
+        ax = fig.add_subplot(gs[plot_row, plot_col])
         grain_sizes = plotOpt.GetGrainSizes()
         strain_rates = plotOpt.GetStrainRates()
         plot_type = plotOpt.GetType()
@@ -2685,11 +2713,11 @@ def PlotRheologySummaryJson(json_file):
             # either 1 or multiple values will
             # be used for each rheology we
             # want to plot
-            if len(grain_sizes) == 0:
+            if len(grain_sizes) == 1:
                 grain_size = grain_sizes[0]
             else:
                 grain_size = grain_sizes[i]
-            if len(strain_rates) == 0:
+            if len(strain_rates) == 1:
                 strain_rate = strain_rates[0] 
             else:
                 strain_rate = strain_rates[i]
@@ -2698,6 +2726,7 @@ def PlotRheologySummaryJson(json_file):
             elif plot_type == "viscosity vs temperature":
                 PlotViscosityTemperature(*rheologyOpt.to_RheologyInputs(), ax=ax, grain_size=grain_size, strain_rate=strain_rate)
             i += 1
+        i_plot += 1
     fig_path = RheologyJson.GetFigurePath()
     fig.savefig(fig_path)
     print("Save figure: ", fig_path)

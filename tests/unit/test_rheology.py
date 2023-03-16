@@ -126,12 +126,27 @@ def test_CreepComputeA():
     assert(abs(dislocation_creep_A-dislocation_creep['A'])/dislocation_creep['A']<1e-6)
 
 
-# todo_r_json
 def test_GetRheology():
     '''
     test the function of GetRheology
+    assert:
+        1. values of differences are correctly applied to the rheology 
     '''
-    pass
+    # get the original rheology
+    rheology = 'HK03_wet_mod'
+    diffusion_creep_0, dislocation_creep_0 = GetRheology(rheology)
+    # get the rheology with modification on the variables 
+    diffusion_creep, dislocation_creep = GetRheology(rheology,\
+                                                     dAdiff_ratio=1.5, dEdiff=100e3, dVdiff=1e-6,\
+                                                     dAdisl_ratio=2.0, dEdisl=50e3, dVdisl=2e-6)
+    # values of differences are correctly applied to the rheology 
+    tolerance = 1e-6
+    assert(abs(diffusion_creep['A']/diffusion_creep_0['A'] - 1.5)/1.5 < tolerance) 
+    assert(abs(diffusion_creep['E'] - diffusion_creep_0['E'] - 100e3)/100e3 < tolerance) 
+    assert(abs(diffusion_creep['V'] - diffusion_creep_0['V'] - 1e-6)/1e-6 < tolerance) 
+    assert(abs(dislocation_creep['A']/dislocation_creep_0['A'] - 2.0)/2.0 < tolerance) 
+    assert(abs(dislocation_creep['E'] - dislocation_creep_0['E'] - 50e3)/50e3 < tolerance) 
+    assert(abs(dislocation_creep['V'] - dislocation_creep_0['V'] - 2e-6)/2e-6 < tolerance) 
 
 
 def test_HirthKohlstedt_wet_modified():
