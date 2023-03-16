@@ -58,7 +58,20 @@ def test_rheology_json():
     rheologies = RheologyJson.GetRheologyFeatures()
     rheologyOpt = rheologies[0]
     fig, ax = plt.subplots()
-    PlotStrainRateStress(*rheologyOpt.to_PlotStrainRateStressSummaryJson(), ax=ax)
+    grain_size = 3000 # u m
+    PlotStrainRateStress(*rheologyOpt.to_RheologyInputs(), ax=ax, grain_size=grain_size)
+    fig.savefig(fig_path)
+    print("Save figure: ", fig_path)
+    assert(os.path.isfile(fig_path))
+
+    # test utilities for PlotViscosityTemperature
+    fig_path = os.path.join(test_output_dir, "test_plot_visc_T.png")
+    rheologies = RheologyJson.GetRheologyFeatures()
+    rheologyOpt = rheologies[0]
+    fig, ax = plt.subplots()
+    grain_size = 3000 # u m
+    strain_rate = 1e-13 # /s
+    PlotViscosityTemperature(*rheologyOpt.to_RheologyInputs(), ax=ax, grain_size=grain_size, strain_rate=strain_rate)
     fig.savefig(fig_path)
     print("Save figure: ", fig_path)
     assert(os.path.isfile(fig_path))

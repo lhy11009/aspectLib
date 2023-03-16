@@ -3,7 +3,8 @@
         {
             "diffusion": "HK03_dry",
             "dislocation": "HK03_dry",
-            "d": 3e3
+            "d": 3e3,
+            "strain rate": 1e-13
         }
     ]
 }

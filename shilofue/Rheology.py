@@ -635,7 +635,6 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         Utilities.JSON_OPT.__init__(self)
         self.add_key("Type of diffusion creep", str, ["diffusion"], "HK03", nick='diffusion')
         self.add_key("Type of dislocation creep", str, ["dislocation"], "HK03", nick='dislocation')
-        self.add_key("Grain size", float, ["d"], 1e4, nick='grain_size')
     
     def check(self):
         '''
@@ -649,11 +648,11 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         dislocation_creep_key = (dislocation + "_disl") 
         assert(hasattr(RheologyPrm, dislocation_creep_key))
 
-    def to_PlotStrainRateStressSummaryJson(self):
+    def to_RheologyInputs(self):
         diffusion = self.values[0]
         dislocation = self.values[1]
-        grain_size = self.values[2]
-        return diffusion, dislocation, grain_size
+        return diffusion, dislocation
+    
 
 
 # todo_r_json
@@ -2520,12 +2519,13 @@ def temperature_halfspace(z, t, **kwargs):
     return T
 
 
-def PlotStrainRateStress(diff, disl, grain_size, **kwargs):
+def PlotStrainRateStress(diff, disl, **kwargs):
     '''
     Plot a strain rate - stress profile
     using a json file as input.
     '''
     ax = kwargs['ax']
+    grain_size = kwargs.get('grain_size', 1e4)
     # options for the range of stress
     stress_min = 5.0 # MPa
     stress_max = 500.0 # MPa
@@ -2540,7 +2540,6 @@ def PlotStrainRateStress(diff, disl, grain_size, **kwargs):
     # options of rheology 
     rheology_diff, _  = GetRheology(diff)
     _, rheology_disl = GetRheology(disl)
-    grain_size = grain_size
     # initiation 
     stresses = 10.0**(np.linspace(np.log10(stress_min), np.log10(stress_max), stress_N))
     # plot
@@ -2555,12 +2554,53 @@ def PlotStrainRateStress(diff, disl, grain_size, **kwargs):
     # plot stress vs strain_rate
     ax.loglog(stresses, strain_rates)
     # add plot options
-    ax.legend()
     ax.set_xlabel("Stress (MPa)")
     ax.set_ylabel('Strain Rate (s^-1)')
     ax.set_xlim([stress_min, stress_max])
     ax.set_ylim([strain_rate_min, strain_rate_max])
     ax.set_title("%.2e C, %.2e Pa" % (T, P))
+
+# todo_r_json
+def PlotViscosityTemperature(diff, disl, **kwargs):
+    '''
+    Inputs:
+        kwargs:
+            ax - the axis to plot with
+    '''
+    ax = kwargs['ax']
+    strain_rate = kwargs.get('strain_rate', 1e-15)
+    grain_size = kwargs.get('grain_size', 1e4)
+    # options for temperature
+    T_min = 0.0 # C
+    T_max = 1000 # C
+    T_N = 1000
+    # options for viscosity (only affects plotting)
+    eta_min = 1e17
+    eta_max = 1e25
+    # Options for the pressure
+    P = 1.6e9 # 50 km
+    Ts = np.linspace(T_min, T_max, T_N)
+    # options of rheology 
+    rheology_diff, _  = GetRheology(diff)
+    _, rheology_disl = GetRheology(disl)
+    grain_size = grain_size
+
+    etas = np.zeros(T_N)
+
+    for j in range(T_N):
+        T = Ts[j] + 273.15     
+        # option of the dry olivine
+        eta_diff =  CreepRheology(rheology_diff, strain_rate, P, T, grain_size, 1.0)
+        eta_disl =  CreepRheology(rheology_disl, strain_rate, P, T, grain_size, 1.0)
+        etas[j] = ComputeComposite(eta_diff, eta_disl)
+    
+    ax.semilogy(Ts, etas)
+    ax.set_xlabel("Temperature (C)")
+    ax.set_ylabel('Viscosity (Pa s)')
+    ax.set_xlim([T_min, T_max])
+    ax.set_ylim([eta_min, eta_max])
+    ax.set_title("%.2e s^-1, %.2e Pa" % (strain_rate, P))
+
 
 
 def PlotShearZoneRheologySummary(**kwargs):
