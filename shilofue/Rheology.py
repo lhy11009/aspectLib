@@ -623,7 +623,6 @@ class RHEOLOGY_PRM():
         return creep
 
 
-# todo_r_json
 class RHEOLOGY_OPT(Utilities.JSON_OPT):
     '''
     Define a complex class for using the json files for testing the rheologies.
@@ -652,8 +651,47 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         diffusion = self.values[0]
         dislocation = self.values[1]
         return diffusion, dislocation
-    
 
+
+# todo_r_json
+class RHEOLOGY_PLOT_OPT(Utilities.JSON_OPT):
+    '''
+
+    '''
+    def __init__(self):
+        '''
+        initiation
+        '''
+        Utilities.JSON_OPT.__init__(self)
+        self.add_key("Strain rate array", list, ["strain rates"], [1e-15], nick='strain_rates')
+        self.add_key("Grain size array", list, ["grain sizes"], [1e4], nick='grain_sizes')
+        self.add_key("type of plot", str, ["type"], "strain rate vs stress", nick='_type')
+
+    def check(self):
+        '''
+        check
+        '''
+        _type = self.values[2]
+        assert(_type in ["strain rate vs stress", "viscosity vs temperature"])
+    
+    def GetStrainRates(self):
+        '''
+        return the value of grain sizes
+        '''
+        return self.values[0]
+    
+    def GetGrainSizes(self):
+        '''
+        return the value of grain sizes
+        '''
+        return self.values[1]
+    
+    def GetType(self):
+        '''
+        return the type of plot
+        '''
+        return self.values[2]
+        
 
 # todo_r_json
 class RHEOLOGY_JSON(Utilities.JSON_OPT):
@@ -666,7 +704,18 @@ class RHEOLOGY_JSON(Utilities.JSON_OPT):
         '''
         Utilities.JSON_OPT.__init__(self)
         self.add_features('Rheology options', ['rheologies'], RHEOLOGY_OPT)
+        self.add_features('Plot options', ['plots'], RHEOLOGY_PLOT_OPT)
+        self.add_key("path of plot", str, ["figure path"], "./foo.png", nick='figure_path')
 
+    def check(self):
+        rheology_features = self.values[0]
+        plot_features = self.values[1]
+        for plotOpt in plot_features:
+            assert (len(plotOpt.GetGrainSizes()) in [1, len(rheology_features)])
+            assert (len(plotOpt.GetStrainRates()) in [1, len(rheology_features)])
+        
+        figure_path = Utilities.var_subs(self.values[2])
+        assert(os.path.isdir(os.path.dirname(figure_path)))
 
     def GetRheologyFeatures(self):
         '''
@@ -675,12 +724,19 @@ class RHEOLOGY_JSON(Utilities.JSON_OPT):
         rheology_features = self.values[0]
         return rheology_features
     
-    def to_PlotStrainRateStressSummaryJson(self):
+    def GetPlotFeatures(self):
         '''
         todo_r_json
-        Prepare inputs for PlotStrainRateStressSummaryJson
         '''
-        pass
+        plot_features = self.values[1]
+        return plot_features
+    
+    def GetFigurePath(self):
+        '''
+        return the path of the figure
+        ''' 
+        figure_path = Utilities.var_subs(self.values[2])
+        return figure_path
 
 
 class RHEOLOGY_OPR():
@@ -2560,9 +2616,9 @@ def PlotStrainRateStress(diff, disl, **kwargs):
     ax.set_ylim([strain_rate_min, strain_rate_max])
     ax.set_title("%.2e C, %.2e Pa" % (T, P))
 
-# todo_r_json
 def PlotViscosityTemperature(diff, disl, **kwargs):
     '''
+    Plot the viscosity vs temperature
     Inputs:
         kwargs:
             ax - the axis to plot with
@@ -2600,6 +2656,52 @@ def PlotViscosityTemperature(diff, disl, **kwargs):
     ax.set_xlim([T_min, T_max])
     ax.set_ylim([eta_min, eta_max])
     ax.set_title("%.2e s^-1, %.2e Pa" % (strain_rate, P))
+
+
+# todo_r_json
+def PlotRheologySummaryJson(json_file):
+
+    assert(os.path.isfile(json_file))
+
+    RheologyJson = RHEOLOGY_JSON()
+    RheologyJson.read_json(json_file)
+    RheologyJson.check()
+    
+    plots = RheologyJson.GetPlotFeatures()
+    rheologies = RheologyJson.GetRheologyFeatures()
+
+    fig = plt.figure(tight_layout=True)
+    gs = gridspec.GridSpec(2, 2)
+    ax = fig.add_subplot(gs[0, :])
+    # plot figures
+    for plotOpt in plots:
+        grain_sizes = plotOpt.GetGrainSizes()
+        strain_rates = plotOpt.GetStrainRates()
+        plot_type = plotOpt.GetType()
+        i = 0
+        for rheologyOpt in rheologies:
+            # get the value of grain size
+            # and strain rates for the plot
+            # either 1 or multiple values will
+            # be used for each rheology we
+            # want to plot
+            if len(grain_sizes) == 0:
+                grain_size = grain_sizes[0]
+            else:
+                grain_size = grain_sizes[i]
+            if len(strain_rates) == 0:
+                strain_rate = strain_rates[0] 
+            else:
+                strain_rate = strain_rates[i]
+            if plot_type == "strain rate vs stress":
+                PlotStrainRateStress(*rheologyOpt.to_RheologyInputs(), ax=ax, grain_size=grain_size)
+            elif plot_type == "viscosity vs temperature":
+                PlotViscosityTemperature(*rheologyOpt.to_RheologyInputs(), ax=ax, grain_size=grain_size, strain_rate=strain_rate)
+            i += 1
+    fig_path = RheologyJson.GetFigurePath()
+    fig.savefig(fig_path)
+    print("Save figure: ", fig_path)
+    pass
 
 
 

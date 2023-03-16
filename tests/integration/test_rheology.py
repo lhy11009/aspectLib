@@ -52,7 +52,6 @@ def test_rheology_json():
     RheologyJson = RHEOLOGY_JSON()
     RheologyJson.read_json(json_file)
     RheologyJson.check()
-
     # test utilities for PlotShearZoneRheologySummaryJson
     fig_path = os.path.join(test_output_dir, "test_plot_rate_stress.png")
     rheologies = RheologyJson.GetRheologyFeatures()
@@ -63,7 +62,6 @@ def test_rheology_json():
     fig.savefig(fig_path)
     print("Save figure: ", fig_path)
     assert(os.path.isfile(fig_path))
-
     # test utilities for PlotViscosityTemperature
     fig_path = os.path.join(test_output_dir, "test_plot_visc_T.png")
     rheologies = RheologyJson.GetRheologyFeatures()
@@ -76,7 +74,9 @@ def test_rheology_json():
     print("Save figure: ", fig_path)
     assert(os.path.isfile(fig_path))
 
-    fig.savefig(fig_path)
+    # 
+    json_file = os.path.join(source_dir, "test_rheology_summary.json")
+    PlotRheologySummaryJson(json_file)
 
 
 def test_HK03_mod_whole_mantle_apsect():
