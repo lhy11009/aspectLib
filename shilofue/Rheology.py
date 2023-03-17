@@ -640,6 +640,8 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         self.add_key("Differences in ratio of the prefactor for dislocation creep", float, ["dislocation prefactor difference ratio"], 1.0, nick='dA_disl_ratio')
         self.add_key("Differences of the activation energy for dislocation creep", float, ["dislocation activation energy difference"], 0.0, nick='dE_disl')
         self.add_key("Differences of the activation volume for dislocation creep", float, ["dislocation activation volume difference"], 0.0, nick='dV_disl')
+        # todo_r_json
+        self.add_key("Grain size in mu m", float, ["grain size"], 10000.0, nick='d')
     
     def check(self):
         '''
@@ -654,6 +656,8 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         assert(hasattr(RheologyPrm, dislocation_creep_key))
 
     def to_RheologyInputs(self):
+        '''
+        '''
 
         diffusion = self.values[0]
         dislocation = self.values[1]
@@ -663,7 +667,8 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         dA_disl_ratio = self.values[5]
         dE_disl = self.values[6]
         dV_disl = self.values[7]
-        return diffusion, dislocation, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl
+        d = self.values[8]
+        return diffusion, dislocation, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, d
 
 
 class RHEOLOGY_PLOT_OPT(Utilities.JSON_OPT):
@@ -2607,7 +2612,7 @@ def temperature_halfspace(z, t, **kwargs):
     return T
 
 
-def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, **kwargs):
+def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, grain_size, **kwargs):
     '''
     Plot a strain rate - stress profile
     using a json file as input.
@@ -2620,7 +2625,6 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ra
             color - the color to plot with
     '''
     ax = kwargs['ax']
-    grain_size = kwargs.get('grain_size', 1e4)
     # color of the plot
     _color = kwargs.get('color', "tab:blue")
     # options for the range of stress
@@ -2668,7 +2672,7 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ra
     return r_dict
 
 
-def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, **kwargs):
+def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, grain_size, **kwargs):
     '''
     Plot the viscosity vs temperature
     Inputs:
@@ -2682,7 +2686,6 @@ def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_dis
     '''
     ax = kwargs['ax']
     strain_rate = kwargs.get('strain_rate', 1e-15)
-    grain_size = kwargs.get('grain_size', 1e4)
     # color of the plot
     _color = kwargs.get('color', "tab:blue")
     # options for temperature
@@ -2778,9 +2781,9 @@ def PlotRheologySummaryJson(json_file):
                 strain_rate = strain_rates[i]
             _color = colors[i]
             if plot_type == "strain rate vs stress":
-                r_dict = PlotStrainRateStress(*rheologyOpt.to_RheologyInputs(), ax=ax, grain_size=grain_size, color=_color)
+                r_dict = PlotStrainRateStress(*rheologyOpt.to_RheologyInputs(), ax=ax, color=_color)
             elif plot_type == "viscosity vs temperature":
-                PlotViscosityTemperature(*rheologyOpt.to_RheologyInputs(), ax=ax, grain_size=grain_size, strain_rate=strain_rate, color=_color)
+                PlotViscosityTemperature(*rheologyOpt.to_RheologyInputs(), ax=ax, strain_rate=strain_rate, color=_color)
             # append the label & patch if this is the first plot
             if i_plot == 0:
                 labels.append(r_dict['label'])
