@@ -135,7 +135,6 @@ class RHEOLOGY_PRM():
                 "n": 3.5,
                 "E": 530e3,
                 "V": 12e-6,
-                "d" : 1e4,
             }
         
         # dry diffusion creep in Hirth & Kohlstedt 2003)
@@ -149,7 +148,6 @@ class RHEOLOGY_PRM():
                 "n": 1.0,
                 "E": 375e3,
                 "V": 4e-6,
-                "d" : 1e4,
             }
 
         # dislocation creep in Hirth & Kohlstedt 2003
@@ -162,8 +160,6 @@ class RHEOLOGY_PRM():
                 "n": 3.5,
                 "E": 480e3,
                 "V": 11e-6,
-                "d" : 1e4,
-                "Coh" : 1000.0
             }
 
         # diffusion creep in Hirth & Kohlstedt 2003
@@ -175,8 +171,6 @@ class RHEOLOGY_PRM():
                 "n" : 1.0,
                 "E" : 335e3,
                 "V" : 4e-6,
-                "d" : 1e4,
-                "Coh" : 1000.0
             }
         
         # dislocation creep in Hirth & Kohlstedt 2003
@@ -1578,7 +1572,7 @@ def CreepStrainRate(creep, stress, P, T, d, Coh, **kwargs):
     return F * B *stress**n * np.exp(-(E + P * V) / (R * T))
 
 
-def CreepRheology(creep, strain_rate, P, T, d=None, Coh=None, **kwargs):
+def CreepRheology(creep, strain_rate, P, T, d=1e4, Coh=1e3, **kwargs):
     """
     Calculate viscosity by flow law in form of (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T))
     Previously, there is a typo in the F factor
@@ -1602,11 +1596,6 @@ def CreepRheology(creep, strain_rate, P, T, d=None, Coh=None, **kwargs):
         F = 1 / (2**((n-1)/n)*3**((n+1)/2/n))
     else:
         F = 1.0
-
-    if d is None:
-        d = creep['d']
-    if Coh is None:
-        Coh = creep['Coh']
     # calculate B
     B = A * d**(-p) * Coh**r
     eta = 1/2.0 * F * (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp((E + P * V) / (n * R * T)) * 1e6
@@ -1614,7 +1603,7 @@ def CreepRheology(creep, strain_rate, P, T, d=None, Coh=None, **kwargs):
     return eta
 
 
-def CreepComputeV(creep, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
+def CreepComputeV(creep, strain_rate, P, T, eta, d=1e4, Coh=1e3, **kwargs):
     """
     Calculate V based on other parameters 
     Units:
@@ -1636,11 +1625,6 @@ def CreepComputeV(creep, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
         F = 1 / (2**((n-1)/n)*3**((n+1)/2/n))
     else:
         F = 1.0
-
-    if d is None:
-        d = creep['d']
-    if Coh is None:
-        Coh = creep['Coh']
     # calculate B
     B = A * d**(-p) * Coh**r
     exponential = eta / (1/2.0 * F * (strain_rate)**(1.0 / n - 1) * (B)**(-1.0 / n) * np.exp(E / (n * R * T)) * 1e6)
@@ -1648,7 +1632,7 @@ def CreepComputeV(creep, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
     return V
 
 
-def CreepComputeA(creep, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
+def CreepComputeA(creep, strain_rate, P, T, eta, d=1e4, Coh=1e3, **kwargs):
     """
     Compute the prefactor in the rheology with other variables in a flow law (p, r, n, E, V).
     The viscosity is computed at condition of P, T and is constrained to be eta.
@@ -1675,10 +1659,6 @@ def CreepComputeA(creep, strain_rate, P, T, eta, d=None, Coh=None, **kwargs):
         F = 1 / (2**((n-1)/n)*3**((n+1)/2/n))
     else:
         F = 1.0
-    if d is None:
-        d = creep['d']
-    if Coh is None:
-        Coh = creep['Coh']
     # calculate B
     B = (0.5*F/eta)**n * strain_rate**(1-n) * np.exp((E+P*V)/(R*T)) * (1e6)**n
     A = B * d**p * Coh**(-r)
