@@ -37,7 +37,6 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
-# todo_r_json
 def test_rheology_json():
     '''
     Test the implementation of the class RHEOLOGY_JSON

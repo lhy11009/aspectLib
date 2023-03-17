@@ -85,6 +85,7 @@ import numpy as np
 from scipy.special import erf
 from matplotlib import pyplot as plt
 from matplotlib import gridspec, cm
+from matplotlib import patches as mpatches 
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.FlowLaws import visc_diff_HK
 from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic
@@ -622,7 +623,6 @@ class RHEOLOGY_PRM():
             creep['E'] = creep['E'] - water_creep['E'] * creep['r']
         return creep
 
-# todo_r_json
 class RHEOLOGY_OPT(Utilities.JSON_OPT):
     '''
     Define a complex class for using the json files for testing the rheologies.
@@ -2616,9 +2616,13 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ra
             (dV_diff, dE_disl, dV_disl) are defined in the same way
         dA_diff_ratio - a ratio of (A / A_medium) for the prefactor of the diffusion creep
             dA_disl_ratio is defined in the same way.
+        kwargs:
+            color - the color to plot with
     '''
     ax = kwargs['ax']
     grain_size = kwargs.get('grain_size', 1e4)
+    # color of the plot
+    _color = kwargs.get('color', "tab:blue")
     # options for the range of stress
     stress_min = 5.0 # MPa
     stress_max = 500.0 # MPa
@@ -2636,6 +2640,8 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ra
          dEdiff=dE_diff, dVdiff=dV_diff, dAdiff_ratio=dA_diff_ratio)
     _, rheology_disl = GetRheology(disl,
          dAdisl_ratio=dA_disl_ratio, dEdisl=dE_disl, dVdisl=dV_disl)
+
+    
     # initiation 
     stresses = 10.0**(np.linspace(np.log10(stress_min), np.log10(stress_max), stress_N))
     # plot
@@ -2648,13 +2654,18 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ra
         strain_rate_disl = CreepStrainRate(rheology_disl, stress, P, T + 273.15, grain_size, 1000.0)  # dry rheology, Coh is not dependent
         strain_rates[j] =  strain_rate_diff + strain_rate_disl # the iso stress model
     # plot stress vs strain_rate
-    ax.loglog(stresses, strain_rates)
+    ax.loglog(stresses, strain_rates, color=_color)
     # add plot options
     ax.set_xlabel("Stress (MPa)")
     ax.set_ylabel('Strain Rate (s^-1)')
     ax.set_xlim([stress_min, stress_max])
     ax.set_ylim([strain_rate_min, strain_rate_max])
     ax.set_title("%.2e C, %.2e Pa" % (T, P))
+    # return the label and patch
+    label = "diff: " + str(diff) + ", " + "\n" + str(rheology_diff) + "\n" + ", disl: " + str(disl) + ", " + "\n" + str(rheology_disl)
+    patch = mpatches.Patch(color=_color)
+    r_dict = {'label': label, 'patch': patch}
+    return r_dict
 
 
 def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, **kwargs):
@@ -2667,10 +2678,13 @@ def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_dis
             dA_disl_ratio is defined in the same way.
         kwargs:
             ax - the axis to plot with
+            color - the color to plot with
     '''
     ax = kwargs['ax']
     strain_rate = kwargs.get('strain_rate', 1e-15)
     grain_size = kwargs.get('grain_size', 1e4)
+    # color of the plot
+    _color = kwargs.get('color', "tab:blue")
     # options for temperature
     T_min = 0.0 # C
     T_max = 1000 # C
@@ -2696,16 +2710,25 @@ def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_dis
         eta_diff =  CreepRheology(rheology_diff, strain_rate, P, T, grain_size, 1.0)
         eta_disl =  CreepRheology(rheology_disl, strain_rate, P, T, grain_size, 1.0)
         etas[j] = ComputeComposite(eta_diff, eta_disl)
-    ax.semilogy(Ts, etas)
+    ax.semilogy(Ts, etas, color=_color)
     ax.set_xlabel("Temperature (C)")
     ax.set_ylabel('Viscosity (Pa s)')
     ax.set_xlim([T_min, T_max])
     ax.set_ylim([eta_min, eta_max])
     ax.set_title("%.2e s^-1, %.2e Pa" % (strain_rate, P))
+    # return the label and patch
+    label = "diff: " + str(diff) + ", " + "\n" + str(rheology_diff) + "\n" + ", disl: " + str(disl) + ", " + "\n" + str(rheology_disl)
+    patch = mpatches.Patch(color=_color)
+    r_dict = {'label': label, 'patch': patch}
+    return r_dict
 
 
 def PlotRheologySummaryJson(json_file):
-
+    '''
+    Plot the summary of rheology
+    Inputs:
+        json_file: path to the json_file
+    '''
     assert(os.path.isfile(json_file))
     # parse the inputs from the json file
     RheologyJson = RHEOLOGY_JSON()
@@ -2715,24 +2738,30 @@ def PlotRheologySummaryJson(json_file):
     plots = RheologyJson.GetPlotFeatures()
     n_plots = len(plots)
     n_plot_col = 2
-    n_plot_row = int(np.ceil(n_plots / n_plot_col))
+    n_plot_row = int(np.ceil(n_plots / n_plot_col)) + 1
+    # options of colors for different rheologies
+    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray'] 
     # inputs from the rheology features
     rheologies = RheologyJson.GetRheologyFeatures()
+    assert(len(rheologies) <= 8)  # maximum number of lines
     # initiate the plot
     fig = plt.figure(tight_layout=True, figsize=(n_plot_col*5, n_plot_row*5))
     gs = gridspec.GridSpec(n_plot_row, n_plot_col)
     # plot figures
     i_plot = 0
+    labels = []
+    patches = []
     for plotOpt in plots:
         # figure out the col and row
         plot_col = i_plot % n_plot_col
-        plot_row = int(np.floor(i_plot / n_plot_col))
+        plot_row = int(np.floor(i_plot / n_plot_col)) + 1
         # get the axis & values to plot
         ax = fig.add_subplot(gs[plot_row, plot_col])
         grain_sizes = plotOpt.GetGrainSizes()
         strain_rates = plotOpt.GetStrainRates()
         plot_type = plotOpt.GetType()
         i = 0
+        # loop for rheologies
         for rheologyOpt in rheologies:
             # get the value of grain size
             # and strain rates for the plot
@@ -2747,17 +2776,23 @@ def PlotRheologySummaryJson(json_file):
                 strain_rate = strain_rates[0] 
             else:
                 strain_rate = strain_rates[i]
+            _color = colors[i]
             if plot_type == "strain rate vs stress":
-                PlotStrainRateStress(*rheologyOpt.to_RheologyInputs(), ax=ax, grain_size=grain_size)
+                r_dict = PlotStrainRateStress(*rheologyOpt.to_RheologyInputs(), ax=ax, grain_size=grain_size, color=_color)
             elif plot_type == "viscosity vs temperature":
-                PlotViscosityTemperature(*rheologyOpt.to_RheologyInputs(), ax=ax, grain_size=grain_size, strain_rate=strain_rate)
+                PlotViscosityTemperature(*rheologyOpt.to_RheologyInputs(), ax=ax, grain_size=grain_size, strain_rate=strain_rate, color=_color)
+            # append the label & patch if this is the first plot
+            if i_plot == 0:
+                labels.append(r_dict['label'])
+                patches.append(r_dict['patch'])
             i += 1
         i_plot += 1
+    # add a plot of labels on top
+    ax = fig.add_subplot(gs[0, :])
+    ax.legend(patches, labels, loc='upper left', frameon=False) 
     fig_path = RheologyJson.GetFigurePath()
     fig.savefig(fig_path)
     print("Save figure: ", fig_path)
-    pass
-
 
 
 def PlotShearZoneRheologySummary(**kwargs):
@@ -2916,7 +2951,7 @@ def PlotShearZoneRheologySummary(**kwargs):
         ax.set_title("%.2e m, %.2e C, %.2e Pa" % (depth, T, P))
     ### second part: plot viscosity vs temperature (e.g. Agard 2016, fig 4)
     # options for temperature
-    T_min = 0.0 # C
+    T_min = 400.0 # C
     T_max = 1000 # C
     T_N = 1000
     # options for viscosity (only affects plotting)
