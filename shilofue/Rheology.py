@@ -634,6 +634,12 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         Utilities.JSON_OPT.__init__(self)
         self.add_key("Type of diffusion creep", str, ["diffusion"], "HK03", nick='diffusion')
         self.add_key("Type of dislocation creep", str, ["dislocation"], "HK03", nick='dislocation')
+        self.add_key("Differences in ratio of the prefactor for diffusion creep", float, ["diffusion prefactor difference ratio"], 1.0, nick='dA_diff_ratio')
+        self.add_key("Differences of the activation energy for diffusion creep", float, ["diffusion activation energy difference"], 0.0, nick='dE_diff')
+        self.add_key("Differences of the activation volume for diffusion creep", float, ["diffusion activation volume difference"], 0.0, nick='dV_diff')
+        self.add_key("Differences in ratio of the prefactor for dislocation creep", float, ["dislocation prefactor difference ratio"], 1.0, nick='dA_disl_ratio')
+        self.add_key("Differences of the activation energy for dislocation creep", float, ["dislocation activation energy difference"], 0.0, nick='dE_disl')
+        self.add_key("Differences of the activation volume for dislocation creep", float, ["dislocation activation volume difference"], 0.0, nick='dV_disl')
     
     def check(self):
         '''
@@ -648,9 +654,16 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         assert(hasattr(RheologyPrm, dislocation_creep_key))
 
     def to_RheologyInputs(self):
+
         diffusion = self.values[0]
         dislocation = self.values[1]
-        return diffusion, dislocation
+        dA_diff_ratio = self.values[2]
+        dE_diff = self.values[3]
+        dV_diff = self.values[4]
+        dA_disl_ratio = self.values[5]
+        dE_disl = self.values[6]
+        dV_disl = self.values[7]
+        return diffusion, dislocation, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl
 
 
 class RHEOLOGY_PLOT_OPT(Utilities.JSON_OPT):
@@ -2594,10 +2607,15 @@ def temperature_halfspace(z, t, **kwargs):
     return T
 
 
-def PlotStrainRateStress(diff, disl, **kwargs):
+def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, **kwargs):
     '''
     Plot a strain rate - stress profile
     using a json file as input.
+    Inputs:
+        dE_diff - a difference between the activation energy and the medium value in experiment
+            (dV_diff, dE_disl, dV_disl) are defined in the same way
+        dA_diff_ratio - a ratio of (A / A_medium) for the prefactor of the diffusion creep
+            dA_disl_ratio is defined in the same way.
     '''
     ax = kwargs['ax']
     grain_size = kwargs.get('grain_size', 1e4)
@@ -2613,8 +2631,11 @@ def PlotStrainRateStress(diff, disl, **kwargs):
     # options for the pressure 
     P = 2500 * 10 * 3000.0 # Pa, has to be the same shape as Ts
     # options of rheology 
-    rheology_diff, _  = GetRheology(diff)
-    _, rheology_disl = GetRheology(disl)
+    # include the differences to the reference value
+    rheology_diff, _  = GetRheology(diff,
+         dEdiff=dE_diff, dVdiff=dV_diff, dAdiff_ratio=dA_diff_ratio)
+    _, rheology_disl = GetRheology(disl,
+         dAdisl_ratio=dA_disl_ratio, dEdisl=dE_disl, dVdisl=dV_disl)
     # initiation 
     stresses = 10.0**(np.linspace(np.log10(stress_min), np.log10(stress_max), stress_N))
     # plot
@@ -2635,10 +2656,15 @@ def PlotStrainRateStress(diff, disl, **kwargs):
     ax.set_ylim([strain_rate_min, strain_rate_max])
     ax.set_title("%.2e C, %.2e Pa" % (T, P))
 
-def PlotViscosityTemperature(diff, disl, **kwargs):
+
+def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, **kwargs):
     '''
     Plot the viscosity vs temperature
     Inputs:
+        dE_diff - a difference between the activation energy and the medium value in experiment
+            (dV_diff, dE_disl, dV_disl) are defined in the same way
+        dA_diff_ratio - a ratio of (A / A_medium) for the prefactor of the diffusion creep
+            dA_disl_ratio is defined in the same way.
         kwargs:
             ax - the axis to plot with
     '''
@@ -2656,19 +2682,20 @@ def PlotViscosityTemperature(diff, disl, **kwargs):
     P = 1.6e9 # 50 km
     Ts = np.linspace(T_min, T_max, T_N)
     # options of rheology 
-    rheology_diff, _  = GetRheology(diff)
-    _, rheology_disl = GetRheology(disl)
+    # include the differences to the reference value
+    rheology_diff, _  = GetRheology(diff,
+         dEdiff=dE_diff, dVdiff=dV_diff, dAdiff_ratio=dA_diff_ratio)
+    _, rheology_disl = GetRheology(disl,
+         dAdisl_ratio=dA_disl_ratio, dEdisl=dE_disl, dVdisl=dV_disl)
     grain_size = grain_size
-
+    # initiate and compute viscosity
     etas = np.zeros(T_N)
-
     for j in range(T_N):
         T = Ts[j] + 273.15     
         # option of the dry olivine
         eta_diff =  CreepRheology(rheology_diff, strain_rate, P, T, grain_size, 1.0)
         eta_disl =  CreepRheology(rheology_disl, strain_rate, P, T, grain_size, 1.0)
         etas[j] = ComputeComposite(eta_diff, eta_disl)
-    
     ax.semilogy(Ts, etas)
     ax.set_xlabel("Temperature (C)")
     ax.set_ylabel('Viscosity (Pa s)')
