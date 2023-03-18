@@ -2680,7 +2680,7 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
     if diff != "":
         label += "diff: " + str(diff) + ", " + "\n" + str(rheology_diff) + "\n"
     if disl != "":
-        label += ", disl: " + str(disl) + ", " + "\n" + str(rheology_disl)
+        label += ", disl: " + str(disl) + ", " + "\n" + str(rheology_disl) + "\n"
     patch = mpatches.Patch(color=_color)
     r_dict = {'label': label, 'patch': patch}
     return r_dict
@@ -2755,7 +2755,7 @@ def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
     if diff != "":
         label += "diff: " + str(diff) + ", " + "\n" + str(rheology_diff) + "\n"
     if disl != "":
-        label += ", disl: " + str(disl) + ", " + "\n" + str(rheology_disl)
+        label += ", disl: " + str(disl) + ", " + "\n" + str(rheology_disl) + "\n"
     patch = mpatches.Patch(color=_color)
     r_dict = {'label': label, 'patch': patch}
     return r_dict
