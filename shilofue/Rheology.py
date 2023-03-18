@@ -636,6 +636,7 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         self.add_key("Differences of the activation volume for dislocation creep", float, ["dislocation activation volume difference"], 0.0, nick='dV_disl')
         # todo_r_json
         self.add_key("Grain size in mu m", float, ["grain size"], 10000.0, nick='d')
+        self.add_key("Coh in /10^6 Si", float, ["coh"], 1000.0, nick='coh')
     
     def check(self):
         '''
@@ -662,7 +663,8 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         dE_disl = self.values[6]
         dV_disl = self.values[7]
         d = self.values[8]
-        return diffusion, dislocation, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, d
+        coh = self.values[9]
+        return diffusion, dislocation, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, d, coh
 
 
 class RHEOLOGY_PLOT_OPT(Utilities.JSON_OPT):
@@ -2592,7 +2594,8 @@ def temperature_halfspace(z, t, **kwargs):
     return T
 
 
-def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, grain_size, **kwargs):
+def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
+                        dA_disl_ratio, dE_disl, dV_disl, grain_size, coh, **kwargs):
     '''
     Plot a strain rate - stress profile
     using a json file as input.
@@ -2624,8 +2627,6 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ra
          dEdiff=dE_diff, dVdiff=dV_diff, dAdiff_ratio=dA_diff_ratio)
     _, rheology_disl = GetRheology(disl,
          dAdisl_ratio=dA_disl_ratio, dEdisl=dE_disl, dVdisl=dV_disl)
-
-    
     # initiation 
     stresses = 10.0**(np.linspace(np.log10(stress_min), np.log10(stress_max), stress_N))
     # plot
@@ -2634,8 +2635,8 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ra
     for j in range(stress_N):
         stress = stresses[j]
         # for olivine
-        strain_rate_diff = CreepStrainRate(rheology_diff, stress, P, T + 273.15, grain_size, 1000.0)  # dry rheology, Coh is not dependent
-        strain_rate_disl = CreepStrainRate(rheology_disl, stress, P, T + 273.15, grain_size, 1000.0)  # dry rheology, Coh is not dependent
+        strain_rate_diff = CreepStrainRate(rheology_diff, stress, P, T + 273.15, grain_size, coh)  # dry rheology, Coh is not dependent
+        strain_rate_disl = CreepStrainRate(rheology_disl, stress, P, T + 273.15, grain_size, coh)  # dry rheology, Coh is not dependent
         strain_rates[j] =  strain_rate_diff + strain_rate_disl # the iso stress model
     # plot stress vs strain_rate
     ax.loglog(stresses, strain_rates, color=_color)
@@ -2646,13 +2647,19 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ra
     ax.set_ylim([strain_rate_min, strain_rate_max])
     ax.set_title("%.2e C, %.2e Pa" % (T, P))
     # return the label and patch
-    label = "diff: " + str(diff) + ", " + "\n" + str(rheology_diff) + "\n" + ", disl: " + str(disl) + ", " + "\n" + str(rheology_disl)
+    label_header = "d: " + str(grain_size)
+    # append value of coh in case of wet rheology
+    if max(abs(rheology_diff['r']), abs(rheology_disl['r'])) > 1e-6:
+        label_header += ", coh: " + str(coh)
+    label_header += '\n'
+    label = label_header + "diff: " + str(diff) + ", " + "\n" + str(rheology_diff) + "\n" + ", disl: " + str(disl) + ", " + "\n" + str(rheology_disl)
     patch = mpatches.Patch(color=_color)
     r_dict = {'label': label, 'patch': patch}
     return r_dict
 
 
-def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, grain_size, **kwargs):
+def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
+                            dA_disl_ratio, dE_disl, dV_disl, grain_size, coh, **kwargs):
     '''
     Plot the viscosity vs temperature
     Inputs:
@@ -2690,8 +2697,8 @@ def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_dis
     for j in range(T_N):
         T = Ts[j] + 273.15     
         # option of the dry olivine
-        eta_diff =  CreepRheology(rheology_diff, strain_rate, P, T, grain_size, 1.0)
-        eta_disl =  CreepRheology(rheology_disl, strain_rate, P, T, grain_size, 1.0)
+        eta_diff =  CreepRheology(rheology_diff, strain_rate, P, T, grain_size, coh)
+        eta_disl =  CreepRheology(rheology_disl, strain_rate, P, T, grain_size, coh)
         etas[j] = ComputeComposite(eta_diff, eta_disl)
     ax.semilogy(Ts, etas, color=_color)
     ax.set_xlabel("Temperature (C)")
@@ -2700,7 +2707,12 @@ def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff, dA_dis
     ax.set_ylim([eta_min, eta_max])
     ax.set_title("%.2e s^-1, %.2e Pa" % (strain_rate, P))
     # return the label and patch
-    label = "diff: " + str(diff) + ", " + "\n" + str(rheology_diff) + "\n" + ", disl: " + str(disl) + ", " + "\n" + str(rheology_disl)
+    label_header = "d: " + str(grain_size)
+    # append value of coh in case of wet rheology
+    if max(abs(rheology_diff['r']), abs(rheology_disl['r'])) > 1e-6:
+        label_header += ", coh: " + str(coh)
+    label_header += '\n'
+    label = label_header + "diff: " + str(diff) + ", " + "\n" + str(rheology_diff) + "\n" + ", disl: " + str(disl) + ", " + "\n" + str(rheology_disl)
     patch = mpatches.Patch(color=_color)
     r_dict = {'label': label, 'patch': patch}
     return r_dict
@@ -2720,15 +2732,17 @@ def PlotRheologySummaryJson(json_file):
     # inputs from the plot features
     plots = RheologyJson.GetPlotFeatures()
     n_plots = len(plots)
+    unit_size = 5
+    n_legend_plot = int(np.ceil(len(RheologyJson.GetRheologyFeatures()) / 5.0))# these are just legends
     n_plot_col = 2
-    n_plot_row = int(np.ceil(n_plots / n_plot_col)) + 1
+    n_plot_row = int(np.ceil(n_plots / n_plot_col)) + n_legend_plot
     # options of colors for different rheologies
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray'] 
     # inputs from the rheology features
     rheologies = RheologyJson.GetRheologyFeatures()
     assert(len(rheologies) <= 8)  # maximum number of lines
     # initiate the plot
-    fig = plt.figure(tight_layout=True, figsize=(n_plot_col*5, n_plot_row*5))
+    fig = plt.figure(tight_layout=True, figsize=(n_plot_col*unit_size, n_plot_row*unit_size))
     gs = gridspec.GridSpec(n_plot_row, n_plot_col)
     # plot figures
     i_plot = 0
@@ -2737,7 +2751,7 @@ def PlotRheologySummaryJson(json_file):
     for plotOpt in plots:
         # figure out the col and row
         plot_col = i_plot % n_plot_col
-        plot_row = int(np.floor(i_plot / n_plot_col)) + 1
+        plot_row = int(np.floor(i_plot / n_plot_col)) + n_legend_plot
         # get the axis & values to plot
         ax = fig.add_subplot(gs[plot_row, plot_col])
         grain_sizes = plotOpt.GetGrainSizes()
@@ -2771,8 +2785,8 @@ def PlotRheologySummaryJson(json_file):
             i += 1
         i_plot += 1
     # add a plot of labels on top
-    ax = fig.add_subplot(gs[0, :])
-    ax.legend(patches, labels, loc='upper left', frameon=False) 
+    ax = fig.add_subplot(gs[0:n_legend_plot, :])
+    ax.legend(patches, labels, loc='upper left', frameon=False, fontsize=8) 
     fig_path = RheologyJson.GetFigurePath()
     fig.savefig(fig_path)
     print("Save figure: ", fig_path)
