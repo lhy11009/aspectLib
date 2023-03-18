@@ -46,7 +46,7 @@ def test_rheology_json():
     if os.path.isdir(test_output_dir):
         rmtree(test_output_dir)
     os.mkdir(test_output_dir)
-
+    # read json file
     json_file = os.path.join(source_dir, "test_rheology.json")
     RheologyJson = RHEOLOGY_JSON()
     RheologyJson.read_json(json_file)
@@ -72,9 +72,8 @@ def test_rheology_json():
     fig.savefig(fig_path)
     print("Save figure: ", fig_path)
     assert(os.path.isfile(fig_path))
-
-    # 
     json_file = os.path.join(source_dir, "test_rheology_summary.json")
+    
     PlotRheologySummaryJson(json_file)
 
 

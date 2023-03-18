@@ -92,7 +92,7 @@ from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlas
 from shilofue.ThermalModel import MANTLE_ADIABAT
 from scipy.interpolate import interp1d
 from mpl_toolkits.mplot3d import Axes3D
-from shutil import rmtree
+from shutil import rmtree, copy
 
 R = 8.314
 
@@ -498,6 +498,29 @@ class RHEOLOGY_PRM():
                 "V" : 24e-6
             }
         
+        self.Dimanov_Dresen_An50Di35D_wet_diff = \
+        {
+                # diffusion creep for a 35 mu*m grain size
+                "A" : 5488000000.0,  #   1.28e-1 * (1e6) / (35)^(-3)
+                "p" : 3.0,
+                "r" : 0.0, # dry, not dependent on fugacity
+                "n" : 1.0,
+                "E" : 316e3,
+                "V" : 0.0  # not present in the table
+        }
+        
+        self.Dimanov_Dresen_An50Di35D_wet_disl = \
+        {
+            # this is actually the An50DiD in table 3b
+            # since the dislocation creep is not grain size sensitive
+                "A" : 10174679.0993,  #  / 1.54e-17 * (1e6)^3.97
+                "p" : 0.0,
+                "r" : 0.0, # dry, not dependent on fugacity
+                "n" : 3.97,
+                "E" : 556e3,
+                "V" : 0.0  # not present in the table
+        }
+
         self.Dimanov_Dresen_An50Di35D_dry_diff = \
         {
                 # diffusion creep for a 35 mu*m grain size
@@ -685,6 +708,7 @@ class RHEOLOGY_PLOT_OPT(Utilities.JSON_OPT):
         # todo_r_json
         self.add_key("temperature (C)", float, ["T"], 1600.0, nick='temperature')
 
+
     def check(self):
         '''
         check
@@ -715,6 +739,7 @@ class RHEOLOGY_PLOT_OPT(Utilities.JSON_OPT):
         return the temperature of plot
         '''
         return self.values[3]
+    
         
 
 class RHEOLOGY_JSON(Utilities.JSON_OPT):
@@ -2670,7 +2695,7 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
     ax.set_xlim([stress_min, stress_max])
     ax.set_ylim([strain_rate_min, strain_rate_max])
     ax.set_title("%.2e C, %.2e Pa" % (T, P))
-    ax.grid()
+    ax.grid(True)
     # return the label and patch
     label = "d: " + str(grain_size)
     # append value of coh in case of wet rheology
@@ -2745,7 +2770,7 @@ def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
     ax.set_xlim([T_min, T_max])
     ax.set_ylim([eta_min, eta_max])
     ax.set_title("%.2e s^-1, %.2e Pa" % (strain_rate, P))
-    ax.grid()
+    ax.grid(True)
     # return the label and patch
     label = "d: " + str(grain_size)
     # append value of coh in case of wet rheology
@@ -2829,6 +2854,11 @@ def PlotRheologySummaryJson(json_file):
     fig_path = RheologyJson.GetFigurePath()
     fig.savefig(fig_path)
     print("Save figure: ", fig_path)
+    
+    #
+    json_output_path = fig_path.split('.')[0] + ".json"
+    copy(json_file, json_output_path)
+    print("Save json file: ", json_output_path)
 
 
 def PlotShearZoneRheologySummary(**kwargs):
@@ -3433,6 +3463,8 @@ def main():
     
     elif _commend == "compare_mantle_rheology":
         CompareMantleRheology()
+    elif _commend == "plot_rheology_summary":
+        PlotRheologySummaryJson(arg.json)
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)
 

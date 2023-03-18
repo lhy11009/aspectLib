@@ -394,36 +394,27 @@ def test_Rybachi_06_anorthite():
     # assert 1: dry rheology
     rheology = 'Rybachi_06_anorthite_dry'
     diffusion_creep, dislocation_creep = GetRheology(rheology)
-    print("diffusion_creep: ", diffusion_creep)  # debug
-    print("dislocation_creep: ", dislocation_creep)
     strain_rate = 1e-12
     stress_diff_dry_0 = CreepStress(diffusion_creep, strain_rate, 1080e6, 841 + 273.15, 20, 5)  # 20um, 10^-12, 40km, 841 C
     assert(abs((stress_diff_dry_0 - 384.50841946490283) / 384.50841946490283) < 1e-6)  # stress = 384.5 MPa
     strain_rate = 1e-14
     stress_disl_dry_0 = CreepStress(dislocation_creep, strain_rate, 1080e6, 841 + 273.15, 20, 5)  # 20um, 10^-14, 40km, 841 C
     assert(abs((stress_disl_dry_0 - 33.32906329872165) / 33.32906329872165) < 1e-6)  # stress = 33.3 MPa
-    # print the converting to aspect's rheology
-    diffusion_creep_aspect = Convert2AspectInput(diffusion_creep, d=20.0) # 20 um
-    print("Rybachi_06_anorthite_dry_diffusion_creep_aspect: ", diffusion_creep_aspect)
-    dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, d=20.0) # 20 um
-    print("Rybachi_06_anorthite_dry_dislocation_creep_aspect: ", dislocation_creep_aspect)
     # assert 2: wet rheology
     rheology = 'Rybachi_06_anorthite_wet'
     diffusion_creep, dislocation_creep = GetRheology(rheology)
-    print("diffusion_creep: ", diffusion_creep)
     strain_rate = 1e-12
     # stress_diff_0 = CreepStress(diffusion_creep, strain_rate, 660e6, 482 + 273.15, 20, 1000)  # 20um, 10^-12, 20km, 482 C
     stress_diff_0 = CreepStress(diffusion_creep, strain_rate, 660e6, 482 + 273.15, 20, 5)  # 20um, 10^-12, 20km, 482 C
-    print('stress_diff_0: ', stress_diff_0)
+    assert(abs((stress_diff_0 - 433.71933526741276) / 433.71933526741276) < 1e-6)  # stress = 33.3 MPa
     stress_diff_1 = CreepStress(diffusion_creep, strain_rate, 990e6, 671 + 273.15, 20, 100)  # 20um, 10^-12, 30km, 671 C
-    print('stress_diff_1: ', stress_diff_1)
-    print("dislocation_creep: ", dislocation_creep)
+    assert(abs((stress_diff_1 - 1.1931194545922006) / 433.71933526741276) < 1e-6)  # stress = 33.3 MPa
     strain_rate = 1e-14
     # stress_disl_0 = CreepStress(dislocation_creep, strain_rate, 660e6, 482 + 273.15, 20, 1000)  # 20um, 10^-14, 20km, 482 C
     stress_disl_0 = CreepStress(dislocation_creep, strain_rate, 660e6, 482 + 273.15, 20, 5)  # 20um, 10^-14, 20km, 482 C
     stress_disl_1 = CreepStress(dislocation_creep, strain_rate, 990e6, 671 + 273.15, 20, 100)  # 20um, 10^-14, 30km, 671 C
-    print('stress_disl_0: ', stress_disl_0)
-    print('stress_disl_1: ', stress_disl_1)
+    assert(abs((stress_disl_0 - 792.7074001143128) / 792.7074001143128) < 1e-6)  # stress = 33.3 MPa
+    assert(abs((stress_disl_1 - 15.384323814155401) / 15.384323814155401) < 1e-6)  # stress = 33.3 MPa
     tolerance = 0.1
 
 
@@ -433,6 +424,8 @@ def test_Dimanov_Dresen():
     Asserts:
         1. Assert the 35 mu m rheology 
         2. Assert the 45 mu m rheology
+        3.
+        4. Assert the 35 mum wet rheology
     '''
     # assert 1: 35 mu m 
     rheology = 'Dimanov_Dresen_An50Di35D_dry'
@@ -475,8 +468,28 @@ def test_Dimanov_Dresen():
     stress = 60.0 # 60 Mpa
     diff_strain_rate =  CreepStrainRate(diffusion_creep, stress, P, T, d, 1.0)
     disl_strain_rate =  CreepStrainRate(dislocation_creep, stress, P, T, d, 1.0)
-    print("diff_strain_rate: ", diff_strain_rate)  # debug
-    print("disl_strain_rate: ", disl_strain_rate)  # debug
+    # print("diff_strain_rate: ", diff_strain_rate)  # debug
+    # print("disl_strain_rate: ", disl_strain_rate)  # debug
+    # assert 4:
+    rheology = 'Dimanov_Dresen_An50Di35D_wet'
+    diffusion_creep, dislocation_creep = GetRheology(rheology)
+    P = 0.0  # independent
+    T = 1423.0
+    d = 35.0  # in the fit, the d^(-p) term is set to 1
+    stress = 37.77 # Mpa
+    diff_strain_rate =  CreepStrainRate(diffusion_creep, stress, P, T, d, 1.0)
+    disl_strain_rate =  CreepStrainRate(dislocation_creep, stress, P, T, d, 1.0)
+    strain_rate = diff_strain_rate + disl_strain_rate
+    strain_rate_std = 1.22172311877202e-05
+    assert(abs(strain_rate - strain_rate_std)/strain_rate_std < 1e-6)
+    stress = 296.1602 # Mpa
+    diff_strain_rate =  CreepStrainRate(diffusion_creep, stress, P, T, d, 1.0)
+    disl_strain_rate =  CreepStrainRate(dislocation_creep, stress, P, T, d, 1.0)
+    strain_rate = diff_strain_rate + disl_strain_rate
+    strain_rate_std = 3.519310165608152e-4
+    assert(abs(strain_rate - strain_rate_std)/strain_rate_std < 1e-6)
+
+
 
 def test_Rybachi_2000_An100_dry():
     '''
