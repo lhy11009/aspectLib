@@ -1465,6 +1465,7 @@ def GetRheology(rheology, **kwargs):
                 (dVdiff, dEdisl, dVdisl) are defined in the same way
             dAdiff_ratio - a ratio of (A / A_medium) for the prefactor of the diffusion creep
                 dAdisl_ratio is defined in the same way.
+            use_coh - whether use the Coh or Fh2O as input into the wet rheology
     '''
     # these options are for a differences from the central value
     dEdiff = kwargs.get('dEdiff', 0.0)  # numbers for the variation in the rheology
@@ -1473,6 +1474,8 @@ def GetRheology(rheology, **kwargs):
     dAdisl_ratio = kwargs.get("dAdisl_ratio", 1.0)
     dEdisl = kwargs.get('dEdisl', 0.0)
     dVdisl = kwargs.get('dVdisl', 0.0)
+
+    use_coh = kwargs.get("use_coh", True)
     # initiate the class object
     RheologyPrm = RHEOLOGY_PRM()
     # if the diffusion creep flow law is specified, then include it here
@@ -1485,10 +1488,11 @@ def GetRheology(rheology, **kwargs):
             except KeyError:
                 pass
             else:
-                water_creep = getattr(RheologyPrm, "water")
-                diffusion_creep['A'] = diffusion_creep['A'] / (water_creep['A'] ** diffusion_creep['r'])
-                diffusion_creep['V'] = diffusion_creep['V'] - water_creep['V'] * diffusion_creep['r']
-                diffusion_creep['E'] = diffusion_creep['E'] - water_creep['E'] * diffusion_creep['r']
+                if use_coh:
+                    water_creep = getattr(RheologyPrm, "water")
+                    diffusion_creep['A'] = diffusion_creep['A'] / (water_creep['A'] ** diffusion_creep['r'])
+                    diffusion_creep['V'] = diffusion_creep['V'] - water_creep['V'] * diffusion_creep['r']
+                    diffusion_creep['E'] = diffusion_creep['E'] - water_creep['E'] * diffusion_creep['r']
             # apply the differences to the medium value
             diffusion_creep['A'] *= dAdiff_ratio
             diffusion_creep['E'] += dEdiff
@@ -1505,10 +1509,11 @@ def GetRheology(rheology, **kwargs):
             except KeyError:
                 pass
             else:
-                water_creep = getattr(RheologyPrm, "water")
-                dislocation_creep['A'] = dislocation_creep['A'] / (water_creep['A'] ** dislocation_creep['r'])
-                dislocation_creep['V'] = dislocation_creep['V'] - water_creep['V'] * dislocation_creep['r']
-                dislocation_creep['E'] = dislocation_creep['E'] - water_creep['E'] * dislocation_creep['r']
+                if use_coh:
+                    water_creep = getattr(RheologyPrm, "water")
+                    dislocation_creep['A'] = dislocation_creep['A'] / (water_creep['A'] ** dislocation_creep['r'])
+                    dislocation_creep['V'] = dislocation_creep['V'] - water_creep['V'] * dislocation_creep['r']
+                    dislocation_creep['E'] = dislocation_creep['E'] - water_creep['E'] * dislocation_creep['r']
             # apply the differences to the medium value
             dislocation_creep['A'] *= dAdisl_ratio
             dislocation_creep['E'] += dEdisl

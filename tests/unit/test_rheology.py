@@ -131,6 +131,7 @@ def test_GetRheology():
     test the function of GetRheology
     assert:
         1. values of differences are correctly applied to the rheology 
+        2.
     '''
     # get the original rheology
     rheology = 'HK03_wet_mod'
@@ -147,6 +148,13 @@ def test_GetRheology():
     assert(abs(dislocation_creep['A']/dislocation_creep_0['A'] - 2.0)/2.0 < tolerance) 
     assert(abs(dislocation_creep['E'] - dislocation_creep_0['E'] - 50e3)/50e3 < tolerance) 
     assert(abs(dislocation_creep['V'] - dislocation_creep_0['V'] - 2e-6)/2e-6 < tolerance) 
+    
+    # get the original rheology, todo_an
+    rheology = 'HK03_wet_mod'
+    diffusion_creep, dislocation_creep = GetRheology(rheology, use_coh=False)  # use the experission of fh2o instead.
+    check0 = CreepRheology(diffusion_creep, 7.8e-15, 1e9, 1400 + 273.15, 1e4, 888.38144735) # the last one is the fh2o instead of coh
+    check0_std = visc_diff_HK(1400 + 273.15,1e9,1e4,1000.0,'wet','new','mid','mid')  # the tolerance has to be set bigger
+    assert(abs(check0 - check0_std) / check0_std < 1e-3)
 
 
 def test_HirthKohlstedt_wet_modified():
