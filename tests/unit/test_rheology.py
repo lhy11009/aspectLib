@@ -395,6 +395,7 @@ def test_Rybachi_06_anorthite():
     Assert:
         1. For the dry rheologys the values of differential stresses agree with their Figure 8.
         2. For the wet rheologys the values of differential stresses agree with their Figure 8.
+        3. Same as 2, but use fh2o
     Print:
         converted dry rheology in ASPECT (commenting out the relative lines)
     '''
@@ -423,6 +424,12 @@ def test_Rybachi_06_anorthite():
     assert(abs((stress_disl_0 - 792.7074001143128) / 792.7074001143128) < 1e-6)  # stress = 33.3 MPa
     assert(abs((stress_disl_1 - 15.384323814155401) / 15.384323814155401) < 1e-6)  # stress = 33.3 MPa
     tolerance = 0.1
+    # assert 3: wet rheology with fh2o
+    rheology = 'Rybachi_06_anorthite_wet'
+    diffusion_creep, dislocation_creep = GetRheology(rheology, use_coh=False)
+    strain_rate = 1e-12
+    stress_diff_0 = CreepStress(diffusion_creep, strain_rate, 660e6, 482 + 273.15, 20, 500.0)  # 20um, 10^-12, 20km, 482 C
+    assert(abs((stress_diff_0 - 433.0982142183824) / 433.0982142183824) < 1e-6)  # stress = 33.3 MPa
 
 
 def test_Dimanov_Dresen():
