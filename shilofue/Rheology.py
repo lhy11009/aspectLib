@@ -1474,7 +1474,6 @@ def GetRheology(rheology, **kwargs):
     dAdisl_ratio = kwargs.get("dAdisl_ratio", 1.0)
     dEdisl = kwargs.get('dEdisl', 0.0)
     dVdisl = kwargs.get('dVdisl', 0.0)
-
     use_coh = kwargs.get("use_coh", True)
     # initiate the class object
     RheologyPrm = RHEOLOGY_PRM()
