@@ -660,6 +660,7 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         # todo_r_json
         self.add_key("Grain size in mu m", float, ["grain size"], 10000.0, nick='d')
         self.add_key("Coh in /10^6 Si", float, ["coh"], 1000.0, nick='coh')
+        self.add_key("fh2o in MPa", float, ["fh2o"], -1.0, nick='fh2o')
     
     def check(self):
         '''
@@ -689,7 +690,12 @@ class RHEOLOGY_OPT(Utilities.JSON_OPT):
         dV_disl = self.values[7]
         d = self.values[8]
         coh = self.values[9]
-        return diffusion, dislocation, dA_diff_ratio, dE_diff, dV_diff, dA_disl_ratio, dE_disl, dV_disl, d, coh
+        fh2o = self.values[10]
+        use_coh = True
+        if fh2o > 0.0:
+            use_coh = False
+        return diffusion, dislocation, dA_diff_ratio, dE_diff, dV_diff,\
+        dA_disl_ratio, dE_disl, dV_disl, d, coh, fh2o, use_coh
 
 
 class RHEOLOGY_PLOT_OPT(Utilities.JSON_OPT):
@@ -2636,7 +2642,8 @@ def temperature_halfspace(z, t, **kwargs):
 
 # todo_r_json
 def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
-                        dA_disl_ratio, dE_disl, dV_disl, grain_size, coh, **kwargs):
+                        dA_disl_ratio, dE_disl, dV_disl, grain_size, coh,\
+                        fh2o, use_coh, **kwargs):
     '''
     Plot a strain rate - stress profile
     using a json file as input.
@@ -2665,14 +2672,21 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
     # options of rheology 
     # include the differences to the reference valuea
     wet = False
+
+    if use_coh:
+        wet_variable = coh
+    else:
+        wet_variable = fh2o
     if diff != "":
         rheology_diff, _  = GetRheology(diff,
-            dEdiff=dE_diff, dVdiff=dV_diff, dAdiff_ratio=dA_diff_ratio)
+            dEdiff=dE_diff, dVdiff=dV_diff, dAdiff_ratio=dA_diff_ratio,
+            use_coh=use_coh)
         if rheology_diff['r'] > 1e-6:
             wet = True
     if disl != "":
         _, rheology_disl = GetRheology(disl,
-            dAdisl_ratio=dA_disl_ratio, dEdisl=dE_disl, dVdisl=dV_disl)
+            dAdisl_ratio=dA_disl_ratio, dEdisl=dE_disl, dVdisl=dV_disl,
+            use_coh=use_coh)
         if rheology_disl['r'] > 1e-6:
             wet = True
     # initiation 
@@ -2685,10 +2699,10 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
         # for olivine
         strain_rate = 0.0
         if diff != "":
-            strain_rate_diff = CreepStrainRate(rheology_diff, stress, P, T + 273.15, grain_size, coh)  # dry rheology, Coh is not dependent
+            strain_rate_diff = CreepStrainRate(rheology_diff, stress, P, T + 273.15, grain_size, wet_variable)  # dry rheology, Coh is not dependent
             strain_rate += strain_rate_diff
         if disl != "":
-            strain_rate_disl = CreepStrainRate(rheology_disl, stress, P, T + 273.15, grain_size, coh)  # dry rheology, Coh is not dependent
+            strain_rate_disl = CreepStrainRate(rheology_disl, stress, P, T + 273.15, grain_size, wet_variable)  # dry rheology, Coh is not dependent
             strain_rate += strain_rate_disl
         strain_rates[j] =  strain_rate # the iso stress model
     # plot stress vs strain_rate
@@ -2704,7 +2718,10 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
     label = "d: " + str(grain_size)
     # append value of coh in case of wet rheology
     if wet:
-        label += ", coh: " + str(coh)
+        if use_coh:
+            label += ", coh: " + str(coh)
+        else:
+            label += ", fh2o: " + str(fh2o)
     label += '\n'
     if diff != "":
         label += "diff: " + str(diff) + ", " + "\n" + str(rheology_diff) + "\n"
@@ -2716,7 +2733,8 @@ def PlotStrainRateStress(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
 
 
 def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
-                            dA_disl_ratio, dE_disl, dV_disl, grain_size, coh, **kwargs):
+                            dA_disl_ratio, dE_disl, dV_disl, grain_size, coh,\
+                            fh2o, use_coh, **kwargs):
     '''
     Plot the viscosity vs temperature
     Inputs:
@@ -2745,14 +2763,19 @@ def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
     # options of rheology 
     # include the differences to the reference value
     wet = False
+    
+    if use_coh:
+        wet_variable = coh
+    else:
+        wet_variable = fh2o
     if diff != "":
         rheology_diff, _  = GetRheology(diff,
-            dEdiff=dE_diff, dVdiff=dV_diff, dAdiff_ratio=dA_diff_ratio)
+            dEdiff=dE_diff, dVdiff=dV_diff, dAdiff_ratio=dA_diff_ratio, use_coh=use_coh)
         if rheology_diff['r'] > 1e-6:
             wet = True
     if disl != "":
         _, rheology_disl = GetRheology(disl,
-            dAdisl_ratio=dA_disl_ratio, dEdisl=dE_disl, dVdisl=dV_disl)
+            dAdisl_ratio=dA_disl_ratio, dEdisl=dE_disl, dVdisl=dV_disl, use_coh=use_coh)
         if rheology_disl['r'] > 1e-6:
             wet = True
     grain_size = grain_size
@@ -2764,9 +2787,9 @@ def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
         eta_diff = None
         eta_disl = None
         if diff != "":
-            eta_diff =  CreepRheology(rheology_diff, strain_rate, P, T, grain_size, coh)
+            eta_diff =  CreepRheology(rheology_diff, strain_rate, P, T, grain_size, wet_variable)
         if disl != "":
-            eta_disl =  CreepRheology(rheology_disl, strain_rate, P, T, grain_size, coh)
+            eta_disl =  CreepRheology(rheology_disl, strain_rate, P, T, grain_size, wet_variable)
         etas[j] = ComputeComposite(eta_diff, eta_disl)
     ax.semilogy(Ts, etas, color=_color)
     ax.set_xlabel("Temperature (C)")
@@ -2779,7 +2802,10 @@ def PlotViscosityTemperature(diff, disl, dA_diff_ratio, dE_diff, dV_diff,\
     label = "d: " + str(grain_size)
     # append value of coh in case of wet rheology
     if wet:
-        label += ", coh: " + str(coh)
+        if use_coh:
+            label += ", coh: " + str(coh)
+        else:
+            label += ", fh2o: " + str(fh2o)
     label += '\n'
     if diff != "":
         label += "diff: " + str(diff) + ", " + "\n" + str(rheology_diff) + "\n"
