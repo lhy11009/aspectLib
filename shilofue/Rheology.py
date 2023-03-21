@@ -455,6 +455,28 @@ class RHEOLOGY_PRM():
                 "E" : 156e3,
                 "V" : 0.0
             }
+        
+        self.KK1987_quartz_disl = \
+            {
+                "A" : 3.2e-4,
+                "p" : 0.0,
+                "r" : 0.0,  # not dependent on the "Coh"
+                "n" : 2.3,
+                "E" : 154e3,
+                "V" : 8e-6
+            }
+        
+        self.Ranali_95_anorthite_75_diff = None
+        
+        self.Ranali_95_anorthite_75_disl = \
+            {
+                "A" : 3.3e-4,
+                "p" : 0.0,
+                "r" : 0.0,  # not dependent on the "Coh"
+                "n" : 3.2,
+                "E" : 238e3,
+                "V" : 8e-6
+            }
 
         self.Rybachi_06_anorthite_wet_diff = \
             {
