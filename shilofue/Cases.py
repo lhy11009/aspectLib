@@ -35,7 +35,6 @@ from difflib import unified_diff
 from copy import deepcopy
 # from matplotlib import cm
 from matplotlib import pyplot as plt
-import shilofue.Parse as Parse
 import shilofue.ParsePrm as ParsePrm
 from shilofue.Rheology import RHEOLOGY_OPR
 

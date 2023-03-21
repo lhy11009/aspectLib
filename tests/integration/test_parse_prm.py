@@ -164,3 +164,30 @@ def test_ParseToSlurmBatchFile_mpirun():
     SlurmOperator(o_path)
     assert(os.path.isfile(o_path))  # compare outputs
     assert(filecmp.cmp(o_path, o_std_path))
+
+
+def test_duplicate_move_composition_option():
+    '''
+    test the function duplicate_composition_option and
+    move_composition_option
+    Assert:
+        1. output from function duplicate_move_composition_option
+        2. output from function move_composition_option
+        3. output by expanding one composition to multiple compositions
+    '''
+    # assert 1
+    str_in = "background:410e3|520e3|560e3|670e3|670e3|670e3|670e3, spcrust: 80e3|665e3|720e3, spharz: 410e3|520e3|560e3|670e3|670e3|670e3|670e3"
+    str_out = ParsePrm.duplicate_composition_option(str_in, "spcrust", "spcrust_up")
+    assert(str_out == "background:4.1000e+05|5.2000e+05|5.6000e+05|6.7000e+05|6.7000e+05|6.7000e+05|6.7000e+05, spcrust:8.0000e+04|6.6500e+05|7.2000e+05, spharz:4.1000e+05|5.2000e+05|5.6000e+05|6.7000e+05|6.7000e+05|6.7000e+05|6.7000e+05, spcrust_up:8.0000e+04|6.6500e+05|7.2000e+05")
+    # assert 2
+    str_out = ParsePrm.move_composition_option(str_in, "spcrust", "spcrust_up")
+    assert(str_out == "background:4.1000e+05|5.2000e+05|5.6000e+05|6.7000e+05|6.7000e+05|6.7000e+05|6.7000e+05, spharz:4.1000e+05|5.2000e+05|5.6000e+05|6.7000e+05|6.7000e+05|6.7000e+05|6.7000e+05, spcrust_up:8.0000e+04|6.6500e+05|7.2000e+05")
+    # assert 3
+    str_in = "background: 1.4e-19|1.4e-19|1.4e-19|1.4e-19|1e-31|1e-31|1e-31|1e-31, spcrust: 1.4e-19|1.4e-19|1e-31|1e-31, spharz: 1.4e-19|1.4e-19|1.4e-19|1.4e-19|1e-31|1e-31|1e-31|1e-31, opcrust: 1.4e-19, opharz: 1.4e-19"
+    comps = ["spcrust_low", "spcrust_up"]
+    temp = str_in
+    for comp in comps:
+        temp = ParsePrm.duplicate_composition_option(temp, "spcrust", comp)
+    temp = ParsePrm.remove_composition_option(temp, "spcrust")
+    assert(temp == "background:1.4000e-19|1.4000e-19|1.4000e-19|1.4000e-19|1.0000e-31|1.0000e-31|1.0000e-31|1.0000e-31, spharz:1.4000e-19|1.4000e-19|1.4000e-19|1.4000e-19|1.0000e-31|1.0000e-31|1.0000e-31|1.0000e-31, opcrust:1.4000e-19, opharz:1.4000e-19, spcrust_low:1.4000e-19|1.4000e-19|1.0000e-31|1.0000e-31, spcrust_up:1.4000e-19|1.4000e-19|1.0000e-31|1.0000e-31")
+

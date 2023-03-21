@@ -135,6 +135,8 @@ intiation stage causes the slab to break in the middle",\
          float, ["shear zone", 'Max pressure for eclogite transition'], 5e9, nick='eclogite_max_P')
         self.add_key("eclogite transition that matches the mineral phase boundaries",\
          int, ["shear zone", 'match the eclogite transition with phase diagram'], 0, nick='eclogite_match')
+        # todo_2l
+        self.add_key("number of layer in the crust", int, ["world builder", 'layers of crust'], 1, nick='n_crust_layer')
     
     def check(self):
         '''
@@ -199,6 +201,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         assert(sz_constant_viscosity > 0.0)
         wb_new_ridge = self.values[self.start + 27]
         assert(wb_new_ridge in [0, 1])  # use the new ridge implementation or not
+        # assert there is either 1 or 2 layers in the crust
+        n_crust_layer = self.values[self.start + 38]
+        assert(n_crust_layer in [1, 2])
 
     def to_configure_prm(self):
         if_wb = self.values[8]
@@ -250,13 +255,14 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         eclogite_max_P = self.values[self.start + 36]
         eclogite_match = self.values[self.start + 37]
         version = self.values[23]
+        n_crust_layer = self.values[self.start + 38]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
         branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
-        ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version
+        ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer
 
     def to_configure_wb(self):
         '''
@@ -325,7 +331,7 @@ class CASE(CasesP.CASE):
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
     sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
     sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,
-    version):
+    version, n_crust_layer):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -547,7 +553,6 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                     "Decoupled depth": str(sz_cutoff_depth),
                     "Decoupled depth width": '10e3'
                 }
-        self.idict = o_dict
         # phase model
         if phase_model == "HeFESTo":
             o_dict['Material model']['Visco Plastic TwoD']["Use lookup table"] = 'true'
@@ -578,6 +583,17 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                 "Time between data output": "0.1e6"\
             }
             o_dict['Postprocess'] = pp_dict
+        # expand the layer of the crust to multiple layers
+        if n_crust_layer == 1:
+            # 1 layer in the crust, this is the default option
+            pass
+        elif n_crust_layer == 2:
+            # 2 layers, expand the option of 'sp_crust' to 2 different layers
+            o_dict = expand_multi_composition(o_dict, 'spcrust', ['spcrust_up', 'spcrust_low'])
+        else:
+            raise NotImplementedError()
+        # apply the changes 
+        self.idict = o_dict
         # create a multi-stage model
         if if_peierls and (peierls_two_stage_time > 0):
             o_dict1 = deepcopy(o_dict)
@@ -588,7 +604,6 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             o_dict1['Resume computation'] = 'true'
             self.model_stages = 2
             self.additional_idicts.append(o_dict1)
-            pass 
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
         if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version):
@@ -701,7 +716,84 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                 }
                 # if not using the feature surface from the WorldBuilder, generate particles manually
                 self.particle_data = particle_positions_ef(geometry, Ro, trench, Dsz, ef_Dbury, p0, slab_lengths, slab_dips, interval=ef_particle_interval)
+# todo_2l
+def expand_multi_composition(i_dict, comp0, comps):
+    '''
+    expand one composition to multiple compositions in the dictionary
+    Inputs:
+        i_dict: dictionary of inputs
+        comp0: composition of inputs
+        comps: compositions (list) to expand to
+    '''
 
+    temp_dict = expand_multi_composition_options(i_dict, comp0, comps)
+
+    o_dict  = expand_multi_composition_composition_field(temp_dict, comp0, comps)
+    return o_dict
+
+
+def expand_multi_composition_options(i_dict, comp0, comps):
+    '''
+    expand one composition to multiple compositions in the dictionary
+    Inputs:
+        i_dict: dictionary of inputs
+        comp0: composition of inputs
+        comps: compositions (list) to expand to
+    '''
+    o_dict = deepcopy(i_dict)
+
+    for key, value in o_dict.items():
+        if type(value) == dict:
+            # in case of dictionary: iterate
+            o_dict[key] = expand_multi_composition_options(value, comp0, comps)
+        elif type(value) == str:
+            # in case of string, try matching it with the composition
+            if re.match('.*' + comp0, value) and re.match('.*:', value) and not re.match('.*;', value):
+                try:
+                    temp = value
+                    for comp in comps:
+                        temp = ParsePrm.duplicate_composition_option(temp, comp0, comp)
+                    o_dict[key] = ParsePrm.remove_composition_option(temp, comp0)
+                except KeyError:
+                    # this is not a string with options of compositions, skip
+                    pass
+        else:
+            raise TypeError("value must be either dict or str")
+    return o_dict
+
+
+def expand_multi_composition_composition_field(i_dict, comp0, comps):
+    '''
+    expand one composition to multiple compositions in the dictionary
+    Inputs:
+        i_dict: dictionary of inputs
+        comp0: composition of inputs
+        comps: compositions (list) to expand to
+    '''
+    n_comp = len(comps)
+    o_dict = deepcopy(i_dict)
+    # number of composition
+    nof = int(o_dict["Compositional fields"]["Number of fields"])
+    o_dict["Compositional fields"]["Number of fields"] = str(nof + n_comp-1)
+
+    str_name = o_dict["Compositional fields"]["Names of fields"]
+    str_name_sub = ""
+    is_first = True
+    for comp in comps:
+        if is_first:
+            is_first = False
+        else:
+            str_name_sub += ","
+        str_name_sub += str(comp)
+    str_name_new = re.sub(comp0, str_name_sub, str_name)
+    print("str_name_new: ", str_name_new) # debug
+    o_dict["Compositional fields"]["Names of fields"] = str_name_new
+
+    str_f_methods = o_dict["Compositional fields"]["Compositional field methods"]
+    f_method = str_f_methods.split(',')[0]
+    o_dict["Compositional fields"]["Compositional field methods"] += ("," + f_method) * (n_comp -1)
+    return o_dict
+    
 
 
 

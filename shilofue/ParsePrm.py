@@ -45,20 +45,25 @@ class COMPOSITION():
       'background:4.0e-6|1.5e-6, spcrust:0.0, spharz:4.0e-6, opcrust:4.0e-6, opharz:4.0e-6 '
     or parse value back
     """
-    def __init__(self, line):
+    def __init__(self, in_var):
         # parse the format:
         # key1: val1|val2, key2: val3|val4
         # to a dictionary data where
         # data[key1] = [val1, val2]
-        self.data = {}
-        parts = line.split(',')
-        for part in parts:
-            key_str = part.split(':')[0]
-            key = Utilities.re_neat_word(key_str)
-            values_str = part.split(':')[1].split('|')
-            # convert string to float
-            values = [float(Utilities.re_neat_word(val)) for val in values_str]
-            self.data[key] = values
+        if type(in_var) == str:
+            self.data = {}
+            parts = in_var.split(',')
+            for part in parts:
+                key_str = part.split(':')[0]
+                key = Utilities.re_neat_word(key_str)
+                values_str = part.split(':')[1].split('|')
+                # convert string to float
+                values = [float(Utilities.re_neat_word(val)) for val in values_str]
+                self.data[key] = values
+        elif type(in_var) == type(self):
+            self.data = in_var.data.copy()
+        else:
+            raise NotImplementedError()
 
     def parse_back(self):
         """
@@ -804,6 +809,65 @@ class SLURM_OPT(Utilities.JSON_OPT):
     def get_output_dir(self):
         output_directory = self.values[9]
         return output_directory
+
+
+def duplicate_composition_option(str_in, comp0, comp1):
+    '''
+    duplicate the composition option,  parse to a new string
+    Inputs:
+        str_in: an input of string
+        comp0, comp1: duplicate the option with comp0 to a new one with comp1
+    Return:
+        str_out: a new string for inputs of composition
+    '''
+    # read in original options
+    comp_in = COMPOSITION(str_in)
+    var = comp_in.data[comp0]
+    # duplicate option with a new composition
+    comp_out = COMPOSITION(comp_in)
+    comp_out.data[comp1] = var
+    # convert to a new string & return
+    str_out = comp_out.parse_back() 
+    return str_out
+
+
+def move_composition_option(str_in, comp0, comp1):
+    '''
+    move the composition option,  parse to a new string
+    Inputs:
+        str_in: an input of string
+        comp0, comp1: move the option with comp0 to a new one with comp1
+    Return:
+        str_out: a new string for inputs of composition
+    '''
+    # read in original options
+    comp_in = COMPOSITION(str_in)
+    # move option to a new composition
+    comp_out = COMPOSITION(comp_in)
+    var = comp_out.data.pop(comp0)
+    comp_out.data[comp1] = var
+    # convert to a new string & return
+    str_out = comp_out.parse_back() 
+    return str_out
+
+
+def remove_composition_option(str_in, comp0):
+    '''
+    remove the composition option
+    Inputs:
+        str_in: an input of string
+        comp0, comp1: remove the option with comp0
+    Return:
+        str_out: a new string for inputs of composition
+    '''
+    # read in original options
+    comp_in = COMPOSITION(str_in)
+    # move option to a new composition
+    comp_out = COMPOSITION(comp_in)
+    _ = comp_out.data.pop(comp0)
+    # convert to a new string & return
+    str_out = comp_out.parse_back() 
+    return str_out
 
 def main():
     '''

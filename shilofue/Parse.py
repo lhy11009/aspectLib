@@ -1122,46 +1122,6 @@ def CreateNewFromSnapshot(case_dir, output_dir, **kwargs):
     return newCase
 
 
-def duplicate_composition_option(str_in, comp0, comp1):
-    '''
-    duplicate the composition option,  parse to a new string
-    Inputs:
-        str_in: an input of string
-        comp0, comp1: duplicate the option with comp0 to a new one with comp1
-    Return:
-        str_out: a new string for inputs of composition
-    '''
-    # read in original options
-    comp_in = COMPOSITION(str_in)
-    var = comp_in.data[comp0]
-    # duplicate option with a new composition
-    comp_out = COMPOSITION(comp_in)
-    comp_out.data[comp1] = var
-    # convert to a new string & return
-    str_out = comp_out.parse_back() 
-    return str_out
-
-
-def move_composition_option(str_in, comp0, comp1):
-    '''
-    move the composition option,  parse to a new string
-    Inputs:
-        str_in: an input of string
-        comp0, comp1: move the option with comp0 to a new one with comp1
-    Return:
-        str_out: a new string for inputs of composition
-    '''
-    # read in original options
-    comp_in = COMPOSITION(str_in)
-    # move option to a new composition
-    comp_out = COMPOSITION(comp_in)
-    var = comp_out.data.pop(comp0)
-    comp_out.data[comp1] = var
-    # convert to a new string & return
-    str_out = comp_out.parse_back() 
-    return str_out
-
-
 def main():
     '''
     main function of this module

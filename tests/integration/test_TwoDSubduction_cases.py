@@ -35,6 +35,26 @@ if os.path.isdir(test_dir):
 os.mkdir(test_dir)
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'cases', "test_TwoDSubduction")
 
+# todo_2l
+def test_two_layer_crust():
+    '''
+
+    '''
+    source_case_dir = os.path.join(source_dir, "test_2_layer")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'test_2_layer')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)  # create case
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    # assert(filecmp.cmp(prm_path, prm_std_path))
+    wb_std_path = os.path.join(source_case_dir, 'case_0_std.wb')
+    wb_path = os.path.join(output_dir, 'case.wb')
+    # assert(filecmp.cmp(wb_path, wb_std_path))
+    pass
+
 
 def test_fix_before_group1_old_sp():
     '''
@@ -531,6 +551,7 @@ def test_eclogite_lowP():
     wb_std_path = os.path.join(source_case_dir, 'case_0_std.wb')
     wb_path = os.path.join(output_dir, 'case.wb')
     assert(filecmp.cmp(wb_path, wb_std_path))
+
 
 
     
