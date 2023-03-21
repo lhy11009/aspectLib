@@ -1469,8 +1469,6 @@ def particle_positions_ef(geometry, Ro, trench0, Dsz, Dbury, p0, slab_lengths, s
     return particle_data
 
 
-
-
 def Usage():
     print("\
 (One liner description\n\

@@ -103,7 +103,6 @@ def test_create_case():
     extra_output_path = os.path.join(case_output_dir, 'particle.dat')
     assert(os.path.isfile(extra_output_path))  # assert generated
 
-
     
 # notes
     

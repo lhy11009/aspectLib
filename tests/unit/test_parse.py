@@ -139,3 +139,19 @@ def test_pattern_from_value():
     assert(Parse.PatternFromValue(100) == '100')
     pass
 
+
+def test_duplicate_move_composition_option():
+    '''
+    test the function duplicate_composition_option and
+    move_composition_option
+    Assert:
+        1. output from function duplicate_move_composition_option
+        2. output from function move_composition_option
+    '''
+    # assert 1
+    str_in = "background:410e3|520e3|560e3|670e3|670e3|670e3|670e3, spcrust: 80e3|665e3|720e3, spharz: 410e3|520e3|560e3|670e3|670e3|670e3|670e3"
+    str_out = Parse.duplicate_composition_option(str_in, "spcrust", "spcrust_up")
+    assert(str_out == "background:4.1000e+05|5.2000e+05|5.6000e+05|6.7000e+05|6.7000e+05|6.7000e+05|6.7000e+05, spcrust:8.0000e+04|6.6500e+05|7.2000e+05, spharz:4.1000e+05|5.2000e+05|5.6000e+05|6.7000e+05|6.7000e+05|6.7000e+05|6.7000e+05, spcrust_up:8.0000e+04|6.6500e+05|7.2000e+05")
+    # assert 2
+    str_out = Parse.move_composition_option(str_in, "spcrust", "spcrust_up")
+    assert(str_out == "background:4.1000e+05|5.2000e+05|5.6000e+05|6.7000e+05|6.7000e+05|6.7000e+05|6.7000e+05, spharz:4.1000e+05|5.2000e+05|5.6000e+05|6.7000e+05|6.7000e+05|6.7000e+05|6.7000e+05, spcrust_up:8.0000e+04|6.6500e+05|7.2000e+05")

@@ -35,6 +35,7 @@ from difflib import unified_diff
 from copy import deepcopy
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+import shilofue.Parse as Parse
 import shilofue.ParsePrm as ParsePrm
 from shilofue.Rheology import RHEOLOGY_OPR
 
@@ -780,7 +781,7 @@ def output_particle_ascii(fout, particle_data):
                 _string += '%.4e ' % particle_data[i, j]
         fout.write(_string)
     pass
-    
+
 
 def GROUP():
     '''
