@@ -34,10 +34,9 @@ class COMPOSITION():
         # key1: val1|val2, key2: val3|val4
         # to a dictionary data where
         # data[key1] = [val1, val2]
-        # todo_2l
         self.data = {}
         if type(i_var) == str:
-
+            # input with a string
             parts = i_var.split(',')
             for part in parts:
                 key_str = part.split(':')[0]
@@ -47,7 +46,7 @@ class COMPOSITION():
                 values = [float(re_neat_word(val)) for val in values_str]
                 self.data[key] = values
         elif type(i_var) == type(self):
-
+            # input with a previous object
             self.data = i_var.data.copy()
         else:
             raise TypeError("type %s is not valid for inputing COMPOSITION" % str(type(i_var)))
@@ -1123,7 +1122,6 @@ def CreateNewFromSnapshot(case_dir, output_dir, **kwargs):
     return newCase
 
 
-# todo_2l
 def duplicate_composition_option(str_in, comp0, comp1):
     '''
     duplicate the composition option,  parse to a new string
