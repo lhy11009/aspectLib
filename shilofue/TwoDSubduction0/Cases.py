@@ -727,7 +727,7 @@ def expand_multi_composition(i_dict, comp0, comps):
     '''
 
     temp_dict = expand_multi_composition_options(i_dict, comp0, comps)
-
+    temp_dict = expand_multi_composition_isosurfaces(temp_dict, comp0, comps)
     o_dict  = expand_multi_composition_composition_field(temp_dict, comp0, comps)
     return o_dict
 
@@ -762,6 +762,30 @@ def expand_multi_composition_options(i_dict, comp0, comps):
     return o_dict
 
 
+def expand_composition_array(old_str, id_comp0, n_comp):
+    '''
+    expand the composition options
+    Inputs:
+        old_str: the old option
+        id_comp0: index of the option for the original composition
+        n_comp: number of new compositions
+    '''
+    options = old_str.split(',')
+    removed_option = options.pop(id_comp0)
+    # compile new option
+    new_option = ""
+    for i in range(n_comp):
+        options.append(removed_option)
+    is_first = True
+    for _option in options:
+        if is_first:
+            is_first = False
+        else:
+            new_option += ', '
+        new_option += _option
+    return new_option 
+
+
 def expand_multi_composition_composition_field(i_dict, comp0, comps):
     '''
     expand one composition to multiple compositions in the dictionary
@@ -772,28 +796,133 @@ def expand_multi_composition_composition_field(i_dict, comp0, comps):
     '''
     n_comp = len(comps)
     o_dict = deepcopy(i_dict)
-    # number of composition
-    nof = int(o_dict["Compositional fields"]["Number of fields"])
-    o_dict["Compositional fields"]["Number of fields"] = str(nof + n_comp-1)
-
+    # composition field
+    # find the index of the original field to be id0
     str_name = o_dict["Compositional fields"]["Names of fields"]
-    str_name_sub = ""
-    is_first = True
+    str_name_options = str_name.split(',')
+    id = 0
+    found = False
+    for _option in str_name_options:
+        comp = Utilities.re_neat_word(_option) 
+        if comp == comp0:
+            id0 = id
+            found = True
+            str_name_options.remove(comp)
+        id += 1
+    if not found:
+        raise ValueError("the option of \"Names of fields\" doesn't have option of %s" % comp0)
     for comp in comps:
+        str_name_options.append(comp)
+    str_name_new = ""
+    is_first = True
+    for _option in str_name_options:
         if is_first:
             is_first = False
         else:
-            str_name_sub += ","
-        str_name_sub += str(comp)
-    str_name_new = re.sub(comp0, str_name_sub, str_name)
-    print("str_name_new: ", str_name_new) # debug
+            str_name_new += ","
+        str_name_new += _option
+    is_first = True
     o_dict["Compositional fields"]["Names of fields"] = str_name_new
-
+    # number of composition
+    nof = int(o_dict["Compositional fields"]["Number of fields"])
+    new_nof = nof + n_comp-1
+    o_dict["Compositional fields"]["Number of fields"] = str(new_nof)
+    # field method
     str_f_methods = o_dict["Compositional fields"]["Compositional field methods"]
     f_method = str_f_methods.split(',')[0]
     o_dict["Compositional fields"]["Compositional field methods"] += ("," + f_method) * (n_comp -1)
+    # discretization option
+    find_discretization_option = False
+    try:
+        discretization_option = o_dict["Discretization"]["Stabilization parameters"]['Global composition maximum']
+        find_discretization_option = True
+    except:
+        pass
+    if find_discretization_option:
+        o_dict["Discretization"]["Stabilization parameters"]['Global composition maximum'] = expand_composition_array(discretization_option, id0, n_comp)
+    find_discretization_option = False
+    try:
+        discretization_option = o_dict["Discretization"]["Stabilization parameters"]['Global composition minimum']
+        find_discretization_option = True
+    except:
+        pass
+    if find_discretization_option:
+        o_dict["Discretization"]["Stabilization parameters"]['Global composition minimum'] = expand_composition_array(discretization_option, id0, n_comp)
+    # option in the adiabatic temperature
+    try:
+        _ = o_dict["Initial temperature model"]["Adiabatic"]["Function"]["Function expression"]
+        new_adiabatic_functiion_expression = ""
+        is_first = True
+        for i in range(new_nof):
+            if is_first:
+                is_first = False
+            else:
+                new_adiabatic_functiion_expression += "; "
+            new_adiabatic_functiion_expression += "0.0"
+        o_dict["Initial temperature model"]["Adiabatic"]["Function"]["Function expression"] = new_adiabatic_functiion_expression
+    except KeyError:
+        pass
+    # option in the look up table
+    try:
+        look_up_index_option = o_dict["Material model"]["Visco Plastic TwoD"]["Lookup table"]["Material lookup indexes"]
+        # note there is an entry for the background in this option, so I have to use id0 + 1 
+        o_dict["Material model"]["Visco Plastic TwoD"]["Lookup table"]["Material lookup indexes"] = expand_composition_array(look_up_index_option, id0+1, n_comp)
+    except KeyError:
+        pass
+
     return o_dict
     
+
+def expand_multi_composition_isosurfaces(i_dict, comp0, comps):
+    '''
+    expand one composition to multiple compositions in the dictionary
+    Inputs:
+        i_dict: dictionary of inputs
+        comp0: composition of inputs
+        comps: compositions (list) to expand to
+    '''
+    found = False
+    # find the right option of isosurface
+    try:
+        isosurface_option = i_dict["Mesh refinement"]["Isosurfaces"]["Isosurfaces"]
+        isosurface_option_type = 1
+        found = True
+    except KeyError:
+        try:
+            isosurface_option = i_dict["Mesh refinement"]["IsosurfacesTwoD1"]["Isosurfaces"]
+            isosurface_option_type = 2
+            found = True
+        except KeyError:
+            pass
+    # change the options of isosurface
+    if found:
+        if re.match('.*' + comp0, isosurface_option):
+            options = isosurface_option.split(";")
+            has_composition = False
+            for _option in options:
+                if re.match('.*' + comp0, _option):
+                    comp_option = _option
+                    options.remove(_option)
+                    has_composition = True
+            # expand the composition
+            if has_composition:
+                for comp in comps:
+                    options.append(re.sub(comp0, comp, comp_option))
+                new_isosurface_option = ""
+                is_first = True
+                for _option in options:
+                    if is_first:
+                        is_first = False
+                    else:
+                        new_isosurface_option += ";"
+                    new_isosurface_option += _option
+                if isosurface_option_type == 1:
+                    i_dict["Mesh refinement"]["Isosurfaces"]["Isosurfaces"] = new_isosurface_option
+                elif isosurface_option_type == 2:
+                    i_dict["Mesh refinement"]["IsosurfacesTwoD1"]["Isosurfaces"] = new_isosurface_option
+    return i_dict
+
+
 
 
 

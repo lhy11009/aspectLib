@@ -167,7 +167,7 @@ subsection Material model
         set Manually define phase method harzburgite = background:0.0, spcrust: 0.0, spharz:1.0
         set Decoupling eclogite viscosity = true
         set Compute latent heat = background:1.0|1.0|1.0|0.862|0.0|0.0|0.0, spcrust:0.0|2.0|0.0, spharz:1.0|1.0|1.0|0.862|0.0|0.0|0.0
-        set Thermal diffusivities = 1.0e-6, 1.0e-6, 1.0e-6, 1.0e-6,1.0e-6
+        set Thermal diffusivities = 1.0e-6
         set Heat capacities = 1250.0
         set Densities = background: 3300.0|3394.4|3442.1|3453.2|3617.6|3691.5|3774.7|3929.1, spharz: 3235.0|3372.3|3441.7|3441.7|3680.8|3717.8|3759.4|3836.6, spcrust: 3000.0|3540.0|3613.0|3871.7, opcrust: 3000.0, opharz: 3235.0
         set Thermal expansivities = 3.1e-5
@@ -186,7 +186,7 @@ subsection Material model
         set Angles of internal friction = 25.0,     25.00,     25.00,     25.00,     25.00
         set Cohesions = 50.e6,     50.e6,     50.e6,     50.e6,     50.e6
         # Parameters for Mei Low Temperature Plasticity
-	set Include Peierls creep = true
+	    set Include Peierls creep = true
         set Peierls creep flow law = viscosity approximation
         set Peierls fitting parameters = 0.17
         set Peierls glide parameters p = 0.5
