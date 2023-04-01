@@ -35,10 +35,10 @@ if os.path.isdir(test_dir):
 os.mkdir(test_dir)
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'cases', "test_TwoDSubduction")
 
-# todo_2l
+
 def test_two_layer_crust():
     '''
-
+    Test with 2 layers in the crust
     '''
     source_case_dir = os.path.join(source_dir, "test_2_layer")
     json_path = os.path.join(source_case_dir, 'case0.json')
@@ -49,10 +49,10 @@ def test_two_layer_crust():
     assert(os.path.isdir(output_dir))  # check case generation
     prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
     prm_path = os.path.join(output_dir, 'case.prm')
-    # assert(filecmp.cmp(prm_path, prm_std_path))
+    assert(filecmp.cmp(prm_path, prm_std_path))
     wb_std_path = os.path.join(source_case_dir, 'case_0_std.wb')
     wb_path = os.path.join(output_dir, 'case.wb')
-    # assert(filecmp.cmp(wb_path, wb_std_path))
+    assert(filecmp.cmp(wb_path, wb_std_path))
     pass
 
 

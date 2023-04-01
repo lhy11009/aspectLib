@@ -92,6 +92,21 @@ class COMPOSITION():
         return line
 
 
+def ReplacePhaseOption(str_in, key, idx, new_option):
+    '''
+    Replace the options for a phase
+    Inputs:
+        str_in: input string
+        key: key of the designated composition
+        idx: inded of the designated phase
+        new_option: option to set
+    '''
+    comp = COMPOSITION(str_in)
+    comp.data[key][idx] = new_option
+    str_out = comp.parse_back() 
+    return str_out
+
+
 def ParseFromDealiiInput(fin):
     """
     ParseFromDealiiInput(fin)

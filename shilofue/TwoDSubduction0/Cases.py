@@ -36,7 +36,7 @@ from matplotlib import gridspec
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 import shilofue.FlowLaws as flf
-from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput, STRENGTH_PROFILE
+from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput, STRENGTH_PROFILE, GetRheology, Convert2AspectInput, AssignAspectViscoPlasticPhaseRheology
 from shilofue.WorldBuilder import slab_surface_profile
 
 # directory to the aspect Lab
@@ -135,8 +135,10 @@ intiation stage causes the slab to break in the middle",\
          float, ["shear zone", 'Max pressure for eclogite transition'], 5e9, nick='eclogite_max_P')
         self.add_key("eclogite transition that matches the mineral phase boundaries",\
          int, ["shear zone", 'match the eclogite transition with phase diagram'], 0, nick='eclogite_match')
-        # todo_2l
         self.add_key("number of layer in the crust", int, ["world builder", 'layers of crust'], 1, nick='n_crust_layer')
+        self.add_key("Thickness of the upper crust", float, ["shear zone", 'upper crust thickness'], 3e3, nick='Duc')
+        self.add_key("Rheology of the upper crust", str, ["shear zone", 'upper crust rheology scheme'], '', nick='upper_crust_rheology_scheme')
+        self.add_key("Rheology of the lower crust", str, ["shear zone", 'lower crust rheology scheme'], '', nick='lower_crust_rheology_scheme')
     
     def check(self):
         '''
@@ -256,13 +258,16 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         eclogite_match = self.values[self.start + 37]
         version = self.values[23]
         n_crust_layer = self.values[self.start + 38]
+        upper_crust_rheology_scheme = self.values[self.start + 40]
+        lower_crust_rheology_scheme = self.values[self.start + 41]
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
         HeFESTo_data_dir_relative_path, sz_cutoff_depth, adjust_mesh_with_width, rf_scheme,\
         peierls_scheme, peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
         branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
-        ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer
+        ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
+        upper_crust_rheology_scheme, lower_crust_rheology_scheme
 
     def to_configure_wb(self):
         '''
@@ -284,8 +289,16 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         Dsz = self.values[self.start + 16]
         wb_new_ridge = self.values[self.start + 27]
         version = self.values[23]
+        n_crust_layer = self.values[self.start + 38]
+        Duc = self.values[self.start + 39]
+        if n_crust_layer == 1:
+            # number of total compositions
+            n_comp = 4
+        elif n_crust_layer == 2:
+            n_comp = 6
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
-            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version
+            if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version,\
+            n_crust_layer, Duc, n_comp
     
     def to_configure_final(self):
         '''
@@ -331,7 +344,7 @@ class CASE(CasesP.CASE):
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
     sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
     sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,
-    version, n_crust_layer):
+    version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -442,7 +455,6 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         if type_of_bd in ["top prescribed with bottom right open", "top prescribed with bottom left open", "top prescribed"]:
             # in this case, I want to keep the options for prescribing temperature but to turn it off at the start
             o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
-
         
         # Material model
         da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
@@ -583,6 +595,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                 "Time between data output": "0.1e6"\
             }
             o_dict['Postprocess'] = pp_dict
+
         # expand the layer of the crust to multiple layers
         if n_crust_layer == 1:
             # 1 layer in the crust, this is the default option
@@ -590,10 +603,20 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
         elif n_crust_layer == 2:
             # 2 layers, expand the option of 'sp_crust' to 2 different layers
             o_dict = expand_multi_composition(o_dict, 'spcrust', ['spcrust_up', 'spcrust_low'])
+            o_dict = expand_multi_composition(o_dict, 'opcrust', ['opcrust_up', 'opcrust_low'])
+            # assign the rheology
+            visco_plastic_dict = o_dict['Material model']['Visco Plastic TwoD']
+            diffusion_creep, dislocation_creep = GetRheology(upper_crust_rheology_scheme)
+            visco_plastic_dict = AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, 'spcrust_up', 0, diffusion_creep, dislocation_creep)
+            diffusion_creep, dislocation_creep = GetRheology(lower_crust_rheology_scheme)
+            visco_plastic_dict = AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, 'spcrust_low', 0, diffusion_creep, dislocation_creep)
+            o_dict['Material model']['Visco Plastic TwoD'] = visco_plastic_dict
         else:
             raise NotImplementedError()
+
         # apply the changes 
         self.idict = o_dict
+
         # create a multi-stage model
         if if_peierls and (peierls_two_stage_time > 0):
             o_dict1 = deepcopy(o_dict)
@@ -606,7 +629,8 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             self.additional_idicts.append(o_dict1)
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
-        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version):
+        if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version,\
+        n_crust_layer, Duc, n_comp):
         '''
         Configure world builder file
         Inputs:
@@ -641,8 +665,8 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
             # sz_thickness
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
-            sp_rate, ov_ag, wb_new_ridge, version, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
-            ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz)
+            sp_rate, ov_ag, wb_new_ridge, version, n_crust_layer, Duc, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+            ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz, n_comp=n_comp)
         elif geometry == 'box':
             if is_box_wider:
                 Xmax = 2e7
@@ -650,8 +674,8 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                 Xmax = 1e7  # lateral extent of the box
             Ro = float(self.idict['Geometry model']['Box']['Y extent'])
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
-            sp_rate, ov_ag, wb_new_ridge, version, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
-            ov_trans_length=ov_trans_length, geometry=geometry, sz_thickness=Dsz) # plates
+            sp_rate, ov_ag, wb_new_ridge, version, n_crust_layer, Duc, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+            ov_trans_length=ov_trans_length, geometry=geometry, sz_thickness=Dsz, n_comp=n_comp) # plates
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
     
@@ -716,7 +740,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                 }
                 # if not using the feature surface from the WorldBuilder, generate particles manually
                 self.particle_data = particle_positions_ef(geometry, Ro, trench, Dsz, ef_Dbury, p0, slab_lengths, slab_dips, interval=ef_particle_interval)
-# todo_2l
+
 def expand_multi_composition(i_dict, comp0, comps):
     '''
     expand one composition to multiple compositions in the dictionary
@@ -921,12 +945,9 @@ def expand_multi_composition_isosurfaces(i_dict, comp0, comps):
                 elif isosurface_option_type == 2:
                     i_dict["Mesh refinement"]["IsosurfacesTwoD1"]["Isosurfaces"] = new_isosurface_option
     return i_dict
+    
 
-
-
-
-
-def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, version, **kwargs):
+def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, version, n_crust_layer, Duc, **kwargs):
     '''
     configure plate in world builder
     '''
@@ -935,6 +956,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
     max_sph = kwargs.get("max_sph", 180.0)
     geometry = kwargs.get('geometry', 'chunk')
     Dsz = kwargs.get("sz_thickness", None)
+    n_comp = kwargs.get("n_comp", 4)
     D2C_ratio = 35.2e3 / 7.5e3 # ratio of depleted / crust layer
     o_dict = wb_dict.copy()
     max_cart = 2 * Xmax
@@ -958,16 +980,44 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
         o_dict["coordinate system"]["depth method"] = "begin at end segment"
     else:
         raise NotImplementedError
+    # the index of layers
+    if n_crust_layer == 1:
+        i_uc = -1
+        i_lc = 0
+        i_hz = 1
+    elif n_crust_layer == 2:
+        i_uc = 0
+        i_lc = 1
+        i_hz = 2
+    else:
+        raise NotImplementedError()
     # Overiding plate
     if_ov_trans = kwargs.get('if_ov_trans', False)  # transit to another age
     if if_ov_trans and ov_age > (1e6 + kwargs['ov_trans_age']):  # only transfer to younger age
         i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate 1')
-        ov_trans_feature, ov =\
+        ov_trans_dict, ov =\
             wb_configure_transit_ov_plates(wb_dict['features'][i0], trench,\
                 ov_age, kwargs['ov_trans_age'], kwargs['ov_trans_length'], wb_new_ridge,\
                 Dsz, D2C_ratio,\
                 Ro=Ro, geometry=geometry)
-        o_dict['features'][i0] = ov_trans_feature
+        # options with multiple crustal layers
+        sample_composiiton_model =  ov_trans_dict["composition models"][0].copy()
+        if n_crust_layer == 1:
+            pass
+        elif n_crust_layer == 2:
+            ov_trans_dict["composition models"].append(sample_composiiton_model)
+            ov_trans_dict["composition models"][i_uc]["min depth"] = 0.0
+            ov_trans_dict["composition models"][i_uc]["max depth"] = Duc
+            ov_trans_dict["composition models"][i_uc]["compositions"] = [n_comp - 2]
+            ov_trans_dict["composition models"][i_lc]["min depth"] = Duc
+            ov_trans_dict["composition models"][i_lc]["compositions"] = [n_comp - 1]
+            ov_trans_dict["composition models"][i_hz]["compositions"] = [0]
+        else:
+            raise NotImplementedError()
+        ov_trans_dict["composition models"][i_lc]["max depth"] = Dsz
+        ov_trans_dict["composition models"][i_hz]["min depth"] = Dsz
+        ov_trans_dict["composition models"][i_hz]["max depth"] = Dsz * D2C_ratio
+        o_dict['features'][i0] = ov_trans_dict
     else:
         # if no using transit plate, remove the feature
         try:
@@ -981,9 +1031,24 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
     op_dict["coordinates"] = [[ov, -_side], [ov, _side],\
         [_max, _side], [_max, -_side]] # trench position
     op_dict["temperature models"][0]["plate age"] = ov_age  # age of overiding plate
-    op_dict["composition models"][0]["max depth"] = Dsz
-    op_dict["composition models"][1]["min depth"] = Dsz
-    op_dict["composition models"][1]["max depth"] = Dsz * D2C_ratio
+    # options for multiple crustal layers
+    sample_composiiton_model =  op_dict["composition models"][0].copy()
+    if n_crust_layer == 1:
+        pass
+    elif n_crust_layer == 2:
+        # options with multiple crustal layer
+        op_dict["composition models"].append(sample_composiiton_model)
+        op_dict["composition models"][i_uc]["min depth"] = 0.0
+        op_dict["composition models"][i_uc]["max depth"] = Duc
+        op_dict["composition models"][i_uc]["compositions"] = [n_comp - 2]
+        op_dict["composition models"][i_lc]["min depth"] = Duc
+        op_dict["composition models"][i_lc]["compositions"] = [n_comp - 1]
+        op_dict["composition models"][i_hz]["compositions"] = [1]
+    else:
+        raise NotImplementedError()
+    op_dict["composition models"][i_lc]["max depth"] = Dsz
+    op_dict["composition models"][i_hz]["min depth"] = Dsz
+    op_dict["composition models"][i_hz]["max depth"] = Dsz * D2C_ratio
     o_dict['features'][i0] = op_dict
     # Subducting plate
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Subducting plate')
@@ -992,9 +1057,24 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
         [trench, _side], [trench, -_side]] # trench position
     sp_dict["temperature models"][0]["spreading velocity"] = sp_rate
     sp_dict["temperature models"][0]["ridge coordinates"] = sp_ridge_coords
-    sp_dict["composition models"][0]["max depth"] = Dsz
-    sp_dict["composition models"][1]["min depth"] = Dsz
-    sp_dict["composition models"][1]["max depth"] = Dsz * D2C_ratio
+    # options for multiple crustal layers
+    sample_composiiton_model =  sp_dict["composition models"][0].copy()
+    if n_crust_layer == 1:
+        pass
+    elif n_crust_layer == 2:
+        # options with multiple crustal layer
+        sp_dict["composition models"].append(sample_composiiton_model)
+        sp_dict["composition models"][i_uc]["min depth"] = 0.0
+        sp_dict["composition models"][i_uc]["max depth"] = Duc
+        sp_dict["composition models"][i_uc]["compositions"] = [n_comp - 4]
+        sp_dict["composition models"][i_lc]["min depth"] = Duc
+        sp_dict["composition models"][i_lc]["compositions"] = [n_comp - 3]
+        sp_dict["composition models"][i_hz]["compositions"] = [0]
+    else:
+        raise NotImplementedError()
+    sp_dict["composition models"][i_lc]["max depth"] = Dsz
+    sp_dict["composition models"][i_hz]["min depth"] = Dsz
+    sp_dict["composition models"][i_hz]["max depth"] = Dsz * D2C_ratio
     o_dict['features'][i0] = sp_dict
     # Slab
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Slab')
@@ -1015,10 +1095,26 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
     else:
         raise NotImplementedError()
     for i in range(len(s_dict["segments"])-1):
+        
         # thickness of crust, last segment is a ghost, so skip
-        s_dict["segments"][i]["composition models"][0]["max distance slab top"] = Dsz
-        s_dict["segments"][i]["composition models"][1]["min distance slab top"] = Dsz
-        s_dict["segments"][i]["composition models"][1]["max distance slab top"] = Dsz * D2C_ratio
+        sample_composiiton_model =  s_dict["segments"][i]["composition models"][0].copy()
+        if n_crust_layer == 1:
+            pass
+        elif n_crust_layer == 2:
+            # options with multiple crustal layer
+            s_dict["segments"][i]["composition models"].append(sample_composiiton_model)
+            s_dict["segments"][i]["composition models"][i_uc]["min distance slab top"] = 0.0
+            s_dict["segments"][i]["composition models"][i_uc]["max distance slab top"] = Duc
+            s_dict["segments"][i]["composition models"][i_uc]["compositions"] = [n_comp - 4]
+            s_dict["segments"][i]["composition models"][i_lc]["min distance slab top"] = Duc
+            s_dict["segments"][i]["composition models"][i_lc]["compositions"] = [n_comp - 3]
+            s_dict["segments"][i]["composition models"][i_hz]["compositions"] = [0]
+        else:
+            raise NotImplementedError()
+
+        s_dict["segments"][i]["composition models"][i_lc]["max distance slab top"] = Dsz
+        s_dict["segments"][i]["composition models"][i_hz]["min distance slab top"] = Dsz
+        s_dict["segments"][i]["composition models"][i_hz]["max distance slab top"] = Dsz * D2C_ratio
         pass
     o_dict['features'][i0] = s_dict
     # mantle for substracting adiabat

@@ -191,3 +191,11 @@ def test_duplicate_move_composition_option():
     temp = ParsePrm.remove_composition_option(temp, "spcrust")
     assert(temp == "background:1.4000e-19|1.4000e-19|1.4000e-19|1.4000e-19|1.0000e-31|1.0000e-31|1.0000e-31|1.0000e-31, spharz:1.4000e-19|1.4000e-19|1.4000e-19|1.4000e-19|1.0000e-31|1.0000e-31|1.0000e-31|1.0000e-31, opcrust:1.4000e-19, opharz:1.4000e-19, spcrust_low:1.4000e-19|1.4000e-19|1.0000e-31|1.0000e-31, spcrust_up:1.4000e-19|1.4000e-19|1.0000e-31|1.0000e-31")
 
+
+def test_ReplacePhaseOption():
+    '''
+    test the function ReplacePhaseOption
+    '''
+    str_in = "background: 1.4e-19|1.4e-19|1.4e-19|1.4e-19|1e-31|1e-31|1e-31|1e-31, spcrust: 1.4e-19|1.4e-19|1e-31|1e-31, spharz: 1.4e-19|1.4e-19|1.4e-19|1.4e-19|1e-31|1e-31|1e-31|1e-31, opcrust: 1.4e-19, opharz: 1.4e-19"
+    str_out = ParsePrm.ReplacePhaseOption(str_in, "background", 0, 1e-18)
+    assert(str_out == "background:1.0000e-18|1.4000e-19|1.4000e-19|1.4000e-19|1.0000e-31|1.0000e-31|1.0000e-31|1.0000e-31, spcrust:1.4000e-19|1.4000e-19|1.0000e-31|1.0000e-31, spharz:1.4000e-19|1.4000e-19|1.4000e-19|1.4000e-19|1.0000e-31|1.0000e-31|1.0000e-31|1.0000e-31, opcrust:1.4000e-19, opharz:1.4000e-19")

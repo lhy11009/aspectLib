@@ -88,7 +88,7 @@ from matplotlib import gridspec, cm
 from matplotlib import patches as mpatches 
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 from shilofue.FlowLaws import visc_diff_HK
-from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic
+from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic, ReplacePhaseOption
 from shilofue.ThermalModel import MANTLE_ADIABAT
 from scipy.interpolate import interp1d
 from mpl_toolkits.mplot3d import Axes3D
@@ -3356,6 +3356,49 @@ def CompareMantleRheology():
     figure_path = os.path.join(o_dir, 'compare.png')
     fig.savefig(figure_path)
     print("%s: figure saved %s" % (Utilities.func_name(), figure_path))
+
+
+def AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, key, idx, diffusion_creep, dislocation_creep):
+    '''
+    Inputs:
+        visco_plastic_dict(dict): options for the viscoplastic module in the aspect material model
+        key: name for the composition
+        idx: index for the phase
+        diffusion_creep: diffusion creep rheology
+        dislocation_creep: dislocation creep rheology
+    Return:
+        visco_plastic_dict(dict): options for the viscoplastic module in the aspect material model after the change
+    '''
+    assert((diffusion_creep is not None) or (dislocation_creep is not None))
+    # diffusion creep
+    if diffusion_creep is not None:
+        diffusion_creep_aspect = Convert2AspectInput(diffusion_creep, use_effective_strain_rate=True)
+        visco_plastic_dict["Prefactors for diffusion creep"] = \
+            ReplacePhaseOption(visco_plastic_dict["Prefactors for diffusion creep"], key, idx, diffusion_creep_aspect['A'])
+        visco_plastic_dict["Grain size exponents for diffusion creep"] = \
+            ReplacePhaseOption(visco_plastic_dict["Grain size exponents for diffusion creep"], key, idx, diffusion_creep_aspect['p'])
+        visco_plastic_dict["Activation energies for diffusion creep"] = \
+            ReplacePhaseOption(visco_plastic_dict["Activation energies for diffusion creep"], key, idx, diffusion_creep_aspect['E'])
+        visco_plastic_dict["Activation volumes for diffusion creep"] = \
+            ReplacePhaseOption(visco_plastic_dict["Activation volumes for diffusion creep"], key, idx, diffusion_creep_aspect['V'])
+    else:
+        visco_plastic_dict["Prefactors for diffusion creep"] = \
+            ReplacePhaseOption(visco_plastic_dict["Prefactors for diffusion creep"], key, idx, 1e-31)
+    # dislocation creep
+    if dislocation_creep is not None:
+        dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=True)
+        visco_plastic_dict["Prefactors for dislocation creep"] = \
+            ReplacePhaseOption(visco_plastic_dict["Prefactors for dislocation creep"], key, idx, dislocation_creep_aspect['A'])
+        visco_plastic_dict["Stress exponents for dislocation creep"] = \
+            ReplacePhaseOption(visco_plastic_dict["Stress exponents for dislocation creep"], key, idx, dislocation_creep_aspect['n'])
+        visco_plastic_dict["Activation energies for dislocation creep"] = \
+            ReplacePhaseOption(visco_plastic_dict["Activation energies for dislocation creep"], key, idx, dislocation_creep_aspect['E'])
+        visco_plastic_dict["Activation volumes for dislocation creep"] = \
+            ReplacePhaseOption(visco_plastic_dict["Activation volumes for dislocation creep"], key, idx, dislocation_creep_aspect['V'])
+    else:
+        visco_plastic_dict["Prefactors for dislocation creep"] = \
+            ReplacePhaseOption(visco_plastic_dict["Prefactors for dislocation creep"], key, idx, 1e-31)
+    return visco_plastic_dict
 
 
 
