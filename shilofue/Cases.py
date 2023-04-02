@@ -96,6 +96,8 @@ it only takes effect if the input is positiveh",\
         self.add_key("Version number", float, ["version"], 0.1, nick="version")
         self.add_key("Type of visualization software for post-process", str,\
          ["post process", "visualization software"], "visit", nick="visual_software")
+        self.add_key("Type of composition method", str,\
+         ["composition method", "scheme"], "field", nick="comp_method")
     
     def check(self):
         '''
@@ -113,6 +115,9 @@ it only takes effect if the input is positiveh",\
         # type of the visualization software
         visual_software = self.values[24] 
         assert (visual_software in ["paraview", "visit"])
+        # type of the composition method
+        comp_method = self.values[25]
+        assert (comp_method in ['field', 'particle'])
 
     def to_init(self):
         '''

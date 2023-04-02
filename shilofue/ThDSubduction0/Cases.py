@@ -30,7 +30,7 @@ import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 from shilofue.Rheology import RHEOLOGY_OPR
 from shilofue.TwoDSubduction0.Cases import re_write_geometry_while_assigning_plate_age
-import json
+import json, re
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -177,6 +177,7 @@ different age will be adjusted.",\
         prescribe_mantle_ov = self.values[self.start+40]
         mantle_minimum_init = self.values[self.start+41]
         visual_software = self.values[24] 
+        comp_method = self.values[25] 
         if visual_software == 'paraview':
             # output the step 1 if the fast_first_step is processed
             self.output_step_one_with_fast_first_step()
@@ -186,7 +187,8 @@ different age will be adjusted.",\
             sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
             adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
             reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir,\
-            branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init
+            branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init,\
+            comp_method
         
     def to_configure_wb(self):
         '''
@@ -249,7 +251,7 @@ class CASE(CasesP.CASE):
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
     reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch,\
-    sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init):
+    sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init, comp_method):
         '''
         Configure prm file
         '''
@@ -291,6 +293,33 @@ class CASE(CasesP.CASE):
         elif _type == "s07T":
                 o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
                 "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining, max_refinement-1, max_refinement-2)
+
+        # composition method
+        if comp_method == "field":
+            pass
+        elif comp_method == "particle":
+            comp_dict = o_dict["Compositional fields"]
+            comp_dict["Compositional field methods"] = "particles, particles"
+            comp_dict["Mapped particle properties"]  = "sp_upper: initial sp_upper, sp_lower: initial sp_lower"
+            # add the option into the list of postprocessers
+            temp = o_dict["Postprocess"]["List of postprocessors"]
+            if not re.match('.*particles', temp):
+                o_dict["Postprocess"]["List of postprocessors"] = temp + ", particles"
+            # options for the particle method itself
+            pp_particle_dict = \
+            {\
+                "Number of particles": "5e7",\
+                "Minimum particles per cell": "33",\
+                "Maximum particles per cell": "50",\
+                "Load balancing strategy": "remove and add particles",\
+                "List of particle properties": "initial composition",\
+                "Interpolation scheme": "cell average",\
+                "Update ghost particles":  "true",\
+                "Particle generator name":  "random uniform",\
+                "Time between data output" : "0.1e6",\
+                "Data output format": "vtu"\
+            }
+            o_dict["Postprocess"]["Particles"] = pp_particle_dict
 
         
         # boundary temperature model
@@ -405,6 +434,7 @@ class CASE(CasesP.CASE):
                         (box_depth, box_length, Dsz_str, Dp_str, sp_width, sp_ridge_x, ov_side_dist)
         else:
             raise ValueError()
+
         # todo_pres
         # prescribe mantle temperature
         if _type == '2d_consistent':
