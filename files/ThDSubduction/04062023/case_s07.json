@@ -1,9 +1,10 @@
 {
-  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/05042022",
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/04062023",
   "output directory": "",
   "name": "",
   "type": "s07",
   "use world builder": 1,
+  "branch": "master_TwoD_knl",
   "post process": {
     "visualization software" : "paraview"
   },

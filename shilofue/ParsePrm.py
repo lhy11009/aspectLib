@@ -149,7 +149,7 @@ def ParseFromDealiiInput(fin):
             # Start a new subsection
             # Initialize new dictionary and interatively call function,
             key = re.sub('^.*subsection ', '', line)
-            key = key.strip('\n')
+            key = re.sub(' *(#.*)?\n$', '', key)
             try:
                 # Fix the bug where a subsection emerges
                 # multiple times

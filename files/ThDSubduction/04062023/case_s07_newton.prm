@@ -1,10 +1,14 @@
+# This case contains:
+# 1. Subduting slab with the plate model temperature profile
+# 2. Composition rheology, with the modified olivine rheology
+# 3. By default, there is no side plates, but a side plate could be set up with the python script Case.py
 set Dimension = 3
 set Use years in output instead of seconds = true
 set Start time = 0
 set End time = 20e6
 set Output directory = output
 set Timing output frequency = 10
-set Additional shared libraries = $ASPECT_SOURCE_DIR/build_master_TwoD/visco_plastic_TwoD/libvisco_plastic_TwoD.so
+set Additional shared libraries = $ASPECT_SOURCE_DIR/build_master_TwoD_knl/visco_plastic_TwoD/libvisco_plastic_TwoD.so
 set Pressure normalization = surface
 set Surface pressure = 0
 set Adiabatic surface temperature = 1573.0
@@ -27,8 +31,8 @@ end
 
 
 subsection Solver parameters
-    subsection Stokes solver parameters
-        set Stokes solver type = block AMG
+    subsection Stokes solver parameters  # this step
+        set Stokes solver type = block GMG
         set Maximum number of expensive Stokes solver steps = 5000
         set Number of cheap Stokes solver steps = 500
         set Linear solver tolerance = 1e-6
@@ -47,10 +51,10 @@ end
 subsection Geometry model
     set Model name = box
     subsection Box
-        set X extent = 7783000.0
+        set X extent = 4000000.0
         set Y extent = 4000000.0
         set Z extent = 1000000.0
-        set X repetitions = 7
+        set X repetitions = 4
         set Y repetitions = 4
         set Z repetitions = 1
     end
@@ -144,7 +148,7 @@ subsection Material model
         set Reference viscosity = 1e20
         set Minimum strain rate = 1.e-20
         set Reference strain rate = 1e-15
-        set Minimum viscosity = 1e18
+        set Minimum viscosity = 1e19
         set Maximum viscosity = 1e24
         set Phase transition depths = background:670e3, sp_upper: 100e3|670e3, sp_lower: 670e3, plate_edge: 250e3|670e3
         set Phase transition widths = 5e3
@@ -177,7 +181,7 @@ subsection Material model
         subsection Reaction mor function
             set Coordinate system = cartesian
             set Variable names = x, y, z
-            set Function constants = Do=1.0000e+06, xm=7.7830e+06, DpUp=15000.0, Dp=65000.0, Wp=1.0000e+06, pWidth=1e5
+            set Function constants = Do=1.0000e+06, xm=4.0000e+06, DpUp=15000.0, Dp=65000.0, Wp=1.0000e+06, pWidth=1e5
             set Function expression = ((z >= Do - DpUp) && (x < pWidth) && (y <= Wp)) ? 0:\
                                         ((z < Do - DpUp) && (z > Do - Dp) && (x < pWidth) && (y <= Wp)) ? 1: -1
         end
@@ -211,6 +215,6 @@ end
 
 
 subsection Checkpointing
-    set Steps between checkpoint = 100
+    set Steps between checkpoint = 50
 end
 

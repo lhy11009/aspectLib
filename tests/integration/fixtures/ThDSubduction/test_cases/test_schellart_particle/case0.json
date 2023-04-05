@@ -1,0 +1,29 @@
+{
+  "base directory": "${ASPECT_LAB_DIR}/files/ThDSubduction/11162022",
+  "output directory": "${ASPECT_LAB_DIR}/.test",
+  "name": "test_schellart_particle",
+  "type": "s07",
+  "use world builder": 1,
+  "include fast first step": 1,
+  "geometry setup": {
+    "box width": 4000000.0,
+    "box length": 4000000.0,
+    "box depth": 1000000.0
+  },
+  "plate setup": {
+    "sp width": 1000000.0,
+    "sp length": 3000000.0,
+    "trailing length": 275000.0,
+    "reset trailing morb": 0
+  },
+  "rheology": {
+    "reference viscosity": 1e+20,
+    "plate relative viscosity": 200.0,
+    "friction angle": 16.7,
+    "cohesion": 24000000.0
+  },
+  "composition method":
+  {
+    "scheme": "particle"
+  }
+}
