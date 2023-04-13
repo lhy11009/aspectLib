@@ -139,6 +139,10 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("Thickness of the upper crust", float, ["shear zone", 'upper crust thickness'], 3e3, nick='Duc')
         self.add_key("Rheology of the upper crust", str, ["shear zone", 'upper crust rheology scheme'], '', nick='upper_crust_rheology_scheme')
         self.add_key("Rheology of the lower crust", str, ["shear zone", 'lower crust rheology scheme'], '', nick='lower_crust_rheology_scheme')
+        self.add_key("Distance of the subducting plate to the box side", float,\
+            ['world builder', 'subducting plate', 'trailing length'], 0.0, nick='sp_trailing_length')
+        self.add_key("Distance of the overiding plate to the box side", float,\
+            ['world builder', 'overiding plate', 'trailing length'], 0.0, nick='ov_trailing_length')
     
     def check(self):
         '''
@@ -260,6 +264,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         n_crust_layer = self.values[self.start + 38]
         upper_crust_rheology_scheme = self.values[self.start + 40]
         lower_crust_rheology_scheme = self.values[self.start + 41]
+        sp_trailing_length = self.values[self.start + 42]
+        ov_trailing_length = self.values[self.start + 43]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -268,7 +274,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
         branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
         ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
-        upper_crust_rheology_scheme, lower_crust_rheology_scheme
+        upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length
 
     def to_configure_wb(self):
         '''
@@ -297,9 +303,17 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             n_comp = 4
         elif n_crust_layer == 2:
             n_comp = 6
+        sp_trailing_length = self.values[self.start + 42]
+        ov_trailing_length = self.values[self.start + 43]
+        plate_age_method = self.values[self.start + 8] 
+        box_width = self.values[self.start + 6]
+        if plate_age_method == 'adjust box width':
+            box_width = re_write_geometry_while_assigning_plate_age(
+            *self.to_re_write_geometry_pa()
+            ) # adjust box width
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
             if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version,\
-            n_crust_layer, Duc, n_comp
+            n_crust_layer, Duc, n_comp, sp_trailing_length, ov_trailing_length, box_width
     
     def to_configure_final(self):
         '''
@@ -314,9 +328,13 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         return geometry, Dsz, use_embeded_fault, ef_Dbury, ef_particle_interval, use_embeded_fault_feature_surface
     
     def to_re_write_geometry_pa(self):
+        '''
+        Interface to re_write_geometry_pa
+        '''
         box_width_pre_adjust = self.values[self.start+11]
+        sp_trailing_length = self.values[self.start + 42]
         return box_width_pre_adjust, self.defaults[self.start],\
-        self.values[self.start], self.values[self.start+1]
+        self.values[self.start], self.values[self.start+1], sp_trailing_length
     
     def is_box_wider(self):
         '''
@@ -345,7 +363,7 @@ class CASE(CasesP.CASE):
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
     sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
     sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,
-    version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme):
+    version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -353,20 +371,20 @@ class CASE(CasesP.CASE):
         if type_of_bd == "all free slip":  # boundary conditions
             pass
         elif type_of_bd == "top prescribed":
-            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro)
+            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length)
             # assign a 0.0 value for the overiding plate velocity
             # the subducting plate velocity is consistent with the value used in the worldbuilder
             bd_v_dict = prm_top_prescribed(trench, sp_rate, 0.0, refinement_level, delta_trench=delta_trench)
             o_dict["Boundary velocity model"] = bd_v_dict
         elif type_of_bd == "top prescribed with bottom right open":
-            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro)
+            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length)
             # assign a 0.0 value for the overiding plate velocity
             # the subducting plate velocity is consistent with the value used in the worldbuilder
             bd_v_dict, bd_t_dict = prm_top_prescribed_with_bottom_right_open(trench, sp_rate, 0.0, refinement_level, delta_trench=delta_trench)
             o_dict["Boundary velocity model"] = bd_v_dict
             o_dict["Boundary traction model"] = bd_t_dict
         elif type_of_bd == "top prescribed with bottom left open":
-            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro)
+            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length)
             # assign a 0.0 value for the overiding plate velocity
             # the subducting plate velocity is consistent with the value used in the worldbuilder
             bd_v_dict, bd_t_dict = prm_top_prescribed_with_bottom_left_open(trench, sp_rate, 0.0, refinement_level)
@@ -432,10 +450,10 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         visco_plastic_twoD = self.idict['Material model']['Visco Plastic TwoD']
         if geometry == 'chunk':
             o_dict['Material model']['Visco Plastic TwoD'] =\
-              prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd)
+              prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, sp_trailing_length, ov_trailing_length)
         elif geometry == 'box':
             o_dict['Material model']['Visco Plastic TwoD'] =\
-              prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd)
+              prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_trailing_length, ov_trailing_length)
         # set up subsection Prescribed temperatures
         if geometry == 'chunk':
             if prescribe_T_method == 'plate model':
@@ -456,6 +474,10 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         if type_of_bd in ["top prescribed with bottom right open", "top prescribed with bottom left open", "top prescribed"]:
             # in this case, I want to keep the options for prescribing temperature but to turn it off at the start
             o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
+        if sp_trailing_length > 1e-6 or ov_trailing_length > 1e-6:
+            # in case the trailing edge doesn't touch the box, reset this
+            # this doesn't work for now
+            o_dict["Prescribe internal temperatures"] = "false"
         
         # Material model
         da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
@@ -631,7 +653,7 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
         if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version,\
-        n_crust_layer, Duc, n_comp):
+        n_crust_layer, Duc, n_comp, sp_trailing_length, ov_trailing_length, box_width):
         '''
         Configure world builder file
         Inputs:
@@ -667,7 +689,8 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             # sz_thickness
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag, wb_new_ridge, version, n_crust_layer, Duc, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
-            ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz, n_comp=n_comp)
+            ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz, n_comp=n_comp,\
+            sp_trailing_length=sp_trailing_length, ov_trailing_length=ov_trailing_length, box_width=box_width)
         elif geometry == 'box':
             if is_box_wider:
                 Xmax = 2e7
@@ -676,7 +699,8 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             Ro = float(self.idict['Geometry model']['Box']['Y extent'])
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag, wb_new_ridge, version, n_crust_layer, Duc, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
-            ov_trans_length=ov_trans_length, geometry=geometry, sz_thickness=Dsz, n_comp=n_comp) # plates
+            ov_trans_length=ov_trans_length, geometry=geometry, sz_thickness=Dsz, n_comp=n_comp, sp_trailing_length=sp_trailing_length,\
+            ov_trailing_length=ov_trailing_length, box_width=box_width) # plates
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
     
@@ -958,6 +982,9 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
     geometry = kwargs.get('geometry', 'chunk')
     Dsz = kwargs.get("sz_thickness", None)
     n_comp = kwargs.get("n_comp", 4)
+    sp_trailing_length = kwargs.get("sp_trailing_length", 0.0)
+    ov_trailing_length = kwargs.get("ov_trailing_length", 0.0)
+    box_width = kwargs.get("box_width", None)
     D2C_ratio = 35.2e3 / 7.5e3 # ratio of depleted / crust layer
     o_dict = wb_dict.copy()
     max_cart = 2 * Xmax
@@ -969,7 +996,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
     elif geometry == 'box':
         _side = side_dist
         _max = max_cart
-    trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro)
+    trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length)
     if wb_new_ridge == 1:
         sp_ridge_coords = [[[0, -_side], [0, _side]]]
     else:
@@ -1029,8 +1056,18 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
         ov = trench
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate')
     op_dict = o_dict['features'][i0]
-    op_dict["coordinates"] = [[ov, -_side], [ov, _side],\
-        [_max, _side], [_max, -_side]] # trench position
+    if ov_trailing_length > 0.0:
+        assert(box_width is not None)
+        # migrate the trailing edge from the box side
+        if geometry == "box":
+            end_point =  box_width - ov_trailing_length
+        elif geometry == "chunk":
+            end_point =  (box_width - ov_trailing_length) / Ro * 180.0 / np.pi
+        op_dict["coordinates"] = [[ov, -_side], [ov, _side],\
+            [end_point, _side], [end_point, -_side]] # trench position
+    else:
+        op_dict["coordinates"] = [[ov, -_side], [ov, _side],\
+            [_max, _side], [_max, -_side]] # trench position
     op_dict["temperature models"][0]["plate age"] = ov_age  # age of overiding plate
     # options for multiple crustal layers
     sample_composiiton_model =  op_dict["composition models"][0].copy()
@@ -1052,9 +1089,14 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
     op_dict["composition models"][i_hz]["max depth"] = Dsz * D2C_ratio
     o_dict['features'][i0] = op_dict
     # Subducting plate
+    # 1. change to the starting point sp_trailing_length and fix the geometry
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Subducting plate')
     sp_dict = o_dict['features'][i0]
-    sp_dict["coordinates"] = [[0.0, -_side], [0.0, _side],\
+    if geometry == "box":
+        start_point = sp_trailing_length
+    elif geometry == "chunk":
+        start_point = sp_trailing_length / Ro * 180.0 / np.pi
+    sp_dict["coordinates"] = [[start_point, -_side], [start_point, _side],\
         [trench, _side], [trench, -_side]] # trench position
     sp_dict["temperature models"][0]["spreading velocity"] = sp_rate
     sp_dict["temperature models"][0]["ridge coordinates"] = sp_ridge_coords
@@ -1294,7 +1336,7 @@ def prm_geometry_cart(box_width, **kwargs):
     return o_dict
 
 
-def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, **kwargs):
+def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, sp_trailing_length, ov_trailing_length, **kwargs):
     '''
     reset subsection Visco Plastic TwoD
     Inputs:
@@ -1304,13 +1346,13 @@ def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, **kwargs
     '''
     o_dict = visco_plastic_twoD.copy()
     o_dict['Reset viscosity function'] =\
-        prm_reset_viscosity_function_sph(max_phi)
+        prm_reset_viscosity_function_sph(max_phi, sp_trailing_length, ov_trailing_length)
     if type_of_bd in ["all free slip"]:
         o_dict["Reaction mor"] = 'true'
     else:
         o_dict["Reaction mor"] = 'false'
     o_dict["Reaction mor function"] =\
-        prm_reaction_mor_function_sph(max_phi)
+        prm_reaction_mor_function_sph(max_phi, sp_trailing_length, ov_trailing_length)
     if type_of_bd == "all free slip":
         # use free slip on both sides, set ridges on both sides
         o_dict['Reset viscosity'] = 'true'
@@ -1319,7 +1361,7 @@ def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, **kwargs
     return o_dict
 
 
-def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, **kwargs):
+def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_trailing_length, ov_trailing_length, **kwargs):
     '''
     reset subsection Visco Plastic TwoD
     Inputs:
@@ -1329,13 +1371,13 @@ def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, **kwa
     '''
     o_dict = visco_plastic_twoD.copy()
     o_dict['Reset viscosity function'] =\
-        prm_reset_viscosity_function_cart(box_width)
+        prm_reset_viscosity_function_cart(box_width, sp_trailing_length, ov_trailing_length)
     if type_of_bd in ["all free slip"]:
         o_dict["Reaction mor"] = 'true'
     else:
         o_dict["Reaction mor"] = 'false'
     o_dict["Reaction mor function"] =\
-        prm_reaction_mor_function_cart(box_width)
+        prm_reaction_mor_function_cart(box_width, sp_trailing_length, ov_trailing_length)
     if type_of_bd in ["all free slip"]:
         # use free slip on both sides, set ridges on both sides
         o_dict['Reset viscosity'] = 'true'
@@ -1344,56 +1386,110 @@ def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, **kwa
     return o_dict
 
 
-def prm_reset_viscosity_function_sph(max_phi):
+def prm_reset_viscosity_function_sph(max_phi, sp_trailing_length, ov_trailing_length):
     '''
     Default setting for Reset viscosity function in spherical geometry
+    Inputs:
+        sp_trailing_length: trailing length of the subducting plate
+        ov_trailing_length: trailing length of the overiding plate
     '''
     max_phi_in_rad = max_phi * np.pi / 180.0
+    if sp_trailing_length < 1e-6 and ov_trailing_length < 1e-6:
+        function_constants_str = "Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=%.4e, CV=1e20" % max_phi_in_rad
+        function_expression_str =  "(((r > Ro - Depth) && ((Ro*phi < Width) || (Ro*(PHIM-phi) < Width)))? CV: -1.0)"
+    elif sp_trailing_length > 1e-6 and ov_trailing_length > 1e-6:
+        function_constants_str = "Depth=1.45e5, SPTL=%.4e, OPTL=%.4e, Ro=6.371e6, PHIM=%.4e, CV=1e20" % \
+        (sp_trailing_length, ov_trailing_length, max_phi_in_rad)
+        function_expression_str =  "(((r > Ro - Depth) && ((Ro*phi < SPTL) || (Ro*(PHIM-phi) < OPTL)))? CV: -1.0)"
+    else:
+        return NotImplementedError()
     odict = {
         "Coordinate system": "spherical",
         "Variable names": "r, phi",
-        "Function constants": "Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=%.4e, CV=1e20" % max_phi_in_rad,
-        "Function expression": "(((r > Ro - Depth) && ((Ro*phi < Width) || (Ro*(PHIM-phi) < Width)))? CV: -1.0)"
+        "Function constants": function_constants_str,
+        "Function expression": function_expression_str
       }
     return odict
 
 
-def prm_reset_viscosity_function_cart(box_width):
+def prm_reset_viscosity_function_cart(box_width, sp_trailing_length, ov_trailing_length):
     '''
     Default setting for Reset viscosity function in cartesian geometry
+    Inputs:
+        sp_trailing_length: trailing length of the subducting plate
+        ov_trailing_length: trailing length of the overiding plate
     '''
+    if sp_trailing_length < 1e-6 and ov_trailing_length < 1e-6:
+        function_constants_str =  "Depth=1.45e5, Width=2.75e5, Do=2.890e6, xm=%.4e, CV=1e20" % box_width
+        function_expression_str =  "(((y > Do - Depth) && ((x < Width) || (xm-x < Width)))? CV: -1.0)"
+    elif sp_trailing_length > 1e-6 and ov_trailing_length > 1e-6:
+        function_constants_str = "Depth=1.45e5, SPTL=%.4e, OPTL=%.4e, Do=2.890e6, xm=%.4e, CV=1e20" % \
+        (sp_trailing_length, ov_trailing_length, max_phi_in_rad)
+        function_expression_str =  "(((y > Do - Depth) && ((x < SPTL) || (xm-x < OPTL)))? CV: -1.0)"
     odict = {
         "Coordinate system": "cartesian",
         "Variable names": "x, y",
-        "Function constants": "Depth=1.45e5, Width=2.75e5, Do=2.890e6, xm=%.4e, CV=1e20" % box_width,
-        "Function expression": "(((y > Do - Depth) && ((x < Width) || (xm-x < Width)))? CV: -1.0)"
+        "Function constants": function_constants_str,
+        "Function expression": function_expression_str
     }
     return odict
 
 
-def prm_reaction_mor_function_sph(max_phi):
+def prm_reaction_mor_function_sph(max_phi, sp_trailing_length, ov_trailing_length):
     '''
     Default setting for Reaction mor function in cartesian geometry
     '''
     max_phi_in_rad = max_phi * np.pi / 180.0
+    if sp_trailing_length < 1e-6 and ov_trailing_length < 1e-6:
+        function_constants_str = "Width=2.75e5, Ro=6.371e6, PHIM=%.4e, DCS=7.500e+03, DHS=3.520e+04" % max_phi_in_rad
+        function_expression_str =  "((r > Ro - DCS) && (Ro*phi < Width)) ? 0:\
+\\\n                                        ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*phi < Width)) ? 1:\
+\\\n                                        ((r > Ro - DCS) && (Ro*(PHIM - phi) < Width)) ? 2:\
+\\\n                                        ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*(PHIM - phi) < Width)) ? 3: -1"
+    elif sp_trailing_length > 1e-6 and ov_trailing_length > 1e-6:
+        function_constants_str = "Width=2.75e5, SPTL=%.4e, OPTL=%.4e, Ro=6.371e6, PHIM=%.4e, DCS=7.500e+03, DHS=3.520e+04" % \
+        (sp_trailing_length, ov_trailing_length, max_phi_in_rad)
+        function_expression_str =  "((r > Ro - DCS) && (Ro*phi > SPTL) && (Ro*phi < Width + SPTL)) ? 0:\
+\\\n                                        ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*phi > SPTL) && (Ro*phi < Width + SPTL)) ? 1:\
+\\\n                                        ((r > Ro - DCS) && (Ro*(PHIM - phi) > OPTL) && (Ro*(PHIM - phi) < Width + OPTL)) ? 2:\
+\\\n                                        ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*(PHIM - phi) > OPTL) && (Ro*(PHIM - phi) < Width + OPTL)) ? 3: -1"
+    else:
+        return NotImplementedError()
     odict = {
         "Coordinate system": "spherical",\
         "Variable names": "r, phi",\
-        "Function constants": "Width=2.75e5, Ro=6.371e6, PHIM=%.4e, DCS=7.500e+03, DHS=3.520e+04" % max_phi_in_rad,\
-        "Function expression": "((r > Ro - DCS) && (Ro*phi < Width)) ? 0:\\\n                                        ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*phi < Width)) ? 1:\\\n                                        ((r > Ro - DCS) && (Ro*(PHIM - phi) < Width)) ? 2:\\\n                                        ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*(PHIM - phi) < Width)) ? 3: -1"
+        # "Function constants": function_constants_str,\
+        # debug
+        "Function constants": function_constants_str,\
+        "Function expression":  function_expression_str
       }
     return odict
 
 
-def prm_reaction_mor_function_cart(box_width):
+def prm_reaction_mor_function_cart(box_width, sp_trailing_length, ov_trailing_length):
     '''
     Default setting for Reaction mor function in cartesian geometry
     '''
+    if sp_trailing_length < 1e-6 and ov_trailing_length < 1e-6:
+        function_constants_str = "Width=2.75e5, Do=2.890e6, xm=%.4e, DCS=7.500e+03, DHS=3.520e+04" % box_width
+        function_expression_str = "((y > Do - DCS) && (x < Width)) ? 0:\
+\\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (x < Width)) ? 1:\
+\\\n                                        ((y > Do - DCS) && (xm - x < Width)) ? 2:\
+\\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (xm - x < Width)) ? 3: -1" 
+    elif sp_trailing_length > 1e-6 and ov_trailing_length > 1e-6:
+        function_constants_str = "Width=2.75e5, SPTL=%.4e, OPTL=%.4e, Do=2.890e6, xm=%.4e, DCS=7.500e+03, DHS=3.520e+04" % \
+        (sp_trailing_length, ov_trailing_length, box_width)
+        function_expression_str = "((y > Do - DCS) && (x > SPTL) && (x < Width + SPTL)) ? 0:\
+\\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (x > SPTL) && (x < Width + SPTL)) ? 1:\
+\\\n                                        ((y > Do - DCS) && (xm - x > OPTL) && (xm - x < Width + OPTL)) ? 2:\
+\\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (xm - x > OPTL) && (xm - x < Width + OPTL)) ? 3: -1"
+    else:
+        return NotImplementedError()
     odict = {
-        "Coordinate system": "cartesian",
-        "Variable names": "x, y",
-        "Function constants": "Width=2.75e5, Do=2.890e6, xm=%.4e, DCS=7.500e+03, DHS=3.520e+04" % box_width,
-        "Function expression": "((y > Do - DCS) && (x < Width)) ? 0:\\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (x < Width)) ? 1:\\\n                                        ((y > Do - DCS) && (xm - x < Width)) ? 2:\\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (xm - x < Width)) ? 3: -1"
+        "Coordinate system": "cartesian",\
+        "Variable names": "x, y",\
+        "Function constants": function_constants_str,\
+        "Function expression": function_expression_str
     }
     return odict
 
@@ -1574,7 +1670,7 @@ def prm_top_prescribed_with_bottom_left_open(trench, sp_rate, ov_rate, refinemen
     return bd_v_dict, bd_t_dict
 
 
-def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_rate):
+def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_rate, sp_trailing_length):
     '''
     adjust box width with assigned spreading rate of subducting plate and subducting plate age
     Inputs:
@@ -1582,8 +1678,9 @@ def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_
         sp_age0: default plate age
         sp_age: plate age
         sp_rate: spreading rate of the subducting plate
+        sp_trailing_length: trailing length of the sp plate
     '''
-    box_width = box_width0 + (sp_age - sp_age0) * sp_rate
+    box_width = box_width0 + (sp_age - sp_age0) * sp_rate + sp_trailing_length
     return box_width
 
 
@@ -1711,9 +1808,16 @@ def CDPT_assign_yielding(o_dict, cohesion, friction, **kwargs):
         % (cohesion, crust_cohesion, cohesion, cohesion, cohesion)
 
 
-def get_trench_position(sp_age_trench, sp_rate, geometry, Ro):
-    trench_sph = (sp_age_trench * sp_rate / Ro) * 180.0 / np.pi
-    trench_cart = sp_age_trench * sp_rate
+def get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length):
+    '''
+    Inputs:
+        sp_trainling_length: distance of the trailing end of the subduction plate to the
+        side wall.
+    Returns:
+        trench: coordinate of the trench
+    '''
+    trench_sph = (sp_age_trench * sp_rate + sp_trailing_length) / Ro * 180.0 / np.pi
+    trench_cart = sp_age_trench * sp_rate + sp_trailing_length
     if geometry == "chunk":
         trench = trench_sph
     elif geometry == "box":
