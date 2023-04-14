@@ -513,7 +513,8 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         self.output_imgs.append(Operator.output_profile) # append plot of initial conition to figures
         # yielding criteria
         if sz_viscous_scheme == "stress dependent":
-            CDPT_assign_yielding(o_dict, cohesion, friction, crust_cohesion=crust_cohesion, crust_friction=crust_friction)
+            CDPT_assign_yielding(o_dict, cohesion, friction, crust_cohesion=crust_cohesion, crust_friction=crust_friction\
+            , if_couple_eclogite_viscosity=if_couple_eclogite_viscosity)
         else:
             CDPT_assign_yielding(o_dict, cohesion, friction)
         # append to initial condition output
@@ -1795,17 +1796,28 @@ disl_crust_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V)
 def CDPT_assign_yielding(o_dict, cohesion, friction, **kwargs):
     '''
     Assign mantle rheology in the CDPT model
+    Inputs:
+        kwargs:
+            if_couple_eclogite_viscosity - if the viscosity is coupled with the eclogite transition
     ''' 
     crust_cohesion = kwargs.get("crust_cohesion", cohesion)
     crust_friction = kwargs.get("crust_friction", friction)
+    if_couple_eclogite_viscosity = kwargs.get("if_couple_eclogite_viscosity", False)
     if abs(cohesion  - 50e6)/50e6 < 1e-6 and abs(friction - 25.0)/25.0 < 1e-6\
     and abs(crust_cohesion  - 50e6)/50e6 < 1e-6 and  abs(crust_friction - 25.0)/25.0 < 1e-6:
         pass  # default conditions
     else:
-        o_dict['Material model']['Visco Plastic TwoD']["Angles of internal friction"] = "background: %.4e, spcrust: %.4e, spharz: %.4e, opcrust: %.4e, opharz: %.4e" \
-        % (friction, crust_friction, friction, friction, friction)
-        o_dict['Material model']['Visco Plastic TwoD']["Cohesions"] = "background: %.4e, spcrust: %.4e, spharz: %.4e, opcrust: %.4e, opharz: %.4e" \
-        % (cohesion, crust_cohesion, cohesion, cohesion, cohesion)
+        if if_couple_eclogite_viscosity:
+            # take care of the different phases if the viscosity change is coupled to the eclogite transition
+            spcrust_friction_str = "spcrust: %.4e|%.4e|%.4e|%.4e" % (crust_friction, friction, friction, friction)
+            spcrust_cohesion_str = "spcrust: %.4e|%.4e|%.4e|%.4e" % (crust_cohesion, cohesion, cohesion, cohesion)
+        else:
+            spcrust_friction_str = "spcrust: %.4e" % crust_friction
+            spcrust_cohesion_str = "spcrust: %.4e" % crust_cohesion
+        o_dict['Material model']['Visco Plastic TwoD']["Angles of internal friction"] = "background: %.4e" % friction + ", "\
+         + spcrust_friction_str + ", " + "spharz: %.4e, opcrust: %.4e, opharz: %.4e" % (friction, friction, friction)
+        o_dict['Material model']['Visco Plastic TwoD']["Cohesions"] = "background: %.4e" % cohesion + ", "\
+         + spcrust_cohesion_str + ", " + "spharz: %.4e, opcrust: %.4e, opharz: %.4e" % (cohesion, cohesion, cohesion)
 
 
 def get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length):

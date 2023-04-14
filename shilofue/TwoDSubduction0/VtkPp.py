@@ -2324,7 +2324,8 @@ class SLABPLOT(LINEARPLOT):
         sd_range = kwargs.get('sd_range', [])
         # read inputs
         prm_file = os.path.join(case_dir, 'output', 'original.prm')
-        assert(os.access(prm_file, os.R_OK))
+        Utilities.my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,\
+        "prm file %s cannot be opened" % prm_file)
         self.ReadPrm(prm_file)
         # read parameters
         geometry = self.prm['Geometry model']['Model name']
