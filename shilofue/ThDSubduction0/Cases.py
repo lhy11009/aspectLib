@@ -106,14 +106,16 @@ different age will be adjusted.",\
         self.add_key("Geometry", str, ["geometry"], "box", nick='geometry')
         self.add_key("position of the sp ridge", float, ['plate setup', 'sp ridge x'], 0.0, nick='sp_ridge_x')
         self.add_key("distance of the ov ridge from the side wall", float, ['plate setup', 'ov side dist'], 0.0, nick='ov_side_dist')
-        # todo_pres
         self.add_key("prescribe mantle temperature before the subducting plate starts",\
         int, ['plate setup', 'prescribe mantle sp start'], 0, nick='prescribe_mantle_sp')
         self.add_key("prescribe mantle temperature after the overiding plate ends",\
         int, ['plate setup', 'prescribe mantle ov end'], 0, nick='prescribe_mantle_ov')
         self.add_key("Minimum mantle rheology for subducting initiation",\
         float, ['mantle rheology', 'minimum viscosity for initial stage'], -1.0, nick='mantle_minimum_init')
-
+        self.add_key("prescribe viscosity for composition",\
+        int, ['plate setup', 'reset composition viscosity'], 0, nick='reset_composition_viscosity')
+        self.add_key("prescribe viscosity for composition width",\
+        float, ['plate setup', 'reset composition viscosity width'], 2000e3, nick='reset_composition_viscosity_width')
 
     
     def check(self):
@@ -178,6 +180,8 @@ different age will be adjusted.",\
         mantle_minimum_init = self.values[self.start+41]
         visual_software = self.values[24] 
         comp_method = self.values[25] 
+        reset_composition_viscosity = self.values[self.start+42]
+        reset_composition_viscosity_width = self.values[self.start+43]
         if visual_software == 'paraview':
             # output the step 1 if the fast_first_step is processed
             self.output_step_one_with_fast_first_step()
@@ -188,7 +192,7 @@ different age will be adjusted.",\
             adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
             reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir,\
             branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init,\
-            comp_method
+            comp_method, reset_composition_viscosity, reset_composition_viscosity_width
         
     def to_configure_wb(self):
         '''
@@ -238,7 +242,8 @@ different age will be adjusted.",\
         default_sp_age_trench = self.defaults[self.start+24]
         sp_age_trench = self.values[self.start+24]
         sp_rate = self.values[self.start+27] # method of seting up slabs
-        return box_length_pre_adjust, default_sp_age_trench, sp_age_trench, sp_rate
+        # the 0.0 is appended for the sp_trailing_length
+        return box_length_pre_adjust, default_sp_age_trench, sp_age_trench, sp_rate, 0.0
 
 
 class CASE(CasesP.CASE):
@@ -251,7 +256,8 @@ class CASE(CasesP.CASE):
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
     reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch,\
-    sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init, comp_method):
+    sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init, comp_method,\
+    reset_composition_viscosity, reset_composition_viscosity_width):
         '''
         Configure prm file
         '''
@@ -434,8 +440,6 @@ class CASE(CasesP.CASE):
                         (box_depth, box_length, Dsz_str, Dp_str, sp_width, sp_ridge_x, ov_side_dist)
         else:
             raise ValueError()
-
-        # todo_pres
         # prescribe mantle temperature
         if _type == '2d_consistent':
             # only do this for the 2d_consistent model
@@ -465,6 +469,17 @@ class CASE(CasesP.CASE):
             else:
                 # the default in the file should be false if there is any
                 pass
+        # reset composition viscosity
+        # usage is to prescribe a strong core with the plate
+        if reset_composition_viscosity:
+            o_dict['Material model'][material_model_subsection]['Reset composition viscosity'] = 'true'
+            function_dict = o_dict['Material model'][material_model_subsection]['Reset composition viscosity function']
+            if _type == "s07":
+                function_dict["Function constants"] = "Width=%.4e, CV=1e23" % reset_composition_viscosity_width
+            else:
+                raise NotImplementedError()
+            o_dict['Material model'][material_model_subsection]['Reset composition viscosity function'] = function_dict
+
 
 
         o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries

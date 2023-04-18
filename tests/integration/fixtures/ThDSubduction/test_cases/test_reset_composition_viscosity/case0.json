@@ -1,0 +1,43 @@
+{
+  "base directory": "${ASPECT_LAB_DIR}/files/ThDSubduction/04182023",
+  "output directory": "${ASPECT_LAB_DIR}/.test",
+  "name": "test_reset_composition_viscosity",
+  "type": "s07",
+  "use world builder": 1,
+  "branch": "master_TwoD",
+  "post process": {
+    "visualization software": "paraview"
+  },
+  "world builder": {
+    "use new ridge implementation": 1
+  },
+  "include fast first step": 1,
+  "geometry setup": {
+    "box width": 4000000.0,
+    "box length": 4000000.0,
+    "box depth": 1000000.0
+  },
+  "plate setup": {
+    "sp width": 1000000.0,
+    "sp length": 3000000.0,
+    "trailing length": 600000.0,
+    "reset trailing morb": 0,
+    "reset composition viscosity": 1,
+    "reset composition viscosity width": 2000e3
+  },
+  "rheology": {
+    "reference viscosity": 1e+20,
+    "plate relative viscosity": 200.0,
+    "friction angle": 16.7,
+    "cohesion": 24000000.0
+  },
+  "stokes solver": {
+    "type": "block GMG with iterated defect correction Stokes"
+  },
+  "composition method": {
+    "scheme": "particle"
+  },
+  "refinement": {
+    "adaptive refinement": 2
+  }
+}
