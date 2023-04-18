@@ -21,7 +21,7 @@
     "sp width": 1000000.0,
     "sp length": 3000000.0,
     "trailing length": 600000.0,
-    "reset trailing morb": 0,
+    "reset trailing morb": 1,
     "reset composition viscosity": 1,
     "reset composition viscosity width": 2000e3
   },

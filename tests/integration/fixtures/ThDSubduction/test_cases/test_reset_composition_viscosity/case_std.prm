@@ -169,11 +169,11 @@ subsection Material model
             set Function constants = Depth=1.45e5, Width=6.0000e+05, Do=1.0000e+06, xm=4.0000e+06, CV=1e20, Wp=1.0000e+06
             set Function expression = (((z > Do - Depth) && (x < Width) && (y <= Wp))? CV: -1.0)
         end
-        set Reaction mor = false
+        set Reaction mor = true
         subsection Reaction mor function
             set Coordinate system = cartesian
             set Variable names = x, y, z
-            set Function constants = Width=2.750e5, Do=1.000e6, xm=4.000e+06, DpUp=5e+04, Dp=1e5, Wp=1e6, pWidth=1.000e5
+            set Function constants = Width=6.0000e+05, Do=1.0000e+06, xm=4.0000e+06, DpUp=5e+04, Dp=1e5, Wp=1.0000e+06, pWidth=1e5
             set Function expression = ((z >= Do - DpUp) && (x > Width) && (x < pWidth + Width) && (y <= Wp)) ? 0:\
                                         ((z < Do - DpUp) && (z > Do - Dp) && (x > Width) && (x < pWidth + Width) && (y <= Wp)) ? 1: -1
         end
