@@ -143,6 +143,8 @@ intiation stage causes the slab to break in the middle",\
             ['world builder', 'subducting plate', 'trailing length'], 0.0, nick='sp_trailing_length')
         self.add_key("Distance of the overiding plate to the box side", float,\
             ['world builder', 'overiding plate', 'trailing length'], 0.0, nick='ov_trailing_length')
+        self.add_key("Viscosity in the slab core", float,\
+            ['shear zone', "slab core viscosity"], -1.0, nick='slab_core_viscosity')
     
     def check(self):
         '''
@@ -266,6 +268,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         lower_crust_rheology_scheme = self.values[self.start + 41]
         sp_trailing_length = self.values[self.start + 42]
         ov_trailing_length = self.values[self.start + 43]
+        slab_core_viscosity = self.values[self.start + 44]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -274,7 +277,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
         branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
         ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
-        upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length
+        upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity
 
     def to_configure_wb(self):
         '''
@@ -362,8 +365,9 @@ class CASE(CasesP.CASE):
     peierls_two_stage_time, mantle_rheology_scheme, stokes_linear_tolerance, end_time,\
     refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction,\
     sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
-    sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,
-    version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length):
+    sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,\
+    version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length,\
+    slab_core_viscosity):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -502,11 +506,11 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             # default is to fix F
             rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, save_profile=1, save_json=1)
         if mantle_rheology_scheme == "HK03_wet_mod" and sz_viscous_scheme == "constant" and\
-            abs(sz_constant_viscosity - 1e20)/1e20 < 1e-6:  # assign the rheology
+            abs(sz_constant_viscosity - 1e20)/1e20 < 1e-6 and slab_core_viscosity < 0.0:  # assign the rheology
             pass # this is just the default, so skip. Note here we just skip assigning the mantle rheology in the prm
         else:
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
-            sz_minimum_viscosity=sz_minimum_viscosity)
+            sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity)
         # these files are generated with the rheology variables
         self.output_files.append(Operator.output_json)
         self.output_files.append(Operator.output_json_aspect)
@@ -1695,6 +1699,7 @@ def CDPT_assign_mantle_rheology(o_dict, rheology, **kwargs):
     sz_viscous_scheme = kwargs.get("sz_viscous_scheme", "constant")
     sz_constant_viscosity = kwargs.get("sz_constant_viscosity", 1e20)
     sz_minimum_viscosity = kwargs.get("sz_minimum_viscosity", 1e18)
+    slab_core_viscosity = kwargs.get("slab_core_viscosity", -1.0)
     if sz_viscous_scheme == "constant":
         diff_crust_A = 1.0 / 2.0 / sz_constant_viscosity
         diff_crust_m = 0.0
@@ -1788,9 +1793,17 @@ spharz: %.4e|%.4e|%.4e|%.4e|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,\
 opcrust: %.4e, opharz: %.4e" % (disl_V, disl_V, disl_V, disl_V,\
 disl_crust_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V, disl_V)
     if sz_minimum_viscosity > 1e18:
+        spcrust_value = sz_minimum_viscosity
+    else:
+        spcrust_value = "1e18"
+    if slab_core_viscosity > 0.0:
+        spharz_value = slab_core_viscosity
+    else:
+        spharz_value = "1e18"
+    if sz_minimum_viscosity > 1e18 or slab_core_viscosity > 0.0:
         # modify the minimum viscosity for non-linear rheology in the shear zone
         o_dict['Material model']['Visco Plastic TwoD']['Minimum viscosity'] = \
-        'background: 1e18, spcrust: %s, spharz: 1e18, opcrust: 1e18, opharz: 1e18' % sz_minimum_viscosity
+        'background: 1e18, spcrust: %s, spharz: %s, opcrust: 1e18, opharz: 1e18' % (spcrust_value, spharz_value)
 
 
 def CDPT_assign_yielding(o_dict, cohesion, friction, **kwargs):
