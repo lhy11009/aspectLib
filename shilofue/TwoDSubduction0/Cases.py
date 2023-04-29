@@ -145,6 +145,8 @@ intiation stage causes the slab to break in the middle",\
             ['world builder', 'overiding plate', 'trailing length'], 0.0, nick='ov_trailing_length')
         self.add_key("Viscosity in the slab core", float,\
             ['shear zone', "slab core viscosity"], -1.0, nick='slab_core_viscosity')
+        self.add_key("Value of Coh to use in the rheology", float,\
+            ['mantle rheology', "Coh"], 1000.0, nick='mantle_coh')
     
     def check(self):
         '''
@@ -269,6 +271,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         sp_trailing_length = self.values[self.start + 42]
         ov_trailing_length = self.values[self.start + 43]
         slab_core_viscosity = self.values[self.start + 44]
+        mantle_coh = self.values[self.start + 45]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -277,7 +280,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         refinement_level, case_o_dir, sz_viscous_scheme, cohesion, friction, crust_cohesion, crust_friction, sz_constant_viscosity,\
         branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
         ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
-        upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity
+        upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
+        mantle_coh
 
     def to_configure_wb(self):
         '''
@@ -367,7 +371,7 @@ class CASE(CasesP.CASE):
     sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
     sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,\
     version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length,\
-    slab_core_viscosity):
+    slab_core_viscosity, mantle_coh):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -493,11 +497,11 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             # note that the jump on 660 is about 15.0 in magnitude
             rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
     dVdiff=-5.5e-6, dVdisl=2.12e-6, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.040297619, save_json=1,\
-    jump_lower_mantle=15.0)
+    jump_lower_mantle=15.0, Coh=mantle_coh)
         elif mantle_rheology_scheme == "HK03_wet_mod_weakest_diffusion":
             # in this rheology, I maintained the prefactors from the derivation of the "HK03_wet_mod" rheology
             rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
-    dVdiff=-5.5e-6, dVdisl=-1.2e-6, save_profile=1, save_json=1, jump_lower_mantle=15.0)
+    dVdiff=-5.5e-6, dVdisl=-1.2e-6, save_profile=1, save_json=1, jump_lower_mantle=15.0, Coh=mantle_coh)
         elif mantle_rheology_scheme == "HK03":
             # in this one, I don't include F because of the issue related to pressure calibration
             rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, use_effective_strain_rate=False, save_profile=1, save_json=1,\

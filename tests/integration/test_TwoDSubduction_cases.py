@@ -35,6 +35,24 @@ if os.path.isdir(test_dir):
 os.mkdir(test_dir)
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'cases', "test_TwoDSubduction")
 
+def test_mantle_rheology_coh():
+    '''
+    apply a different Coh value in the mantle rheology
+    '''
+    source_case_dir = os.path.join(source_dir, "mantle_rheology_coh")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'mantle_rheology_coh')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)  # create case
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_0_std.prm')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    assert(filecmp.cmp(prm_path, prm_std_path))
+    wb_std_path = os.path.join(source_case_dir, 'case_0_std.wb')
+    wb_path = os.path.join(output_dir, 'case.wb')
+    assert(filecmp.cmp(wb_path, wb_std_path))
+
 def test_strong_slab_core():
     '''
     apply a strong core of the slab
