@@ -1,14 +1,14 @@
 {
     "_comment" : "This is configuration for combining results of time run (time, step, dofs ...)",
     "_comment1" : "python -m shilofue.TwoDSubduction0.VtkPp combine_slab_morph -j (full path)/slab_morph.json",
-    "case_root": "${TwoDSubduction_DIR}/EBA_CDPT_peierls1",
-    "cases": ["eba_cdpt_SA80.0_OA40.0_MK10", "eba_cdpt_SA80.0_OA40.0_MK10_re_test2", "eba_cdpt_SA80.0_OA40.0_MK10_re_test2_resume", "eba_cdpt_SA80.0_OA40.0_MK10_re_test2_resume1"],
+    "case_root": "${TwoDSubduction_DIR}/EBA_CDPT5_2",
+    "cases": ["", ""],
     "output directory": {
         "relative": 1,
         "path": "plot_combine"
     },
     "width": -1.0,
-    "time range": [15e6, 25e6],
-    "trench position range": [-220e3, -100e3],
-    "slab depth range": [1100e3, 1800e3]
+    "time range": [0.0, 60e6],
+    "trench position range": [-200e3, 200e3],
+    "slab depth range": [0e3, 1800e3]
 }
