@@ -116,6 +116,10 @@ different age will be adjusted.",\
         int, ['plate setup', 'reset composition viscosity'], 0, nick='reset_composition_viscosity')
         self.add_key("prescribe viscosity for composition width",\
         float, ['plate setup', 'reset composition viscosity width'], 2000e3, nick='reset_composition_viscosity_width')
+        self.add_key("adjust the length of the box by adding the trailing length to the box",\
+        int, ['geometry setup', 'adjust box trailing length'], 0, nick='adjust_box_trailing_length')
+        self.add_key("method to set up the slices",\
+        str, ['geometry setup', 'repitition slice method'], 'floor', nick='repitition_slice_method')
 
     
     def check(self):
@@ -127,6 +131,8 @@ different age will be adjusted.",\
         assert(dip_angle > 0 and dip_angle <= 90.0) # an angle between 0 and 90
         setup_method = self.values[self.start+26] # method of seting up slabs
         assert(setup_method in ['manual', '2d_consistent'])
+        repitition_slice_method = self.values[self.start+45]
+        assert(repitition_slice_method in ['floor', 'nearest'])
 
     def reset_refinement(self, refinement_level):
         '''
@@ -185,6 +191,7 @@ different age will be adjusted.",\
         if visual_software == 'paraview':
             # output the step 1 if the fast_first_step is processed
             self.output_step_one_with_fast_first_step()
+        repitition_slice_method = self.values[self.start+45]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
@@ -192,7 +199,7 @@ different age will be adjusted.",\
             adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
             reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir,\
             branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init,\
-            comp_method, reset_composition_viscosity, reset_composition_viscosity_width
+            comp_method, reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method
         
     def to_configure_wb(self):
         '''
@@ -242,8 +249,15 @@ different age will be adjusted.",\
         default_sp_age_trench = self.defaults[self.start+24]
         sp_age_trench = self.values[self.start+24]
         sp_rate = self.values[self.start+27] # method of seting up slabs
+        trailing_length = self.values[self.start+6]
+        # todo_adjust
+        adjust_box_trailing_length = self.values[self.start+44]
+        if adjust_box_trailing_length:
+            adjust_trailing_length = trailing_length
+        else:
+            adjust_trailing_length = 0.0
         # the 0.0 is appended for the sp_trailing_length
-        return box_length_pre_adjust, default_sp_age_trench, sp_age_trench, sp_rate, 0.0
+        return box_length_pre_adjust, default_sp_age_trench, sp_age_trench, sp_rate, adjust_trailing_length, adjust_trailing_length
 
 
 class CASE(CasesP.CASE):
@@ -257,7 +271,7 @@ class CASE(CasesP.CASE):
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
     reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch,\
     sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init, comp_method,\
-    reset_composition_viscosity, reset_composition_viscosity_width):
+    reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method):
         '''
         Configure prm file
         '''
@@ -275,14 +289,22 @@ class CASE(CasesP.CASE):
                 o_dict["Additional shared libraries"] +=  "$ASPECT_SOURCE_DIR/build%s/prescribe_field_T_adiabat/libprescribe_field_T_adiabat.so" % branch_str
         # geometry options
         # repitition, figure this out by deviding the dimensions with a unit value of repitition_slice
-        repitition_slice = np.min(np.array([box_length, box_width, box_depth]))  # take the min as the repitition_slice
+        max_repitition_slice = 1000e3 # a value for the maximum value
+        repitition_slice = np.min(np.array([box_length, box_width, box_depth, max_repitition_slice]))  # take the min as the repitition_slice
         o_dict['Geometry model']['Box']['X extent'] =  str(box_length)
-        o_dict['Geometry model']['Box']['X repetitions'] = str(int(box_length//repitition_slice))
         o_dict['Geometry model']['Box']['Y extent'] =  str(box_width)
-        o_dict['Geometry model']['Box']['Y repetitions'] = str(int(box_width//repitition_slice))
         o_dict['Geometry model']['Box']['Z extent'] =  str(box_depth)
-        o_dict['Geometry model']['Box']['Z repetitions'] = str(int(box_depth//repitition_slice))
-        
+        if repitition_slice_method == "floor": 
+            o_dict['Geometry model']['Box']['X repetitions'] = str(int(box_length//repitition_slice))
+            o_dict['Geometry model']['Box']['Y repetitions'] = str(int(box_width//repitition_slice))
+            o_dict['Geometry model']['Box']['Z repetitions'] = str(int(box_depth//repitition_slice))
+        elif repitition_slice_method == "nearest": 
+            o_dict['Geometry model']['Box']['X repetitions'] = \
+                str(int(np.ceil(int((box_length/repitition_slice) * 2.0) / 2.0)))
+            o_dict['Geometry model']['Box']['Y repetitions'] = \
+                str(int(np.ceil(int((box_width/repitition_slice) * 2.0) / 2.0)))
+            o_dict['Geometry model']['Box']['Z repetitions'] = \
+                str(int(np.ceil(int((box_depth/repitition_slice) * 2.0) / 2.0)))
         # refinement
         o_dict["Mesh refinement"]["Initial global refinement"] = str(global_refinement)
         o_dict["Mesh refinement"]["Minimum refinement level"] = str(global_refinement)
@@ -297,6 +319,9 @@ class CASE(CasesP.CASE):
                 o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
                 "Do=%.4e, UM=670e3, DD=200e3, Dp=100e3" % (box_depth)
         elif _type == "s07T":
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+                "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining, max_refinement-1, max_refinement-2)
+        elif _type == "2d_consistent":
                 o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
                 "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining, max_refinement-1, max_refinement-2)
 
@@ -404,7 +429,10 @@ class CASE(CasesP.CASE):
         if _type == 's07':
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
             "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
-        if _type == 's07_newton' and reset_trailing_ov_viscosity == 1:
+        elif _type == 's07_newton' and reset_trailing_ov_viscosity == 1:
+            o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
+            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
+        elif _type == '2d_consistent':
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
             "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
         # rewrite the reaction morb part

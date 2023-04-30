@@ -1679,7 +1679,7 @@ def prm_top_prescribed_with_bottom_left_open(trench, sp_rate, ov_rate, refinemen
     return bd_v_dict, bd_t_dict
 
 
-def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_rate, sp_trailing_length):
+def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_rate, sp_trailing_length, ov_trailing_length):
     '''
     adjust box width with assigned spreading rate of subducting plate and subducting plate age
     Inputs:
@@ -1689,7 +1689,7 @@ def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_
         sp_rate: spreading rate of the subducting plate
         sp_trailing_length: trailing length of the sp plate
     '''
-    box_width = box_width0 + (sp_age - sp_age0) * sp_rate + sp_trailing_length
+    box_width = box_width0 + (sp_age - sp_age0) * sp_rate + sp_trailing_length + ov_trailing_length
     return box_width
 
 
