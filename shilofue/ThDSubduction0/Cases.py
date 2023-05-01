@@ -79,7 +79,7 @@ class CASE_OPT(CasesP.CASE_OPT):
                     ['plate setup', 'sp relative density'], 80.0, nick='sp_relative_density')
         self.add_key("Global refinement", int, ['refinement', 'global refinement'], 4, nick='global_refinement')
         self.add_key("Adaptive refinement", int, ['refinement', 'adaptive refinement'], 2, nick='adaptive_refinement')
-        self.add_key("mantle rheology", str, ['mantle rheology', 'scheme'], "HK03_wet_mod", nick='mantle_rheology_scheme')
+        self.add_key("mantle rheology", str, ['mantle rheology', 'scheme'], "HK03_wet_mod_twod", nick='mantle_rheology_scheme')
         self.add_key("Thickness of the shear zone / crust", float, ["shear zone", 'thickness'], 50e3, nick='Dsz')
         self.add_key("Thickness of the depleted lithosphere", float, ['plate setup', 'dl thickness'], 50e3, nick='Ddl')
         self.add_key("Apply the mantle reference density for all the compositions", int, ['apply reference density'],\
@@ -120,6 +120,10 @@ different age will be adjusted.",\
         int, ['geometry setup', 'adjust box trailing length'], 0, nick='adjust_box_trailing_length')
         self.add_key("method to set up the slices",\
         str, ['geometry setup', 'repitition slice method'], 'floor', nick='repitition_slice_method')
+        self.add_key("Viscosity in the slab core", float,\
+            ['shear zone', "slab core viscosity"], -1.0, nick='slab_core_viscosity')
+        self.add_key("Minimum viscosity", float,\
+            ["minimum viscosity"], 1e19, nick='global_minimum_viscosity')
 
     
     def check(self):
@@ -188,6 +192,8 @@ different age will be adjusted.",\
         comp_method = self.values[25] 
         reset_composition_viscosity = self.values[self.start+42]
         reset_composition_viscosity_width = self.values[self.start+43]
+        slab_core_viscosity = self.values[self.start+46]
+        global_minimum_viscosity = self.values[self.start+47]
         if visual_software == 'paraview':
             # output the step 1 if the fast_first_step is processed
             self.output_step_one_with_fast_first_step()
@@ -199,7 +205,8 @@ different age will be adjusted.",\
             adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
             reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir,\
             branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init,\
-            comp_method, reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method
+            comp_method, reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method,\
+            slab_core_viscosity, global_minimum_viscosity
         
     def to_configure_wb(self):
         '''
@@ -271,7 +278,8 @@ class CASE(CasesP.CASE):
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
     reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch,\
     sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init, comp_method,\
-    reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method):
+    reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method, slab_core_viscosity,
+    global_minimum_viscosity):
         '''
         Configure prm file
         '''
@@ -394,7 +402,7 @@ class CASE(CasesP.CASE):
             if mantle_rheology_scheme == "HK03":
                 rheology, _ = Operator.MantleRheology(rheology="HK03",\
                             save_profile=1, save_json=1, use_effective_strain_rate=False)
-            elif mantle_rheology_scheme == "HK03_wet_mod":
+            elif mantle_rheology_scheme == "HK03_wet_mod_twod":
                 rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod",\
                             save_profile=1, save_json=1, use_effective_strain_rate=True,\
                             dEdiff=-40e3, dEdisl=30e3, dVdiff=-5.5e-6, dVdisl=2.12e-6,\
@@ -425,6 +433,12 @@ class CASE(CasesP.CASE):
         # 3. set the minium rheology
         if mantle_minimum_init > 0.0:
             o_dict['Material model'][material_model_subsection]['Minimum viscosity'] = "%.4e" % mantle_minimum_init
+        if _type == "2d_consistent" and slab_core_viscosity > 0.0:
+            # assign a strong core inside the slab
+            o_dict['Material model'][material_model_subsection]['Minimum viscosity'] =\
+                "background: %.4e, sp_upper: %.4e, sp_lower: %.4e, plate_edge: %.4e" %\
+                    (global_minimum_viscosity, global_minimum_viscosity, slab_core_viscosity, global_minimum_viscosity)
+
         # rewrite the reset viscosity part
         if _type == 's07':
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\

@@ -26,7 +26,7 @@
     "job_p-billen.sh"
   ],
   "mantle rheology": {
-    "scheme": "HK03_wet_mod"
+    "scheme": "HK03_wet_mod_twod"
   },
   "apply reference density": 1,
   "shear zone": {
