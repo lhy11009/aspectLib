@@ -158,7 +158,7 @@ subsection Material model
         set Reference viscosity = 1e20
         set Minimum strain rate = 1.e-20
         set Reference strain rate = 1e-15
-        set Minimum viscosity = background: 1e18, spcrust: 1e+20, spharz: 1e18, opcrust: 1e18, opharz: 1e18
+        set Minimum viscosity = background: 1e+18, spcrust: 1e+20, spharz: 1e+18, opcrust: 1e+18, opharz: 1e+18
         set Maximum viscosity = 1e24
         set Phase transition depths = background:410e3|520e3|560e3|670e3|670e3|670e3|670e3, spcrust: 80e3|665e3|720e3, spharz: 410e3|520e3|560e3|670e3|670e3|670e3|670e3
         set Phase transition widths = background:5e3|5e3|5e3|10e3|5e3|5e3|5e3, spcrust: 5e3|5e3|5e3, spharz: 5e3|5e3|5e3|10e3|5e3|5e3|5e3
