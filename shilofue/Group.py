@@ -94,7 +94,8 @@ class FEATURE_OPT(Utilities.JSON_OPT):
             # no assigned, abbrevtion for all
             self.values[6] = [1 for i in range(len(self.values[2]))]
         else:
-            assert(len(self.values[6]) == len(self.values[2]))
+            Utilities.my_assert(len(self.values[6]) == len(self.values[2]), ValueError,\
+            "length of the option (%s) is different from the other option (%s)" % (self.values[6], self.values[2]))
             for i in self.values[6]:
                Utilities.my_assert(i == 0 or i == 1, ValueError,\
                "Value of \"if abbreviation\" is either 0 or 1") 

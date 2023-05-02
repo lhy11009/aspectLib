@@ -341,7 +341,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         box_width_pre_adjust = self.values[self.start+11]
         sp_trailing_length = self.values[self.start + 42]
         return box_width_pre_adjust, self.defaults[self.start],\
-        self.values[self.start], self.values[self.start+1], sp_trailing_length
+        self.values[self.start], self.values[self.start+1], sp_trailing_length, 0.0
     
     def is_box_wider(self):
         '''
