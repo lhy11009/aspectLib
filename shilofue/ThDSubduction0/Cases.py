@@ -124,9 +124,12 @@ different age will be adjusted.",\
             ['shear zone', "slab core viscosity"], -1.0, nick='slab_core_viscosity')
         self.add_key("Minimum viscosity", float,\
             ["minimum viscosity"], 1e19, nick='global_minimum_viscosity')
+        self.add_key("Make 2d consistent plate, only works with the 2d_consistent setup", int,\
+            ["make 2d consistent plate"], 0, nick='make_2d_consistent_plate')
 
     
     def check(self):
+        _type = self.values[9] 
         reset_trailing_morb = self.values[self.start+7]
         assert(reset_trailing_morb in [0, 1])
         friction_angle = self.values[self.start+10] # range of friction angle, in degree
@@ -137,6 +140,9 @@ different age will be adjusted.",\
         assert(setup_method in ['manual', '2d_consistent'])
         repitition_slice_method = self.values[self.start+45]
         assert(repitition_slice_method in ['floor', 'nearest'])
+        make_2d_consistent_plate = self.values[self.start+48]
+        if make_2d_consistent_plate > 0:
+            assert(_type == "2d_consistent" and setup_method == '2d_consistent')
 
     def reset_refinement(self, refinement_level):
         '''
@@ -242,11 +248,12 @@ different age will be adjusted.",\
             box_length = re_write_geometry_while_assigning_plate_age(
             *self.to_re_write_geometry_pa()
             ) # adjust box width
+        make_2d_consistent_plate = self.values[self.start+47]
         return _type, if_wb, geometry, sp_width, sp_length, trailing_length,\
         Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age,\
         setup_method, sp_rate, wb_new_ridge, assign_side_plate,\
         if_ov_trans, ov_trans_age, ov_trans_length, sp_ridge_x,\
-        ov_side_dist, box_length
+        ov_side_dist, box_length, make_2d_consistent_plate
     
     def to_re_write_geometry_pa(self):
         '''
@@ -548,7 +555,7 @@ class CASE(CasesP.CASE):
 
     def configure_wb(self, _type, if_wb, geometry, sp_width, sp_length, trailing_length, Dsz, Ddl, slab_length,\
     dip_angle, sp_age_trench, ov_age, setup_method, sp_rate, wb_new_ridge, assign_side_plate, if_ov_trans, ov_trans_age,\
-    ov_trans_length, sp_ridge_x, ov_side_dist, box_length):
+    ov_trans_length, sp_ridge_x, ov_side_dist, box_length, make_2d_consistent_plate):
         '''
         Configure wb file
         '''
@@ -567,9 +574,14 @@ class CASE(CasesP.CASE):
             if geometry == 'chunk':
                 raise ValueError("chunk geometry has not been implemented")
             elif geometry == 'box':
-                self.wb_dict = wb_configure_plate_2d_consistent(self.wb_dict, sp_width, sp_rate, Dsz, Ddl,\
-                slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate,  if_ov_trans,\
-                ov_trans_age, ov_trans_length, sp_ridge_x, ov_side_dist, box_length)
+                if make_2d_consistent_plate == 1:
+                    self.wb_dict = wb_configure_plate_2d_consistent_1(self.wb_dict, sp_width, sp_rate, Dsz,\
+                        slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate,  if_ov_trans,\
+                        ov_trans_age, ov_trans_length, sp_ridge_x, ov_side_dist, box_length)
+                else:
+                    self.wb_dict = wb_configure_plate_2d_consistent(self.wb_dict, sp_width, sp_rate, Dsz, Ddl,\
+                        slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate,  if_ov_trans,\
+                        ov_trans_age, ov_trans_length, sp_ridge_x, ov_side_dist, box_length)
             else:
                 raise ValueError("Geometry must by \"chunk\" or \"box\", get %s" % geometry)
             pass
@@ -755,6 +767,108 @@ def wb_configure_plate_2d_consistent(wb_dict, sp_width, sp_rate, Dsz, Ddl, slab_
         segment["composition models"][0]["max distance slab top"] = Dsz
         segment["composition models"][1]["min distance slab top"] = Dsz
         segment["composition models"][1]["max distance slab top"] = Dsz + Ddl
+        sdict["segments"][i] = segment
+    if wb_new_ridge == 1:
+        sdict["temperature models"][0]["ridge coordinates"] = \
+            [[[sp_ridge_x,-10000000.0], [sp_ridge_x, 10000000.0]]]
+    else:
+        sdict["temperature models"][0]["ridge coordinates"] = \
+            [[sp_ridge_x,-10000000.0], [sp_ridge_x, 10000000.0]]
+    sdict["temperature models"][0]["plate velocity"] = sp_rate
+    return o_dict
+
+
+def wb_configure_plate_2d_consistent_1(wb_dict, sp_width, sp_rate, Dsz, slab_length,\
+    dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate, if_ov_trans, ov_trans_age,\
+    ov_trans_length, sp_ridge_x, ov_side_dist, box_length, **kwargs):
+    '''
+    World builder configuration of plates in Schellart etal 2007
+    '''
+    Xmax = 40000e3  # some big values that are not ever reached
+    Ymax = 20000e3
+    D2C_ratio = 35.2e3 / 7.5e3 # ratio of depleted / crust layer
+    pe_width = 55e3 # width of the plate edges
+    Ro = kwargs.get("Ro", 6371e3)
+    sp_length = sp_rate * sp_age_trench
+    o_dict = wb_dict.copy()
+    # cross section
+    o_dict["cross section"] = [[0.0, 0.0], [Xmax, 0.0]]
+    # overiding plate 1
+    if if_ov_trans and ov_age > (1e6 + ov_trans_age):  # only transfer to younger age
+        i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate 1')
+        ov_trans_feature, ov =\
+            wb_configure_transit_ov_plates(wb_dict['features'][i0], sp_length + sp_ridge_x,\
+                ov_age, ov_trans_age, ov_trans_length, wb_new_ridge,\
+                Ro=Ro, geometry='box')
+        o_dict['features'][i0] = ov_trans_feature
+    else:
+        # if no using transit plate, remove the feature
+        try:
+            i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate 1')
+        except ParsePrm.WBFeatureNotFoundError:
+            pass
+        else:
+            o_dict = ParsePrm.RemoveWBFeatures(o_dict, i0)
+        ov = sp_length + sp_ridge_x
+    # overiding plate
+    i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate')
+    ov_dict = o_dict['features'][i0]
+    if ov_side_dist > 0.0:
+        ov_end = box_length - ov_side_dist
+    else:
+        ov_end = Xmax
+    ov_dict["coordinates"] = [[ov, -sp_width], [ov, sp_width], [ov_end, sp_width] ,[ov_end, -sp_width]]
+    ov_dict["temperature models"][0]["plate age"] = ov_age
+    o_dict['features'][i0] = ov_dict
+    # overiding plate edge
+    i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate edge')
+    ove_dict = o_dict['features'][i0]
+    ove_dict["coordinates"] = [[sp_ridge_x + sp_length, sp_width], [sp_ridge_x + sp_length, sp_width + pe_width], [ov_end, sp_width + pe_width] ,[ov_end, sp_width]]
+    ove_dict["temperature models"][0]["plate age"] = ov_age
+    o_dict['features'][i0] = ove_dict
+    # subducting plate
+    i0 = ParsePrm.FindWBFeatures(o_dict, 'Subducting plate')
+    sp_dict = o_dict['features'][i0]
+    sp_dict["coordinates"] = [[sp_ridge_x, -sp_width], [sp_ridge_x, sp_width], [sp_ridge_x + sp_length, sp_width] ,[sp_ridge_x + sp_length, -sp_width]]
+    sp_dict["composition models"][0]["max depth"] = Dsz  # moho
+    sp_dict["composition models"][1]["min depth"] = Dsz
+    sp_dict["composition models"][1]["max depth"] = Dsz * D2C_ratio  # lithosphere - athenosphere boundary
+    sp_dict["temperature models"][0]["spreading velocity"] = sp_rate
+    sp_dict["temperature models"][0]["ridge coordinates"] = [[[sp_ridge_x, -10000000.0], [sp_ridge_x, 10000000.0]]]
+    o_dict['features'][i0] = sp_dict
+    # subducting plate edge
+    i0 = ParsePrm.FindWBFeatures(o_dict, "Subducting plate edge")
+    spe_dict = o_dict['features'][i0]
+    spe_dict["coordinates"] = [[sp_ridge_x, sp_width], [sp_ridge_x, sp_width + pe_width], [sp_ridge_x + sp_length, sp_width + pe_width] ,[sp_ridge_x + sp_length, sp_width]]
+    spe_dict["temperature models"][0]["spreading velocity"] = sp_rate
+    spe_dict["temperature models"][0]["ridge coordinates"] = [[[sp_ridge_x, -10000000.0], [sp_ridge_x, 10000000.0]]]
+    # side plate
+    if assign_side_plate == 1:
+        sdp_dict = deepcopy(ov_dict)
+        sdp_dict["name"] = "side plate"
+        sdp_dict["coordinates"] = [[0.0, sp_width+pe_width], [0.0, Ymax], [Xmax, Ymax] ,[Xmax, sp_width+pe_width]]
+        try:
+            i0 = ParsePrm.FindWBFeatures(o_dict, "side plate")
+        except ParsePrm.WBFeatureNotFoundError:
+            i0 = ParsePrm.FindWBFeatures(o_dict, "Subducting plate edge")
+            o_dict['features'].insert(i0 + 1, sdp_dict)
+        else:
+            o_dict['features'][i0] = sdp_dict
+    # slab
+    with open(twod_default_wb_file, 'r') as fin:
+        twod_default_dict = json.load(fin)
+    i0 = ParsePrm.FindWBFeatures(o_dict, 'Slab')
+    i1 = ParsePrm.FindWBFeatures(twod_default_dict, 'Slab')
+    o_dict['features'][i0] = twod_default_dict['features'][i1].copy() # default options
+    sdict = o_dict['features'][i0]  # modify the properties
+    sdict["coordinates"] = [[sp_length + sp_ridge_x, -sp_width], [sp_length + sp_ridge_x, sp_width]]
+    sdict["dip point"] = [Xmax, 0.0]
+    for i in range(len(sdict["segments"])-1):
+        # slab compostion, the last one is a phantom for temperature tapering
+        segment = sdict["segments"][i]
+        segment["composition models"][0]["max distance slab top"] = Dsz
+        segment["composition models"][1]["min distance slab top"] = Dsz
+        segment["composition models"][1]["max distance slab top"] = Dsz * D2C_ratio
         sdict["segments"][i] = segment
     if wb_new_ridge == 1:
         sdict["temperature models"][0]["ridge coordinates"] = \
