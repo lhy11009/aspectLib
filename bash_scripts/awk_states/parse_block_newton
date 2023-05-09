@@ -18,6 +18,10 @@ BEGIN {
     split($4, array, "+")
     stokes_iteration_cheap = array[1]
     stokes_iteration_expensive = array[2]
+    if (length(stokes_iteration_expensive) == 0){
+      stokes_iteration_expensive = "-1"
+    }
+    
   }
   else if(lastLine ~ /\*\*\* Timestep/ && $0 ~ /Relative nonlinear residual/) {
     len = length($10)

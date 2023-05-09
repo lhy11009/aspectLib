@@ -213,7 +213,7 @@ def main():
 
     if _commend == 'plot_case':
         PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization, time_interval=arg.time_interval)
-        # PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization, time_interval=arg.time_interval)
+        # PlotCase.PlotCaseCombined([PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization, time_interval=arg.time_interval)
     elif _commend == 'plot_case_in_dir':
         PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization, time_interval=arg.time_interval)
         pass
