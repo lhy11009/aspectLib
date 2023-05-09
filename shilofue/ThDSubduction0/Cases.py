@@ -126,6 +126,10 @@ different age will be adjusted.",\
             ["minimum viscosity"], 1e19, nick='global_minimum_viscosity')
         self.add_key("Make 2d consistent plate, only works with the 2d_consistent setup", int,\
             ["make 2d consistent plate"], 0, nick='make_2d_consistent_plate')
+        self.add_key("If the side of the box is coarsened in assigning the minimum refinement function", int,\
+            ["refinement", "coarsen side"], 0, nick='coarsen_side')
+        self.add_key("The side of the box is coarsened, except for an interval attached to the plate side", float,\
+            ["refinement", "coarsen side interval"], 0.0, nick='coarsen_side_interval')
 
     
     def check(self):
@@ -141,8 +145,11 @@ different age will be adjusted.",\
         repitition_slice_method = self.values[self.start+45]
         assert(repitition_slice_method in ['floor', 'nearest'])
         make_2d_consistent_plate = self.values[self.start+48]
+        coarsen_side = self.values[self.start+49]
         if make_2d_consistent_plate > 0:
             assert(_type == "2d_consistent" and setup_method == '2d_consistent')
+        if coarsen_side > 0:
+            assert(_type == "2d_consistent")
 
     def reset_refinement(self, refinement_level):
         '''
@@ -204,6 +211,8 @@ different age will be adjusted.",\
             # output the step 1 if the fast_first_step is processed
             self.output_step_one_with_fast_first_step()
         repitition_slice_method = self.values[self.start+45]
+        coarsen_side = self.values[self.start+49]
+        coarsen_side_interval = self.values[self.start+50]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
@@ -212,7 +221,7 @@ different age will be adjusted.",\
             reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir,\
             branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init,\
             comp_method, reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method,\
-            slab_core_viscosity, global_minimum_viscosity
+            slab_core_viscosity, global_minimum_viscosity, coarsen_side, coarsen_side_interval
         
     def to_configure_wb(self):
         '''
@@ -286,7 +295,7 @@ class CASE(CasesP.CASE):
     reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch,\
     sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init, comp_method,\
     reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method, slab_core_viscosity,
-    global_minimum_viscosity):
+    global_minimum_viscosity, coarsen_side, coarsen_side_interval):
         '''
         Configure prm file
         '''
@@ -339,6 +348,11 @@ class CASE(CasesP.CASE):
         elif _type == "2d_consistent":
                 o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
                 "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining, max_refinement-1, max_refinement-2)
+                if coarsen_side:
+                    o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+                    "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Wside=%.4e, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining,\
+                    sp_width + coarsen_side_interval, max_refinement-1, max_refinement-2)
+
 
         # composition method
         if comp_method == "field":
