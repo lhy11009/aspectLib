@@ -129,7 +129,7 @@ different age will be adjusted.",\
         self.add_key("If the side of the box is coarsened in assigning the minimum refinement function", int,\
             ["refinement", "coarsen side"], 0, nick='coarsen_side')
         self.add_key("The side of the box is coarsened, except for an interval attached to the plate side", float,\
-            ["refinement", "coarsen side interval"], 0.0, nick='coarsen_side_interval')
+            ["refinement", "coarsen side interval"], -1.0, nick='coarsen_side_interval')
 
     
     def check(self):

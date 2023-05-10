@@ -74,13 +74,19 @@ class FEATURE_OPT(Utilities.JSON_OPT):
         self.add_key("if appending abbreviation (same length with values)", list, ["if abbreviating"], [], nick='if_append_abbrev')
 
     def check(self):
+        '''
+        check if everything is right
+        '''
+        _name = self.values[0]
+        _values = self.values[2]
+        abbrev_strings = self.values[5]
         assert(len(self.values[3]) == 2)  # abbreviation has 2 entries (name, scale)
         if self.if_abbrev_value() == 1:
             # contains a prefix and a scaling
             assert(len(self.values[3]) == 2)
         else:
             # number of strings equal number of values
-            assert(len(self.values[5]) == len(self.values[2]))
+            Utilities.my_assert(len(abbrev_strings) == len(_values), ValueError, "the options for abbrev_strings for \"%s\" is not correct." % _name)
         pass
         # check the values assigned for "if abbreviation"
         is_abbrev_value = self.values[4]
