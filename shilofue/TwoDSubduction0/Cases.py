@@ -201,7 +201,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         assert(rf_scheme in ['2d', '3d coarse'])
         # assert scheme of peierls creep to use
         peierls_scheme = self.values[self.start + 18]
-        assert(peierls_scheme in ['MK10', "MK10p"])
+        assert(peierls_scheme in ['MK10', "MK10p", 'Idrissi16'])
         # assert viscous scheme to use
         sz_viscous_scheme = self.values[self.start + 21]
         assert(sz_viscous_scheme in ["stress dependent", "constant"])
@@ -546,6 +546,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
 
         # Include peierls rheology
         if if_peierls:
+            # The inputs are taken care of based on the scheme to use (in the following if blocks)
             try:
                 temp = o_dict['Material model']['Visco Plastic TwoD']['Peierls fitting parameters']
             except KeyError as e:
@@ -580,7 +581,45 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                     # no p dependence, note: sigp = sigp0*(1 + (Gp/G0)*P1), here we want to set Gp = 0
                     o_dict['Material model']['Visco Plastic TwoD']['Peierls shear modulus derivative'] = "0.0"
                     pass
-                # todo
+            elif peierls_scheme == "Idrissi16":
+                # Idrissi 16 flow law
+                # unneeded variables (e.g. shear modulus), and new to add in (e.g. Peierls strain rate residual tolerance)
+                # pay attention to the converting of the prefactor (depending on the n value. Here is 0.0)
+                Peierls = flf.GetPeierlsApproxVist('Idrissi16')
+                o_dict['Material model']['Visco Plastic TwoD'].pop('Peierls shear modulus') # don't need this one
+                o_dict['Material model']['Visco Plastic TwoD'].pop('Peierls shear modulus derivative') # don't need this one
+                o_dict['Material model']['Visco Plastic TwoD']['Peierls creep flow law'] = 'exact'
+                o_dict['Material model']['Visco Plastic TwoD']['Peierls glide parameters p'] = str(Peierls['p'])
+                o_dict['Material model']['Visco Plastic TwoD']['Peierls glide parameters q'] = str(Peierls['q'])
+                o_dict['Material model']['Visco Plastic TwoD']['Stress exponents for Peierls creep'] = str(Peierls['n'])
+                o_dict['Material model']['Visco Plastic TwoD']['Peierls stresses'] = '%.4e' % Peierls['sigp0']
+                o_dict['Material model']['Visco Plastic TwoD']['Activation energies for Peierls creep'] = '%.4e' % Peierls['E']
+                o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for Peierls creep'] = '0.0'
+                o_dict['Material model']['Visco Plastic TwoD']['Peierls fitting parameters'] = '0.15'
+
+                # o_dict['Material model']['Visco Plastic TwoD']['Peierls strain rate residual tolerance'] = '%.4e' % 1e-22
+                o_dict['Material model']['Visco Plastic TwoD'] = Utilities.insert_dict_after(o_dict['Material model']['Visco Plastic TwoD'],\
+                    'Peierls strain rate residual tolerance', '%.4e' % 1e-22,'Activation volumes for Peierls creep')
+                # o_dict['Material model']['Visco Plastic TwoD']['Maximum Peierls strain rate iterations'] = '%d' % 40
+                o_dict['Material model']['Visco Plastic TwoD'] = Utilities.insert_dict_after(o_dict['Material model']['Visco Plastic TwoD'],\
+                    'Maximum Peierls strain rate iterations', '%d' % 40, 'Peierls strain rate residual tolerance')
+                # o_dict['Material model']['Visco Plastic TwoD']['Cutoff stresses for Peierls creep'] = '%.4e' % 2e7
+                o_dict['Material model']['Visco Plastic TwoD'] = Utilities.insert_dict_after(o_dict['Material model']['Visco Plastic TwoD'],\
+                    'Cutoff stresses for Peierls creep', '%.4e' % 2e7, 'Maximum Peierls strain rate iterations')
+                # o_dict['Material model']['Visco Plastic TwoD']['Apply strict stress cutoff for Peierls creep'] = 'true'
+                o_dict['Material model']['Visco Plastic TwoD'] = Utilities.insert_dict_after(o_dict['Material model']['Visco Plastic TwoD'],\
+                    'Apply strict stress cutoff for Peierls creep', 'true', 'Cutoff stresses for Peierls creep')
+                A = Peierls['A']
+                if phase_model == "CDPT":
+                    # note that this part contains the different choices of phases
+                    # in order to set up for the lower mantle compositions
+                    # a future implementation could indicate in the phases which are lower mantle compositions
+                    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for Peierls creep'] = \
+                    "background: %.4e|%.4e|%.4e|%.4e|1e-31|1e-31|1e-31|1e-31,\
+spcrust: %.4e|%.4e|1e-31|1e-31,\
+spharz: %.4e|%.4e|%.4e|%.4e|1e-31|1e-31|1e-31|1e-31,\
+opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
+                pass
         else:
             o_dict['Material model']['Visco Plastic TwoD']['Include Peierls creep'] = 'false'
         # eclogite transition

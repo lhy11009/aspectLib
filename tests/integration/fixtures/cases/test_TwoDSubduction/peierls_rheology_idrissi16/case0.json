@@ -1,0 +1,41 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/230427",
+  "output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
+  "name": "peierls_rheology_idrissi16",
+  "include fast first step": 1,
+  "geometry": "chunk",
+  "potential temperature": 1573.0,
+  "boundary condition": {
+    "model": "all free slip"
+  },
+  "use world builder": 1,
+  "world builder": {
+    "plate age method": "adjust box width",
+    "use new ridge implementation": 1,
+    "box width before adjusting": 15570000.0,
+    "adjust mesh with box width": 1,
+    "subducting plate": {
+      "age trench": 80000000.0,
+      "sp rate": 0.05
+    },
+    "overiding plate": {
+      "age": 40000000.0,
+      "transit": {
+        "age": 20000000.0,
+        "length": 700000.0
+      }
+    }
+  },
+  "include peierls creep": 1,
+  "peierls creep": {
+    "scheme": "Idrissi16"
+  },
+  "shear zone": {
+    "viscous scheme": "stress dependent",
+    "coupling the eclogite phase to shear zone viscosity": 1,
+    "minimum viscosity": 1e20,
+    "cohesion": 1000000.0,
+    "friction": 2.8624
+  },
+  "refinement level": 10
+}
