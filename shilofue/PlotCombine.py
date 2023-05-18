@@ -658,6 +658,21 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.PlotNumberOfNonlinearIterations(axis=ax, color=colors[i], label_all=label_all)
             pass
         ax.legend()
+        # plot number of iterations of stokes solver
+        ax = fig.add_subplot(gs[3, 1])
+        for i in range(self.n_cases):
+            if i == 0:
+                label_all = True
+            else:
+                label_all = False
+            case_name = os.path.basename(self.cases[i])
+            # plot results and combine
+            statistic_file_path = os.path.join(self.cases[i], 'output', 'statistics')
+            self.StatisticPlotter.ReadData(statistic_file_path)
+            self.StatisticPlotter.ReadHeader(statistic_file_path)
+            self.StatisticPlotter.PlotNumberOfIterationsStokessolver(axis=ax, color=colors[i], label_all=label_all)
+            pass
+        ax.legend()
         # plot run time info
         ax = fig.add_subplot(gs[0, 1])
         ax_twin = ax.twinx()

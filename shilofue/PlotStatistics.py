@@ -152,7 +152,30 @@ class STATISTICS_PLOT(LINEARPLOT):
         ax.plot(times * to_myr, nonis, '.', label=label, color=color)
         ax.set_xlabel('Time (myr)')
         ax.set_ylabel('Number of nonlinear iterations')
-        pass
+    
+    def PlotNumberOfIterationsStokessolver(self, **kwargs):
+        '''
+        plot the number of cells
+        '''
+        ax = kwargs.get('axis', None)
+        label = kwargs.get('label', None)
+        color = kwargs.get('color', None)
+        if ax == None:
+            raise ValueError("Not implemented")
+        col_t = self.header['Time']['col']
+        unit_t = self.header['Time']['unit']
+        col_step = self.header['Time_step_number']['col']
+        col_iter_stokes = self.header['Iterations_for_Stokes_solver']['col']
+        times = self.data[:, col_t]
+        steps = self.data[:, col_step]
+        iter_stokes = self.data[:, col_iter_stokes]
+        if self.UnitConvert is not None:
+            to_myr = self.UnitConvert(unit_t, 'myr')
+        else:
+            raise ValueError("a UNITCONVERT class must be given")
+        ax.plot(times * to_myr, iter_stokes, '.', label=label, color=color)
+        ax.set_xlabel('Time (myr)')
+        ax.set_ylabel('Number of Iterations for Stokes solver')
     
     def PlotDegreeOfFreedom(self, **kwargs):
         '''
