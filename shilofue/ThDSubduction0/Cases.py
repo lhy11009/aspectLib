@@ -130,6 +130,8 @@ different age will be adjusted.",\
             ["refinement", "coarsen side"], 0, nick='coarsen_side')
         self.add_key("The side of the box is coarsened, except for an interval attached to the plate side", float,\
             ["refinement", "coarsen side interval"], -1.0, nick='coarsen_side_interval')
+        self.add_key("automatically fix boundary temperature",\
+        int, ['geometry setup', 'fix boudnary temperature auto'], 0, nick='fix_boudnary_temperature_auto')
 
     
     def check(self):
@@ -213,6 +215,7 @@ different age will be adjusted.",\
         repitition_slice_method = self.values[self.start+45]
         coarsen_side = self.values[self.start+49]
         coarsen_side_interval = self.values[self.start+50]
+        fix_boudnary_temperature_auto = self.values[self.start+51]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
@@ -221,7 +224,7 @@ different age will be adjusted.",\
             reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir,\
             branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init,\
             comp_method, reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method,\
-            slab_core_viscosity, global_minimum_viscosity, coarsen_side, coarsen_side_interval
+            slab_core_viscosity, global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto
         
     def to_configure_wb(self):
         '''
@@ -295,7 +298,7 @@ class CASE(CasesP.CASE):
     reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch,\
     sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init, comp_method,\
     reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method, slab_core_viscosity,
-    global_minimum_viscosity, coarsen_side, coarsen_side_interval):
+    global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto):
         '''
         Configure prm file
         '''
@@ -312,7 +315,9 @@ class CASE(CasesP.CASE):
                 o_dict["Additional shared libraries"] += ", "
                 o_dict["Additional shared libraries"] +=  "$ASPECT_SOURCE_DIR/build%s/prescribe_field_T_adiabat/libprescribe_field_T_adiabat.so" % branch_str
         # geometry options
-        # repitition, figure this out by deviding the dimensions with a unit value of repitition_slice
+        # Box size: assigned 
+        # repitition: figure this out by deviding the dimensions with a unit value of repitition_slice
+        # boudnary temperature: figure this out from the depth average profile
         max_repitition_slice = 1000e3 # a value for the maximum value
         repitition_slice = np.min(np.array([box_length, box_width, box_depth, max_repitition_slice]))  # take the min as the repitition_slice
         o_dict['Geometry model']['Box']['X extent'] =  str(box_length)
@@ -329,6 +334,16 @@ class CASE(CasesP.CASE):
                 str(int(np.ceil(int((box_width/repitition_slice) * 2.0) / 2.0)))
             o_dict['Geometry model']['Box']['Z repetitions'] = \
                 str(int(np.ceil(int((box_depth/repitition_slice) * 2.0) / 2.0)))
+        if fix_boudnary_temperature_auto:
+            # boudnary temperature: figure this out from the depth average profile
+            assert(self.da_Tad_func is not None)
+            try:
+                Tad_bot = self.da_Tad_func(box_depth) # bottom adiabatic temperature
+            except ValueError:
+                # in case this is above the given range of depth in the depth_average
+                # file, apply a slight variation and try again
+                Tad_bot = self.da_Tad_func(box_depth - 50e3)
+            o_dict['Boundary temperature model']['Box']['Bottom temperature'] = "%.4e" % Tad_bot
         # refinement
         o_dict["Mesh refinement"]["Initial global refinement"] = str(global_refinement)
         o_dict["Mesh refinement"]["Minimum refinement level"] = str(global_refinement)
@@ -343,17 +358,24 @@ class CASE(CasesP.CASE):
                 o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
                 "Do=%.4e, UM=670e3, DD=200e3, Dp=100e3" % (box_depth)
         elif _type == "s07T":
-                o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+            o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
                 "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining, max_refinement-1, max_refinement-2)
         elif _type == "2d_consistent":
-                o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+            o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
                 "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining, max_refinement-1, max_refinement-2)
-                if coarsen_side:
-                    o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+            if coarsen_side:
+                # append an additional variable to coarsen the side with no slab
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
                     "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Wside=%.4e, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining,\
                     sp_width + coarsen_side_interval, max_refinement-1, max_refinement-2)
-
-
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"]=\
+                            " (y < Wside)?\\\n\
+                                    ((Do-z<UM)?\\\n\
+                                      ((Do-z<DD)?\\\n\
+				                        ((Do-z<Dp+50e3)? Rd: Rum)\\\n\
+				                        :Rum)\\\n\
+                                      :0)\\\n\
+                                    :0"
         # composition method
         if comp_method == "field":
             pass

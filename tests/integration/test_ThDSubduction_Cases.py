@@ -38,6 +38,45 @@ if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
 
+
+def test_fix_bd_temperature_2890():
+    '''
+    test for fixing boundary temperature with different values of box
+    depth - a box depth of 2890e3, which is out of the bound of the da file
+    assert:
+    1. the prm rewrites the value of bottom temperature despite of a slighter larger range (2890e3)
+    than the range give in the depth average file (~2850e3)
+    '''
+    source_case_dir = os.path.join(source_dir, "test_fix_bd_temperature_2890")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'test_fix_bd_temperature_2890')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_std.prm')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    assert(filecmp.cmp(prm_path, prm_std_path))
+
+
+def test_fix_bd_temperature():
+    '''
+    test for fixing boundary temperature with different values of box
+    depth
+    assert:
+    1. the prm file rewrite the value of bottom temperature 
+    '''
+    source_case_dir = os.path.join(source_dir, "test_fix_bd_temperature")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'test_fix_bd_temperature')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_std.prm')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    assert(filecmp.cmp(prm_path, prm_std_path))
+
 def test_coarsen_side():
     '''
     test for

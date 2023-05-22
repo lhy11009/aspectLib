@@ -33,10 +33,11 @@ import time
 from shutil import copy2, rmtree, copytree
 from difflib import unified_diff
 from copy import deepcopy
+from scipy.interpolate import interp1d
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 import shilofue.ParsePrm as ParsePrm
-from shilofue.Rheology import RHEOLOGY_OPR
+from shilofue.Rheology import RHEOLOGY_OPR, ReadAspectProfile
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -98,6 +99,7 @@ it only takes effect if the input is positiveh",\
          ["post process", "visualization software"], "visit", nick="visual_software")
         self.add_key("Type of composition method", str,\
          ["composition method", "scheme"], "field", nick="comp_method")
+        self.add_key("Depth average inputs", str, ["depth average file"], "", nick='da_inputs')
     
     def check(self):
         '''
@@ -118,6 +120,11 @@ it only takes effect if the input is positiveh",\
         # type of the composition method
         comp_method = self.values[25]
         assert (comp_method in ['field', 'particle'])
+        # check file depth_average exist
+        da_inputs = Utilities.var_subs(self.values[26])
+        if da_inputs != "":
+            assert(os.path.isfile(da_inputs))
+
 
     def to_init(self):
         '''
@@ -157,6 +164,13 @@ it only takes effect if the input is positiveh",\
             base_name = 'case_%s.wb' % _type
         wb_inputs = os.path.join(self.values[1], base_name)
         return wb_inputs
+
+    def da_inputs_path(self):
+        '''
+        Interface to da_inputs
+        '''
+        da_inputs = Utilities.var_subs(self.values[26])
+        return da_inputs
     
     def o_dir(self):
         '''
@@ -330,6 +344,15 @@ class CASE():
                 raise TypeError("CASE:%s: wb_inputs must be a dictionary or a string" % Utilities.func_name())
         # operator of rheology
         self.Rheology_Opr = RHEOLOGY_OPR()
+        # profile read from the depth_average files
+        da_inputs = kwargs.get('da_inputs', "")
+        if da_inputs != "":
+            depths, pressures, temperatures, adiabatic_temperatures =\
+              ReadAspectProfile(da_inputs, include_adiabatic_temperature=True) 
+            self.da_T_func = interp1d(depths, temperatures, assume_sorted=True)
+            self.da_P_func = interp1d(depths, pressures, assume_sorted=True)
+            self.da_Tad_func = interp1d(depths, adiabatic_temperatures, assume_sorted=True)
+
     
     def create(self, _root, **kwargs):
         '''
@@ -556,7 +579,7 @@ def create_case_with_json(json_opt, CASE, CASE_OPT, **kwargs):
             print("Case %s already exists, aborting" % case_dir_to_check)
             return case_dir_to_check
     # Manage case files
-    Case = CASE(*Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path())
+    Case = CASE(*Case_Opt.to_init(), wb_inputs=Case_Opt.wb_inputs_path(), da_inputs=Case_Opt.da_inputs_path())
     if end_step > 0:
         # set end step
         Case.set_end_step(end_step)

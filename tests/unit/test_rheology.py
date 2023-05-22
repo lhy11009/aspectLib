@@ -27,7 +27,7 @@ import pytest
 # from matplotlib import pyplot as plt
 # from shutil import rmtree  # for remove directories
 from shilofue.Rheology import *
-from shilofue.FlowLaws import visc_diff_HK, visc_disl_HK
+from shilofue.FlowLaws import visc_diff_HK, visc_disl_HK, peierls_visc_from_stress
 
 test_dir = ".test"
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse')
@@ -35,6 +35,31 @@ source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'parse')
 if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
+
+
+def test_debug_Idrissy_convergence_large_P():
+    '''
+    test used to debug the Idrissy flow law with a very big pressure
+    '''
+    strain_rate_std = 1.0e-05
+    stress = 2.516e5 # Pa
+    T = 3500.0 # K
+    P = 106608753761.386 # not dependent on P (V = 0)
+    eta, strain_rate = peierls_visc_from_stress("Idrissi16", P, T, stress)
+    eta_1, strain_rate1  = peierls_visc_from_stress("Idrissi16", P, T, 1.01*stress)
+    strain_rate_1 = stress / 2.0 / eta_1
+    strain_rate_dev = (strain_rate_1 - strain_rate) / (0.01*stress)
+    print("T = ", T)
+    print("strain_rate = ", strain_rate)  # debug
+    print("strain_rate_dev = ", strain_rate_dev)
+    T = 1600.0 # K
+    eta, strain_rate = peierls_visc_from_stress("Idrissi16", P, T, stress)
+    eta_1, strain_rate1  = peierls_visc_from_stress("Idrissi16", P, T, 1.01*stress)
+    strain_rate_1 = stress / 2.0 / eta_1
+    strain_rate_dev = (strain_rate_1 - strain_rate) / (0.01*stress)
+    print("T = ", T)
+    print("strain_rate = ", strain_rate)  # debug
+    print("strain_rate_dev = ", strain_rate_dev)
 
 
 def test_CreepStress_CreepRheology_CreepStrainRate_ComputeComposite():

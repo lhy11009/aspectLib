@@ -669,6 +669,16 @@ def peierls_approx_visc(flv, P,T,edot):
         A = 1.4e-7/np.power(mpa,n) 	# s^-1 Pa^-2
         E = 320e3  					# J/mol (+/-50e3 J/mol)
         gam = 0.17    # gam: fitting parameter = sig_ref/sigp
+    elif flv == "Idrissi16":
+        q = 2.0
+        p = 0.5
+        n = 0.0
+        sigp0 = 3.8e9					# Pa (+/- 0.7e9 Pa)
+        A = 1e6 	# s^-1, note unit of A is related to n (here n = 0.0)
+        E = 566e3  					# J/mol (+/-74e3 J/mol)
+        gam = 0.15  # use the same value they used in the test
+    else:
+        raise ValueError("type of flow law has to be \"MK10\" or \"Idrissi16\"")
     
     # Pressure dependence of Peierls stress
     # From Kawazoe et al. PEPI 2009 and parameters from Liu et al., GRL 2005 

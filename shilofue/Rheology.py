@@ -1985,6 +1985,8 @@ def PeierlsCreepStress(creep, strain_rate, P, T, **kwargs):
     stress_u = 1e12
     is_first = True
     n = 0
+    # this uses a bi-section method to iterate out a matching 
+    # for the strain rate input
     while (abs(difference) > tolerance and n < maximum_iteration):
         if is_first:
             is_first = False
@@ -2030,10 +2032,12 @@ def PeierlsCreepRheology(creep, strain_rate, P, T, **kwargs):
 
 
 
-def ReadAspectProfile(depth_average_path):
+def ReadAspectProfile(depth_average_path, **kwargs):
     """
     read a T,P profile from aspect's depth average file
     """
+    # include options
+    include_adiabatic_temperature = kwargs.get("include_adiabatic_temperature", False)
     # check file exist
     assert(os.access(depth_average_path, os.R_OK))
     # read that
@@ -2052,10 +2056,17 @@ def ReadAspectProfile(depth_average_path):
     col_depth = DepthAverage.header['depth']['col']
     col_P = DepthAverage.header['adiabatic_pressure']['col']
     col_T = DepthAverage.header['temperature']['col']
+    col_Tad = DepthAverage.header['adiabatic_temperature']['col']
     depths = data[:, col_depth]
     pressures = data[:, col_P]
     temperatures = data[:, col_T]
-    return depths, pressures, temperatures
+    if include_adiabatic_temperature:
+        adiabatic_temperatures = data[:, col_Tad]
+    # return type is determined by whether there are included terms
+    if include_adiabatic_temperature:
+        return depths, pressures, temperatures, adiabatic_temperatures
+    else:
+        return depths, pressures, temperatures
 
 
 def PlotAlongProfile(depths, pressures, temperatures, fig_path_base, **kwargs):
@@ -3607,8 +3618,12 @@ def main():
     elif _commend == "plot_rheology_summary":
         PlotRheologySummaryJson(arg.json)
     
-    elif _commend == 'compute_approx_peierls_viscosity':
+    elif _commend == 'compute_approx_peierls_viscosity_MK10':
         visc = peierls_approx_visc("MK10", arg.pressure, arg.temperature, arg.strain_rate)
+        print("viscosity = %.4e Pa s" % visc)
+    
+    elif _commend == 'compute_approx_peierls_viscosity_Idrissi16':
+        visc = peierls_approx_visc("Idrissi16", arg.pressure, arg.temperature, arg.strain_rate)
         print("viscosity = %.4e Pa s" % visc)
     
     else:
