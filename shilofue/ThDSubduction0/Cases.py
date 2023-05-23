@@ -132,7 +132,6 @@ different age will be adjusted.",\
             ["refinement", "coarsen side interval"], -1.0, nick='coarsen_side_interval')
         self.add_key("automatically fix boundary temperature",\
         int, ['geometry setup', 'fix boudnary temperature auto'], 0, nick='fix_boudnary_temperature_auto')
-        # todo_cs
         self.add_key("The side of the box is coarsened with this level", int,\
             ["refinement", "coarsen side level"], -1, nick='coarsen_side_level')
 
@@ -373,7 +372,6 @@ class CASE(CasesP.CASE):
                 o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
                     "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Wside=%.4e, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining,\
                     sp_width + coarsen_side_interval, max_refinement-1, max_refinement-2)
-                # todo_cs
                 if coarsen_side_level ==-1:
                     # in this case, coarsen all
                     o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"]=\
@@ -385,6 +383,7 @@ class CASE(CasesP.CASE):
                                       :0)\\\n\
                                     :0"
                 else:
+                    # in this case, coarsen by a certain level
                     o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"]=\
                             " (y < Wside)?\\\n\
                                     ((Do-z<UM)?\\\n\

@@ -39,7 +39,6 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
-# todo_cs
 def test_coarsen_side_level():
     '''
     test for
