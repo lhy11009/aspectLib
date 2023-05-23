@@ -132,6 +132,9 @@ different age will be adjusted.",\
             ["refinement", "coarsen side interval"], -1.0, nick='coarsen_side_interval')
         self.add_key("automatically fix boundary temperature",\
         int, ['geometry setup', 'fix boudnary temperature auto'], 0, nick='fix_boudnary_temperature_auto')
+        # todo_cs
+        self.add_key("The side of the box is coarsened with this level", int,\
+            ["refinement", "coarsen side level"], -1, nick='coarsen_side_level')
 
     
     def check(self):
@@ -216,6 +219,7 @@ different age will be adjusted.",\
         coarsen_side = self.values[self.start+49]
         coarsen_side_interval = self.values[self.start+50]
         fix_boudnary_temperature_auto = self.values[self.start+51]
+        coarsen_side_level = self.values[self.start+52]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
@@ -224,7 +228,8 @@ different age will be adjusted.",\
             reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir,\
             branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init,\
             comp_method, reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method,\
-            slab_core_viscosity, global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto
+            slab_core_viscosity, global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto,\
+            coarsen_side_level
         
     def to_configure_wb(self):
         '''
@@ -298,7 +303,7 @@ class CASE(CasesP.CASE):
     reset_trailing_ov_viscosity, mantle_rheology_flow_law, stokes_solver_type, case_o_dir, branch,\
     sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init, comp_method,\
     reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method, slab_core_viscosity,
-    global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto):
+    global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto, coarsen_side_level):
         '''
         Configure prm file
         '''
@@ -368,7 +373,10 @@ class CASE(CasesP.CASE):
                 o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
                     "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Wside=%.4e, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining,\
                     sp_width + coarsen_side_interval, max_refinement-1, max_refinement-2)
-                o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"]=\
+                # todo_cs
+                if coarsen_side_level ==-1:
+                    # in this case, coarsen all
+                    o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"]=\
                             " (y < Wside)?\\\n\
                                     ((Do-z<UM)?\\\n\
                                       ((Do-z<DD)?\\\n\
@@ -376,6 +384,20 @@ class CASE(CasesP.CASE):
 				                        :Rum)\\\n\
                                       :0)\\\n\
                                     :0"
+                else:
+                    o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"]=\
+                            " (y < Wside)?\\\n\
+                                    ((Do-z<UM)?\\\n\
+                                      ((Do-z<DD)?\\\n\
+				                        ((Do-z<Dp+50e3)? Rd: Rum)\\\n\
+				                        :Rum)\\\n\
+                                      :0)\\\n\
+				                    :((Do-z<UM)?\\\n\
+                                      ((Do-z<DD)?\\\n\
+				                        ((Do-z<Dp+50e3)? Rd-%d: Rum-%d)\\\n\
+				                        :Rum-%d)\\\n\
+                                      :0)" % (coarsen_side_level, coarsen_side_level, coarsen_side_level)
+                    pass
         # composition method
         if comp_method == "field":
             pass
