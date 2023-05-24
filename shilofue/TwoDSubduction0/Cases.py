@@ -726,7 +726,8 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
             else:
                 self.wb_dict["cross section"] = [[0, 0], [180.0, 0.0]]
         elif geometry == 'box':
-            self.wb_dict["coordinate system"] = {"model": "cartesian"}
+            self.wb_dict["coordinate system"]["model"] = "cartesian"
+            self.wb_dict["coordinate system"].pop("depth method")  # remove depth method in this case
             if is_box_wider:
                 self.wb_dict["cross section"] = [[0, 0], [1e7, 0.0]]
             else:
