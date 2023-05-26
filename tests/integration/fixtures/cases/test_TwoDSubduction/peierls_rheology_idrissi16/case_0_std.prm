@@ -194,13 +194,14 @@ subsection Material model
         set Peierls glide parameters q = 2.0
         set Stress exponents for Peierls creep = 0.0
         set Peierls stresses = 3.8000e+09
-        set Prefactors for Peierls creep = background: 1.0000e+06|1.0000e+06|1.0000e+06|1.0000e+06|1e-31|1e-31|1e-31|1e-31,spcrust: 1.0000e+06|1.0000e+06|1e-31|1e-31,spharz: 1.0000e+06|1.0000e+06|1.0000e+06|1.0000e+06|1e-31|1e-31|1e-31|1e-31,opcrust: 1.0000e+06, opharz: 1.0000e+06
+        set Prefactors for Peierls creep = 1.0e6
         set Activation energies for Peierls creep = 5.6600e+05
         set Activation volumes for Peierls creep = 0.0
         set Peierls strain rate residual tolerance = 1.0000e-22
         set Maximum Peierls strain rate iterations = 40
         set Cutoff stresses for Peierls creep = 2.0000e+07
         set Apply strict stress cutoff for Peierls creep = true
+        set Cutoff pressures for Peierls creep = background: 1e+31|1e+31|1e+31|1e+31|0.0|0.0|0.0|0.0, spcrust: 1e+31|1e+31|0.0|0.0, spharz: 1e+31|1e+31|1e+31|1e+31|0.0|0.0|0.0|0.0, opcrust: 1e+31, opharz: 1e+31
         set Reset viscosity = true
         subsection Reset viscosity function
             set Coordinate system = spherical

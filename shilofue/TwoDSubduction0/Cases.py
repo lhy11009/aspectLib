@@ -612,14 +612,16 @@ opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
                 A = Peierls['A']
                 if phase_model == "CDPT":
                     # note that this part contains the different choices of phases
-                    # in order to set up for the lower mantle compositions
-                    # a future implementation could indicate in the phases which are lower mantle compositions
-                    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for Peierls creep'] = \
-                    "background: %.4e|%.4e|%.4e|%.4e|1e-31|1e-31|1e-31|1e-31,\
-spcrust: %.4e|%.4e|1e-31|1e-31,\
-spharz: %.4e|%.4e|%.4e|%.4e|1e-31|1e-31|1e-31|1e-31,\
-opcrust: %.4e, opharz: %.4e" % (A, A, A, A, A, A, A, A, A, A, A, A)
-                pass
+                    # in order to set up for the Idrissi flow law
+                    # an additional parameter of Cutoff pressure is needed
+                    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for Peierls creep'] = "1.0e6"
+                    o_dict['Material model']['Visco Plastic TwoD'] = Utilities.insert_dict_after(o_dict['Material model']['Visco Plastic TwoD'],\
+                                                                        'Cutoff pressures for Peierls creep',\
+                                                                        "background: 1e+31|1e+31|1e+31|1e+31|0.0|0.0|0.0|0.0, \
+spcrust: 1e+31|1e+31|0.0|0.0, \
+spharz: 1e+31|1e+31|1e+31|1e+31|0.0|0.0|0.0|0.0, \
+opcrust: 1e+31, opharz: 1e+31", \
+                                                                        "Apply strict stress cutoff for Peierls creep")
         else:
             o_dict['Material model']['Visco Plastic TwoD']['Include Peierls creep'] = 'false'
         # eclogite transition
