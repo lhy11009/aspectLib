@@ -587,7 +587,7 @@ def GetPeierlsStressPDependence(flv):
     return G0, Gp
 
 
-def peierls_visc_from_stress(flv, P, T,sigma):
+def peierls_visc_from_stress(flv, P, T, sigma):
     '''
     Peierls creep flow law 
     flv: flow law version
@@ -718,9 +718,9 @@ def PlotPeierlsPTMap(flv, implementation, edotp0):
     # Assign max and min values
     vmin = 18.0
     vmax = 25.0
-    if flv == "MK10":
-        vmin = 22.0
-        vmax = 25.0
+    # if flv == "MK10":
+    #    vmin = 22.0
+    #    vmax = 25.0
     # plot
     fig, ax = plt.subplots()
     h = ax.pcolormesh(TTs, PPs, np.log10(etapps), shading='auto', cmap='viridis_r',\
