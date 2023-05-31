@@ -88,6 +88,7 @@ class PC_OPT_BASE(Utilities.JSON_OPT):
         0, nick="output_dir_relative")
         self.add_key("Path for the output directory", str, ["output directory", "path"], '', nick="output_dir_path")
         self.n_cases = len(self.values[1])  # number of cases
+        self.add_key("Time range in yr", list, ["time range"], [], nick="time_range")
     
     def check(self):
         '''
@@ -109,6 +110,10 @@ class PC_OPT_BASE(Utilities.JSON_OPT):
             output_dir = Utilities.var_subs(output_dir_path)
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
+        # assert the time range is valid
+        time_range = self.values[5]
+        if time_range is not []:
+            assert(len(time_range) == 2 and time_range[0] < time_range[1])
     
     def get_case_absolute_paths(self):
         '''
@@ -552,7 +557,8 @@ class PC_RUNTIME_OPT(PC_OPT_BASE):
         '''
         width = self.values[2]
         output_dir = self.get_output_dir()
-        return width, output_dir
+        time_range = self.values[5]
+        return width, output_dir, time_range
 
 
 
@@ -566,7 +572,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
         self.StatisticPlotter = STATISTICS_PLOT("statistic_plot", unit_convert=UnitConvert)
         pass
 
-    def __call__(self, width, output_dir, **kwargs):
+    def __call__(self, width, output_dir, time_range, **kwargs):
         '''
         perform combination
         Inputs:
@@ -597,6 +603,9 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotNumberOfCells(axis=ax, color=colors[i])
             pass
+        if time_range is not []:
+            # apply the range of time to plot
+            ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
         # plot degree of freedoms
         ax = fig.add_subplot(gs[1, 1])
@@ -612,6 +621,9 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotDegreeOfFreedom(axis=ax, color=colors[i], label_all=label_all)
             pass
+        if time_range is not []:
+            # apply the range of time to plot
+            ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
         # plot temperatures
         ax = fig.add_subplot(gs[2, 0])
@@ -627,6 +639,9 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotTemperature(axis=ax, color=colors[i], label_all=label_all)
             pass
+        if time_range is not []:
+            # apply the range of time to plot
+            ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
         # plot velocities
         ax = fig.add_subplot(gs[2, 1])
@@ -642,6 +657,9 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotVelocity(axis=ax, color=colors[i], label_all=label_all)
             pass
+        if time_range is not []:
+            # apply the range of time to plot
+            ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
         # plot number of non-linear iterations
         ax = fig.add_subplot(gs[3, 0])
@@ -657,6 +675,9 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotNumberOfNonlinearIterations(axis=ax, color=colors[i], label_all=label_all)
             pass
+        if time_range is not []:
+            # apply the range of time to plot
+            ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
         # plot number of iterations of stokes solver
         ax = fig.add_subplot(gs[3, 1])
@@ -672,6 +693,9 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotNumberOfIterationsStokessolver(axis=ax, color=colors[i], label_all=label_all)
             pass
+        if time_range is not []:
+            # apply the range of time to plot
+            ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
         # plot run time info
         ax = fig.add_subplot(gs[0, 1])
@@ -690,8 +714,12 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             log_file_path = os.path.join(self.cases[i], 'output', 'log.txt')
             RunTimePlotFigure(log_file_path, None, savefig=False, axis=ax, fix_restart=True,\
             label_all=label_all, append_extra_label=append_extra_label, if_legend=if_legend,\
-            twin_axis=ax_twin, color=colors[i], x_variable='time')
+            twin_axis=ax_twin, color=colors[i], x_variable='time', time_range=time_range)
             pass
+        if time_range is not []:
+            # apply the range of time to plot
+            ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
+            ax_twin.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         # plot the color labels
         ax = fig.add_subplot(gs[0, 0])
         PlotColorLabels(ax, case_names, colors)
