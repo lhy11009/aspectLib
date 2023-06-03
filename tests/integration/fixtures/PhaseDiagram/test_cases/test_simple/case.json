@@ -1,0 +1,14 @@
+{
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/PhaseDiagram/07132022",
+  "output directory": "${ASPECT_LAB_DIR}/.test",
+  "type": "simple",
+  "name": "test_PhaseDiagram_simple",
+  "material model": "visco plastic twod",
+  "_geometry": "chunk",
+  "_potential temperature": 1573.0,
+  "_use world builder": 0,
+  "additional files": [
+    "job_high2.sh",
+    "job_p-billen.sh"
+  ]
+}

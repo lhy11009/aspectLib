@@ -58,7 +58,7 @@ class CASE_OPT(CasesP.CASE_OPT):
     def check(self):
         _type = self.values[9] 
         composition = self.values[self.start]
-        if _type not in ["CDPT", "bd_lsolver", "bd_lsolver_test"]:
+        if _type not in ["CDPT", "bd_lsolver", "bd_lsolver_test", "simple"]:
             raise NotImplementedError('Type %s is not implemented.' % _type)
         if _type == "CDPT":
             assert(composition in ['pyrolite', 'basalt', 'harzburgite'])
