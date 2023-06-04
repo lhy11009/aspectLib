@@ -101,9 +101,16 @@ def ReplacePhaseOption(str_in, key, idx, new_option):
         idx: inded of the designated phase
         new_option: option to set
     '''
-    comp = COMPOSITION(str_in)
-    comp.data[key][idx] = new_option
-    str_out = comp.parse_back() 
+    has_comp = (len(str_in.split(',')) > 1)
+    if has_comp:
+        comp = COMPOSITION(str_in)
+        comp.data[key][idx] = new_option
+        str_out = comp.parse_back() 
+    else:
+        if key == "background":
+            str_out = "%.4e" % new_option
+        else:
+            raise KeyError("No composition in str_in (%s) and the key is not background" % str_in)
     return str_out
 
 

@@ -27,6 +27,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
+from shilofue.Rheology import GetMantleScenario, AssignAspectViscoPlasticPhaseRheology
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -76,8 +77,11 @@ class CASE_OPT(CasesP.CASE_OPT):
         dimension = self.values[14]
         composition = self.values[self.start]
         box_width = self.values[self.start + 1]
+        mantle_rheology_scheme = self.values[17]
+        mantle_rheology_known_scenario = self.values[27]
 
-        return if_wb, geometry, material_model, _type, composition, type_bc_v, dimension, box_width
+        return if_wb, geometry, material_model, _type, composition, type_bc_v, dimension, box_width,\
+        mantle_rheology_scheme, mantle_rheology_known_scenario
         
 
     def to_configure_wb(self):
@@ -96,7 +100,8 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self, if_wb, geometry, material_model, _type, composition, type_bc_v, dimension, box_width):
+    def configure_prm(self, if_wb, geometry, material_model, _type, composition, type_bc_v, dimension, box_width,\
+        mantle_rheology_scheme, mantle_rheology_known_scenario):
         '''
         Configure prm file
         '''
@@ -191,6 +196,21 @@ class CASE(CasesP.CASE):
             material_model_subsection = "Visco Plastic TwoD"
         else:
             material_model_subsection = material_model.title()  # convert the first letter to capital
+
+        if mantle_rheology_known_scenario != "":
+            # follow previous know scenario
+            rheology_aspect, _ = GetMantleScenario(mantle_rheology_known_scenario)
+            diffusion_creep = rheology_aspect["diffusion_creep"]
+            dislocation_creep = rheology_aspect["dislocation_creep"]
+            o_dict['Material model'][material_model_subsection] = \
+                AssignAspectViscoPlasticPhaseRheology(o_dict['Material model'][material_model_subsection],\
+                'background', 0, diffusion_creep, dislocation_creep, no_convert=True)
+        elif mantle_rheology_scheme != "HK03_wet_mod":
+            # follow a previous mantle rheology scheme
+            # future
+            pass
+
+
         o_dict['Material model'][material_model_subsection] = {**o_dict['Material model'][material_model_subsection], **outputs}  # prepare entries
         
         # initial conditions 

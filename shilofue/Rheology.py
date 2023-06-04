@@ -3183,9 +3183,12 @@ def GetMantleScenario(scenario, **kwargs):
     viscosity_profile = None
     Operator = RHEOLOGY_OPR()
     quiet = kwargs.get("quiet", True)
-    all_scenarios = ("wet_modified_medium", "wet_modified_two_d_subduction")
+    source_dir = kwargs.get("source_dir", os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology'))
+    # some symnonyms
+    if  scenario == "HK03_wet_mod":
+        scenario = "wet_modified_medium" 
+    # assign rheology
     if  scenario == "two_d_subduction":
-        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
         assert(os.path.isfile(da_file))
         # read profile
@@ -3194,14 +3197,12 @@ def GetMantleScenario(scenario, **kwargs):
         dVdiff=-5.5e-6, dVdisl=2.12e-6, dAdiff_ratio=0.33333247873, dAdisl_ratio=1.040297619,\
         jump_lower_mantle=15.0)
     elif  scenario == "wet_modified_medium":
-        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
         assert(os.path.isfile(da_file))
         # read profile
         Operator.ReadProfile(da_file)
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod")
     elif  scenario == "wet_modified_modified":
-        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
         assert(os.path.isfile(da_file))
         # read profile
@@ -3209,7 +3210,6 @@ def GetMantleScenario(scenario, **kwargs):
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
                                                                     dVdiff=-5.5e-6, dVdisl=-1.2e-6, Coh=1000.0, save_profile=1)
     elif  scenario == "wet_modified_modified_300":
-        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
         assert(os.path.isfile(da_file))
         # read profile
@@ -3217,7 +3217,6 @@ def GetMantleScenario(scenario, **kwargs):
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
                                                                     dVdiff=-5.5e-6, dVdisl=-1.2e-6, Coh=300.0, save_profile=1)
     elif  scenario == "wet_modified_modified_100":
-        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
         assert(os.path.isfile(da_file))
         # read profile
@@ -3225,7 +3224,6 @@ def GetMantleScenario(scenario, **kwargs):
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
                                                                     dVdiff=-5.5e-6, dVdisl=-1.2e-6, Coh=100.0, save_profile=1)
     elif scenario == "wet_modified_modified_30":
-        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
         assert(os.path.isfile(da_file))
         # read profile
@@ -3233,7 +3231,6 @@ def GetMantleScenario(scenario, **kwargs):
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
                                                                     dVdiff=-5.5e-6, dVdisl=-1.2e-6, Coh=30.0, save_profile=1)
     elif scenario == "wet_modified_modified_10":
-        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
         assert(os.path.isfile(da_file))
         # read profile
@@ -3241,19 +3238,19 @@ def GetMantleScenario(scenario, **kwargs):
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
                                                                     dVdiff=-5.5e-6, dVdisl=-1.2e-6, Coh=10.0, save_profile=1)
     elif  scenario == "HK03_wet":
-        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
         assert(os.path.isfile(da_file))
         # read profile
         Operator.ReadProfile(da_file)
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0, use_effective_strain_rate=False)
+    
     elif  scenario == "HK03_wet_F":
-        source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
         assert(os.path.isfile(da_file))
         # read profile
         Operator.ReadProfile(da_file)
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0)
+    
     elif  scenario == "HK03_wet_with_synthetic_adiabat":
         depths = np.linspace(0.0, 2890e3, 3000)
         Operator.depths = depths.copy()
@@ -3266,6 +3263,7 @@ def GetMantleScenario(scenario, **kwargs):
         Operator.temperatures = MantleAdiabat.Temperature(depths)
         Operator.pressures = rho_ref * g * depths
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0, use_effective_strain_rate=False)
+    
     elif  scenario == "HK03_wet_with_synthetic_adiabat_constant_gradient":
         depths = np.linspace(0.0, 2890e3, 3000)
         Operator.depths = depths.copy()
@@ -3278,6 +3276,7 @@ def GetMantleScenario(scenario, **kwargs):
         Operator.temperatures = MantleAdiabat.Temperature(depths)
         Operator.pressures = rho_ref * g * depths
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0, use_effective_strain_rate=False)
+
     elif  scenario == "HK03_dry":
         source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
@@ -3285,6 +3284,7 @@ def GetMantleScenario(scenario, **kwargs):
         # read profile
         Operator.ReadProfile(da_file)
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03_dry", jump_lower_mantle=30.0, use_effective_strain_rate=False)
+
     elif  scenario == "AB17":
         source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
         da_file = os.path.join(source_dir, "depth_average.txt")
@@ -3293,7 +3293,7 @@ def GetMantleScenario(scenario, **kwargs):
         Operator.ReadProfile(da_file)
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="AB17", jump_lower_mantle=30.0)
     else:
-        raise NotImplementedError('scenario needs to be one of ' + str(all_scenarios))
+        raise NotImplementedError('invalid scenario %s' % scenario)
     if not quiet:
         print("scenario: ", scenario)
         print("rheology_aspect: ", rheology_aspect)
@@ -3414,7 +3414,7 @@ def CompareMantleRheology():
     print("%s: figure saved %s" % (Utilities.func_name(), figure_path))
 
 
-def AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, key, idx, diffusion_creep, dislocation_creep):
+def AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, key, idx, diffusion_creep, dislocation_creep, **kwargs):
     '''
     Inputs:
         visco_plastic_dict(dict): options for the viscoplastic module in the aspect material model
@@ -3422,17 +3422,24 @@ def AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, key, idx, diffusio
         idx: index for the phase
         diffusion_creep: diffusion creep rheology
         dislocation_creep: dislocation creep rheology
+        kwargs:
+            no_convert: do not convert to aspect format (inputs are already aspect format)
     Return:
         visco_plastic_dict(dict): options for the viscoplastic module in the aspect material model after the change
     '''
     assert((diffusion_creep is not None) or (dislocation_creep is not None))
+    no_convert = kwargs.get("no_convert", False)
     # diffusion creep
     if diffusion_creep is not None:
-        diffusion_creep_aspect = Convert2AspectInput(diffusion_creep, use_effective_strain_rate=True)
+        if no_convert:
+            diffusion_creep_aspect = diffusion_creep
+        else:
+            diffusion_creep_aspect = Convert2AspectInput(diffusion_creep, use_effective_strain_rate=True)
+        # print("visco_plastic_dict: ", visco_plastic_dict) # debug
         visco_plastic_dict["Prefactors for diffusion creep"] = \
             ReplacePhaseOption(visco_plastic_dict["Prefactors for diffusion creep"], key, idx, diffusion_creep_aspect['A'])
         visco_plastic_dict["Grain size exponents for diffusion creep"] = \
-            ReplacePhaseOption(visco_plastic_dict["Grain size exponents for diffusion creep"], key, idx, diffusion_creep_aspect['p'])
+            ReplacePhaseOption(visco_plastic_dict["Grain size exponents for diffusion creep"], key, idx, diffusion_creep_aspect['m'])
         visco_plastic_dict["Activation energies for diffusion creep"] = \
             ReplacePhaseOption(visco_plastic_dict["Activation energies for diffusion creep"], key, idx, diffusion_creep_aspect['E'])
         visco_plastic_dict["Activation volumes for diffusion creep"] = \
@@ -3442,7 +3449,10 @@ def AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, key, idx, diffusio
             ReplacePhaseOption(visco_plastic_dict["Prefactors for diffusion creep"], key, idx, 1e-31)
     # dislocation creep
     if dislocation_creep is not None:
-        dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=True)
+        if no_convert:
+            dislocation_creep_aspect = dislocation_creep
+        else:
+            dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=True)
         visco_plastic_dict["Prefactors for dislocation creep"] = \
             ReplacePhaseOption(visco_plastic_dict["Prefactors for dislocation creep"], key, idx, dislocation_creep_aspect['A'])
         visco_plastic_dict["Stress exponents for dislocation creep"] = \

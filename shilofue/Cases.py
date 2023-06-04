@@ -100,6 +100,7 @@ it only takes effect if the input is positiveh",\
         self.add_key("Type of composition method", str,\
          ["composition method", "scheme"], "field", nick="comp_method")
         self.add_key("Depth average inputs", str, ["depth average file"], "", nick='da_inputs')
+        self.add_key("mantle rheology scenario (previous composed)", str, ['mantle rheology', 'known scenario'], "", nick='mantle_rheology_known_scenario')
     
     def check(self):
         '''
