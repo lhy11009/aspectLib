@@ -149,7 +149,6 @@ intiation stage causes the slab to break in the middle",\
             ['mantle rheology', "Coh"], 1000.0, nick='mantle_coh')
         self.add_key("Minimum viscosity", float,\
             ["minimum viscosity"], 1e18, nick='minimum_viscosity')
-        # todo_fix
         self.add_key("automatically fix boundary temperature",\
             int, ['world builder', 'fix boudnary temperature auto'], 0, nick='fix_boudnary_temperature_auto')
         self.add_key("the maximum extent of a slice in the geometry refinement",\
@@ -434,7 +433,6 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             max_phi = box_width / Ro * 180.0 / np.pi  # extent in term of phi
             o_dict["Geometry model"] = prm_geometry_sph(max_phi, adjust_mesh_with_width=adjust_mesh_with_width)
         elif geometry == 'box':
-            # todo_fix
             if adjust_mesh_with_width:
                 x_repetitions = int(np.ceil(int((box_width/repetition_slice) * 2.0) / 2.0))
                 y_repetitions = int(np.ceil(int((2.8900e6/repetition_slice) * 2.0) / 2.0))
@@ -488,7 +486,6 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         else:
             pass
         if fix_boudnary_temperature_auto:
-            # todo_fix
             # boudnary temperature: figure this out from the depth average profile
             assert(self.da_Tad_func is not None)
             try:
