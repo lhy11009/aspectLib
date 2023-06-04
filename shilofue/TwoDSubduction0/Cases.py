@@ -149,6 +149,11 @@ intiation stage causes the slab to break in the middle",\
             ['mantle rheology', "Coh"], 1000.0, nick='mantle_coh')
         self.add_key("Minimum viscosity", float,\
             ["minimum viscosity"], 1e18, nick='minimum_viscosity')
+        # todo_fix
+        self.add_key("automatically fix boundary temperature",\
+            int, ['world builder', 'fix boudnary temperature auto'], 0, nick='fix_boudnary_temperature_auto')
+        self.add_key("the maximum extent of a slice in the geometry refinement",\
+            float, ['world builder', 'maximum repetition slice'], 1e31, nick='maximum_repetition_slice')
     
     def check(self):
         '''
@@ -275,6 +280,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         slab_core_viscosity = self.values[self.start + 44]
         mantle_coh = self.values[self.start + 45]
         minimum_viscosity = self.values[self.start + 46]
+        fix_boudnary_temperature_auto = self.values[self.start + 47]
+        maximum_repetition_slice = self.values[self.start + 48]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -284,7 +291,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
         ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
-        mantle_coh, minimum_viscosity
+        mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice
 
     def to_configure_wb(self):
         '''
@@ -374,7 +381,7 @@ class CASE(CasesP.CASE):
     sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
     sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,\
     version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length,\
-    slab_core_viscosity, mantle_coh, minimum_viscosity):
+    slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -420,11 +427,30 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         # Adiabatic surface temperature
         o_dict["Adiabatic surface temperature"] = str(potential_T)
         # geometry model
+        # repitition: figure this out by deviding the dimensions with a unit value of repitition_slice
+        # The repitition_slice is defined by a max_repitition_slice and the minimum value compared with the dimensions
+        repetition_slice = np.min(np.array([maximum_repetition_slice, 2.8900e6]))
         if geometry == 'chunk':
             max_phi = box_width / Ro * 180.0 / np.pi  # extent in term of phi
             o_dict["Geometry model"] = prm_geometry_sph(max_phi, adjust_mesh_with_width=adjust_mesh_with_width)
         elif geometry == 'box':
-            o_dict["Geometry model"] = prm_geometry_cart(box_width, adjust_mesh_with_width=adjust_mesh_with_width)
+            # todo_fix
+            if adjust_mesh_with_width:
+                x_repetitions = int(np.ceil(int((box_width/repetition_slice) * 2.0) / 2.0))
+                y_repetitions = int(np.ceil(int((2.8900e6/repetition_slice) * 2.0) / 2.0))
+            else:
+                x_repetitions = 2
+                y_repetitions = 1
+            o_dict["Geometry model"] = {
+                "Model name": "box",
+                "Box": {
+                    "X extent": "%.4e" % box_width,
+                    "Y extent": "2.8900e6",
+                    "X repetitions": "%d" % x_repetitions
+                }
+            }
+            if y_repetitions > 1:
+                o_dict["Geometry model"]["Box"]["Y repetitions"] = "%d" % y_repetitions
         # refinement
         if refinement_level > 0:
             # these options only take effects when refinement level is positive
@@ -453,10 +479,25 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         if rf_scheme == "3d_coarse":
             pass
         # boundary temperature model
+        # 1. assign the option from sph and cart model, respectively
+        # 2. check if we want to automatically fix the boundary temperature
         if geometry == 'chunk':
             o_dict['Boundary temperature model'] = prm_boundary_temperature_sph()
         elif geometry == 'box':
             o_dict['Boundary temperature model'] = prm_boundary_temperature_cart()
+        else:
+            pass
+        if fix_boudnary_temperature_auto:
+            # todo_fix
+            # boudnary temperature: figure this out from the depth average profile
+            assert(self.da_Tad_func is not None)
+            try:
+                Tad_bot = self.da_Tad_func(2890e3) # bottom adiabatic temperature
+            except ValueError:
+                # in case this is above the given range of depth in the depth_average
+                # file, apply a slight variation and try again
+                Tad_bot = self.da_Tad_func(2890e3 - 50e3)
+            o_dict['Boundary temperature model']['Box']['Bottom temperature'] = "%.4e" % Tad_bot
         # set up subsection reset viscosity function
         visco_plastic_twoD = self.idict['Material model']['Visco Plastic TwoD']
         if geometry == 'chunk':
@@ -1371,28 +1412,6 @@ def prm_boundary_temperature_cart():
     return o_dict
 
 
-def prm_geometry_cart(box_width, **kwargs):
-    '''
-    reset geometry for box geometry
-    '''
-    adjust_mesh_with_width = kwargs.get("adjust_mesh_with_width")
-    inner_radius = 3.481e6
-    outer_radius = 6.371e6
-    if adjust_mesh_with_width:
-        x_repetitions = int(box_width / (outer_radius - inner_radius))
-    else:
-        x_repetitions = 2
-    o_dict = {
-        "Model name": "box",
-        "Box": {
-            "X extent": "%.4e" % box_width,
-            "Y extent": "2.8900e6",
-            "X repetitions": "%d" % x_repetitions
-        }
-    }
-    return o_dict
-
-
 def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, sp_trailing_length, ov_trailing_length, **kwargs):
     '''
     reset subsection Visco Plastic TwoD
@@ -1481,7 +1500,7 @@ def prm_reset_viscosity_function_cart(box_width, sp_trailing_length, ov_trailing
         function_expression_str =  "(((y > Do - Depth) && ((x < Width) || (xm-x < Width)))? CV: -1.0)"
     elif sp_trailing_length > 1e-6 and ov_trailing_length > 1e-6:
         function_constants_str = "Depth=1.45e5, SPTL=%.4e, OPTL=%.4e, Do=2.890e6, xm=%.4e, CV=1e20" % \
-        (sp_trailing_length, ov_trailing_length, max_phi_in_rad)
+        (sp_trailing_length, ov_trailing_length, box_width)
         function_expression_str =  "(((y > Do - Depth) && ((x < SPTL) || (xm-x < OPTL)))? CV: -1.0)"
     odict = {
         "Coordinate system": "cartesian",

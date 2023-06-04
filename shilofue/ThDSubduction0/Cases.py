@@ -290,7 +290,7 @@ different age will be adjusted.",\
         else:
             adjust_trailing_length = 0.0
         # the 0.0 is appended for the sp_trailing_length
-        return box_length_pre_adjust, default_sp_age_trench, sp_age_trench, sp_rate, adjust_trailing_length, adjust_trailing_length
+        return box_length_pre_adjust, default_sp_age_trench, sp_age_trench, sp_rate, adjust_trailing_length, 0.0
 
 
 class CASE(CasesP.CASE):
@@ -325,6 +325,7 @@ class CASE(CasesP.CASE):
         # geometry options
         # Box size: assigned 
         # repitition: figure this out by deviding the dimensions with a unit value of repitition_slice
+        # The repitition_slice is defined by a max_repitition_slice and the minimum value compared with the dimensions
         # boudnary temperature: figure this out from the depth average profile
         max_repitition_slice = 1000e3 # a value for the maximum value
         repitition_slice = np.min(np.array([box_length, box_width, box_depth, max_repitition_slice]))  # take the min as the repitition_slice

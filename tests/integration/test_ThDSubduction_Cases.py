@@ -39,6 +39,25 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
+def test_fix_reset_corner():
+    '''
+    test for
+    1. coarsen the side of the plate in the minimum refinement function, 
+    with a level assigned
+    '''
+    # test 0
+    source_case_dir = os.path.join(source_dir, "test_fix_reset_corner")
+    json_path = os.path.join(source_case_dir, 'case0.json')
+    output_dir = os.path.join(test_dir,'test_fix_reset_corner')
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    create_case_with_json(json_path, CASE, CASE_OPT)
+    assert(os.path.isdir(output_dir))  # check case generation
+    prm_std_path = os.path.join(source_case_dir, 'case_std.prm')
+    prm_path = os.path.join(output_dir, 'case.prm')
+    assert(filecmp.cmp(prm_path, prm_std_path))
+
+
 def test_coarsen_side_level():
     '''
     test for

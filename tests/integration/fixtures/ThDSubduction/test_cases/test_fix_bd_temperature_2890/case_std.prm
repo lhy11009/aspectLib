@@ -63,7 +63,7 @@ end
 subsection Geometry model
     set Model name = box
     subsection Box
-        set X extent = 7333000.0
+        set X extent = 7058000.0
         set Y extent = 4000000.0
         set Z extent = 2890000.0
         set X repetitions = 7
@@ -124,7 +124,7 @@ subsection Prescribed mantle adiabat temperatures
     subsection Indicator function
         set Coordinate system = cartesian
         set Variable names = x, y, z
-        set Function constants = Do=2.8900e+06, xm=7.3330e+06, Wp=1.0000e+06, Depth=150e3, dOvSide=6.0000e+05
+        set Function constants = Do=2.8900e+06, xm=7.0580e+06, Wp=1.0000e+06, Depth=150e3, dOvSide=6.0000e+05
         set Function expression = (z > Do - Depth) && (x > (xm - dOvSide)) && (y <= Wp)? 1.0: 0.0
     end
 end
@@ -208,14 +208,14 @@ subsection Material model
         subsection Reset viscosity function
             set Coordinate system = cartesian
             set Variable names = x, y, z
-            set Function constants = Depth=1.45e5, Width=2.7500e+05, Do=2.8900e+06, xm=7.3330e+06, CV=1e20, Wp=1.0000e+06
+            set Function constants = Depth=1.45e5, Width=2.7500e+05, Do=2.8900e+06, xm=7.0580e+06, CV=1e20, Wp=1.0000e+06
             set Function expression = (((z > Do - Depth) && (x > (xm - Width)) && (y <= Wp))? CV: -1.0)
         end
         set Reaction mor = true
         subsection Reaction mor function
             set Coordinate system = cartesian
             set Variable names = x, y, z
-            set Function constants = Do=2.8900e+06, xm=7.3330e+06, DpUp=15000.0, Dp=65000.0, Wp=1.0000e+06, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=6.0000e+05, dOvSide=6.0000e+05
+            set Function constants = Do=2.8900e+06, xm=7.0580e+06, DpUp=15000.0, Dp=65000.0, Wp=1.0000e+06, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=6.0000e+05, dOvSide=6.0000e+05
             set Function expression = ((z > Do - DpUp) && (x > pRidge) && (x <= pRidge + pWidth) && (y <= Wp)) ? 0:\
                                         (((z <= Do - DpUp) && (z > Do - Dp) && (x > pRidge) && (x <= pRidge + pWidth) && (y <= Wp)) ? 1:\
                                         ((z > Do - Dplate) && (((x > pRidge) && (x <= pRidge + pWidth)) || ((x > xm - dOvSide - pWidth) && (x <= xm - dOvSide))) && (y > Wp) && (y <= Wp + Wweak))? 2:-1)
