@@ -153,6 +153,9 @@ intiation stage causes the slab to break in the middle",\
             int, ['world builder', 'fix boudnary temperature auto'], 0, nick='fix_boudnary_temperature_auto')
         self.add_key("the maximum extent of a slice in the geometry refinement",\
             float, ['world builder', 'maximum repetition slice'], 1e31, nick='maximum_repetition_slice')
+        # todo_fix
+        self.add_key("Global refinement", int, ['refinement', 'global refinement'], 4, nick='global_refinement')
+        self.add_key("Adaptive refinement", int, ['refinement', 'adaptive refinement'], 2, nick='adaptive_refinement')
     
     def check(self):
         '''
@@ -202,7 +205,12 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             FileNotFoundError, "%s is not a directory" % HeFESTo_data_dir_pull_path)
         # assert scheme to use for refinement
         rf_scheme = self.values[self.start + 17]
-        assert(rf_scheme in ['2d', '3d coarse'])
+        assert(rf_scheme in ['2d', '3d consistent'])
+        # todo_fix
+        if rf_scheme == '3d consistent':
+            # 3d consistent geometry only works for box model
+            geometry = self.values[3]
+            assert(geometry == "box")
         # assert scheme of peierls creep to use
         peierls_scheme = self.values[self.start + 18]
         assert(peierls_scheme in ['MK10', "MK10p", 'Idrissi16'])
@@ -281,6 +289,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         minimum_viscosity = self.values[self.start + 46]
         fix_boudnary_temperature_auto = self.values[self.start + 47]
         maximum_repetition_slice = self.values[self.start + 48]
+        global_refinement = self.values[self.start + 49]
+        adaptive_refinement = self.values[self.start + 50]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -290,7 +300,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
         ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
-        mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice
+        mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement
 
     def to_configure_wb(self):
         '''
@@ -380,7 +390,8 @@ class CASE(CasesP.CASE):
     sz_constant_viscosity, branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury,\
     sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,\
     version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length,\
-    slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice):
+    slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice,\
+    global_refinement, adaptive_refinement):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -450,32 +461,50 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             if y_repetitions > 1:
                 o_dict["Geometry model"]["Box"]["Y repetitions"] = "%d" % y_repetitions
         # refinement
-        if refinement_level > 0:
-            # these options only take effects when refinement level is positive
-            if refinement_level == 9:
-                # this is only an option if the input is positive
-                o_dict["Mesh refinement"]["Initial global refinement"] = "5"
-                o_dict["Mesh refinement"]["Initial adaptive refinement"] = "4"
-            elif refinement_level == 10:
-                o_dict["Mesh refinement"]["Initial global refinement"] = "5"
-                o_dict["Mesh refinement"]["Initial adaptive refinement"] = "5"
-                pass
-            elif refinement_level == 11:
-                o_dict["Mesh refinement"]["Initial global refinement"] = "6"
-                o_dict["Mesh refinement"]["Initial adaptive refinement"] = "5"
-            o_dict["Mesh refinement"]["Minimum refinement level"] = o_dict["Mesh refinement"]["Initial global refinement"]
-            if geometry == 'chunk':
-                o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph(refinement_level=refinement_level)
-            elif geometry == 'box':
-                o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart(refinement_level=refinement_level)
-        else:
-            if geometry == 'chunk':
-                o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph()
-            elif geometry == 'box':
-                o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart()
-        # adjust refinement with different schemes, todo_3d_coarse
-        if rf_scheme == "3d_coarse":
-            pass
+        # todo_fix
+        if rf_scheme == "2d":
+            if refinement_level > 0:
+                # these options only take effects when refinement level is positive
+                if refinement_level == 9:
+                    # this is only an option if the input is positive
+                    o_dict["Mesh refinement"]["Initial global refinement"] = "5"
+                    o_dict["Mesh refinement"]["Initial adaptive refinement"] = "4"
+                elif refinement_level == 10:
+                    o_dict["Mesh refinement"]["Initial global refinement"] = "5"
+                    o_dict["Mesh refinement"]["Initial adaptive refinement"] = "5"
+                    pass
+                elif refinement_level == 11:
+                    o_dict["Mesh refinement"]["Initial global refinement"] = "6"
+                    o_dict["Mesh refinement"]["Initial adaptive refinement"] = "5"
+                o_dict["Mesh refinement"]["Minimum refinement level"] = o_dict["Mesh refinement"]["Initial global refinement"]
+                if geometry == 'chunk':
+                    o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph(refinement_level=refinement_level)
+                elif geometry == 'box':
+                    o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart(refinement_level=refinement_level)
+            else:
+                if geometry == 'chunk':
+                    o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph()
+                elif geometry == 'box':
+                    o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart()
+        # adjust refinement with different schemes
+        elif rf_scheme == "3d consistent":
+            # 3d consistent scheme:
+            #   the global and adaptive refinement are set up by two variables separately
+            #   remove additional inputs
+            o_dict["Mesh refinement"]["Initial global refinement"] = "%d" % global_refinement
+            o_dict["Mesh refinement"]["Initial adaptive refinement"] = "%d" % adaptive_refinement
+            o_dict["Mesh refinement"]["Minimum refinement level"] = "%d" % global_refinement
+            o_dict["Mesh refinement"]["Minimum refinement function"]["Coordinate system"] = "cartesian"
+            o_dict["Mesh refinement"]["Minimum refinement function"]["Variable names"] = "x, y, t"
+            o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] = \
+                "Do=2.8900e+06, UM=670e3, Dp=100e3, Rd=%d, Rum=%d" %\
+                    (global_refinement+adaptive_refinement-1, global_refinement+adaptive_refinement-2)
+            o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"] = \
+                "(Do-y<UM)?\\\n\
+                                    ((Do-y<Dp+50e3)? Rd: Rum)\\\n\
+                                    :0"
+            o_dict["Mesh refinement"]["IsosurfacesTwoD1"].pop("Depth for coarsening the lower mantle")
+            o_dict["Mesh refinement"]["IsosurfacesTwoD1"].pop("Level for coarsening the lower mantle")
         # boundary temperature model
         # 1. assign the option from sph and cart model, respectively
         # 2. check if we want to automatically fix the boundary temperature
@@ -760,12 +789,24 @@ opcrust: 1e+31, opharz: 1e+31", \
         self.wb_dict['potential mantle temperature'] = potential_T
         # geometry
         if geometry == 'chunk':
+            # fix the depth method:
+            #   a update with the "begin at end segment" method to use
+            # fix the width of box
             self.wb_dict["coordinate system"] = {"model": "spherical", "depth method": "begin segment"}
+            if version < 1.0:
+                pass
+            elif version < 2.0:
+                o_dict["coordinate system"]["depth method"] = "begin at end segment"
+            else:
+                raise NotImplementedError
             if is_box_wider:
                 self.wb_dict["cross section"] = [[0, 0], [360.0, 0.0]]
             else:
                 self.wb_dict["cross section"] = [[0, 0], [180.0, 0.0]]
         elif geometry == 'box':
+            # delete the depth method
+            #   it is not allowed in the cartesion geometry
+            # fix the width of box
             self.wb_dict["coordinate system"]["model"] = "cartesian"
             self.wb_dict["coordinate system"].pop("depth method")  # remove depth method in this case
             if is_box_wider:
@@ -1096,13 +1137,6 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
         sp_ridge_coords = [[[0, -_side], [0, _side]]]
     else:
         sp_ridge_coords = [[0, -_side], [0, _side]]
-    # change the method of the depth method to use
-    if version < 1.0:
-        pass
-    elif version < 2.0:
-        o_dict["coordinate system"]["depth method"] = "begin at end segment"
-    else:
-        raise NotImplementedError
     # the index of layers
     if n_crust_layer == 1:
         i_uc = -1

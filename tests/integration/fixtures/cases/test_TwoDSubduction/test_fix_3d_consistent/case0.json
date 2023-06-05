@@ -5,6 +5,12 @@
   "depth average file": "${ASPECT_LAB_DIR}/files/TwoDSubduction/depth_average.txt",
   "include fast first step": 1,
   "branch": "master_TwoD",
+  "refinement scheme": "3d consistent",
+  "refinement": 
+  {
+    "global refinement": 3,
+    "adaptive refinement": 4
+  },
   "test initial steps": {
     "number of outputs": 3,
     "interval of outputs": 10000.0
