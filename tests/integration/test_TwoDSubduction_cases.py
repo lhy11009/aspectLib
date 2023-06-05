@@ -36,7 +36,6 @@ os.mkdir(test_dir)
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'cases', "test_TwoDSubduction")
 
 
-# todo_fix
 def test_fix_3d_consistent():
     '''
     to fix the conditions in a consistent model with the 3d models

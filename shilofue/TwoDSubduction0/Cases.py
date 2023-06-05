@@ -153,7 +153,6 @@ intiation stage causes the slab to break in the middle",\
             int, ['world builder', 'fix boudnary temperature auto'], 0, nick='fix_boudnary_temperature_auto')
         self.add_key("the maximum extent of a slice in the geometry refinement",\
             float, ['world builder', 'maximum repetition slice'], 1e31, nick='maximum_repetition_slice')
-        # todo_fix
         self.add_key("Global refinement", int, ['refinement', 'global refinement'], 4, nick='global_refinement')
         self.add_key("Adaptive refinement", int, ['refinement', 'adaptive refinement'], 2, nick='adaptive_refinement')
     
@@ -206,7 +205,6 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         # assert scheme to use for refinement
         rf_scheme = self.values[self.start + 17]
         assert(rf_scheme in ['2d', '3d consistent'])
-        # todo_fix
         if rf_scheme == '3d consistent':
             # 3d consistent geometry only works for box model
             geometry = self.values[3]
@@ -461,7 +459,6 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             if y_repetitions > 1:
                 o_dict["Geometry model"]["Box"]["Y repetitions"] = "%d" % y_repetitions
         # refinement
-        # todo_fix
         if rf_scheme == "2d":
             if refinement_level > 0:
                 # these options only take effects when refinement level is positive
