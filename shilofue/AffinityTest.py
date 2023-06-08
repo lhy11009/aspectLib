@@ -18,6 +18,7 @@ import shilofue.Cases as CasesP
 import shilofue.TwoDSubduction0.Cases as CasesTwoDSubduction
 import shilofue.ThDSubduction0.Cases as CasesThDSubduction
 import shilofue.ParsePrm as ParsePrm
+from shilofue.PlotStatistics import STATISTICS_PLOT
 try:
     import pathlib
     import subprocess
@@ -359,18 +360,29 @@ def organize_result(test_root_dir, cluster):
         os.mkdir(_dir)
     results_dir = _dir
     results_tmp_dir = os.path.join(test_root_dir, 'tmp', cluster)
+    # copy & paste results
+    # 1. log outputs
+    # 2. prm outputs
+    # 3. statistics outputs
     assert(os.path.isdir(results_tmp_dir))
     for _dir in os.listdir(results_tmp_dir):
         if _dir.startswith('output'):
             case_name = _dir.split('_', 1)[1]
             log_path = os.path.join(results_tmp_dir, _dir, 'log.txt')
+            assert(os.path.isfile(log_path))
             target_path = os.path.join(results_dir, 'output_' + case_name)
             print("copy %s to %s" % (log_path, target_path))
             shutil.copy(log_path, target_path)
             prm_path = os.path.join(results_tmp_dir, _dir, 'original.prm')
+            assert(os.path.isfile(prm_path))
             target_path = os.path.join(results_dir, case_name + '.prm')
             print("copy %s to %s" % (prm_path, target_path))
             shutil.copy(prm_path, target_path)
+            statistics_path = os.path.join(results_tmp_dir, _dir, 'statistics')
+            assert(os.path.isfile(statistics_path))
+            target_path = os.path.join(results_dir, "statistics_" + case_name)
+            print("copy %s to %s" % (statistics_path, target_path))
+            shutil.copy(statistics_path, target_path)
         else:
             continue
 
@@ -381,25 +393,36 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
     '''
     analyze affinity test results
     '''
+    Statistics = STATISTICS_PLOT('Statistics') # plotter for Statistic outputs
     total_wall_clock = []
     assemble_stokes_system = []
     solve_stokes_system = []
     cores = []
     resolutions = []
     setups = []
+    nocs = []
+    nofs_stokes = []
+    nofs_comp = []
+    nofs_temp = []
     # go into sub dirs
     temp_file = os.path.join(ASPECT_LAB_DIR, 'temp')  # file to save partial results
-    path_obj = pathlib.Path(test_results_dir).rglob("output*")
+    path_obj = pathlib.Path(test_results_dir).rglob("output*")  # path to all case outputs
     i = 0
     for _path in path_obj:
         i += 1
         output_file = str(_path)
         input_file = os.path.basename(output_file).split("_", maxsplit=1)[1] + ".prm"
-        input_path = os.path.join(test_results_dir,  input_file)
+        input_path = os.path.join(test_results_dir,  input_file)  # path to the prm file
+        statistic_file = "statistics_" + os.path.basename(output_file).split("_", maxsplit=1)[1]
+        statistic_path = os.path.join(test_results_dir, statistic_file)
         stokes_solver_type = ParsePrm.GetStokesSolverTypeFromPrm(input_path) 
         patterns = output_file.split('_')
         print("Output file found: %s" % output_file)
-        # append data
+        # read and process data
+        # 1. the data is imported by the parse_block_output.sh and then read by the numpy
+        # reader.
+        # 2. These numbers are keep in a few arrays (e.g. total_wall_clock).
+        # 3. Patterns (e.g. name of the server, task per core) are parsed to other arrays (e.g. setups)
         if stokes_solver_type == "block AMG":
             subprocess.run("%s/bash_scripts/parse_block_output.sh  analyze_affinity_test_results %s %s" 
                             % (ASPECT_LAB_DIR, output_file, temp_file), shell=True)
@@ -410,6 +433,9 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
             raise ValueError("stokes_solver_type must be block AMG or block GMG")
         try:
             data = np.genfromtxt(temp_file)
+            # data dimension:
+            # ndim = 1: there is only one step
+            # ndim > 1: there are multiple steps
             if data.ndim == 1:
                 total_wall_clock.append(data[0])
                 assemble_stokes_system.append(data[1])
@@ -424,15 +450,32 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
             setups.append(int(patterns[-1]))
             resolutions.append(int(patterns[-2]))
             cores.append(int(patterns[-3]))
+        # read data from the statistic files
+        Statistics.ReadHeader(statistic_path)
+        Statistics.ReadData(statistic_path)
+        col_noc = Statistics.header['Number_of_mesh_cells']['col']
+        col_dof_stokes = Statistics.header['Number_of_Stokes_degrees_of_freedom']['col']
+        col_dof_temperature = Statistics.header['Number_of_temperature_degrees_of_freedom']['col']
+        col_dof_composition = Statistics.header['Number_of_degrees_of_freedom_for_all_compositions']['col']
+        nocs_raw = Statistics.data[:, col_noc]
+        nofs_stokes_raw = Statistics.data[:, col_dof_stokes]
+        nofs_temp_raw = Statistics.data[:, col_dof_temperature]
+        nofs_comp_raw = Statistics.data[:, col_dof_composition]
+        nocs.append(nocs_raw[-1])
+        nofs_stokes.append(nofs_stokes_raw[-1])
+        nofs_temp.append(nofs_temp_raw[-1])
+        nofs_comp.append(nofs_comp_raw[-1])
+    # assert there is at least one case output
     Utilities.my_assert(i > 0, AssertionError, "There is no output* file in the folder %s" % test_results_dir)
-
     setups = np.array(setups)
     resolutions = np.array(resolutions)
     cores = np.array(cores)
     total_wall_clock = np.array(total_wall_clock)
     assemble_stokes_system = np.array(assemble_stokes_system)
     solve_stokes_system = np.array(solve_stokes_system)
-    # rearrange and sort data
+    # screen output
+    # 1. output numbers from the log.txt file
+    # 2. output mesh information from the Statistics file (during loop of resolution)
     print("Affinity Test Results:")
     print('setups:', setups)
     print('resolutions', resolutions)
@@ -440,50 +483,75 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
     print("total wall clocks:", total_wall_clock)
     print("assemble_stokes_system:", assemble_stokes_system)
     print("solve_stokes_system:", solve_stokes_system)
-    
+
     # plot via matplotlib
+    # 1. loop for resolutions, generate one line for every resolution
+    # 2. plots are generated in log-log or linear format
     resolution_options = []
+    i = 0
     for resolution in resolutions:
         if resolution not in resolution_options:
             resolution_options.append(resolution)
+            print("resolution: ", resolution)
+            print("\tnumber of cells: ", nocs[i])
+            print("\tNumber of Stokes degrees of freedom: ", nofs_stokes[i])
+            print("\tNumber of temperature degrees of freedom: ", nofs_temp[i])
+            print("\tNumber of degrees of freedom for all compositions: ", nofs_comp[i])
+        i += 1
     resolution_options = np.array(resolution_options)
     resolution_options = np.sort(resolution_options)
-
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
     for i in range(len(resolution_options)):
         resolution = resolution_options[i]
         plot_indexes = (resolutions == resolution) 
         xs = cores[plot_indexes]
         sequential_indexes = np.argsort(xs)
+        xs_sorted = xs[sequential_indexes]
         ys1 = total_wall_clock[plot_indexes]
+        ys1_sorted = ys1[sequential_indexes]
+        ys6 = ys1_sorted[0] / ys1_sorted # the speed up 
+        ys7 = ys1_sorted[0] * xs_sorted[0] / (ys1_sorted * xs_sorted)  # the parallel efficiency
         # labels
         _label0 = 'Total Wall Clock(resolution=%d)' % resolution
         _label1 = 'Assemble Stokes System(resolution=%d)' % resolution
         _label2 = 'Solve Stokes System(resolution=%d)' % resolution
-        # plot
-        axs[0].loglog(xs[sequential_indexes], ys1[sequential_indexes], ".-", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+        # plot:
+        # 1. the wall clock, log - log plot
+        # 2. the break out of wall clock to different parts in percentage, semilog plot
+        # 3. strong scaling: speed up defined as ratio of wallclock t1 / tn - linear plot 
+        # 4. weak scaling: parallel efficiency, defined as t1 * core1 / (tn * coren) - linear plot
+        # 5. Number of meshes
+        axs[0, 0].loglog(xs[sequential_indexes], ys1[sequential_indexes], ".-", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
                 label=_label0)
         ys2 = assemble_stokes_system[plot_indexes]
-        axs[0].loglog(xs[sequential_indexes], ys2[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+        axs[0, 0].loglog(xs[sequential_indexes], ys2[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
                 label=_label1)
         ys3 = ys2 / ys1
-        axs[1].semilogx(xs[sequential_indexes], ys3[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+        axs[0, 1].semilogx(xs[sequential_indexes], ys3[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
                 label=_label1)
         ys4 = solve_stokes_system[plot_indexes]
-        axs[0].loglog(xs[sequential_indexes], ys4[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+        axs[0, 0].loglog(xs[sequential_indexes], ys4[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
                 label=_label2)
         ys5 = ys4 / ys1
-        axs[1].semilogx(xs[sequential_indexes], ys5[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+        axs[0, 1].semilogx(xs[sequential_indexes], ys5[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
                 label=_label2)
-    axs[0].set_xlabel('Cores')
-    axs[0].set_ylabel('Time [s]')
-    axs[0].grid()
-    axs[0].set_title('Wall Clock')
-    axs[0].legend(fontsize='x-small')
-    axs[1].set_xlabel('Cores')
-    axs[1].set_ylabel('Percentage')
-    axs[1].grid()
-    axs[1].set_title('Percentage of Each Part')
+        axs[1, 0].plot(xs[sequential_indexes], ys6, ".-", color=cm.gist_rainbow(1.0*i/len(resolution_options)))
+        axs[1, 1].plot(xs[sequential_indexes], ys7, ".-", color=cm.gist_rainbow(1.0*i/len(resolution_options)))
+    axs[0, 0].set_xlabel('Cores')
+    axs[0, 0].set_ylabel('Time [s]')
+    axs[0, 0].grid()
+    axs[0, 0].set_title('Wall Clock')
+    axs[0, 0].legend(fontsize='x-small')
+    axs[0, 1].set_xlabel('Cores')
+    axs[0, 1].set_ylabel('Percentage')
+    axs[0, 1].grid()
+    axs[0, 1].set_title('Percentage of Each Part')
+    axs[1, 0].set_xlabel('Cores')
+    axs[1, 0].set_ylabel('Speed Up')
+    axs[1, 0].grid()
+    axs[1, 1].set_xlabel('Cores')
+    axs[1, 1].set_ylabel('Parallel Efficiency')
+    axs[1, 1].grid()
     # title and save path 
     basename = os.path.basename(test_results_dir)
     fig.tight_layout()
