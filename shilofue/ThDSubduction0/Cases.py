@@ -606,6 +606,8 @@ class CASE(CasesP.CASE):
             try:
                 if "Stokes solver type" in o_dict['Solver parameters']["Stokes solver parameters"]:
                     o_dict['Solver parameters']['Stokes solver parameters']["Stokes solver type"] = "block AMG"
+                if "Skip expensive stokes solver" in o_dict['Solver parameters']["Stokes solver parameters"]:
+                    o_dict['Solver parameters']["Stokes solver parameters"].pop("Skip expensive stokes solver")
             except KeyError:
                 pass
         elif stokes_solver_type == "block GMG":
