@@ -155,6 +155,7 @@ intiation stage causes the slab to break in the middle",\
             float, ['world builder', 'maximum repetition slice'], 1e31, nick='maximum_repetition_slice')
         self.add_key("Global refinement", int, ['refinement', 'global refinement'], 4, nick='global_refinement')
         self.add_key("Adaptive refinement", int, ['refinement', 'adaptive refinement'], 2, nick='adaptive_refinement')
+        self.add_key("remove overiding plate composition", int, ['world builder', 'remove ov comp'], 0, nick='rm_ov_comp')
     
     def check(self):
         '''
@@ -289,6 +290,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         maximum_repetition_slice = self.values[self.start + 48]
         global_refinement = self.values[self.start + 49]
         adaptive_refinement = self.values[self.start + 50]
+        rm_ov_comp = self.values[self.start + 51]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -298,7 +300,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         branch, partitions, sz_minimum_viscosity, use_embeded_fault, Dsz, ef_factor, ef_Dbury, sp_age_trench, use_embeded_fault_feature_surface,\
         ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
-        mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement
+        mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
+        rm_ov_comp
 
     def to_configure_wb(self):
         '''
@@ -322,6 +325,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         version = self.values[23]
         n_crust_layer = self.values[self.start + 38]
         Duc = self.values[self.start + 39]
+        rm_ov_comp = self.values[self.start + 51]
         if n_crust_layer == 1:
             # number of total compositions
             n_comp = 4
@@ -337,7 +341,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             ) # adjust box width
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
             if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version,\
-            n_crust_layer, Duc, n_comp, sp_trailing_length, ov_trailing_length, box_width
+            n_crust_layer, Duc, n_comp, sp_trailing_length, ov_trailing_length, box_width, rm_ov_comp
     
     def to_configure_final(self):
         '''
@@ -389,7 +393,7 @@ class CASE(CasesP.CASE):
     sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,\
     version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length,\
     slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice,\
-    global_refinement, adaptive_refinement):
+    global_refinement, adaptive_refinement, rm_ov_comp):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -521,6 +525,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                 # file, apply a slight variation and try again
                 Tad_bot = self.da_Tad_func(2890e3 - 50e3)
             o_dict['Boundary temperature model']['Box']['Bottom temperature'] = "%.4e" % Tad_bot
+        # compositional fields
         # set up subsection reset viscosity function
         visco_plastic_twoD = self.idict['Material model']['Visco Plastic TwoD']
         if geometry == 'chunk':
@@ -756,6 +761,12 @@ opcrust: 1e+31, opharz: 1e+31", \
             o_dict['Material model']['Visco Plastic TwoD'] = visco_plastic_dict
         else:
             raise NotImplementedError()
+        
+        # remove the overiding plate composition
+        if rm_ov_comp:
+            o_dict = remove_composition(o_dict, 'opcrust')
+            o_dict = remove_composition(o_dict, 'opharz')
+            # modify options for the rheology
 
         # apply the changes 
         self.idict = o_dict
@@ -773,7 +784,7 @@ opcrust: 1e+31, opharz: 1e+31", \
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
         if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version,\
-        n_crust_layer, Duc, n_comp, sp_trailing_length, ov_trailing_length, box_width):
+        n_crust_layer, Duc, n_comp, sp_trailing_length, ov_trailing_length, box_width, rm_ov_comp):
         '''
         Configure world builder file
         Inputs:
@@ -793,7 +804,7 @@ opcrust: 1e+31, opharz: 1e+31", \
             if version < 1.0:
                 pass
             elif version < 2.0:
-                o_dict["coordinate system"]["depth method"] = "begin at end segment"
+                self.wb_dict["coordinate system"]["depth method"] = "begin at end segment"
             else:
                 raise NotImplementedError
             if is_box_wider:
@@ -823,7 +834,8 @@ opcrust: 1e+31, opharz: 1e+31", \
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag, wb_new_ridge, version, n_crust_layer, Duc, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz, n_comp=n_comp,\
-            sp_trailing_length=sp_trailing_length, ov_trailing_length=ov_trailing_length, box_width=box_width)
+            sp_trailing_length=sp_trailing_length, ov_trailing_length=ov_trailing_length, box_width=box_width,\
+            rm_ov_comp=rm_ov_comp)
         elif geometry == 'box':
             if is_box_wider:
                 Xmax = 2e7
@@ -833,7 +845,7 @@ opcrust: 1e+31, opharz: 1e+31", \
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
             sp_rate, ov_ag, wb_new_ridge, version, n_crust_layer, Duc, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry, sz_thickness=Dsz, n_comp=n_comp, sp_trailing_length=sp_trailing_length,\
-            ov_trailing_length=ov_trailing_length, box_width=box_width) # plates
+            ov_trailing_length=ov_trailing_length, box_width=box_width, rm_ov_comp=rm_ov_comp) # plates
         else:
             raise ValueError('%s: geometry must by one of \"chunk\" or \"box\"' % Utilities.func_name())
     
@@ -898,6 +910,7 @@ opcrust: 1e+31, opharz: 1e+31", \
                 }
                 # if not using the feature surface from the WorldBuilder, generate particles manually
                 self.particle_data = particle_positions_ef(geometry, Ro, trench, Dsz, ef_Dbury, p0, slab_lengths, slab_dips, interval=ef_particle_interval)
+
 
 def expand_multi_composition(i_dict, comp0, comps):
     '''
@@ -993,6 +1006,7 @@ def expand_multi_composition_composition_field(i_dict, comp0, comps):
         id += 1
     if not found:
         raise ValueError("the option of \"Names of fields\" doesn't have option of %s" % comp0)
+    # add the new compositions to the original list of compositions
     for comp in comps:
         str_name_options.append(comp)
     str_name_new = ""
@@ -1003,7 +1017,6 @@ def expand_multi_composition_composition_field(i_dict, comp0, comps):
         else:
             str_name_new += ","
         str_name_new += _option
-    is_first = True
     o_dict["Compositional fields"]["Names of fields"] = str_name_new
     # number of composition
     nof = int(o_dict["Compositional fields"]["Number of fields"])
@@ -1078,6 +1091,7 @@ def expand_multi_composition_isosurfaces(i_dict, comp0, comps):
             pass
     # change the options of isosurface
     if found:
+        # check that the target composition is in the string
         if re.match('.*' + comp0, isosurface_option):
             options = isosurface_option.split(";")
             has_composition = False
@@ -1103,6 +1117,203 @@ def expand_multi_composition_isosurfaces(i_dict, comp0, comps):
                 elif isosurface_option_type == 2:
                     i_dict["Mesh refinement"]["IsosurfacesTwoD1"]["Isosurfaces"] = new_isosurface_option
     return i_dict
+
+def remove_composition(i_dict, comp):
+    '''
+    remove one composition to multiple compositions in the dictionary
+    Inputs:
+        i_dict: dictionary of inputs
+        comp: composition to remove
+    '''
+    temp_dict = remove_composition_options(i_dict, comp)
+    temp_dict = remove_composition_isosurfaces(temp_dict, comp)
+    o_dict  = remove_composition_composition_field(temp_dict, comp)
+    return o_dict
+
+
+def remove_composition_options(i_dict, comp):
+    '''
+    remove the options for one composition in the prm file
+    Inputs:
+        i_dict: dictionary of inputs
+        comp: composition to remove
+    '''
+    o_dict = deepcopy(i_dict)
+
+    for key, value in o_dict.items():
+        if type(value) == dict:
+            # in case of dictionary: iterate
+            o_dict[key] = remove_composition_options(value, comp)
+        elif type(value) == str:
+            # in case of string, try matching it with the composition
+            if re.match('.*' + comp, value) and re.match('.*:', value) and not re.match('.*;', value):
+                try:
+                    o_dict[key] = ParsePrm.remove_composition_option(value, comp)
+                except KeyError:
+                    # this is not a string with options of compositions, skip
+                    pass
+        else:
+            raise TypeError("value must be either dict or str")
+    return o_dict
+
+
+def remove_composition_isosurfaces(i_dict, comp):
+    '''
+    remove the isosurface options for one composition in the prm file
+    Inputs:
+        i_dict: dictionary of inputs
+        comp: composition to remove
+    '''
+    found = False
+    # find the right option of isosurface
+    try:
+        isosurface_option = i_dict["Mesh refinement"]["Isosurfaces"]["Isosurfaces"]
+        isosurface_option_type = 1
+        found = True
+    except KeyError:
+        try:
+            isosurface_option = i_dict["Mesh refinement"]["IsosurfacesTwoD1"]["Isosurfaces"]
+            isosurface_option_type = 2
+            found = True
+        except KeyError:
+            pass
+    # change the options of isosurface
+    if found:
+        # check that the target composition is in the string
+        # then remove it
+        if re.match('.*' + comp, isosurface_option):
+            options = isosurface_option.split(";")
+            for _option in options:
+                if re.match('.*' + comp, _option):
+                    options.remove(_option)
+                new_isosurface_option = ""
+                is_first = True
+                for _option in options:
+                    if is_first:
+                        is_first = False
+                    else:
+                        new_isosurface_option += ";"
+                    new_isosurface_option += _option
+                if isosurface_option_type == 1:
+                    i_dict["Mesh refinement"]["Isosurfaces"]["Isosurfaces"] = new_isosurface_option
+                elif isosurface_option_type == 2:
+                    i_dict["Mesh refinement"]["IsosurfacesTwoD1"]["Isosurfaces"] = new_isosurface_option
+    o_dict = i_dict
+    return o_dict
+
+
+def remove_composition_array(old_str, id_comp0):
+    '''
+    expand the composition options
+    Inputs:
+        old_str: the old option
+        id_comp0: index of the option for the original composition
+        n_comp: number of new compositions
+    '''
+    options = old_str.split(',')
+    removed_option = options.pop(id_comp0)
+    # compile new option
+    new_option = ""
+    is_first = True
+    for _option in options:
+        if is_first:
+            is_first = False
+        else:
+            new_option += ', '
+        new_option += _option
+    return new_option 
+
+
+def remove_composition_composition_field(i_dict, comp0):
+    '''
+    remove the isosurface options for one composition in the prm file
+    Inputs:
+        i_dict: dictionary of inputs
+        comp: composition to remove
+    '''
+    o_dict = deepcopy(i_dict)
+    # composition field
+    # find the index of the original field to be id0
+    str_name = o_dict["Compositional fields"]["Names of fields"]
+    str_name_options = str_name.split(',')
+    id = 0
+    found = False
+    for _option in str_name_options:
+        comp = Utilities.re_neat_word(_option) 
+        if comp == comp0:
+            id0 = id
+            found = True
+            str_name_options.remove(comp)
+        id += 1
+    if not found:
+        raise ValueError("the option of \"Names of fields\" doesn't have option of %s" % comp0)
+    # construct the new string for Names of fields
+    str_name_new = ""
+    is_first = True
+    for _option in str_name_options:
+        if is_first:
+            is_first = False
+        else:
+            str_name_new += ","
+        str_name_new += _option
+    o_dict["Compositional fields"]["Names of fields"] = str_name_new
+    # number of composition
+    nof = int(o_dict["Compositional fields"]["Number of fields"])
+    new_nof = nof - 1
+    o_dict["Compositional fields"]["Number of fields"] = str(new_nof)
+    # field method
+    str_f_methods = o_dict["Compositional fields"]["Compositional field methods"]
+    f_method = str_f_methods.split(',')[0]
+    # construct the new Compositional field methods
+    comp_method_expression = ""
+    is_first = True
+    for i in range(new_nof):
+        if is_first:
+            is_first = False
+        else:
+            comp_method_expression += ", "
+        comp_method_expression += f_method
+    o_dict["Compositional fields"]["Compositional field methods"] = comp_method_expression
+
+    # discretization option
+    find_discretization_option = False
+    try:
+        discretization_option = o_dict["Discretization"]["Stabilization parameters"]['Global composition maximum']
+        find_discretization_option = True
+    except:
+        pass
+    if find_discretization_option:
+        o_dict["Discretization"]["Stabilization parameters"]['Global composition maximum'] = remove_composition_array(discretization_option, id0)
+    find_discretization_option = False
+    try:
+        discretization_option = o_dict["Discretization"]["Stabilization parameters"]['Global composition minimum']
+        find_discretization_option = True
+    except:
+        pass
+    if find_discretization_option:
+        o_dict["Discretization"]["Stabilization parameters"]['Global composition minimum'] = remove_composition_array(discretization_option, id0)
+    # option in the adiabatic temperature
+    try:
+        _ = o_dict["Initial temperature model"]["Adiabatic"]["Function"]["Function expression"]
+        new_adiabatic_functiion_expression = ""
+        is_first = True
+        for i in range(new_nof):
+            if is_first:
+                is_first = False
+            else:
+                new_adiabatic_functiion_expression += "; "
+            new_adiabatic_functiion_expression += "0.0"
+        o_dict["Initial temperature model"]["Adiabatic"]["Function"]["Function expression"] = new_adiabatic_functiion_expression
+    except KeyError:
+        pass
+    # option in the look up table
+    try:
+        look_up_index_option = o_dict["Material model"]["Visco Plastic TwoD"]["Lookup table"]["Material lookup indexes"]
+        # note there is an entry for the background in this option, so I have to use id0 + 1 
+        o_dict["Material model"]["Visco Plastic TwoD"]["Lookup table"]["Material lookup indexes"] = remove_composition_array(look_up_index_option, id0+1)
+    except KeyError:
+        pass
+    return o_dict
     
 
 def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, version, n_crust_layer, Duc, **kwargs):
@@ -1118,6 +1329,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
     sp_trailing_length = kwargs.get("sp_trailing_length", 0.0)
     ov_trailing_length = kwargs.get("ov_trailing_length", 0.0)
     box_width = kwargs.get("box_width", None)
+    rm_ov_comp = kwargs.get("rm_ov_comp", 0)
     D2C_ratio = 35.2e3 / 7.5e3 # ratio of depleted / crust layer
     o_dict = wb_dict.copy()
     max_cart = 2 * Xmax
@@ -1171,6 +1383,9 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
         ov_trans_dict["composition models"][i_lc]["max depth"] = Dsz
         ov_trans_dict["composition models"][i_hz]["min depth"] = Dsz
         ov_trans_dict["composition models"][i_hz]["max depth"] = Dsz * D2C_ratio
+        if rm_ov_comp:
+            # options for removing overiding plate compositions
+            ov_trans_dict.pop("composition models")
         o_dict['features'][i0] = ov_trans_dict
     else:
         # if no using transit plate, remove the feature
@@ -1180,6 +1395,7 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
             pass
         o_dict = ParsePrm.RemoveWBFeatures(o_dict, i0)
         ov = trench
+    # options for the overiding plate
     i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate')
     op_dict = o_dict['features'][i0]
     if ov_trailing_length > 0.0:
@@ -1213,6 +1429,9 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
     op_dict["composition models"][i_lc]["max depth"] = Dsz
     op_dict["composition models"][i_hz]["min depth"] = Dsz
     op_dict["composition models"][i_hz]["max depth"] = Dsz * D2C_ratio
+    if rm_ov_comp:
+        # options for removing overiding plate compositions
+        op_dict.pop("composition models")
     o_dict['features'][i0] = op_dict
     # Subducting plate
     # 1. change to the starting point sp_trailing_length and fix the geometry
