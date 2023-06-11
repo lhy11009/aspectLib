@@ -291,6 +291,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         global_refinement = self.values[self.start + 49]
         adaptive_refinement = self.values[self.start + 50]
         rm_ov_comp = self.values[self.start + 51]
+        comp_method = self.values[25] 
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -301,7 +302,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
-        rm_ov_comp
+        rm_ov_comp, comp_method
 
     def to_configure_wb(self):
         '''
@@ -393,7 +394,7 @@ class CASE(CasesP.CASE):
     sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,\
     version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length,\
     slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice,\
-    global_refinement, adaptive_refinement, rm_ov_comp):
+    global_refinement, adaptive_refinement, rm_ov_comp, comp_method):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -526,6 +527,37 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                 Tad_bot = self.da_Tad_func(2890e3 - 50e3)
             o_dict['Boundary temperature model']['Box']['Bottom temperature'] = "%.4e" % Tad_bot
         # compositional fields
+        # note the options for additional compositions and less compositions are handled later
+        # options for using the particle method
+        if comp_method == "particle":
+            comp_dict = o_dict["Compositional fields"]
+            nof = int(o_dict["Compositional fields"]["Number of fields"])
+            # construct the new Compositional field methods
+            comp_method_expression = ""
+            is_first = True
+            for i in range(nof):
+                if is_first:
+                    is_first = False
+                else:
+                    comp_method_expression += ", "
+                comp_method_expression += "particles"
+            comp_dict["Compositional field methods"] = comp_method_expression
+            # map to particles
+            mapped_properties_expression = ""
+            field_name_exppression = comp_dict["Names of fields"]
+            field_name_options = field_name_exppression.split(',')
+            is_first = True
+            for _option in field_name_options:
+                if is_first:
+                    is_first = False
+                else:
+                    mapped_properties_expression += ", "
+                field_name = Utilities.re_neat_word(_option) 
+                mapped_properties_expression += "%s: initial %s" % (field_name, field_name)
+            comp_dict["Mapped particle properties"] = mapped_properties_expression
+            # parse back
+            o_dict["Compositional fields"] = comp_dict
+        
         # set up subsection reset viscosity function
         visco_plastic_twoD = self.idict['Material model']['Visco Plastic TwoD']
         if geometry == 'chunk':
@@ -534,6 +566,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         elif geometry == 'box':
             o_dict['Material model']['Visco Plastic TwoD'] =\
               prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_trailing_length, ov_trailing_length)
+       
         # set up subsection Prescribed temperatures
         if geometry == 'chunk':
             if prescribe_T_method == 'plate model':
@@ -721,6 +754,26 @@ opcrust: 1e+31, opharz: 1e+31", \
         elif phase_model == "CDPT":
             o_dict['Material model']['Visco Plastic TwoD'].pop("Use lookup table", "Foo")
         # post-process
+        if comp_method == 'particle':
+            # options for using the particle method
+            if use_embeded_fault:
+                # these don't work with use_embeded fault method for now
+                raise NotImplementedError
+            pp_dict = o_dict['Postprocess']
+            pp_dict["List of postprocessors"] += ', particles'
+            pp_dict['Particles'] = {\
+                "Number of particles": "5e7",\
+                "Minimum particles per cell": "33",\
+                "Maximum particles per cell": "50",\
+                "Load balancing strategy": "remove and add particles",\
+                "Interpolation scheme": "cell average",\
+                "Update ghost particles": "true",\
+                "Particle generator name": "random uniform",\
+                "Data output format" : "vtu",\
+                "List of particle properties" : "initial position",\
+                "Time between data output": "0.1e6"\
+            }
+            o_dict['Postprocess'] = pp_dict
         # assign the options for the embeded-fault implementation of shear zone:
         #   1. add a section in the material model
         #   2. set up particles
