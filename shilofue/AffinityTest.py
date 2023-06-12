@@ -19,6 +19,7 @@ import shilofue.TwoDSubduction0.Cases as CasesTwoDSubduction
 import shilofue.ThDSubduction0.Cases as CasesThDSubduction
 import shilofue.ParsePrm as ParsePrm
 from shilofue.PlotStatistics import STATISTICS_PLOT
+from matplotlib import gridspec
 try:
     import pathlib
     import subprocess
@@ -389,10 +390,13 @@ def organize_result(test_root_dir, cluster):
     return results_dir
 
 
-def analyze_affinity_test_results(test_results_dir, output_dir):
+def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
     '''
     analyze affinity test results
+    kwargs:
+        debug: output debug information
     '''
+    debug = kwargs.get("debug", False)
     Statistics = STATISTICS_PLOT('Statistics') # plotter for Statistic outputs
     total_wall_clock = []
     assemble_stokes_system = []
@@ -419,10 +423,8 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
         patterns = output_file.split('_')
         print("Output file found: %s" % output_file)
         # read and process data
-        # 1. the data is imported by the parse_block_output.sh and then read by the numpy
-        # reader.
-        # 2. These numbers are keep in a few arrays (e.g. total_wall_clock).
         # 3. Patterns (e.g. name of the server, task per core) are parsed to other arrays (e.g. setups)
+        # The data is imported by the parse_block_output.sh
         if stokes_solver_type == "block AMG":
             subprocess.run("%s/bash_scripts/parse_block_output.sh  analyze_affinity_test_results %s %s" 
                             % (ASPECT_LAB_DIR, output_file, temp_file), shell=True)
@@ -431,6 +433,8 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
                             % (ASPECT_LAB_DIR, output_file, temp_file), shell=True)
         else:
             raise ValueError("stokes_solver_type must be block AMG or block GMG")
+        # It is then read by the numpy reader.
+        # These numbers are keep in a few arrays (e.g. total_wall_clock).
         try:
             data = np.genfromtxt(temp_file)
             # data dimension:
@@ -445,28 +449,37 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
                 assemble_stokes_system.append(data[1, -1])
                 solve_stokes_system.append(data[2, -1])
         except Exception:
+            # In the test, this exception means the run fails.
+            # It's most like this specific affinity is not
+            # good enough for solving this problem at this resolution.
             pass
         else:
+            # continue reading other outputs is the wallclock is read successfully
             setups.append(int(patterns[-1]))
             resolutions.append(int(patterns[-2]))
             cores.append(int(patterns[-3]))
-        # read data from the statistic files
-        Statistics.ReadHeader(statistic_path)
-        Statistics.ReadData(statistic_path)
-        col_noc = Statistics.header['Number_of_mesh_cells']['col']
-        col_dof_stokes = Statistics.header['Number_of_Stokes_degrees_of_freedom']['col']
-        col_dof_temperature = Statistics.header['Number_of_temperature_degrees_of_freedom']['col']
-        col_dof_composition = Statistics.header['Number_of_degrees_of_freedom_for_all_compositions']['col']
-        nocs_raw = Statistics.data[:, col_noc]
-        nofs_stokes_raw = Statistics.data[:, col_dof_stokes]
-        nofs_temp_raw = Statistics.data[:, col_dof_temperature]
-        nofs_comp_raw = Statistics.data[:, col_dof_composition]
-        nocs.append(nocs_raw[-1])
-        nofs_stokes.append(nofs_stokes_raw[-1])
-        nofs_temp.append(nofs_temp_raw[-1])
-        nofs_comp.append(nofs_comp_raw[-1])
+            # read data from the statistic files
+            Statistics.ReadHeader(statistic_path)
+            Statistics.ReadData(statistic_path)
+            col_noc = Statistics.header['Number_of_mesh_cells']['col']
+            col_dof_stokes = Statistics.header['Number_of_Stokes_degrees_of_freedom']['col']
+            col_dof_temperature = Statistics.header['Number_of_temperature_degrees_of_freedom']['col']
+            col_dof_composition = Statistics.header['Number_of_degrees_of_freedom_for_all_compositions']['col']
+            nocs_raw = Statistics.data[:, col_noc]
+            nofs_stokes_raw = Statistics.data[:, col_dof_stokes]
+            nofs_temp_raw = Statistics.data[:, col_dof_temperature]
+            nofs_comp_raw = Statistics.data[:, col_dof_composition]
+            nocs.append(nocs_raw[-1])
+            nofs_stokes.append(nofs_stokes_raw[-1])
+            nofs_temp.append(nofs_temp_raw[-1])
+            nofs_comp.append(nofs_comp_raw[-1])
     # assert there is at least one case output
     Utilities.my_assert(i > 0, AssertionError, "There is no output* file in the folder %s" % test_results_dir)
+    # make everything a numpy array
+    nocs = np.array(nocs)
+    nofs_stokes = np.array(nofs_stokes)
+    nofs_temp = np.array(nofs_temp)
+    nofs_comp = np.array(nofs_comp)
     setups = np.array(setups)
     resolutions = np.array(resolutions)
     cores = np.array(cores)
@@ -476,88 +489,291 @@ def analyze_affinity_test_results(test_results_dir, output_dir):
     # screen output
     # 1. output numbers from the log.txt file
     # 2. output mesh information from the Statistics file (during loop of resolution)
-    print("Affinity Test Results:")
-    print('setups:', setups)
-    print('resolutions', resolutions)
-    print("cores:", cores)
-    print("total wall clocks:", total_wall_clock)
-    print("assemble_stokes_system:", assemble_stokes_system)
-    print("solve_stokes_system:", solve_stokes_system)
+    if debug:
+        print("Affinity Test Results (debug outputs):")
+        print("nocs: ", nocs)
+        print("nofs_stokes: ", nofs_stokes)
+        print("nofs_temp: ", nofs_temp)
+        print("nofs_comp: ", nofs_comp)
+        print('setups:', setups)
+        print('resolutions', resolutions)
+        print("cores:", cores)
+        print("total wall clocks:", total_wall_clock)
+        print("assemble_stokes_system:", assemble_stokes_system)
+        print("solve_stokes_system:", solve_stokes_system)
 
     # plot via matplotlib
     # 1. loop for resolutions, generate one line for every resolution
     # 2. plots are generated in log-log or linear format
     resolution_options = []
-    i = 0
     for resolution in resolutions:
         if resolution not in resolution_options:
             resolution_options.append(resolution)
-            print("resolution: ", resolution)
-            print("\tnumber of cells: ", nocs[i])
-            print("\tNumber of Stokes degrees of freedom: ", nofs_stokes[i])
-            print("\tNumber of temperature degrees of freedom: ", nofs_temp[i])
-            print("\tNumber of degrees of freedom for all compositions: ", nofs_comp[i])
-        i += 1
     resolution_options = np.array(resolution_options)
     resolution_options = np.sort(resolution_options)
-    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
     for i in range(len(resolution_options)):
         resolution = resolution_options[i]
-        plot_indexes = (resolutions == resolution) 
-        xs = cores[plot_indexes]
-        sequential_indexes = np.argsort(xs)
-        xs_sorted = xs[sequential_indexes]
-        ys1 = total_wall_clock[plot_indexes]
-        ys1_sorted = ys1[sequential_indexes]
-        ys6 = ys1_sorted[0] / ys1_sorted # the speed up 
-        ys7 = ys1_sorted[0] * xs_sorted[0] / (ys1_sorted * xs_sorted)  # the parallel efficiency
-        # labels
-        _label0 = 'Total Wall Clock(resolution=%d)' % resolution
-        _label1 = 'Assemble Stokes System(resolution=%d)' % resolution
-        _label2 = 'Solve Stokes System(resolution=%d)' % resolution
-        # plot:
-        # 1. the wall clock, log - log plot
-        # 2. the break out of wall clock to different parts in percentage, semilog plot
-        # 3. strong scaling: speed up defined as ratio of wallclock t1 / tn - linear plot 
-        # 4. weak scaling: parallel efficiency, defined as t1 * core1 / (tn * coren) - linear plot
-        # 5. Number of meshes
-        axs[0, 0].loglog(xs[sequential_indexes], ys1[sequential_indexes], ".-", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-                label=_label0)
-        ys2 = assemble_stokes_system[plot_indexes]
-        axs[0, 0].loglog(xs[sequential_indexes], ys2[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-                label=_label1)
-        ys3 = ys2 / ys1
-        axs[0, 1].semilogx(xs[sequential_indexes], ys3[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-                label=_label1)
-        ys4 = solve_stokes_system[plot_indexes]
-        axs[0, 0].loglog(xs[sequential_indexes], ys4[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-                label=_label2)
-        ys5 = ys4 / ys1
-        axs[0, 1].semilogx(xs[sequential_indexes], ys5[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-                label=_label2)
-        axs[1, 0].plot(xs[sequential_indexes], ys6, ".-", color=cm.gist_rainbow(1.0*i/len(resolution_options)))
-        axs[1, 1].plot(xs[sequential_indexes], ys7, ".-", color=cm.gist_rainbow(1.0*i/len(resolution_options)))
-    axs[0, 0].set_xlabel('Cores')
-    axs[0, 0].set_ylabel('Time [s]')
-    axs[0, 0].grid()
-    axs[0, 0].set_title('Wall Clock')
-    axs[0, 0].legend(fontsize='x-small')
-    axs[0, 1].set_xlabel('Cores')
-    axs[0, 1].set_ylabel('Percentage')
-    axs[0, 1].grid()
-    axs[0, 1].set_title('Percentage of Each Part')
-    axs[1, 0].set_xlabel('Cores')
-    axs[1, 0].set_ylabel('Speed Up')
-    axs[1, 0].grid()
-    axs[1, 1].set_xlabel('Cores')
-    axs[1, 1].set_ylabel('Parallel Efficiency')
-    axs[1, 1].grid()
-    # title and save path 
+        plot_indexes = (resolutions == resolution)
+        # parse outputs 
+        noc = nocs[plot_indexes][0]
+        nof_stokes = nofs_stokes[plot_indexes][0]
+        nof_temp = nofs_temp[plot_indexes][0]
+        nof_comp = nofs_comp[plot_indexes][0]
+        cores_res = cores[plot_indexes]
+        sequential_indexes = np.argsort(cores_res)
+        cores_sorted = cores_res[sequential_indexes]
+        wallclocks_res = total_wall_clock[plot_indexes]
+        wallclocks_sorted = wallclocks_res[sequential_indexes]
+        assemble_stokes_system_res = assemble_stokes_system[plot_indexes]
+        assemble_stokes_system_sorted = assemble_stokes_system_res[sequential_indexes]
+        solve_stokes_system_res = solve_stokes_system[plot_indexes]
+        solve_stokes_system_sorted = solve_stokes_system_res[sequential_indexes]
+        # screen outputs
+        print("resolution: %d, cells: %d, degree of freedoms (stokes: %d + temperature: %d + composition: %d) "\
+        % (resolution, noc, nof_stokes, nof_temp, nof_comp))
+        print("\tnumber of cores: ", cores_sorted)
+        # print("\tNumber of Stokes degrees of freedom: ", nofs_stokes[i])
+        # print("\tNumber of temperature degrees of freedom: ", nofs_temp[i])
+        print("\twallclock (s): ", wallclocks_sorted)
+        print("\tassemble stokes system (s): ", assemble_stokes_system_sorted)
+        print("\tsolve stokes system (s): ", solve_stokes_system_sorted)
+    # plot degree of freedom
+    fig, ax= plt.subplots(tight_layout=True, figsize=(5, 5))  # plot of wallclock
+    nofs_stokes_list = []
+    for i in range(len(resolution_options)):
+        resolution = resolution_options[i]
+        label_stokes_dof = "Stokes DOFs(resolution=%d)" % resolution
+        label_temperature_dof = "Temperature DOFs(resolution=%d)" % resolution
+        label_composition_dof = "Composition DOFs(resolution=%d)" % resolution
+        plot_indexes = (resolutions == resolution)
+        ax.semilogy(resolution, nofs_stokes[plot_indexes][0], ".",\
+                color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_stokes_dof)
+        ax.semilogy(resolution, nofs_temp[plot_indexes][0], "o",\
+                color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_temperature_dof)
+        ax.semilogy(resolution, nofs_comp[plot_indexes][0], "*",\
+                color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_composition_dof)
+    ax.grid()
+    ax.set_xlabel('Cores')
+    ax.set_ylabel('DOFs')
+    ax.legend()
     basename = os.path.basename(test_results_dir)
     fig.tight_layout()
-    filepath='%s/%s.png' % (output_dir, basename)
+    filepath='%s/%s_dof.png' % (output_dir, basename)
     print("output file generated: ", filepath)
-    plt.savefig(filepath)
+    fig.savefig(filepath)
+    
+    # plot wall clock
+    fig = plt.figure(tight_layout=True, figsize=(10, 5))  # plot of wallclock
+    gs = gridspec.GridSpec(1, 2)
+    ax_wallclock = fig.add_subplot(gs[0, 0])
+    ax_wallclock_percentage = fig.add_subplot(gs[0, 1])
+    for i in range(len(resolution_options)):
+        resolution = resolution_options[i]
+        label_wallclock = 'Total Wall Clock(resolution=%d)' % resolution
+        label_wallclock_assemle = 'Assemble Stokes (resolution=%d)' % resolution
+        label_wallclock_solve = 'Solve Stokes (resolution=%d)' % resolution
+        plot_indexes = (resolutions == resolution)
+        cores_res = cores[plot_indexes]
+        sequential_indexes = np.argsort(cores_res)
+        cores_sorted = cores_res[sequential_indexes]
+        wallclocks_res = total_wall_clock[plot_indexes]
+        wallclocks_sorted = wallclocks_res[sequential_indexes]
+        assemble_stokes_system_res = assemble_stokes_system[plot_indexes]
+        assemble_stokes_system_sorted = assemble_stokes_system_res[sequential_indexes]
+        solve_stokes_system_res = solve_stokes_system[plot_indexes]
+        solve_stokes_system_sorted = solve_stokes_system_res[sequential_indexes]
+        ax_wallclock.loglog(cores_sorted, wallclocks_sorted, ".-",\
+                            color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_wallclock)
+        ax_wallclock.loglog(cores_sorted, assemble_stokes_system_sorted, "--",\
+                            color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_wallclock_assemle)
+        ax_wallclock.loglog(cores_sorted, solve_stokes_system_sorted, "-.",\
+                            color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_wallclock_solve)
+        ax_wallclock.set_aspect('equal', adjustable='box')
+        ax_wallclock.set_xlabel('Cores')
+        ax_wallclock.set_ylabel('Time [s]')
+        ax_wallclock.grid()
+        ax_wallclock.set_title('Wall Clock')
+        ax_wallclock.legend(fontsize='x-small')
+        ax_wallclock_percentage.semilogx(cores_sorted, assemble_stokes_system_sorted/wallclocks_sorted, "--",\
+                                         color=cm.gist_rainbow(1.0*i/len(resolution_options)))
+        ax_wallclock_percentage.semilogx(cores_sorted, solve_stokes_system_sorted/wallclocks_sorted, "-.",\
+                                         color=cm.gist_rainbow(1.0*i/len(resolution_options)))
+        ax_wallclock_percentage.set_xlabel('Cores')
+        ax_wallclock_percentage.set_ylabel('Percentage')
+        ax_wallclock_percentage.grid()
+        ax_wallclock_percentage.set_title('Percentage of Each Part')
+    basename = os.path.basename(test_results_dir)
+    fig.tight_layout()
+    filepath='%s/%s_wallclock.png' % (output_dir, basename)
+    print("output file generated: ", filepath)
+    fig.savefig(filepath)
+    # plot wall clock with an ideal line
+    fig, ax= plt.subplots(tight_layout=True, figsize=(5, 5))  # plot of wallclock
+    for i in range(len(resolution_options)):
+        resolution = resolution_options[i]
+        label_wallclock = 'Total Wall Clock(resolution=%d)' % resolution
+        plot_indexes = (resolutions == resolution)
+        cores_res = cores[plot_indexes]
+        sequential_indexes = np.argsort(cores_res)
+        cores_sorted = cores_res[sequential_indexes]
+        wallclocks_res = total_wall_clock[plot_indexes]
+        wallclocks_sorted = wallclocks_res[sequential_indexes]
+        ax.loglog(cores_sorted, wallclocks_sorted, ".-",\
+                  color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_wallclock)
+        wallclocks_ideal = cores_sorted[0]*wallclocks_sorted[0] / cores_sorted
+        ax.loglog(cores_sorted, wallclocks_ideal, "--",\
+                  color=cm.gist_rainbow(1.0*i/len(resolution_options)))
+        ax.set_aspect('equal', adjustable='box')
+        ax.set_xlabel('Cores')
+        ax.set_ylabel('Time [s]')
+        ax.grid()
+        ax.set_title('Wall Clock')
+        ax.legend(fontsize='x-small')
+    basename = os.path.basename(test_results_dir)
+    fig.tight_layout()
+    filepath='%s/%s_wallclock_with_ideal.png' % (output_dir, basename)
+    print("output file generated: ", filepath)
+    fig.savefig(filepath)
+    # plot the speedup
+    fig, axs = plt.subplots(1, len(resolution_options), tight_layout=True,\
+                            figsize=(5*len(resolution_options), 5))
+    for i in range(len(resolution_options)):
+        resolution = resolution_options[i]
+        label_speedup = 'Speed Up(resolution=%d)' % resolution
+        plot_indexes = (resolutions == resolution)
+        cores_res = cores[plot_indexes]
+        sequential_indexes = np.argsort(cores_res)
+        cores_sorted = cores_res[sequential_indexes]
+        wallclocks_res = total_wall_clock[plot_indexes]
+        wallclocks_sorted = wallclocks_res[sequential_indexes]
+        speedups = wallclocks_sorted[0] / wallclocks_sorted
+        speedups_ideal = cores_sorted / cores_sorted[0]
+        axs[i].plot(cores_sorted, speedups, ".-",\
+                  color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_speedup)
+        axs[i].plot(cores_sorted, speedups_ideal, "--",\
+                  color=cm.gist_rainbow(1.0*i/len(resolution_options)))
+    for i in range(len(resolution_options)):
+        # add options and lables
+        axs[i].set_xlabel('Cores')
+        axs[i].set_ylabel('Speed Up')
+        axs[i].grid()
+        axs[i].legend(fontsize='x-small')
+    basename = os.path.basename(test_results_dir)
+    fig.tight_layout()
+    filepath='%s/%s_speedup.png' % (output_dir, basename)
+    print("output file generated: ", filepath)
+    fig.savefig(filepath)
+    # plot the parallel efficiency
+    fig, ax= plt.subplots(tight_layout=True, figsize=(5, 5))  # plot of wallclock
+    label_parallel_efficiency = "Parallel Efficiency (cores = "
+    wallclocks_to_plot = []
+    nofs_stokes_to_core_arr = []
+    print("Choices for plotting the parallel efficiency")
+    for i in range(len(resolution_options)):
+        resolution = resolution_options[i]
+        plot_indexes = (resolutions == resolution)
+        cores_res = cores[plot_indexes]
+        sequential_indexes = np.argsort(cores_res)
+        cores_sorted = cores_res[sequential_indexes]
+        # let the user choose a number of core for each resolution
+        proceed = False
+        while not proceed:
+            core_input_query = "Choose the number of cores for resolution %d\n, options are " % resolution + str(cores_sorted)
+            # For subsequent selections, make a suggestion of the choice to make,
+            # based on the ratio of the stokes degree of freedom to the number of cores
+            if i > 0:
+                nofs_stokes_to_core_options = nofs_stokes[plot_indexes][0] / cores_sorted
+                i_select_suggestion = np.argmin(np.abs(np.log(nofs_stokes_to_core_options / nofs_stokes_to_core_arr[0])))
+                core_input_suggestion = cores_sorted[i_select_suggestion]
+                core_input_query += "(suggestion: %d, with ratio of stokes dofs to cores %.4e)"\
+                                    % (core_input_suggestion, nofs_stokes_to_core_options[i_select_suggestion])
+            core_input_query += "\n: "
+            core_input = input(core_input_query)
+            core = int(core_input)
+            # compute the ratio of the stokes degree of freedom to the number of cores selected
+            # for the first time (i == 0), record this number in a variable
+            nofs_stokes_to_core = nofs_stokes[plot_indexes][0] / core
+            nofs_stokes_to_core_arr.append(nofs_stokes_to_core)
+            print("Number of core selected: %d, ratio of stokes dofs to cores: %.4e" % (core, nofs_stokes_to_core))
+            print("(Reminder: the ratio of stokes dofs to cores should roughly equal across selections)")
+            indicator = input("proceed? (y/n)\n")
+            if indicator == 'y':
+                proceed = True
+        i_select = np.where(cores_sorted==core)[0][0]
+        label_parallel_efficiency += "%d " % core
+        # figure out the number of wallclock with this specific number of core 
+        wallclocks_res = total_wall_clock[plot_indexes]
+        wallclocks_sorted = wallclocks_res[sequential_indexes]
+        wallclock = wallclocks_sorted[i_select]
+        wallclocks_to_plot.append(wallclock)
+    label_parallel_efficiency += ")"
+    nof_stokes_to_core_arr = np.array(nofs_stokes_to_core_arr)
+    # compute the parallel efficiencies and the corrected value with the number of the stokes
+    # degree of freedom
+    parallel_efficiencies = wallclocks_to_plot[0] / wallclocks_to_plot 
+    parallel_efficiencies_corrected = parallel_efficiencies * nof_stokes_to_core_arr / nof_stokes_to_core_arr[0]
+    ax.plot(resolution_options, parallel_efficiencies, ".-",\
+            color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_parallel_efficiency)
+    ax.plot(resolution_options, parallel_efficiencies_corrected, "--",\
+            color=cm.gist_rainbow(1.0*i/len(resolution_options)), label="corrected")
+    ax.set_xlabel('Resolution')
+    ax.set_ylabel('Parallel Efficiency')
+    ax.grid()
+    ax.legend(fontsize='x-small')
+    basename = os.path.basename(test_results_dir)
+    fig.tight_layout()
+    filepath='%s/%s_parallel_efficiency.png' % (output_dir, basename)
+    print("output file generated: ", filepath)
+    fig.savefig(filepath)
+
+
+#        ys1 = total_wall_clock[plot_indexes]
+#        ys1_sorted = ys1[sequential_indexes]
+#        ys6 = ys1_sorted[0] / ys1_sorted # the speed up 
+#        # labels
+#        _label1 = 'Assemble Stokes System(resolution=%d)' % resolution
+#        _label2 = 'Solve Stokes System(resolution=%d)' % resolution
+#        # plot:
+#        # 1. the wall clock, log - log plot
+#        # 2. the break out of wall clock to different parts in percentage, semilog plot
+#        # 3. strong scaling: speed up defined as ratio of wallclock t1 / tn - linear plot 
+#        # 4. weak scaling: parallel efficiency, defined as t1 * core1 / (tn * coren) - linear plot
+#        # 5. Number of meshes
+#        x_0 = xs_sorted[0]
+#        y_0 = ys1[sequential_indexes][0]
+#        ys1_ideal = x_0 * y_0 / xs_sorted
+#        axs[0, 0].loglog(xs_sorted, ys1_ideal, "--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+#                label="ideal")
+#        ys2 = assemble_stokes_system[plot_indexes]
+#        # axs[0, 0].loglog(xs[sequential_indexes], ys2[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+#        #         label=_label1)
+#        axs[0, 0].set_aspect('equal', adjustable='box')
+#        ys3 = ys2 / ys1
+#        axs[0, 1].semilogx(xs[sequential_indexes], ys3[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+#                label=_label1)
+#        ys4 = solve_stokes_system[plot_indexes]
+#        # axs[0, 0].loglog(xs[sequential_indexes], ys4[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+#        #        label=_label2)
+#        ys5 = ys4 / ys1
+#        axs[0, 1].semilogx(xs[sequential_indexes], ys5[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
+#                label=_label2)
+#        axs[1, 0].plot(xs[sequential_indexes], ys6, ".-", color=cm.gist_rainbow(1.0*i/len(resolution_options)))
+#        y_0 = ys6[0]
+#        ys6_ideal = xs_sorted / x_0 * y_0
+#        axs[1, 0].plot(xs_sorted, ys6_ideal, "--", color=cm.gist_rainbow(1.0*i/len(resolution_options)))
+#    axs[0, 0].set_xlabel('Cores')
+#    axs[0, 0].set_ylabel('Time [s]')
+#    axs[0, 0].grid()
+#    axs[0, 0].set_title('Wall Clock')
+#    axs[0, 0].legend(fontsize='x-small')
+#    axs[0, 1].set_xlabel('Cores')
+#    axs[0, 1].set_ylabel('Percentage')
+#    axs[0, 1].grid()
+#    axs[0, 1].set_title('Percentage of Each Part')
+#    axs[1, 0].set_xlabel('Cores')
+#    axs[1, 0].set_ylabel('Speed Up')
+#    axs[1, 0].grid()
+#    # title and save path 
 
 
 def create_tests_with_json(json_opt, AFFINITY, AFFINITY_OPT, **kwargs):
@@ -645,7 +861,6 @@ def main():
         # example:
         # python -m shilofue.AnalyzeAffinityTestResults analyze_affinity_test_results
         # -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/affinity_test_20211025 -c peloton-rome-128tasks-socket-openmpi-4.1.0
-        # todo
         assert(os.path.isdir(arg.inputs))  # check output dir exists
         test_results_dir = organize_result(arg.inputs, arg.cluster)
         img_dir = os.path.join(arg.inputs, "img")
