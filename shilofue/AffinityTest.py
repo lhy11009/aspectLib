@@ -663,12 +663,44 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
     filepath='%s/%s_speedup.png' % (output_dir, basename)
     print("output file generated: ", filepath)
     fig.savefig(filepath)
+
     # plot the parallel efficiency
+    fig, axs = plt.subplots(1, len(resolution_options), tight_layout=True,\
+                            figsize=(5*len(resolution_options), 5))
+    for i in range(len(resolution_options)):
+        resolution = resolution_options[i]
+        label_parallel_efficiency = 'Parallel Efficiency(resolution=%d)' % resolution
+        plot_indexes = (resolutions == resolution)
+        cores_res = cores[plot_indexes]
+        sequential_indexes = np.argsort(cores_res)
+        cores_sorted = cores_res[sequential_indexes]
+        wallclocks_res = total_wall_clock[plot_indexes]
+        wallclocks_sorted = wallclocks_res[sequential_indexes]
+        parallel_efficiencies = wallclocks_sorted[0]*cores_sorted[0] / wallclocks_sorted / cores_sorted
+        parallel_efficiencies_ideal = np.ones(cores_sorted.shape)
+        axs[i].plot(cores_sorted, parallel_efficiencies, ".-",\
+                  color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_parallel_efficiency)
+        axs[i].plot(cores_sorted, parallel_efficiencies_ideal, "--",\
+                  color=cm.gist_rainbow(1.0*i/len(resolution_options)))
+    for i in range(len(resolution_options)):
+        # add options and lables
+        axs[i].set_xlabel('Cores')
+        axs[i].set_ylabel('Parallel Efficiency')
+        axs[i].grid()
+        axs[i].legend(fontsize='x-small')
+    basename = os.path.basename(test_results_dir)
+    fig.tight_layout()
+    filepath='%s/%s_parallel_efficiency.png' % (output_dir, basename)
+    print("output file generated: ", filepath)
+    fig.savefig(filepath)
+
+    # plot the scale-increasing efficiency
     fig, ax= plt.subplots(tight_layout=True, figsize=(5, 5))  # plot of wallclock
     label_parallel_efficiency = "Parallel Efficiency (cores = "
     wallclocks_to_plot = []
+    cores_to_plot = []
     nofs_stokes_to_core_arr = []
-    print("Choices for plotting the parallel efficiency")
+    print("Choices for plotting the scale-increasing efficiency")
     for i in range(len(resolution_options)):
         resolution = resolution_options[i]
         plot_indexes = (resolutions == resolution)
@@ -690,6 +722,7 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
             core_input_query += "\n: "
             core_input = input(core_input_query)
             core = int(core_input)
+            cores_to_plot.append(core)
             # compute the ratio of the stokes degree of freedom to the number of cores selected
             # for the first time (i == 0), record this number in a variable
             nofs_stokes_to_core = nofs_stokes[plot_indexes][0] / core
@@ -708,7 +741,7 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
         wallclocks_to_plot.append(wallclock)
     label_parallel_efficiency += ")"
     nof_stokes_to_core_arr = np.array(nofs_stokes_to_core_arr)
-    # compute the parallel efficiencies and the corrected value with the number of the stokes
+    # compute the scale-increasing efficiencies and the corrected value with the number of the stokes
     # degree of freedom
     parallel_efficiencies = wallclocks_to_plot[0] / wallclocks_to_plot 
     parallel_efficiencies_corrected = parallel_efficiencies * nof_stokes_to_core_arr / nof_stokes_to_core_arr[0]
@@ -717,63 +750,17 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
     ax.plot(resolution_options, parallel_efficiencies_corrected, "--",\
             color=cm.gist_rainbow(1.0*i/len(resolution_options)), label="corrected")
     ax.set_xlabel('Resolution')
-    ax.set_ylabel('Parallel Efficiency')
+    ax.set_ylabel('Scale Increasing Efficiency')
     ax.grid()
     ax.legend(fontsize='x-small')
     basename = os.path.basename(test_results_dir)
     fig.tight_layout()
-    filepath='%s/%s_parallel_efficiency.png' % (output_dir, basename)
+    filepath='%s/%s_scale_increasing_efficiency' % (output_dir, basename)
+    for core in cores_to_plot:
+        filepath += "_%d" % core
+    filepath += '.png'
     print("output file generated: ", filepath)
     fig.savefig(filepath)
-
-
-#        ys1 = total_wall_clock[plot_indexes]
-#        ys1_sorted = ys1[sequential_indexes]
-#        ys6 = ys1_sorted[0] / ys1_sorted # the speed up 
-#        # labels
-#        _label1 = 'Assemble Stokes System(resolution=%d)' % resolution
-#        _label2 = 'Solve Stokes System(resolution=%d)' % resolution
-#        # plot:
-#        # 1. the wall clock, log - log plot
-#        # 2. the break out of wall clock to different parts in percentage, semilog plot
-#        # 3. strong scaling: speed up defined as ratio of wallclock t1 / tn - linear plot 
-#        # 4. weak scaling: parallel efficiency, defined as t1 * core1 / (tn * coren) - linear plot
-#        # 5. Number of meshes
-#        x_0 = xs_sorted[0]
-#        y_0 = ys1[sequential_indexes][0]
-#        ys1_ideal = x_0 * y_0 / xs_sorted
-#        axs[0, 0].loglog(xs_sorted, ys1_ideal, "--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-#                label="ideal")
-#        ys2 = assemble_stokes_system[plot_indexes]
-#        # axs[0, 0].loglog(xs[sequential_indexes], ys2[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-#        #         label=_label1)
-#        axs[0, 0].set_aspect('equal', adjustable='box')
-#        ys3 = ys2 / ys1
-#        axs[0, 1].semilogx(xs[sequential_indexes], ys3[sequential_indexes], ".--", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-#                label=_label1)
-#        ys4 = solve_stokes_system[plot_indexes]
-#        # axs[0, 0].loglog(xs[sequential_indexes], ys4[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-#        #        label=_label2)
-#        ys5 = ys4 / ys1
-#        axs[0, 1].semilogx(xs[sequential_indexes], ys5[sequential_indexes], ".-.", color=cm.gist_rainbow(1.0*i/len(resolution_options)),
-#                label=_label2)
-#        axs[1, 0].plot(xs[sequential_indexes], ys6, ".-", color=cm.gist_rainbow(1.0*i/len(resolution_options)))
-#        y_0 = ys6[0]
-#        ys6_ideal = xs_sorted / x_0 * y_0
-#        axs[1, 0].plot(xs_sorted, ys6_ideal, "--", color=cm.gist_rainbow(1.0*i/len(resolution_options)))
-#    axs[0, 0].set_xlabel('Cores')
-#    axs[0, 0].set_ylabel('Time [s]')
-#    axs[0, 0].grid()
-#    axs[0, 0].set_title('Wall Clock')
-#    axs[0, 0].legend(fontsize='x-small')
-#    axs[0, 1].set_xlabel('Cores')
-#    axs[0, 1].set_ylabel('Percentage')
-#    axs[0, 1].grid()
-#    axs[0, 1].set_title('Percentage of Each Part')
-#    axs[1, 0].set_xlabel('Cores')
-#    axs[1, 0].set_ylabel('Speed Up')
-#    axs[1, 0].grid()
-#    # title and save path 
 
 
 def create_tests_with_json(json_opt, AFFINITY, AFFINITY_OPT, **kwargs):

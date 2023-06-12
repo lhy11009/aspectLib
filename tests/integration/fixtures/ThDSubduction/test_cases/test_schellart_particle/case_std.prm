@@ -203,12 +203,12 @@ subsection Postprocess
         set Minimum particles per cell = 33
         set Maximum particles per cell = 50
         set Load balancing strategy = remove and add particles
-        set List of particle properties = initial composition
         set Interpolation scheme = cell average
         set Update ghost particles = true
         set Particle generator name = random uniform
-        set Time between data output = 0.1e6
         set Data output format = vtu
+        set List of particle properties = initial position
+        set Time between data output = 0.1e6
     end
 end
 

@@ -29,7 +29,7 @@ from copy import deepcopy
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 from shilofue.Rheology import RHEOLOGY_OPR
-from shilofue.TwoDSubduction0.Cases import re_write_geometry_while_assigning_plate_age
+from shilofue.TwoDSubduction0.Cases import re_write_geometry_while_assigning_plate_age, change_field_to_particle
 import json, re
 
 # directory to the aspect Lab
@@ -411,29 +411,7 @@ class CASE(CasesP.CASE):
         if comp_method == "field":
             pass
         elif comp_method == "particle":
-            comp_dict = o_dict["Compositional fields"]
-            comp_dict["Compositional field methods"] = "particles, particles"
-            comp_dict["Mapped particle properties"]  = "sp_upper: initial sp_upper, sp_lower: initial sp_lower"
-            # add the option into the list of postprocessers
-            temp = o_dict["Postprocess"]["List of postprocessors"]
-            if not re.match('.*particles', temp):
-                o_dict["Postprocess"]["List of postprocessors"] = temp + ", particles"
-            # options for the particle method itself
-            pp_particle_dict = \
-            {\
-                "Number of particles": "5e7",\
-                "Minimum particles per cell": "33",\
-                "Maximum particles per cell": "50",\
-                "Load balancing strategy": "remove and add particles",\
-                "List of particle properties": "initial composition",\
-                "Interpolation scheme": "cell average",\
-                "Update ghost particles":  "true",\
-                "Particle generator name":  "random uniform",\
-                "Time between data output" : "0.1e6",\
-                "Data output format": "vtu"\
-            }
-            o_dict["Postprocess"]["Particles"] = pp_particle_dict
-
+            o_dict = change_field_to_particle(o_dict)
         
         # boundary temperature model
         # o_dict['Boundary temperature model'] =
