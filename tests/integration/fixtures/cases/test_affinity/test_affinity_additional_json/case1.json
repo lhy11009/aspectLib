@@ -1,0 +1,92 @@
+{
+  "_comments": "This case is modified from the Schellart 2007 paper, but include newtonian T-dependent rheology",
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/06122023",
+  "output directory": "/mnt/lochy0/ASPECT_DATA/ThDSubduction/EBA_2d_consistent_4",
+  "depth average file": "${ASPECT_LAB_DIR}/files/ThDSubduction/reference/depth_average_1573.txt",
+  "name": "eba3d_SA80.0_OA40.0_width61_GR3_AR4",
+  "type": "2d_consistent",
+  "use world builder": 1,
+  "branch": "master_TwoD_knl",
+  "post process": {
+    "visualization software": "paraview"
+  },
+  "world builder": {
+    "use new ridge implementation": 1
+  },
+  "include fast first step": 1,
+  "geometry setup": {
+    "box width": 4000000.0,
+    "box length": 5000000.0,
+    "box depth": 2890000.0,
+    "box length before adjusting": 10783000.0,
+    "adjust box trailing length": 1,
+    "repitition slice method": "nearest",
+    "fix boudnary temperature auto": 1
+  },
+  "plate setup": {
+    "sp width": 1000000.0,
+    "sp length": 3000000.0,
+    "trailing length": 600000.0,
+    "reset trailing morb": 1,
+    "sp depth refining": 300000.0,
+    "ov age": 40000000.0,
+    "sp age": 80000000.0,
+    "assign side plate": 1,
+    "ov transit age": 20000000.0,
+    "ov transit length": 700000.0,
+    "sp ridge x": 600000.0,
+    "prescribe mantle sp start": 0,
+    "ov side dist": 600000.0,
+    "prescribe mantle ov end": 1
+  },
+  "mantle rheology": {
+    "scheme": "HK03_wet_mod_twod",
+    "flow law": "composite"
+  },
+  "shear zone": {
+    "thickness": 15000.0,
+    "slab core viscosity": 1e+23
+  },
+  "slab setup": {
+    "length": 530000.0,
+    "dip": 70.0
+  },
+  "refinement": {
+    "global refinement": 3,
+    "coarsen side": 1,
+    "coarsen side level": 1,
+    "coarsen side interval": 100000.0,
+    "coarsen minimum refinement level": 2,
+    "adaptive refinement": 4
+  },
+  "rheology": {
+    "reset trailing ov viscosity": 0
+  },
+  "setup method": "2d_consistent",
+  "stokes solver": {
+    "type": "block GMG with iterated defect correction Stokes"
+  },
+  "slurm": [
+    {
+      "slurm file": "./files/slurm_files/221018/job_p-billen.sh",
+      "build directory": "master_TwoD_p-billen",
+      "tasks per node": 128,
+      "cpus": 512
+    },
+    {
+      "slurm file": "./files/slurm_files/221018/job_skx-normal.sh",
+      "build directory": "master_TwoD",
+      "tasks per node": 48,
+      "cpus": 480
+    },
+    {
+      "slurm file": "./files/slurm_files/221018/job_normal.sh",
+      "build directory": "master_TwoD_knl",
+      "tasks per node": 68,
+      "cpus": 680
+    }
+  ],
+  "composition method": {
+    "scheme": "field"
+  }
+}

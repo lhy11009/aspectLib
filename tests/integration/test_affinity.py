@@ -41,6 +41,29 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
+def test_affinity_additional_json():
+    '''
+    Generating affinity test with an additional json file
+    Assert:
+        1. the parental folder is generated
+        2. the files with setup 2 is also generated
+        3. in the prm file, the box length is varied
+    '''
+    test_source_dir = os.path.join(source_dir, "test_affinity_additional_json")
+    json_path = os.path.join(test_source_dir, "affinity_test.json")
+    assert(os.path.isfile(json_path))
+    create_tests_with_json(json_path, AFFINITY, AFFINITY_OPT)
+    o_dir = os.path.join(test_dir, "test_affinity_additional_json")
+    # check the parent
+    case_parent_dir = os.path.join(o_dir, "tmp", "stampede2-68tasks-socket-knl")
+    assert(os.path.isdir(case_parent_dir))
+    # check one child - 128 cpus, refinement level 4
+    prm_1020_3_2 = os.path.join(case_parent_dir, "input_1020_3_2", "case.prm")
+    assert(os.path.isfile(prm_1020_3_2))
+    prm_1020_3_2_std = os.path.join(test_source_dir, "input_1020_3_2_std.prm")
+    assert(filecmp.cmp(prm_1020_3_2, prm_1020_3_2_std))
+
+
 def test_affinity_json():
     '''
     same tests as before, input from a json file
@@ -66,7 +89,7 @@ def test_affinity_json():
 
 def test_affinity_json_mpirun():
     '''
-    same tests as before, input from a json file
+    test changing the version of mpi to use when generating the test
     '''
     test_source_dir = os.path.join(source_dir, "test_affinity_base")
     json_path = os.path.join(test_source_dir, "affinity_test_mpirun.json")

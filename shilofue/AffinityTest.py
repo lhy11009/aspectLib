@@ -92,7 +92,7 @@ class AFFINITY_OPT(Utilities.JSON_OPT):
         '''
         Utilities.JSON_OPT.__init__(self)
         self.add_key("Test directory", str, ["test directory"], ".", nick='test_dir')
-        self.add_key("Base prm/json file (inputs)", str, ["base file"], "./test.prm", nick='base_file')
+        self.add_key("Base prm/json file (inputs)", list, ["base files"], [], nick='base_files')
         self.add_key("Slurm file (inputs)", str, ["slurm file"], "./slurm.sh", nick='slurm_base_path')
         self.add_key("Server", str, ["server"], "peloton-high2", nick='server')
         self.add_key("Tasks per node", int, ["tasks per node"], 32, nick='tasks_per_node')
@@ -112,9 +112,15 @@ it only takes effect if the input is positiveh",\
         self.add_key("Bind to option", str, ["bind to"], "", nick="bind_to")
     
     def check(self):
-        base_file = Utilities.var_subs(self.values[1])
-        assert(os.path.isfile(base_file))
-        assert(base_file.split('.')[-1] in ["json", "prm"])
+        base_files = self.values[1]
+        assert(len(base_files) > 0)
+        for base_file in base_files:
+            # assert file exist
+            # assert file format is either json or prm
+            base_file = Utilities.var_subs(base_file)
+            Utilities.my_assert(FileExistsError, os.path.isfile(base_file),\
+                                "%s is not a file" % base_file)
+            assert(base_file.split('.')[-1] in ["json", "prm"])
         slurm_base_path = Utilities.var_subs(self.values[2])
         server = self.values[3]
         assert(server in ['peloton-rome', 'peloton-high2', 'stampede2'])
@@ -137,7 +143,12 @@ it only takes effect if the input is positiveh",\
         interface to the init function of class AFFINITY
         '''
         test_dir = Utilities.var_subs(self.values[0])
-        base_file = Utilities.var_subs(self.values[1])
+        # substitue base file path with absolute path
+        base_files = []
+        base_files_raw = self.values[1]
+        for base_file in base_files_raw:
+            base_file = Utilities.var_subs(base_file)
+            base_files.append(base_file)
         slurm_base_path = Utilities.var_subs(self.values[2])
         server = self.values[3]
         tasks_per_node = self.values[4]
@@ -147,7 +158,7 @@ it only takes effect if the input is positiveh",\
         flag = self.values[14]
         use_mpirun = self.values[15]
         bind_to = self.values[16]
-        return test_dir, base_file, slurm_base_path, server, tasks_per_node, refinement_levels, end_step,\
+        return test_dir, base_files, slurm_base_path, server, tasks_per_node, refinement_levels, end_step,\
         stokes_type, flag, use_mpirun, bind_to
     
     def get_openmpi_version(self):
@@ -192,17 +203,17 @@ class AFFINITY():
         server(str): options for server
         test_dir(str): directory to hold test files, pull path
         tasks_per_node (int): number of tasks to run on each node.
-        base_prm_path: The 'base' input file that gets modified, if project is None,
+        base_files: The 'base' input file that gets modified, if project is None,
             this option points to a json file to import the settings
         build_directory (str): build_directory to use, default is master
         nodelist: (list of str) - list of node to run on
         debug (int) : debug mode (1), normal (0)
         max_core_count (int): maximum number for core count
     '''
-    def __init__(self, test_dir, base_prm_path, slurm_base_path, server, tasks_per_node,\
+    def __init__(self, test_dir, base_files, slurm_base_path, server, tasks_per_node,\
                  refinement_levels, end_step, stokes_type, flag, use_mpirun, bind_to, **kwargs):
         self.test_dir = test_dir
-        self.base_prm_path = base_prm_path
+        self.base_files = base_files
         self.slurm_base_path = slurm_base_path
         openmpi = kwargs.get("openmpi", None)
         self.server = server
@@ -215,7 +226,8 @@ class AFFINITY():
             self.cluster_label += "-bGMG"  # add the type of Stokes solver
         self.refinement_levels = refinement_levels
         self.end_step = end_step
-        self.setups = [1, ] # unused
+        # a list from the number of base files
+        self.setups = [i+1 for i in range(len(base_files))]
         self.core_counts = []
         for i in range(30):
             core_raw = 2.0**(i/2.0)
@@ -250,9 +262,11 @@ class AFFINITY():
             self.cluster_label += "-%s" % flag  # add an assigned flag
         pass
 
-    def CreateCase(self, input_dir, output_dir, jobname, core_count, refinement):
+    def CreateCase(self, setup, input_dir, output_dir, jobname, core_count, refinement):
         '''
         create one case
+        Inputs:
+            setup: the index of the input file to use
         '''               
         slurm_file_output_path = os.path.join(input_dir, "job.sh")
         prm_file = os.path.join(input_dir, "case.prm")
@@ -260,8 +274,10 @@ class AFFINITY():
             os.mkdir(os.path.dirname(input_dir))
         
         # do string replacement on the base input file
+        base_file  = self.base_files[setup-1]
+        Utilities.my_assert(FileExistsError, os.path.isfile(base_file),\
+                            "%s is not a file." % base_file)
         if self.project is not None:
-            assert(os.path.isfile(self.base_prm_path))
             if self.project == "TwoDSubduction":
                 CASE = CasesTwoDSubduction.CASE
                 CASE_OPT = CasesTwoDSubduction.CASE_OPT
@@ -271,15 +287,14 @@ class AFFINITY():
             else:
                 raise NotImplementedError("Options for project %s is not implemented." % self.project)
             # Call this in order to include all the related files
-            CasesP.create_case_with_json(self.base_prm_path, CASE, CASE_OPT, reset_refinement_level=refinement,\
+            CasesP.create_case_with_json(base_file, CASE, CASE_OPT, reset_refinement_level=refinement,\
                 fix_output_dir=os.path.dirname(input_dir), fix_case_name=os.path.basename(input_dir),\
                 fix_case_output_dir="../%s" % os.path.basename(output_dir), end_step=self.end_step, reset_stokes_solver_type=self.stokes_type)
             print("case generated: %s" % prm_file)
         else:
-            # There is only a prm file to take care of.
-            generate_input_file_1(self.base_prm_path, prm_file, os.path.basename(output_dir), refinement, self.stokes_type)
+            # There are only prm files to take care of (base files are prms)
+            generate_input_file_1(base_file, prm_file, os.path.basename(output_dir), refinement, self.stokes_type)
             print("case generated: %s" % input_dir)
-            # change the refinement level in the prm file
         # haoyuan: calls function to generate slurm file for one job
         SlurmOperator = ParsePrm.SLURM_OPERATOR(self.slurm_base_path)
         SlurmOperator.SetAffinity(np.ceil(core_count/self.tasks_per_node), core_count, 1, use_mpirun=self.use_mpirun, bind_to=self.bind_to)
@@ -324,19 +339,19 @@ class AFFINITY():
                     print(" %d" % core_count)
             print("\n")
         # generate test files
-        for core_count in self.core_counts:
+        for setup in self.setups:
             for i in range(len(self.refinement_levels)):
                 refinement = self.refinement_levels[i]
-                if( core_count >= self.min_cores_for_refinement[i]
-                    and
-                    core_count <= self.max_cores_for_refinement[i]):
-                    if is_first:
-                        is_first = False
-                    for setup in self.setups:
+                for core_count in self.core_counts:
+                    if( core_count >= self.min_cores_for_refinement[i]
+                        and
+                        core_count <= self.max_cores_for_refinement[i]):
+                        if is_first:
+                            is_first = False
                         jobname = "run_{:d}_{:d}_{:d}".format(core_count,refinement,setup)
                         output_dir = "{:s}/tmp/{:s}/output_{:d}_{:d}_{:d}".format(self.test_dir, self.cluster_label,core_count,refinement,setup)
                         input_dir = "{:s}/tmp/{:s}/input_{:d}_{:d}_{:d}".format(self.test_dir, self.cluster_label,core_count,refinement,setup)
-                        self.CreateCase(input_dir, output_dir, jobname, core_count, refinement)
+                        self.CreateCase(setup, input_dir, output_dir, jobname, core_count, refinement)
                         # contents in the scripts: sbatch cases
                         bash_contents += "\ncd %s" % os.path.basename(input_dir)
                         bash_contents += "\nsbatch job.sh"
