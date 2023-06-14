@@ -973,7 +973,7 @@ def change_field_to_particle(i_dict):
         "Update ghost particles": "true",\
         "Particle generator name": "random uniform",\
         "Data output format" : "vtu",\
-        "List of particle properties" : "initial position",\
+        "List of particle properties" : "initial composition",\
         "Time between data output": "0.1e6"\
     }
     o_dict['Postprocess'] = pp_dict
