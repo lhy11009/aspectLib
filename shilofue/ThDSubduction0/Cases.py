@@ -829,7 +829,8 @@ def wb_configure_plate_2d_consistent_1(wb_dict, sp_width, sp_rate, Dsz, slab_len
     dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate, if_ov_trans, ov_trans_age,\
     ov_trans_length, sp_ridge_x, ov_side_dist, box_length, **kwargs):
     '''
-    World builder configuration of plates in Schellart etal 2007
+    setup up consistently with the 2d models:
+    a. scale the harzburgite layer with the crustal layer.
     '''
     Xmax = 40000e3  # some big values that are not ever reached
     Ymax = 20000e3
