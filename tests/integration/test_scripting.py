@@ -42,9 +42,6 @@ if os.path.isdir(test_dir):
     rmtree(test_dir)
 os.mkdir(test_dir)
 
-####
-# Utility functions
-####
 
 def test_explicit_import():
     '''
@@ -83,7 +80,22 @@ def test_parse_header():
     assert(os.path.isfile(ifile))
     module_list, object_list = ParseHeader(ifile)
     assert(module_list==['matplotlib', 'shilofue.Plot'])
-    assert(object_list==['pyplot', 'LINEARPLOT'])
+    assert(object_list==[['pyplot'], ['LINEARPLOT']])
+
+
+def test_scripting():
+    '''
+    Test the class SCRIPTING
+    Assert:
+        file is generated
+    '''
+    # todo_import
+    ifile = os.path.join(source_dir, "PlotStatistics.py")
+    ofile = os.path.join(test_dir, "PlotStatistics_scripting.py")
+    assert(os.path.isfile(ifile))
+    Scripting = SCRIPTING(ifile)
+    Scripting(ofile)
+    assert(os.path.isfile(ofile))
     
 # notes
     

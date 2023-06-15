@@ -45,6 +45,50 @@ Examples of usage: \n\
 \n\
         python -m \
         ")
+    
+
+class SCRIPTING():
+    '''
+    todo_import
+    '''
+    def __init__(self, file_path):
+        '''
+        Initiation, read contents and header
+        '''
+        self.ex_header = []
+        self.im_header = []
+        self.contents = []
+        fin = open(file_path, 'r')
+        line = fin.readline()
+        while line != "":
+            if re.match("^from.*shilofue.*import", line):
+                self.im_header.append(line)
+            elif re.match("^from.*import", line) or re.match("^import", line):
+                self.ex_header.append(line)
+            else:
+                self.contents.append(line)
+            line = fin.readline()
+
+    # todo_import
+    def __call__(self, o_path):
+        '''
+        Write to an output file
+        '''
+        fout = open(o_path, 'w')
+        # write external header
+        for header in self.ex_header:
+            fout.write(header)
+        # write internal header
+        for header in self.im_header:
+            module, objects = ParseImportSyntax(header)
+            explicit_import_contents = ""
+            for _object in objects:
+                explicit_import_contents += ExplicitImport(module, _object)
+                fout.write(explicit_import_contents)
+        for content in self.contents:
+            fout.write(content)
+        print("SCRIPTING: write scripting %s" % (o_path))  # screen output
+
 
 ####
 # Utility functions
@@ -101,7 +145,6 @@ def ExplicitImport(module, _object, _type=None):
     contents = ""
     for content in content_list:
         contents += content
-    print(contents) # debug
     return contents
 
 
@@ -118,11 +161,17 @@ def ParseImportSyntax(line):
     assert(re.match("^from.*import", line))
     # parse module
     temp = re.sub("^from(\t| )*", '', line)
-    module = re.sub("(\t| )*import.*$", '', temp)
+    temp = re.sub("(\t| )*import.*$", '', temp)
+    module = re.sub("\n$", "", temp) # remove trailing newlines
     # parse object
     temp = re.sub("(\t| )*as.*$", '', line)  # remove the as syntax
-    _object = re.sub(".*import(\t| )*", '', temp)
-    return module, _object
+    temp = re.sub(".*import(\t| )*", '', temp)
+    objects = temp.split(',')
+    for i in range(len(objects)):
+        temp =  re.sub("(\t| )*", '', objects[i])
+        objects[i] = re.sub("(\t| )*\n$", '', temp)
+    print("module:", module)
+    return module, objects
 
 
 def ParseHeader(file_path):
