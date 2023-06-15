@@ -52,7 +52,6 @@ def test_explicit_import():
     Assert:
         the import contents agree with the standard one
     '''
-    # todo_import
     # test 1
     ofile = os.path.join(test_dir, "test_explicit_import0.py")
     ofile_std = os.path.join(source_dir, "test_explicit_import_std0.py")
@@ -72,6 +71,19 @@ def test_explicit_import():
     # assert something 
     assert(filecmp.cmp(ofile1, ofile_std1))
 
+
+def test_parse_header():
+    '''
+    Parse the header of the input file, figuring out
+    what to import
+    assert:
+        the right modules and objects are parsed from a file
+    '''
+    ifile = os.path.join(source_dir, "PlotStatistics.py")
+    assert(os.path.isfile(ifile))
+    module_list, object_list = ParseHeader(ifile)
+    assert(module_list==['matplotlib', 'shilofue.Plot'])
+    assert(object_list==['pyplot', 'LINEARPLOT'])
     
 # notes
     

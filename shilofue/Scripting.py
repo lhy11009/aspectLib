@@ -50,21 +50,24 @@ Examples of usage: \n\
 # Utility functions
 ####
 
-def ExplicitImport(module, _object, _type):
+def ExplicitImport(module, _object, _type=None):
     '''
     explicitly import object from module
     Inputs:
         module: name of the module
         _object: name of the object
+        _type: specify the type of the object (class / function)
     Returns:
         contents of the object
     '''
-    # todo_import
-    assert(_type in ["class", "function"])
-    if _type == "class":
-        prefix = "class"
-    else:
-        prefix = "def"
+    prefix = "(class|def)"
+    if _type is not None:
+        # specify the type of the object
+        assert(_type in ["class", "function"])
+        if _type == "class":
+            prefix = "class"
+        else:
+            prefix = "def"
     # find the path of the file
     file_path = ASPECT_LAB_DIR
     for part in module.split('.'):
@@ -76,7 +79,7 @@ def ExplicitImport(module, _object, _type):
     line = fin.readline()
     content_list = []
     while line != "":
-        if re.match("%s %s" % (prefix, _object), line):
+        if re.match("^%s %s" % (prefix, _object), line):
             content_list.append(line)
             line = fin.readline()
             while line != "":
@@ -100,6 +103,59 @@ def ExplicitImport(module, _object, _type):
         contents += content
     print(contents) # debug
     return contents
+
+
+def ParseImportSyntax(line):
+    '''
+    parse from an importing syntax
+    Inputs:
+        line: one line input
+    Returns:
+        module (str): name of the module
+        _object (str): name of the object
+    '''
+    # line must have importing syntax
+    assert(re.match("^from.*import", line))
+    # parse module
+    temp = re.sub("^from(\t| )*", '', line)
+    module = re.sub("(\t| )*import.*$", '', temp)
+    # parse object
+    temp = re.sub("(\t| )*as.*$", '', line)  # remove the as syntax
+    _object = re.sub(".*import(\t| )*", '', temp)
+    return module, _object
+
+
+def ParseHeader(file_path):
+    '''
+    Parse the header of the input file, figuring out
+    what to import. Only deal with the "from ... import ..."
+    syntax
+    Inputs:
+        file_path: path of the input file
+    Returns:
+        module_list: list of module
+        object_list: list of object
+    '''
+    module_list = []
+    object_list = []
+    Utilities.my_assert(os.path.isfile(file_path), FileExistsError, "%s doesn't exist" % file_path)
+    # read headers
+    fin = open(file_path, 'r')
+    line = fin.readline()
+    headers = []
+    while line != "":
+        line = fin.readline()
+        if re.match("^from", line):
+            header = re.sub(' *(#.*)?\n$', '', line)
+            headers.append(header)
+        if re.match("^(class|def)", line):
+            break
+    # read module and object from header
+    for header in headers:
+        module, _object = ParseImportSyntax(header)
+        module_list.append(module)
+        object_list.append(_object)
+    return module_list, object_list
 
 
 def main():
