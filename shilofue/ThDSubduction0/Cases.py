@@ -267,7 +267,7 @@ different age will be adjusted.",\
             box_length = re_write_geometry_while_assigning_plate_age(
             *self.to_re_write_geometry_pa()
             ) # adjust box width
-        make_2d_consistent_plate = self.values[self.start+47]
+        make_2d_consistent_plate = self.values[self.start+48]
         return _type, if_wb, geometry, sp_width, sp_length, trailing_length,\
         Dsz, Ddl, slab_length, dip_angle, sp_age_trench, ov_age,\
         setup_method, sp_rate, wb_new_ridge, assign_side_plate,\
