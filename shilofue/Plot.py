@@ -9,14 +9,14 @@ import subprocess
 import pathlib
 import numpy as np
 from importlib import resources
-from shilofue.Utilities import JsonOptions, ReadHeader, ReadHeader2, UNITCONVERT, my_assert
-import shilofue.Utilities as Utilities
 from shilofue.ParsePrm import ParseFromDealiiInput
 from matplotlib import pyplot as plt
 
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
 
 
 class LINEARPLOT():
@@ -37,7 +37,7 @@ class LINEARPLOT():
         '''
         self.name = _name
         _json_dir = options.get('json_dir', None)
-        self.options = JsonOptions(_name, _json_dir)
+        self.options = Utilities.JsonOptions(_name, _json_dir)
         self.UnitConvert = options.get('unit_convert', None)
         self.dim = options.get('dim', 2)  # dimension
         assert(self.dim in [1, 2, 3])  # dimension must be 1, 2, 3
@@ -98,7 +98,7 @@ class LINEARPLOT():
         with open(_filename, 'r') as fin:
             _texts = fin.readlines()  # read the text of the file header
         try:
-            self.header = ReadHeader(_texts)
+            self.header = Utilities.ReadHeader(_texts)
         except:
             raise Exception('Header for file %s cannot be read' % _filename)
 
@@ -350,7 +350,7 @@ but you will get a blank one for this field name' % _yname,
         kwargs:
             rows: assign rows to output, default is None
         '''
-        my_assert(type(names) == list, TypeError, "%s: names must be a list" % Utilities.func_name())
+        Utilities.my_assert(type(names) == list, TypeError, "%s: names must be a list" % Utilities.func_name())
         cols = []
         for _name in names:
             cols.append(int(self.header[_name]['col']))
@@ -608,7 +608,7 @@ def ProjectPlot(case_dirs, _file_type, **kwargs):
     update = kwargs.get('update', False)
     pdict = kwargs.get('pdict', {})
     # Init the UnitConvert class
-    UnitConvert = UNITCONVERT()
+    UnitConvert = Utilities.UNITCONVERT()
 
     # plot statistics ouput
     plot_options = pdict.get('Statistics', {})

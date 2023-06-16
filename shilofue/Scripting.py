@@ -25,6 +25,7 @@ import sys, os, argparse, re
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from shutil import copytree, rmtree
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -49,32 +50,41 @@ Examples of usage: \n\
 
 class SCRIPTING():
     '''
-    todo_import
+    A class that deals with scripting
     '''
     def __init__(self, file_path):
         '''
         Initiation, read contents and header
+        Attribute:
+            c_header: header that deals with comments
         '''
+        self.c_header = []
         self.ex_header = []
         self.im_header = []
         self.contents = []
         fin = open(file_path, 'r')
         line = fin.readline()
-        while line != "":
-            if re.match("^from.*shilofue.*import", line):
-                self.im_header.append(line)
-            elif re.match("^from.*import", line) or re.match("^import", line):
-                self.ex_header.append(line)
-            else:
-                self.contents.append(line)
-            line = fin.readline()
+        self.c_header = ReadCommentingHeaders(file_path)
+        # read the importing from an internal module
+        self.im_header = ReadInHeaders(file_path)
+        # read the importing from an external module
+        self.ex_header = ReadExHeaders(file_path)
+        ex_additional = []  # additional commands
+        ex_additional.append("current_dir = os.path.dirname(__file__)\n")
+        ex_additional.append("sys.path.append(os.path.join(current_dir, \'utilities\', \'python_scripts\'))\n")
+        ex_additional.append("import Utilities\n")
+        self.ex_header += ex_additional
+        # read the contents of the file
+        self.contents = ReadContents(file_path)
 
-    # todo_import
     def __call__(self, o_path):
         '''
         Write to an output file
         '''
         fout = open(o_path, 'w')
+        # write commenting header
+        for header in self.c_header:
+            fout.write(header)
         # write external header
         for header in self.ex_header:
             fout.write(header)
@@ -93,6 +103,102 @@ class SCRIPTING():
 ####
 # Utility functions
 ####
+def ReadCommentingHeaders(file_path):
+    '''
+    Read the first part of the file header: comments of the scripts
+    Inputs:
+        file_path(str): path of the file
+    Return:
+        headers: headers that contain the comments
+    '''
+    headers = []
+    fin = open(file_path, 'r')
+    line = fin.readline()
+    while line != "":
+        if re.match("^from.*import", line) or re.match("^import", line)\
+            or re.match("^def", line):
+            # the next part of the file is hit: break
+            break
+        else:
+            headers.append(line)
+        line = fin.readline()
+    return headers
+
+
+def ReadInHeaders(file_path):
+    '''
+    Read the second part of the file header: importing module from inside the package
+    Inputs:
+        file_path(str): path of the file
+    Return:
+        headers: headers that contain the importing of internal modules
+    '''
+    headers = []
+    fin = open(file_path, 'r')
+    line = fin.readline()
+    start = False
+    while line != "":
+        if re.match("^from.*import", line) or re.match("^import", line):
+            start = True
+        elif re.match("^def", line) or re.match("^class", line):
+            # this indicates that the next part of the file is reached
+            break
+        if re.match("^from.*shilofue.*import", line):
+            headers.append(line)
+        line = fin.readline()
+    return headers
+
+
+def ReadExHeaders(file_path):
+    '''
+    Read the third part of the file header: importing module from outside the package
+    Inputs:
+        file_path(str): path of the file
+    Return:
+        headers: headers that contain the importing of external modules
+    '''
+    headers = []
+    fin = open(file_path, 'r')
+    line = fin.readline()
+    start = False
+    while line != "":
+        if re.match("^from.*import", line) or re.match("^import", line):
+            start = True
+        elif re.match("^def", line) or re.match("^class", line):
+            # this indicates that the next part of the file is reached
+            break
+        if (re.match("^from.*import", line) or re.match("^import", line)) and\
+             (not re.match("^from.*shilofue.*import", line)) and\
+             (not re.match("^import.*Utilities", line)):
+            # this indicates this is an importing command from an external module
+            # the "from.*shilofue.*import" and "import.*Utilities" will be handled
+            # separately
+            headers.append(line)
+        line = fin.readline()
+    return headers
+
+
+def ReadContents(file_path):
+    '''
+    Read the fourtch part of the file: the contents of the file
+    Inputs:
+        file_path(str): path of the file
+    Return:
+        headers: headers that contain the importing of external modules
+    '''
+    headers = []
+    fin = open(file_path, 'r')
+    line = fin.readline()
+    start = False
+    while line != "":
+        if re.match("^def", line) or re.match("^class", line):
+            start = True
+        if start:
+            headers.append(line)
+        line = fin.readline()
+    return headers
+
+
 
 def ExplicitImport(module, _object, _type=None):
     '''
@@ -222,6 +328,9 @@ def main():
     parser.add_argument('-i', '--inputs', type=str,
                         default='',
                         help='Some inputs')
+    parser.add_argument('-o', '--outputs', type=str,
+                        default='',
+                        help='Some outputs')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -233,9 +342,24 @@ def main():
     if (_commend in ['-h', '--help']):
         # example:
         Usage()
-    elif _commend == 'foo':
-        # example:
-        SomeFunction('foo')
+    elif _commend == 'generate_script':
+        # inputs: a file
+        # outputs: a directory that exists
+        assert(os.path.isfile(arg.inputs))
+        Scripting = SCRIPTING(arg.inputs)
+        assert(os.path.isdir(arg.outputs))
+        ofile = os.path.join(arg.outputs, os.path.basename(arg.inputs))
+        Scripting(ofile)
+        assert(os.path.isfile(ofile))
+        # copy the utilities
+        utilities_dir = os.path.join(ASPECT_LAB_DIR, 'utilities')
+        utilities_o_dir = os.path.join(arg.outputs, 'utilities')
+        if os.path.isdir(utilities_o_dir):
+            # remove old outputs
+            rmtree(utilities_o_dir)
+        assert(os.path.isdir(utilities_dir))
+        copytree(utilities_dir, utilities_o_dir)
+        assert(os.path.isdir(utilities_o_dir))
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)

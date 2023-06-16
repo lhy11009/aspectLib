@@ -89,7 +89,6 @@ def test_scripting():
     Assert:
         file is generated
     '''
-    # todo_import
     ifile = os.path.join(source_dir, "PlotStatistics.py")
     ofile = os.path.join(test_dir, "PlotStatistics_scripting.py")
     assert(os.path.isfile(ifile))
