@@ -1,0 +1,93 @@
+-----------------------------------------------------------------------------
+-- This is ASPECT, the Advanced Solver for Problems in Earth's ConvecTion.
+--     . version 2.5.0-pre (master_TwoD, 5a1184e6d)
+--     . using deal.II 9.4.0
+--     .       with 32 bit indices and vectorization level 3 (512 bits)
+--     . using Trilinos 12.18.1
+--     . using p4est 2.3.2
+--     . running in OPTIMIZED mode
+--     . running with 1360 MPI processes
+-----------------------------------------------------------------------------
+
+Vectorization over 8 doubles = 512 bits (AVX512), VECTORIZATION_LEVEL=3
+-----------------------------------------------------------------------------
+-- For information on how to cite ASPECT, see:
+--   https://aspect.geodynamics.org/citing.html?ver=2.5.0-pre&GWB=1&dg=1&mf=1&sha=5a1184e6d&src=code
+-----------------------------------------------------------------------------
+Number of active cells: 98,304 (on 5 levels)
+Number of degrees of freedom: 11,356,213 (2,464,803+107,185+821,601+2,654,208+2,654,208+2,654,208)
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00000
+     RMS, max velocity:        0 m/year, 0 m/year
+     Temperature min/avg/max:  273 K, 1739 K, 2000 K
+     Writing depth average:    output/depth_average
+
+Number of active cells: 571,392 (on 6 levels)
+Number of degrees of freedom: 65,767,256 (14,160,261+604,156+4,720,087+15,427,584+15,427,584+15,427,584)
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00001
+     RMS, max velocity:        0 m/year, 0 m/year
+     Temperature min/avg/max:  273 K, 1740 K, 2000 K
+     Writing depth average:    output/depth_average
+
+Number of active cells: 1,439,469 (on 7 levels)
+Number of degrees of freedom: 166,390,246 (36,180,780+1,552,217+12,060,260+38,865,663+38,865,663+38,865,663)
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00002
+     RMS, max velocity:        0 m/year, 0 m/year
+     Temperature min/avg/max:  273 K, 1740 K, 2000 K
+     Writing depth average:    output/depth_average
+
+Number of active cells: 2,514,669 (on 8 levels)
+Number of degrees of freedom: 292,324,889 (64,398,891+2,771,512+21,466,297+67,896,063+67,896,063+67,896,063)
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00003
+     RMS, max velocity:        0 m/year, 0 m/year
+     Temperature min/avg/max:  273 K, 1740 K, 2000 K
+     Writing depth average:    output/depth_average
+
+Number of active cells: 4,007,825 (on 9 levels)
+Number of degrees of freedom: 472,571,909 (107,431,821+4,695,656+35,810,607+108,211,275+108,211,275+108,211,275)
+
+*** Timestep 0:  t=0 years, dt=0 years
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00004
+     RMS, max velocity:        0 m/year, 0 m/year
+     Temperature min/avg/max:  273 K, 1740 K, 2000 K
+     Writing depth average:    output/depth_average
+
+*** Timestep 1:  t=100000 years, dt=100000 years
+
+   Postprocessing:
+     Writing graphical output: output/solution/solution-00005
+     RMS, max velocity:        0 m/year, 0 m/year
+     Temperature min/avg/max:  273 K, 1740 K, 2000 K
+     Writing depth average:    output/depth_average
+
+Termination requested by criterion: end time
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       221s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Initialization                  |         1 |      2.16s |      0.97% |
+| Postprocessing                  |         6 |       102s |        46% |
+| Refine mesh structure, part 1   |         4 |      20.2s |       9.1% |
+| Refine mesh structure, part 2   |         4 |      7.43s |       3.4% |
+| Setup dof systems               |         5 |      18.7s |       8.4% |
+| Setup initial conditions        |         5 |      49.9s |        23% |
+| Setup matrices                  |         1 |      17.5s |       7.9% |
++---------------------------------+-----------+------------+------------+
+
+-- Total wallclock time elapsed including restarts: 221s
+-----------------------------------------------------------------------------
+-- For information on how to cite ASPECT, see:
+--   https://aspect.geodynamics.org/citing.html?ver=2.5.0-pre&GWB=1&dg=1&mf=1&sha=5a1184e6d&src=code
+-----------------------------------------------------------------------------

@@ -374,9 +374,13 @@ class GDOC():
         self.case_names = []
         pass
 
-    def execute(self, base_dir):
+    def execute(self, base_dir, **kwargs):
+        '''
+        execute the documentation
+        '''
+        o_dir = kwargs.get('o_dir', base_dir)
         # create a documentation directory
-        doc_dir = os.path.join(base_dir, "documentation")
+        doc_dir = os.path.join(o_dir, "documentation")
         if not os.path.isdir(doc_dir):
             os.mkdir(doc_dir)
         # find all groups and seperate cases
@@ -390,7 +394,7 @@ class GDOC():
         with open(o_path, 'w') as fout:
             fout.write(outputs)
         print("File %s generated." % o_path)
-        o_path_html = o_path.rsplit('.')[0] + "." + 'html'
+        o_path_html = os.path.join(doc_dir, "group_doc.html")
         # convert to html
         subprocess.run("pandoc %s -t html -o %s" % (o_path, o_path_html), shell=True)
         assert(os.path.isfile(o_path_html))
@@ -408,35 +412,33 @@ class GDOC():
     class CreateCaseTableError(Exception):
         pass 
     
-    def create_case_table(self, group):
-        json_path = os.path.join(group, 'group.json')
+    def create_case_table(self, group_dir):
+        '''
+        create a table for case documentation
+        Inputs:
+            group_dir: directory of the group
+        Returns:
+            table_contnents: contents of the table
+        '''
+        json_path = os.path.join(group_dir, 'group.json')
         # read group options from the json file
         group_opt = GROUP_OPT()
         group_opt.read_json(json_path)
         features = group_opt.get_features()
         n_features = len(features)
         # find all cases
-        cases = FindCasesInDir(group)
-        # generate outputs
-        # 1. generate the header
-        outputs = ""
-        outputs += "<style>\n.table-%s {\n\toverflow-x: scroll;\n\twidth: 100%%;\n}\n</style>\n\n" % os.path.basename(group) # css rule for scrolling
-        outputs += "<div class=\"table-%s\" markdown=\"block\">\n\n" % os.path.basename(group) # css block marks starting
-        outputs += "| cases\t|"
-        outputs += "<span style=\"color:blue\">" + " steps\t" + "</span>" + "|"
-        outputs += "<span style=\"color:blue\">" + " time\t" + "</span>" + "|"
-        outputs += "<span style=\"color:blue\">" + " wall clock\t" + "</span>" + "|"
-        for feature in features :
-            outputs += "%s \t|" % feature.get_keys()[-1]
-        outputs += "\n"
-        outputs += "|" # generate line devider
-        for i in range(n_features + 4):
-            outputs += " :-----------:\t|"
-        outputs += "\n"
-        # 2. append case options as contents
-        i = 0
+        cases = FindCasesInDir(group_dir)
+        Utilities.my_assert(len(cases)>0, FileExistsError, "%s doesn't have cases in it." % group_dir)
+        header = ["cases", "steps", "time", "wallclock"]
+        colors = [None, "blue", "blue", "blue"]
+        # colors =  
+        # construct data
+        data = []
+        case_list = [] 
+        step_list = []
+        time_list = []
+        wallclock_list = []
         for case in cases:
-            outputs += "| %s\t|" % os.path.basename(case)
             # pull out information
             log_file = os.path.join(case, 'output', 'log.txt')
             assert(log_file)
@@ -446,29 +448,19 @@ class GDOC():
                 last_step = -1
                 last_time = -1.0
                 last_wallclock = -1.0
-            outputs += "<span style=\"color:blue\">" + " %d\t" % last_step + "</span>" +  "|"
-            outputs += "<span style=\"color:blue\">" + " %.4e\t" % last_time + "</span>" + "|"
-            outputs += "<span style=\"color:blue\">" + " %.4e\t" % last_wallclock + "</span>" + "|"
-            case_json_path = os.path.join(case, 'case.json')
-            assert(os.path.isfile(case_json_path))
-            with open(case_json_path, 'r') as fin:
-                case_options = json.load(fin)
-            for feature in features:
-                keys = feature.get_keys()
-                try:
-                    value = Utilities.read_dict_recursive(case_options, keys)
-                except KeyError as e:
-                    # if key not found, don't append anything except for "|" to maintain the table
-                    pass
-                else:
-                    outputs += str(value)
-                outputs += "\t|"
-            outputs += "\n"
-            i += 1
-        outputs += "\n</div>\n"  # css block marks ending
-        return outputs
+            case_list.append(os.path.basename(case))
+            step_list.append(int(last_step))
+            time_list.append(float(last_time))
+            wallclock_list.append(float(last_wallclock))
+        data.append(case_list)
+        data.append(step_list)
+        data.append(time_list)
+        data.append(wallclock_list)
+        TexTable = Utilities.TEX_TABLE("table-%s" % os.path.basename(group_dir),\
+                                        header=header, data=data, colors=colors) # class initiation
+        table_contents = TexTable()
+        return table_contents
         
-
 
 def DocumentGroupsInDir(_dir):
     '''
