@@ -36,7 +36,7 @@ class LINEARPLOT():
                 a unit_convert function, default is None
         '''
         self.name = _name
-        _json_dir = options.get('json_dir', None)
+        _json_dir = os.path.join(ASPECT_LAB_DIR, 'shilofue', 'json_files')
         self.options = Utilities.JsonOptions(_name, _json_dir)
         self.UnitConvert = options.get('unit_convert', None)
         self.dim = options.get('dim', 2)  # dimension
