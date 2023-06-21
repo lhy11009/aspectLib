@@ -1,0 +1,77 @@
+{
+    "base name": "eba3d",
+    "type": "2d_consistent", 
+    "base json": "${ASPECT_LAB_DIR}/files/ThDSubduction/04292023/case_2d_consistent.json",
+    "base directory": "${ASPECT_LAB_DIR}/files/ThDSubduction/05092023",
+    "output directory": "${ThDSubduction_DIR}/EBA_2d_consistent_2",
+	"base features":[
+	{
+            "name": "Viscosity in the slab core",
+            "key": ["shear zone", "slab core viscosity"],
+            "unit": "Pa s",
+            "values": [1e23],
+            "abbreviating strings": [""]
+	}
+	],
+    "features":[
+	{
+            "name": "Age of the subducting plate at trench",
+            "key": ["plate setup", "sp age"],
+            "unit": "yr",
+            "values": [40e6, 80e6],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["SA", 1e-6],
+            "if abbreviating": [1, 1]
+	},
+	{
+            "name": "Age of the overiding plate",
+            "key": ["plate setup", "ov age"],
+            "unit": "yr",
+            "values": [20e6, 40e6],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["OA", 1e-6],
+            "if abbreviating": [1, 1]
+	},
+	{
+            "name": "Length of the Box before adjusting for the age of the trench.",
+            "key": ["geometry setup", "box length before adjusting"],
+            "unit": "m",
+            "values": [6.783e6, 8.896e6],
+            "abbreviating strings": ["width61", "width80"],
+            "if abbreviating": [1, 1]
+	},
+    	{
+            "name": "Global refinement",
+            "key": ["refinement", "global refinement"],
+            "unit": "1",
+            "values": [2, 3, 4, 5, 6],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["GR", 1.0]
+        },
+    	{
+            "name": "Adaptive refinement",
+            "key": ["refinement", "adaptive refinement"],
+            "unit": "1",
+            "values": [3, 4],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["AR", 1.0]
+    	},
+    	{
+            "name": "If the side of the box is coarsened in assigning the minimum refinement function",
+            "key": ["refinement", "coarsen side"],
+            "unit": "1",
+            "values": [0, 1],
+            "abbreviating strings": ["", "cside"],
+            "if abbreviating": [0, 1]
+    	},
+    	{
+            "name": "The side of the box is coarsened, except for an interval attached to the plate side",
+            "key": ["refinement", "coarsen side interval"],
+            "unit": "1",
+            "values": [0.0, 100e3],
+            "abbreviating strings": ["", ""],
+            "if abbreviating": [0, 0]
+    	}
+    ],
+    "bindings": [[1, 1, 0, 1, 0, 0, 0], [1, 1, 0, 1, 0, 1, 1], [1, 1, 0, 1, 1, 1, 1]]
+}

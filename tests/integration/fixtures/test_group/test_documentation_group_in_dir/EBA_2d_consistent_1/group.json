@@ -1,0 +1,54 @@
+{
+    "base name": "eba3d",
+    "type": "2d_consistent", 
+    "base json": "${ASPECT_LAB_DIR}/files/ThDSubduction/04052023/case_2d_consistent.json",
+    "base directory": "${ASPECT_LAB_DIR}/files/ThDSubduction/04052023",
+    "output directory": "${ThDSubduction_DIR}/EBA_2d_consistent_1",
+	"base features":[
+	],
+    "features":[
+	{
+            "name": "Age of the subducting plate at trench",
+            "key": ["plate setup", "sp age"],
+            "unit": "yr",
+            "values": [40e6, 80e6],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["SA", 1e-6],
+            "if abbreviating": [1, 1]
+	},
+	{
+            "name": "Age of the overiding plate",
+            "key": ["plate setup", "ov age"],
+            "unit": "yr",
+            "values": [20e6, 40e6],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["OA", 1e-6],
+            "if abbreviating": [1, 1]
+	},
+	{
+            "name": "Length of the Box before adjusting for the age of the trench.",
+            "key": ["geometry setup", "box length before adjusting"],
+            "unit": "m",
+            "values": [6.783e6, 8.896e6],
+            "abbreviating strings": ["width61", "width80"],
+            "if abbreviating": [1, 1]
+	},
+    {
+            "name": "Global refinement",
+            "key": ["refinement", "global refinement"],
+            "unit": "1",
+            "values": [2,3,4, 5, 6],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["GR", 1.0]
+    },
+    {
+            "name": "Adaptive refinement",
+            "key": ["refinement", "adaptive refinement"],
+            "unit": "1",
+            "values": [3, 4],
+            "abbreviation by value": 1,
+            "abbreviating value options": ["AR", 1.0]
+    }
+    ],
+    "bindings": [[1, 1, 0, 2, 1], [1, 1, 0, 1, 0]]
+}
