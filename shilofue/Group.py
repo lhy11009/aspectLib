@@ -399,8 +399,17 @@ class GDOC():
         subprocess.run("pandoc %s -t html -o %s" % (o_path, o_path_html), shell=True)
         assert(os.path.isfile(o_path_html))
         print("Html file %s generated" % o_path_html)
+        # generate latex files
+        outputs = self.create_latex()
+        o_path = os.path.join(doc_dir, "group_doc.tex")
+        with open(o_path, 'w') as fout:
+            fout.write(outputs)
+        print("File %s generated." % o_path)
 
     def create_markdown(self):
+        """
+        Create contents of a markdown file
+        """
         outputs = ""
         for i in range(len(self.groups)):
             group = self.groups[i]
@@ -408,19 +417,35 @@ class GDOC():
             outputs += "### %s\n\n" % group_name
             outputs += self.create_case_table(group) + "\n"
         return outputs
+        
+    def create_latex(self):
+        '''
+        Create contents of a latex file
+        '''
+        outputs = ""
+        for i in range(len(self.groups)):
+            group = self.groups[i]
+            group_name = self.group_names[i]
+            # outputs += "### %s\n\n" % group_name
+            outputs += self.create_case_table(group, format='latex') + "\n"
+        return outputs
+
 
     class CreateCaseTableError(Exception):
         pass 
     
-    def create_case_table(self, group_dir):
+    def create_case_table(self, group_dir, **kwargs):
         '''
         create a table for case documentation
         Inputs:
             group_dir: directory of the group
+            kwargs:
+                format - output format
         Returns:
             table_contnents: contents of the table
         '''
         json_path = os.path.join(group_dir, 'group.json')
+        _format = kwargs.get("format", "markdown")
         # read group options from the json file
         group_opt = GROUP_OPT()
         group_opt.read_json(json_path)
@@ -458,7 +483,7 @@ class GDOC():
         data.append(wallclock_list)
         TexTable = Utilities.TEX_TABLE("table-%s" % os.path.basename(group_dir),\
                                         header=header, data=data, colors=colors) # class initiation
-        table_contents = TexTable()
+        table_contents = TexTable(format=_format)
         return table_contents
         
 
@@ -469,7 +494,6 @@ def DocumentGroupsInDir(_dir):
     assert(os.path.isdir(_dir))
     GDoc = GDOC()
     GDoc.execute(_dir)
-    print("Groups: ", GDoc.group_names) # debug
     pass
 
 

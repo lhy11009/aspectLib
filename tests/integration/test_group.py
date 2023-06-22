@@ -56,9 +56,11 @@ def test_documentation_group_in_dir():
     mkd_file_std = os.path.join(group_dir, "group_doc_std.mkd")
     assert(os.path.isfile(mkd_file)) # assert file generation
     assert(filecmp.cmp(mkd_file, mkd_file_std)) # assert file contents
+    latex_file = os.path.join(test_local_dir, "documentation", "group_doc.tex")
+    latex_file_std = os.path.join(group_dir, "group_doc_std.tex")
+    assert(os.path.isfile(latex_file)) # assert file generation
+    assert(filecmp.cmp(latex_file, latex_file_std)) # assert file contents
 
-
-    
 # notes
     
 # to check for error message
