@@ -516,11 +516,19 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
         print("total wall clocks:", total_wall_clock)
         print("assemble_stokes_system:", assemble_stokes_system)
         print("solve_stokes_system:", solve_stokes_system)
-
     # plot via matplotlib
     # 1. loop for resolutions, generate one line for every resolution
     # 2. plots are generated in log-log or linear format
     resolution_options = []
+    noc_list = []
+    nof_stokes_list = []
+    nof_temp_list = []
+    nof_comp_list = []
+    cores_sorted_list = []
+    wallclocks_sorted_list = []
+    totalclocks_sorted_list = []
+    assemble_stokes_system_res_list = []
+    solve_stokes_system_res_list = []
     for resolution in resolutions:
         if resolution not in resolution_options:
             resolution_options.append(resolution)
@@ -531,17 +539,27 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
         plot_indexes = (resolutions == resolution)
         # parse outputs 
         noc = nocs[plot_indexes][0]
+        noc_list.append(float(noc))
         nof_stokes = nofs_stokes[plot_indexes][0]
+        nof_stokes_list.append(float(nof_stokes))
         nof_temp = nofs_temp[plot_indexes][0]
+        nof_temp_list.append(float(nof_temp))
         nof_comp = nofs_comp[plot_indexes][0]
+        nof_comp_list.append(float(nof_comp))
         cores_res = cores[plot_indexes]
         sequential_indexes = np.argsort(cores_res)
         cores_sorted = cores_res[sequential_indexes]
+        cores_sorted_list.append(cores_sorted.copy())
         wallclocks_res = total_wall_clock[plot_indexes]
         wallclocks_sorted = wallclocks_res[sequential_indexes]
+        wallclocks_sorted_list.append([float(f) for f in wallclocks_sorted])
+        totalclocks_sorted_list.append([float(wallclocks_sorted[i]) * float(cores_sorted[i])\
+                                        for i in range(len(wallclocks_sorted))])
         assemble_stokes_system_res = assemble_stokes_system[plot_indexes]
+        assemble_stokes_system_res_list.append([float(f) for f in assemble_stokes_system_res])
         assemble_stokes_system_sorted = assemble_stokes_system_res[sequential_indexes]
         solve_stokes_system_res = solve_stokes_system[plot_indexes]
+        solve_stokes_system_res_list.append([float(f) for f in solve_stokes_system_res])
         solve_stokes_system_sorted = solve_stokes_system_res[sequential_indexes]
         # screen outputs
         print("resolution: %d, cells: %d, degree of freedoms (stokes: %d + temperature: %d + composition: %d) "\
@@ -710,72 +728,105 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
     fig.savefig(filepath)
 
     # plot the scale-increasing efficiency
-    fig, ax= plt.subplots(tight_layout=True, figsize=(5, 5))  # plot of wallclock
-    label_parallel_efficiency = "Parallel Efficiency (cores = "
-    wallclocks_to_plot = []
-    cores_to_plot = []
-    nofs_stokes_to_core_arr = []
-    print("Choices for plotting the scale-increasing efficiency")
+#    fig, ax= plt.subplots(tight_layout=True, figsize=(5, 5))  # plot of wallclock
+#    label_parallel_efficiency = "Parallel Efficiency (cores = "
+#    wallclocks_to_plot = []
+#    cores_to_plot = []
+#    nofs_stokes_to_core_arr = []
+#    print("Choices for plotting the scale-increasing efficiency")
+#    for i in range(len(resolution_options)):
+#        resolution = resolution_options[i]
+#        plot_indexes = (resolutions == resolution)
+#        cores_res = cores[plot_indexes]
+#        sequential_indexes = np.argsort(cores_res)
+#        cores_sorted = cores_res[sequential_indexes]
+#        # let the user choose a number of core for each resolution
+#        proceed = False
+#        while not proceed:
+#            core_input_query = "Choose the number of cores for resolution %d\n, options are " % resolution + str(cores_sorted)
+#            # For subsequent selections, make a suggestion of the choice to make,
+#            # based on the ratio of the stokes degree of freedom to the number of cores
+#            if i > 0:
+#                nofs_stokes_to_core_options = nofs_stokes[plot_indexes][0] / cores_sorted
+#                i_select_suggestion = np.argmin(np.abs(np.log(nofs_stokes_to_core_options / nofs_stokes_to_core_arr[0])))
+#                core_input_suggestion = cores_sorted[i_select_suggestion]
+#                core_input_query += "(suggestion: %d, with ratio of stokes dofs to cores %.4e)"\
+#                                    % (core_input_suggestion, nofs_stokes_to_core_options[i_select_suggestion])
+#            core_input_query += "\n: "
+#            core_input = input(core_input_query)
+#            core = int(core_input)
+#            cores_to_plot.append(core)
+#            # compute the ratio of the stokes degree of freedom to the number of cores selected
+#            # for the first time (i == 0), record this number in a variable
+#            nofs_stokes_to_core = nofs_stokes[plot_indexes][0] / core
+#            nofs_stokes_to_core_arr.append(nofs_stokes_to_core)
+#            print("Number of core selected: %d, ratio of stokes dofs to cores: %.4e" % (core, nofs_stokes_to_core))
+#            print("(Reminder: the ratio of stokes dofs to cores should roughly equal across selections)")
+#            indicator = input("proceed? (y/n)\n")
+#            if indicator == 'y':
+#                proceed = True
+#        i_select = np.where(cores_sorted==core)[0][0]
+#        label_parallel_efficiency += "%d " % core
+#        # figure out the number of wallclock with this specific number of core 
+#        wallclocks_res = total_wall_clock[plot_indexes]
+#        wallclocks_sorted = wallclocks_res[sequential_indexes]
+#        wallclock = wallclocks_sorted[i_select]
+#        wallclocks_to_plot.append(wallclock)
+#    label_parallel_efficiency += ")"
+#    nof_stokes_to_core_arr = np.array(nofs_stokes_to_core_arr)
+#    # compute the scale-increasing efficiencies and the corrected value with the number of the stokes
+#    # degree of freedom
+#    parallel_efficiencies = wallclocks_to_plot[0] / wallclocks_to_plot 
+#    parallel_efficiencies_corrected = parallel_efficiencies * nof_stokes_to_core_arr / nof_stokes_to_core_arr[0]
+#    ax.plot(resolution_options, parallel_efficiencies, ".-",\
+#            color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_parallel_efficiency)
+#    ax.plot(resolution_options, parallel_efficiencies_corrected, "--",\
+#            color=cm.gist_rainbow(1.0*i/len(resolution_options)), label="corrected")
+#    ax.set_xlabel('Resolution')
+#    ax.set_ylabel('Scale Increasing Efficiency')
+#    ax.grid()
+#    ax.legend(fontsize='x-small')
+#    basename = os.path.basename(test_results_dir)
+#    fig.tight_layout()
+#    filepath='%s/%s_scale_increasing_efficiency' % (output_dir, basename)
+#    for core in cores_to_plot:
+#        filepath += "_%d" % core
+#    filepath += '.png'
+#    print("output file generated: ", filepath)
+#    fig.savefig(filepath)
+
+    # prepare the table of outputs
+    # summary table
+    tex_contents = ""
+    table_contents = ""
+    nof_list = [(nof_stokes_list[i] + nof_temp_list[i] + nof_comp_list[i]) for i in range(len(resolution_options))]
+    print('nof_list: ', nof_list)  # debug
+    header = ["resolution", "number of cells", "dof", "dof stokes", "dof temp", "dof comp"]
+    data = [resolution_options, noc_list, nof_list, nof_stokes_list, nof_temp_list, nof_comp_list]
+    TexTable = Utilities.TEX_TABLE("table-summary",\
+                                    header=header, data=data) # class initiation
+    table_contents += TexTable(format="latex", caption="Summary of affinity test")
+    tex_contents += (table_contents + '\n')
+    # subsequent tables of resolutions
+    table_contents = ""
+    header = ["number of cores", "wallclock", "assemble stokes system", "solve stokes system", "total clock"]
     for i in range(len(resolution_options)):
+        data = []
         resolution = resolution_options[i]
-        plot_indexes = (resolutions == resolution)
-        cores_res = cores[plot_indexes]
-        sequential_indexes = np.argsort(cores_res)
-        cores_sorted = cores_res[sequential_indexes]
-        # let the user choose a number of core for each resolution
-        proceed = False
-        while not proceed:
-            core_input_query = "Choose the number of cores for resolution %d\n, options are " % resolution + str(cores_sorted)
-            # For subsequent selections, make a suggestion of the choice to make,
-            # based on the ratio of the stokes degree of freedom to the number of cores
-            if i > 0:
-                nofs_stokes_to_core_options = nofs_stokes[plot_indexes][0] / cores_sorted
-                i_select_suggestion = np.argmin(np.abs(np.log(nofs_stokes_to_core_options / nofs_stokes_to_core_arr[0])))
-                core_input_suggestion = cores_sorted[i_select_suggestion]
-                core_input_query += "(suggestion: %d, with ratio of stokes dofs to cores %.4e)"\
-                                    % (core_input_suggestion, nofs_stokes_to_core_options[i_select_suggestion])
-            core_input_query += "\n: "
-            core_input = input(core_input_query)
-            core = int(core_input)
-            cores_to_plot.append(core)
-            # compute the ratio of the stokes degree of freedom to the number of cores selected
-            # for the first time (i == 0), record this number in a variable
-            nofs_stokes_to_core = nofs_stokes[plot_indexes][0] / core
-            nofs_stokes_to_core_arr.append(nofs_stokes_to_core)
-            print("Number of core selected: %d, ratio of stokes dofs to cores: %.4e" % (core, nofs_stokes_to_core))
-            print("(Reminder: the ratio of stokes dofs to cores should roughly equal across selections)")
-            indicator = input("proceed? (y/n)\n")
-            if indicator == 'y':
-                proceed = True
-        i_select = np.where(cores_sorted==core)[0][0]
-        label_parallel_efficiency += "%d " % core
-        # figure out the number of wallclock with this specific number of core 
-        wallclocks_res = total_wall_clock[plot_indexes]
-        wallclocks_sorted = wallclocks_res[sequential_indexes]
-        wallclock = wallclocks_sorted[i_select]
-        wallclocks_to_plot.append(wallclock)
-    label_parallel_efficiency += ")"
-    nof_stokes_to_core_arr = np.array(nofs_stokes_to_core_arr)
-    # compute the scale-increasing efficiencies and the corrected value with the number of the stokes
-    # degree of freedom
-    parallel_efficiencies = wallclocks_to_plot[0] / wallclocks_to_plot 
-    parallel_efficiencies_corrected = parallel_efficiencies * nof_stokes_to_core_arr / nof_stokes_to_core_arr[0]
-    ax.plot(resolution_options, parallel_efficiencies, ".-",\
-            color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_parallel_efficiency)
-    ax.plot(resolution_options, parallel_efficiencies_corrected, "--",\
-            color=cm.gist_rainbow(1.0*i/len(resolution_options)), label="corrected")
-    ax.set_xlabel('Resolution')
-    ax.set_ylabel('Scale Increasing Efficiency')
-    ax.grid()
-    ax.legend(fontsize='x-small')
-    basename = os.path.basename(test_results_dir)
-    fig.tight_layout()
-    filepath='%s/%s_scale_increasing_efficiency' % (output_dir, basename)
-    for core in cores_to_plot:
-        filepath += "_%d" % core
-    filepath += '.png'
-    print("output file generated: ", filepath)
-    fig.savefig(filepath)
+        data.append(cores_sorted_list[i])
+        data.append(wallclocks_sorted_list[i])
+        data.append(assemble_stokes_system_res_list[i])
+        data.append(solve_stokes_system_res_list[i])
+        data.append(totalclocks_sorted_list[i])
+        TexTable = Utilities.TEX_TABLE("table-%d" % (i+1),\
+                                        header=header, data=data) # class initiation
+        table_contents += TexTable(format="latex", caption="resolution: %d" % resolution)
+        table_contents += '\n'
+    tex_contents += table_contents
+    filepath='%s/summary.tex' % (output_dir)
+    with open(filepath, 'w')  as fileout:
+        fileout.write(tex_contents)
+    print("latex summary generated: ", filepath)
 
 
 def create_tests_with_json(json_opt, AFFINITY, AFFINITY_OPT, **kwargs):
