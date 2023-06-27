@@ -727,73 +727,40 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
     print("output file generated: ", filepath)
     fig.savefig(filepath)
 
+    # todo_latex
     # plot the scale-increasing efficiency
-#    fig, ax= plt.subplots(tight_layout=True, figsize=(5, 5))  # plot of wallclock
-#    label_parallel_efficiency = "Parallel Efficiency (cores = "
-#    wallclocks_to_plot = []
-#    cores_to_plot = []
-#    nofs_stokes_to_core_arr = []
-#    print("Choices for plotting the scale-increasing efficiency")
-#    for i in range(len(resolution_options)):
-#        resolution = resolution_options[i]
-#        plot_indexes = (resolutions == resolution)
-#        cores_res = cores[plot_indexes]
-#        sequential_indexes = np.argsort(cores_res)
-#        cores_sorted = cores_res[sequential_indexes]
-#        # let the user choose a number of core for each resolution
-#        proceed = False
-#        while not proceed:
-#            core_input_query = "Choose the number of cores for resolution %d\n, options are " % resolution + str(cores_sorted)
-#            # For subsequent selections, make a suggestion of the choice to make,
-#            # based on the ratio of the stokes degree of freedom to the number of cores
-#            if i > 0:
-#                nofs_stokes_to_core_options = nofs_stokes[plot_indexes][0] / cores_sorted
-#                i_select_suggestion = np.argmin(np.abs(np.log(nofs_stokes_to_core_options / nofs_stokes_to_core_arr[0])))
-#                core_input_suggestion = cores_sorted[i_select_suggestion]
-#                core_input_query += "(suggestion: %d, with ratio of stokes dofs to cores %.4e)"\
-#                                    % (core_input_suggestion, nofs_stokes_to_core_options[i_select_suggestion])
-#            core_input_query += "\n: "
-#            core_input = input(core_input_query)
-#            core = int(core_input)
-#            cores_to_plot.append(core)
-#            # compute the ratio of the stokes degree of freedom to the number of cores selected
-#            # for the first time (i == 0), record this number in a variable
-#            nofs_stokes_to_core = nofs_stokes[plot_indexes][0] / core
-#            nofs_stokes_to_core_arr.append(nofs_stokes_to_core)
-#            print("Number of core selected: %d, ratio of stokes dofs to cores: %.4e" % (core, nofs_stokes_to_core))
-#            print("(Reminder: the ratio of stokes dofs to cores should roughly equal across selections)")
-#            indicator = input("proceed? (y/n)\n")
-#            if indicator == 'y':
-#                proceed = True
-#        i_select = np.where(cores_sorted==core)[0][0]
-#        label_parallel_efficiency += "%d " % core
-#        # figure out the number of wallclock with this specific number of core 
-#        wallclocks_res = total_wall_clock[plot_indexes]
-#        wallclocks_sorted = wallclocks_res[sequential_indexes]
-#        wallclock = wallclocks_sorted[i_select]
-#        wallclocks_to_plot.append(wallclock)
-#    label_parallel_efficiency += ")"
-#    nof_stokes_to_core_arr = np.array(nofs_stokes_to_core_arr)
-#    # compute the scale-increasing efficiencies and the corrected value with the number of the stokes
-#    # degree of freedom
-#    parallel_efficiencies = wallclocks_to_plot[0] / wallclocks_to_plot 
-#    parallel_efficiencies_corrected = parallel_efficiencies * nof_stokes_to_core_arr / nof_stokes_to_core_arr[0]
-#    ax.plot(resolution_options, parallel_efficiencies, ".-",\
-#            color=cm.gist_rainbow(1.0*i/len(resolution_options)), label=label_parallel_efficiency)
-#    ax.plot(resolution_options, parallel_efficiencies_corrected, "--",\
-#            color=cm.gist_rainbow(1.0*i/len(resolution_options)), label="corrected")
-#    ax.set_xlabel('Resolution')
-#    ax.set_ylabel('Scale Increasing Efficiency')
-#    ax.grid()
-#    ax.legend(fontsize='x-small')
-#    basename = os.path.basename(test_results_dir)
-#    fig.tight_layout()
-#    filepath='%s/%s_scale_increasing_efficiency' % (output_dir, basename)
-#    for core in cores_to_plot:
-#        filepath += "_%d" % core
-#    filepath += '.png'
-#    print("output file generated: ", filepath)
-#    fig.savefig(filepath)
+    fig, ax= plt.subplots(tight_layout=True, figsize=(5, 5))  # plot of wallclock
+    totalclocks_plist = []
+    cores_plist = []
+    _label = "cores = ("
+    costs = []
+    for i in range(len(resolution_options)):
+        resolution = resolution_options[i]
+        totalclocks_sorted = np.array(totalclocks_sorted_list[i])
+        cores_sorted = cores_sorted_list[i]
+        i_min = np.argmin(totalclocks_sorted)
+        totalclock_min = totalclocks_sorted[i_min]
+        core = cores_sorted[i_min]
+        totalclocks_plist.append(totalclock_min)
+        cores_plist.append(core)
+        if i == 0:
+            costs.append(1.0)
+        else:
+            costs.append(totalclock_min / totalclocks_plist[i-1])
+        _label += (" " + str(core))
+    _label += ")"
+    totalclocks = np.array(totalclocks_plist)
+    cores = np.array(cores_plist)
+    ax.plot(resolution_options, costs, "o", label=_label)
+    ax.set_xlabel('Resolution')
+    ax.set_ylabel('Refining cost')
+    ax.grid()
+    ax.legend(fontsize='x-small')
+    basename = os.path.basename(test_results_dir)
+    fig.tight_layout()
+    filepath='%s/%s_refining_cost.png' % (output_dir, basename)
+    print("output file generated: ", filepath)
+    fig.savefig(filepath)
 
     # prepare the table of outputs
     # summary table
@@ -824,6 +791,34 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
         table_contents += '\n'
     tex_contents += table_contents
     filepath='%s/summary.tex' % (output_dir)
+    # figures
+    # todo_latex
+    _caption = "Wallclock for test %s" % basename # wallclock
+    tex_contents += Utilities.latex_figure('%s_wallclock_with_ideal.png' %  basename, caption=_caption)
+    tex_contents += "\n\n"
+    _caption = "SpeedUp for test %s" % basename # speedup
+    tex_contents += Utilities.latex_figure('%s_speedup.png' %  basename, caption=_caption)
+    tex_contents += "\n\n"
+    _caption = "Parallel Efficiency for test %s" % basename # parallel efficiency
+    tex_contents += Utilities.latex_figure('%s_parallel_efficiency.png' %  basename, caption=_caption)
+    tex_contents += "\n\n"
+    _caption = "Refining cost for test %s" % basename # parallel efficiency
+    tex_contents += Utilities.latex_figure('%s_refining_cost.png' %  basename, caption=_caption)
+    tex_contents += "\n\n"
+    # text
+    tex_text_contents = "On date foo, " 
+    tex_text_contents += "this test is conducted on the %s partition.\n" % basename
+    tex_text_contents += "The model used in this test is foo.\n"
+    tex_text_contents += "These cases are run for foo steps.\n"
+    tex_text_contents += "An parameter file and a slurm file of this case could be found in folder foo.\n"
+    tex_text_contents += "The original path of this test is %s.\n" % test_results_dir
+    tex_text_contents += "wallclock (figure \\ref{fig:%s_wallclock_with_ideal});\n" % basename
+    tex_text_contents += "speedup (figure \\ref{fig:%s_speedup});\n" % basename
+    tex_text_contents += "parallel efficiency (figure \\ref{fig:%s_parallel_efficiency});\n" % basename
+    tex_text_contents += "refining cost (figure \\ref{fig:%s_refining_cost});\n" % basename
+    tex_text_contents += "Based on these results, we suggest running the model on foo nodes foo cores.\n"
+    tex_text_contents += "The resources needed for one case is estimated to be foo.\n"
+    tex_contents = tex_text_contents + "\n" + tex_contents
     with open(filepath, 'w')  as fileout:
         fileout.write(tex_contents)
     print("latex summary generated: ", filepath)
