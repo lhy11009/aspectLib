@@ -112,7 +112,8 @@ class PC_OPT_BASE(Utilities.JSON_OPT):
             os.mkdir(output_dir)
         # assert the time range is valid
         time_range = self.values[5]
-        if time_range is not []:
+        print("time_range: ", time_range)  # debug
+        if len(time_range)>0:
             assert(len(time_range) == 2 and time_range[0] < time_range[1])
     
     def get_case_absolute_paths(self):
@@ -603,7 +604,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotNumberOfCells(axis=ax, color=colors[i])
             pass
-        if time_range is not []:
+        if len(time_range) > 0:
             # apply the range of time to plot
             ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
@@ -621,7 +622,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotDegreeOfFreedom(axis=ax, color=colors[i], label_all=label_all)
             pass
-        if time_range is not []:
+        if len(time_range) > 0:
             # apply the range of time to plot
             ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
@@ -639,7 +640,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotTemperature(axis=ax, color=colors[i], label_all=label_all)
             pass
-        if time_range is not []:
+        if len(time_range) > 0:
             # apply the range of time to plot
             ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
@@ -657,7 +658,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotVelocity(axis=ax, color=colors[i], label_all=label_all)
             pass
-        if time_range is not []:
+        if len(time_range) > 0:
             # apply the range of time to plot
             ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
@@ -675,7 +676,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotNumberOfNonlinearIterations(axis=ax, color=colors[i], label_all=label_all)
             pass
-        if time_range is not []:
+        if len(time_range) > 0:
             # apply the range of time to plot
             ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
@@ -693,7 +694,7 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
             self.StatisticPlotter.ReadHeader(statistic_file_path)
             self.StatisticPlotter.PlotNumberOfIterationsStokessolver(axis=ax, color=colors[i], label_all=label_all)
             pass
-        if time_range is not []:
+        if len(time_range) > 0:
             # apply the range of time to plot
             ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
         ax.legend()
@@ -711,12 +712,18 @@ class PLOT_COMBINE_RUNTIME(PLOT_COMBINE):
                 if_legend = False
             case_name = os.path.basename(self.cases[i])
             # plot results and combine
+            
             log_file_path = os.path.join(self.cases[i], 'output', 'log.txt')
-            RunTimePlotFigure(log_file_path, None, savefig=False, axis=ax, fix_restart=True,\
-            label_all=label_all, append_extra_label=append_extra_label, if_legend=if_legend,\
-            twin_axis=ax_twin, color=colors[i], x_variable='time', time_range=time_range)
+            if len(time_range) > 0:
+                RunTimePlotFigure(log_file_path, None, savefig=False, axis=ax, fix_restart=True,\
+                label_all=label_all, append_extra_label=append_extra_label, if_legend=if_legend,\
+                twin_axis=ax_twin, color=colors[i], x_variable='time', time_range=time_range)
+            else:
+                RunTimePlotFigure(log_file_path, None, savefig=False, axis=ax, fix_restart=True,\
+                label_all=label_all, append_extra_label=append_extra_label, if_legend=if_legend,\
+                twin_axis=ax_twin, color=colors[i], x_variable='time')
             pass
-        if time_range is not []:
+        if len(time_range) > 0:
             # apply the range of time to plot
             ax.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
             ax_twin.set_xlim(time_range[0]/1e6, time_range[1]/1e6)
