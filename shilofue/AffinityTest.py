@@ -727,7 +727,6 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
     print("output file generated: ", filepath)
     fig.savefig(filepath)
 
-    # todo_latex
     # plot the scale-increasing efficiency
     fig, ax= plt.subplots(tight_layout=True, figsize=(5, 5))  # plot of wallclock
     totalclocks_plist = []
@@ -792,7 +791,6 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
     tex_contents += table_contents
     filepath='%s/summary.tex' % (output_dir)
     # figures
-    # todo_latex
     _caption = "Wallclock for test %s" % basename # wallclock
     tex_contents += Utilities.latex_figure('%s_wallclock_with_ideal.png' %  basename, caption=_caption)
     tex_contents += "\n\n"

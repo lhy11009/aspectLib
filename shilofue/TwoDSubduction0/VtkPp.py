@@ -3345,7 +3345,7 @@ def main():
         _continue = input("This option will plot the data in the vtk_outputs/slab_morph.txt file, \
 but will not generarte that file. Make sure all these files are updated, proceed (y/n)?")
         if _continue == 'y':
-            PlotCombineExecute(PLOT_COMBINE_SLAB_MORPH, PC_MORPH_OPT, "slab_morph", arg.json)
+            PlotCombineExecute(PLOT_COMBINE_SLAB_MORPH, PC_MORPH_OPT, "slab_morph", Utilities.re_neat_word(arg.json))
         else:
             print("abort")
     elif _commend == "plot_shear_zone":
