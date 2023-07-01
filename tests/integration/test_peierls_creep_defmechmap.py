@@ -24,6 +24,7 @@ descriptions:
 
 import os
 import shutil
+import math
 import numpy as np
 from scipy.special import erf
 import matplotlib.pyplot as plt
@@ -114,6 +115,57 @@ def test_peierls_visc_from_edot_newton_nolog():
     etap, sigma, diff, n = flf.peierls_visc_from_edot_newton_nolog('MK10',P,T, edot, 0.1)
     assert(abs((etap - 3.737963093140574e+13)/3.737963093140574e+13) < 1e-5)
     assert(n == 3)
+
+
+def test_peierls_newton_log_nolog_compare():
+    '''
+    use the peierls_visc_from_edot_newton function 
+    and the peierls_visc_from_edot_newton_nolog function
+    to compare the use of log value and value as gradients
+    '''
+    # test 1.1: nolog, medium T
+    P = 1.7882e9
+    T = 1330.38
+    edot = 1e-15
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton_nolog('MK10',P,T, edot, 1e-8)
+    assert(abs((etap - 2.273489862826893e+22)/2.273489862826893e+22) < 1e-5)
+    assert(n == 8)
+    # test 1.2: log, medium T
+    P = 1.7882e9
+    T = 1330.38
+    edot = 1e-15
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton('MK10',P,T, edot, 1e-8)
+    assert(abs((etap - 2.2734917295040908e+22)/2.2734917295040908e+22) < 1e-5)
+    assert(n == 4)
+    pass
+    # test 2.1: nolog, high T
+    P = 1.7882e9
+    T = 3500.0
+    edot = 1e-15
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton_nolog('MK10',P,T, edot, 1e-8)
+    assert(abs((etap - 1.0219201878630164e+19)/1.0219201878630164e+19) < 1e-5)
+    assert(n == 11)
+    # test 2.2: log, high T
+    P = 1.7882e9
+    T = 3500.0
+    edot = 1e-15
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton('MK10',P,T, edot, 1e-8)
+    assert(abs((etap - 1.0219201878630164e+19)/1.0219201878630164e+19) < 1e-5)
+    assert(n == 3)
+    # test 3.1: nolog, high T, Idrissi
+    P = 1.7882e9
+    T = 3500.0
+    edot = 1e-15
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton_nolog('Idrissi16',P,T, edot, 1e-8)
+    assert(math.isnan(etap))
+    assert(n == 1)
+    # test 3.2: log, high T, Idrissi
+    # doesn't converge, returns to sigma = 0.0 and edotp != 0.0
+    P = 1.7882e9
+    T = 3500.0
+    edot = 1e-15
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton('Idrissi16',P,T, edot, 1e-8, debug=True)
+    assert(abs(etap) < 1e-5)
 
 
 def test_peierls_visc_from_edot_newton():

@@ -651,7 +651,7 @@ def peierls_visc_from_edot(flv, P, T, edotp0, limit=0.1):
     return etap, sigma, diff, n
 
 
-def peierls_visc_from_edot_newton(flv, P, T, edotp0, limit=0.1):
+def peierls_visc_from_edot_newton(flv, P, T, edotp0, limit=0.1, **kwargs):
     '''
     Get value of peierls creep from strain rate, using the newton method
     flv: flow law version
@@ -661,6 +661,8 @@ def peierls_visc_from_edot_newton(flv, P, T, edotp0, limit=0.1):
     edotp0: strain rate
     limit: limit of error
     '''
+    debug = kwargs.get("debug", False)
+    i_max = kwargs.get('i_max', 20)
     mpa = 1e6  # MPa to Pa
     if flv == "MK10":
         # Mei et al., JGR 2010
@@ -692,7 +694,13 @@ def peierls_visc_from_edot_newton(flv, P, T, edotp0, limit=0.1):
     sigma = 2 * visc0 * edotp0
     _, edotp = peierls_visc_from_stress(flv, P, T, sigma)
     diff = np.log(edotp / edotp0)
+    if debug:
+        print("i = %d, sigma = %.4e, edotp = %.4e, diff = %.4e (log (edotp / edotp0))"\
+                % (i, sigma, edotp, diff))
     while (abs(diff) > limit):
+        if i > i_max:
+            print("peierls_visc_from_edot_newton: maximum iteration (%d) is reached" % i_max)
+            break
         # compute the gradient of ln (strain_rate) - ln (sigma)
         ln_grad = n + p * q * (E / R / T) *\
                   (sigma / sigp0)**p * (1 - (sigma / sigp0)**p)**(q-1)
@@ -702,6 +710,9 @@ def peierls_visc_from_edot_newton(flv, P, T, edotp0, limit=0.1):
         etap, edotp = peierls_visc_from_stress(flv, P, T, sigma)
         diff = np.log(edotp / edotp0)
         i += 1
+        if debug:
+            print("i = %d, sigma = %.4e, edotp = %.4e, ln_grad = %.4e, diff = %.4e (log (edotp / edotp0))"\
+                     % (i, sigma, edotp, ln_grad, diff))
     return etap, sigma, diff, i
 
 
