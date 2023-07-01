@@ -75,7 +75,7 @@ Examples of usage:
 
   - compute the approximate form of the peierls viscosity
         
-        python -m shilofue.Rheology compute_approx_peierls_viscosity -P 9.65922e+08 -T 607.837 -S 1.35232e-15
+        python -m shilofue.Rheology approx_peierls -r MK10 -P 9.65922e+08 -T 607.837 -S 1.35232e-15
 
 descriptions
 """ 
@@ -91,7 +91,7 @@ from matplotlib import pyplot as plt
 from matplotlib import gridspec, cm
 from matplotlib import patches as mpatches 
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
-from shilofue.FlowLaws import visc_diff_HK, peierls_approx_visc
+from shilofue.FlowLaws import visc_diff_HK, peierls_approx_visc, peierls_visc_from_edot
 from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic, ReplacePhaseOption
 from shilofue.ThermalModel import MANTLE_ADIABAT
 from scipy.interpolate import interp1d
@@ -3628,13 +3628,16 @@ def main():
     elif _commend == "plot_rheology_summary":
         PlotRheologySummaryJson(arg.json)
     
-    elif _commend == 'compute_approx_peierls_viscosity_MK10':
-        visc = peierls_approx_visc("MK10", arg.pressure, arg.temperature, arg.strain_rate)
+    elif _commend == 'approx_peierls':
+        assert(arg.rheology in ["MK10", "Idrissi16"])
+        visc = peierls_approx_visc(arg.rheology, arg.pressure, arg.temperature, arg.strain_rate)
         print("viscosity = %.4e Pa s" % visc)
     
-    elif _commend == 'compute_approx_peierls_viscosity_Idrissi16':
-        visc = peierls_approx_visc("Idrissi16", arg.pressure, arg.temperature, arg.strain_rate)
+    elif _commend == 'exact_peierls':
+        assert(arg.rheology in ["MK10", "Idrissi16"])
+        visc, _, _, _= peierls_visc_from_edot(arg.rheology, arg.pressure, arg.temperature, arg.strain_rate, 0.01)
         print("viscosity = %.4e Pa s" % visc)
+
     
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)
