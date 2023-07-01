@@ -651,6 +651,126 @@ def peierls_visc_from_edot(flv, P, T, edotp0, limit=0.1):
     return etap, sigma, diff, n
 
 
+def peierls_visc_from_edot_newton(flv, P, T, edotp0, limit=0.1):
+    '''
+    Get value of peierls creep from strain rate, using the newton method
+    flv: flow law version
+        MK10: for Mei and Kohlstedt, 2010     (gam = 0.17)
+    P: pressure
+    T: temperature
+    edotp0: strain rate
+    limit: limit of error
+    '''
+    mpa = 1e6  # MPa to Pa
+    if flv == "MK10":
+        # Mei et al., JGR 2010
+        q = 1.0
+        p = 0.5
+        n = 2.0
+        sigp0 = 5.9e9					# Pa (+/- 0.2e9 Pa)
+        A = 1.4e-7/np.power(mpa,n) 	# s^-1 Pa^-2
+        E = 320e3  					# J/mol (+/-50e3 J/mol)
+        gam = 0.17    # gam: fitting parameter = sig_ref/sigp
+    elif flv == "Idrissi16":
+        q = 2.0
+        p = 0.5
+        n = 0.0
+        sigp0 = 3.8e9					# Pa (+/- 0.7e9 Pa)
+        A = 1e6 	# s^-1, note unit of A is related to n (here n = 0.0)
+        E = 566e3  					# J/mol (+/-74e3 J/mol)
+        gam = 0.15  # use the same value they used in the test
+    else:
+        raise ValueError("type of flow law has to be \"MK10\" or \"Idrissi16\"")
+
+    diff = 1e6  # a big initial value
+    sigma_l = 1e-5
+    sigma_u = 1e12
+    is_first = True
+    i = 0
+    # using the approx value as initial guess
+    visc0 = peierls_approx_visc(flv, P,T,edotp0)
+    sigma = 2 * visc0 * edotp0
+    _, edotp = peierls_visc_from_stress(flv, P, T, sigma)
+    diff = np.log(edotp / edotp0)
+    while (abs(diff) > limit):
+        # compute the gradient of ln (strain_rate) - ln (sigma)
+        ln_grad = n + p * q * (E / R / T) *\
+                  (sigma / sigp0)**p * (1 - (sigma / sigp0)**p)**(q-1)
+        # compute the new value of stress using the newton method 
+        sigma = np.exp(np.log(sigma) - diff / ln_grad)
+        # compute the new viscosity and strain rate
+        etap, edotp = peierls_visc_from_stress(flv, P, T, sigma)
+        diff = np.log(edotp / edotp0)
+        i += 1
+    return etap, sigma, diff, i
+
+
+def peierls_visc_from_edot_newton_nolog(flv, P, T, edotp0, limit=0.1, **kwargs):
+    '''
+    Get value of peierls creep from strain rate, using the newton method, 
+    compute the derivative without the log value
+    flv: flow law version
+        MK10: for Mei and Kohlstedt, 2010     (gam = 0.17)
+    P: pressure
+    T: temperature
+    edotp0: strain rate
+    limit: limit of error
+    kwargs(dict):
+        debug: debug options
+    '''
+    debug = kwargs.get("debug", False)
+    mpa = 1e6  # MPa to Pa
+    if flv == "MK10":
+        # Mei et al., JGR 2010
+        q = 1.0
+        p = 0.5
+        n = 2.0
+        sigp0 = 5.9e9					# Pa (+/- 0.2e9 Pa)
+        A = 1.4e-7/np.power(mpa,n) 	# s^-1 Pa^-2
+        E = 320e3  					# J/mol (+/-50e3 J/mol)
+        gam = 0.17    # gam: fitting parameter = sig_ref/sigp
+    elif flv == "Idrissi16":
+        q = 2.0
+        p = 0.5
+        n = 0.0
+        sigp0 = 3.8e9					# Pa (+/- 0.7e9 Pa)
+        A = 1e6 	# s^-1, note unit of A is related to n (here n = 0.0)
+        E = 566e3  					# J/mol (+/-74e3 J/mol)
+        gam = 0.15  # use the same value they used in the test
+    else:
+        raise ValueError("type of flow law has to be \"MK10\" or \"Idrissi16\"")
+
+    diff = 1e6  # a big initial value
+    sigma_l = 1e-5
+    sigma_u = 1e12
+    is_first = True
+    i = 0
+    # using the approx value as initial guess
+    visc0 = peierls_approx_visc(flv, P,T,edotp0)
+    sigma = 2 * visc0 * edotp0
+    _, edotp = peierls_visc_from_stress(flv, P, T, sigma)
+    diff = np.log(edotp / edotp0)
+    diff_1 = edotp - edotp0
+    if debug:
+        print("i = %d, sigma = %.4e, edotp = %.4e, diff = %.4e (log (edotp / edotp0))"\
+                % (i, sigma, edotp, diff))
+    while (abs(diff) > limit):
+        # compute the gradient of ln (strain_rate) - ln (sigma)
+        grad = A * sigma**(n-1) * np.exp((- E/R/T) * (1 - (sigma / sigp0)**p)**q) *\
+                ( (E/R/T) * p * q * (sigma / sigp0)**p * (1 - (sigma / sigp0)**p)**(q-1) + n)
+        # compute the new value of stress using the newton method
+        sigma = sigma - diff_1 / grad
+        # compute the new viscosity and strain rate
+        etap, edotp = peierls_visc_from_stress(flv, P, T, sigma)
+        diff = np.log(edotp / edotp0)
+        diff_1 = edotp - edotp0
+        i += 1
+        if debug:
+            print("i = %d, grad = %.4e, sigma = %.4e, edotp = %.4e, diff = %.4e (log (edotp / edotp0))"\
+                    % (i, grad, sigma, edotp, diff))
+    return etap, sigma, diff, i
+
+
 def peierls_approx_visc(flv, P,T,edot):
     '''
     Peierls creep flow law 

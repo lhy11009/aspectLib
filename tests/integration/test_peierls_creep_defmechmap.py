@@ -87,6 +87,65 @@ def test_peierls_visc_from_edot():
     assert(n == 11)
 
 
+def test_peierls_visc_from_edot_newton_nolog():
+    '''
+    test peierls_visc_from_edot_newton_nolog function
+    assert:
+        values of viscosity and n (number of iteration)
+    '''
+    # test 0
+    P = 1.7882e9
+    T = 1330.38
+    edot = 1e-15
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton_nolog('MK10',P,T, edot, 0.1)
+    assert(abs((etap - 2.167156389993528e+22)/2.167156389993528e+22) < 1e-5)
+    assert(n == 5)
+    # test 1
+    P = 0.0
+    T = 1050.0
+    edot = 3.408743e-05
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton_nolog('MK10',P,T, edot, 0.1)
+    assert(abs((etap - 4.26878809748e+13)/4.26878809748e+13) < 1e-5)
+    assert(n == 6)
+    # test 2
+    P = 0.0
+    T = 1400.0
+    edot = 3.0468359e-05
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton_nolog('MK10',P,T, edot, 0.1)
+    assert(abs((etap - 3.737963093140574e+13)/3.737963093140574e+13) < 1e-5)
+    assert(n == 3)
+
+
+def test_peierls_visc_from_edot_newton():
+    '''
+    test peierls_visc_from_edot_newton function
+    assert:
+        values of viscosity and n (number of iteration)
+    '''
+    # test 1
+    P = 0.0
+    T = 1050.0
+    edot = 3.408743e-05
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton('MK10',P,T, edot, 0.1)
+    assert(abs((etap - 4.396405536e+13)/4.396405536e+13) < 1e-5)
+    assert(n == 2)
+    # test 2
+    P = 0.0
+    T = 1400.0
+    edot = 3.0468359e-05
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton('MK10',P,T, edot, 0.1)
+    assert(abs((etap - 3.67999922e+13)/3.67999922e+13) < 1e-5)
+    assert(n == 1)
+
+
+def test_plot_peierls():
+    # Unit conversions
+    mpa = 1e6  # MPa to Pa
+
+
+    peierls_visc_from_edot_newton
+
+
 def test_plot_peierls():
     # Unit conversions
     mpa = 1e6  # MPa to Pa
