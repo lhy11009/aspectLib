@@ -1767,7 +1767,6 @@ def CreepComputeA(creep, strain_rate, P, T, eta, d=1e4, Coh=1e3, **kwargs):
     A = B * d**p * Coh**(-r)
     return A
 
-# todo_fit
 def CreepComputeAfromSS(creep, strain_rate, stress, P, T, d=1e4, Coh=1e3, **kwargs):
     """
     Compute the prefactor in the rheology with other variables in a flow law (p, r, n, E, V).
@@ -1779,7 +1778,7 @@ def CreepComputeAfromSS(creep, strain_rate, stress, P, T, d=1e4, Coh=1e3, **kwar
      - P: The pressure to compute viscosity, unit is Pa
      - T: The temperature to compute viscosity, unit is K
      - d: The grain size to compute viscosity, unit is mu m
-     - Coh: H / 10^6 Si
+     - Coh: H / 10^6 Si or water fugacity in MPa
      - Return value: Pa*s
     Pay attention to pass in the right value, this custom is inherited
     Here I tried to input the right value for the F factor
@@ -2613,7 +2612,6 @@ def RefitHK03(rheology_dict, _name, o_path):
     ax.set_xlim([0.6, 0.7])
     ax.set_ylim([10**(-6), 10**(-4)])
     
-    # todo_fit
     # combined creep and dislocation creep, fig 2 in Hirth and Kohlstedt 2003
     P = 300e6 # Pa
     T = 1250.0 + 273.15 # K
@@ -2720,18 +2718,84 @@ def RefitHK03(rheology_dict, _name, o_path):
     pass
 
 
+def RheologyTableFormating(creep, _name, **kwargs):
+    '''
+    formating the table for recording flow laws
+    Inputs:
+        creep: a creep law
+        _name: name of the creep law
+    Returns:
+        header: table header
+        data: table data
+        format: format of the flow law, available options are:
+            HK03 - see table 1, Hirth and Kohlstedt 2003
+    '''
+    _format = kwargs.get("format", "HK03")
+    if _format == "HK03":
+        header = ["name", "A (${Mpa}^{-n-r} {um}^p s^{-1}$)", "p", "r", "n", "E ($kJ/mol$)", "V (${10}^{-6}m^3/mol$)", "wet", "wet from"]
+        data = []
+    else:
+        return NotImplementedError()
+    data.append([_name])
+    data.append([creep['A']])
+    data.append([creep['p']])
+    data.append([creep['r']])
+    data.append([creep['n']])
+    data.append([creep['E'] / 1e3])
+    data.append([creep['V'] * 1e6])
+    # append if wet rheology or not
+    try:
+        _ = creep['wet']
+    except KeyError:
+        data.append(['No'])
+    else:
+        data.append(['Yes'])
+
+    try:
+        _ = creep['use_f']
+    except KeyError:
+        data.append(['$C_{OH}$ ($H/{10}^6 Si$)'])
+    else:
+        data.append(["$f_{H_2O}$ (MPa)"])
+    return header, data
+    
+
 # todo_fit
-def RefitHK03Combined():
+def HK03Modify(**kwargs):
     '''
-    check the fit of an original rheology and a new rheology onto the HK03 dataset
+    modify the HK03 rheology
     '''
-    # 
+    dE_diff = kwargs.get('dE_diff', 0.0)
+    dV_diff = kwargs.get('dV_diff', 0.0)
+    dE_disl = kwargs.get('dE_disl', 0.0)
+    dV_disl = kwargs.get('dV_disl', 0.0)
     diffusion_creep, dislocation_creep = GetRheology("HK03_f", use_coh=False)
     rheology_dict = {'diffusion': diffusion_creep, 'dislocation': dislocation_creep}
-    print("rheology_dict:") # debug
-    print(rheology_dict)
+    rheology_new_dict = RefitHK03Combined(rheology_dict, dE_diff=dE_diff, dV_diff=dV_diff, dE_disl=dE_disl, dV_disl=dV_disl)
+    print("rheology_new_dict: ", rheology_new_dict) # debug
+
+
+def RefitHK03Combined(rheology_dict, **kwargs):
+    '''
+    check the fit of an original rheology and a new rheology onto the HK03 dataset
+    Inputs:
+        rheology_dict: dictionary of a composite flow law, including diffusion
+            and dislocation
+        kwargs:
+            dE_diff - a difference of activation energy between the new and old rheology
+                      (dV_diff, dE_disl, dV_disl) are defined in the same way
+    Returns:
+        rheology_new_dict: a dictionary of a updated composite flow law
+    '''
+    dE_diff = kwargs.get('dE_diff', 0.0)
+    dV_diff = kwargs.get('dV_diff', 0.0)
+    dE_disl = kwargs.get('dE_disl', 0.0)
+    dV_disl = kwargs.get('dV_disl', 0.0)
+    output_dir = kwargs.get('output_dir', ASPECT_LAB_DIR)
+    diffusion_creep = rheology_dict['diffusion']
+    dislocation_creep = rheology_dict['dislocation']
     # plot the old result
-    RefitHK03(rheology_dict, "HK03_f", ASPECT_LAB_DIR)
+    RefitHK03(rheology_dict, "HK03_f", output_dir)
     # fit new rheology
     stress = 50.0 # MPa
     P = 100.0e6 # Pa
@@ -2739,19 +2803,17 @@ def RefitHK03Combined():
     fh2o = 100.0 # MPa
     d = 15.0 # mu m
     diffusion_creep_new = RheologyUpdateEV(diffusion_creep, stress, P, T, d, fh2o,\
-                                            E=diffusion_creep['E'] - 40e3,\
-                                            V=diffusion_creep['V'] - 5.5e-6)
+                                            E=diffusion_creep['E']+dE_diff,\
+                                            V=diffusion_creep['V']+dV_diff)
     dislocation_creep_new = RheologyUpdateEV(dislocation_creep, stress, P, T, d, fh2o,\
-                                            E=dislocation_creep['E'] + 20e3,\
-                                            V=dislocation_creep['V'] - 1.2e-6)
-    rheology_dict_new = {'diffusion': diffusion_creep_new, 'dislocation': dislocation_creep_new}
+                                            E=dislocation_creep['E']+dE_disl,\
+                                            V=dislocation_creep['V']+dV_disl)
+    rheology_new_dict = {'diffusion': diffusion_creep_new, 'dislocation': dislocation_creep_new}
     # plot the new results 
-    RefitHK03(rheology_dict_new, "HK03_f_refit", ASPECT_LAB_DIR)
-    print("rheology_dict_new:") # debug
-    print(rheology_dict_new)
+    RefitHK03(rheology_new_dict, "HK03_f_refit", output_dir)
+    return rheology_new_dict
 
 
-# todo_fit
 def RheologyUpdateEV(creep, stress, P, T, d, Coh, **kwargs):
     '''
     Update the value of E, V on an existing creep flow law
@@ -2759,9 +2821,12 @@ def RheologyUpdateEV(creep, stress, P, T, d, Coh, **kwargs):
         creep: creep flow law
         stress, P, T, d, Coh: conditions to pinpoint the results from 
             the original flow law, units in MPa, Pa, K, mum, H / 10^6 Si, respectively.
+            Coh could also be the water fugacity in MPa
         kwargs:
             E: a new activation energy
             V: a new activation volume
+    Returns:
+        creep_new: a new rheology after the updata
     '''
     creep_new = creep.copy()
     E = kwargs.get("E", None) 
@@ -4041,7 +4106,7 @@ def main():
     
     elif _commend == "refit_HK03":
         # todo_fit
-        RefitHK03Combined()
+        HK03Modify(dE_diff=-40e3, dV_diff=-5.5e-6, dE_disl=20e3, dV_disl=-1.2e-6)
 
     
     else:

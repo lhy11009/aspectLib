@@ -250,7 +250,6 @@ def test_CreepComputeV():
     assert(abs((V - dislocation_creep['V'])/V) < tolerance)
 
 
-# todo_fit
 def test_CreepComputeAfromSS():
     '''
     test function CreepComputeAfromSS
@@ -272,6 +271,7 @@ def test_CreepComputeAfromSS():
     A = CreepComputeAfromSS(dislocation_creep, strain_rate, stress, P, T, d, fh2o)
     A_std = dislocation_creep['A']
     assert(abs((A-A_std)/A_std) < 1e-6)
+
 
 
 def test_RheologyUpdateEV():

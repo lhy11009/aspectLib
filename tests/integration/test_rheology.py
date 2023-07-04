@@ -22,12 +22,20 @@ descriptions:
 
 import os
 # import pytest
-# import filecmp  # for compare file contents
+import filecmp  # for compare file contents
 import numpy as np
 from shilofue.Rheology import *  # import test module
 # from shilofue.Utilities import 
 # from matplotlib import pyplot as plt
 from shutil import rmtree  # for remove directories
+
+# directory to the aspect Lab
+ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
+
+# import utilities in subdirectiory
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
 
 test_dir = ".test"
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_rheology')
@@ -35,6 +43,26 @@ source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_rheology'
 if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
+
+
+def test_RheologyTableFormating():
+    '''
+    test function RheologyTableFormating
+    assert:
+        the latex table contents
+    '''
+    rheology = "HK03_f" 
+    diffusion_creep, dislocation_creep = GetRheology(rheology, use_coh=False)
+    header, data = RheologyTableFormating(diffusion_creep, "HK03 diffusion", format="HK03")
+    TexTable = Utilities.TEX_TABLE("table-rheology",\
+                                    header=header, data=data) # class initiation
+    table_contents = TexTable(format="latex", fix_underscore_in_content=False)
+    file_out = os.path.join(test_dir, "rheology_latex_table.tex")
+    with open(file_out, 'w') as fout:
+        fout.write(table_contents)
+    assert(os.path.isfile(file_out))
+    file_out_std = os.path.join(source_dir, "rheology_latex_table.tex")
+    assert(filecmp.cmp(file_out, file_out_std))
 
 
 def test_rheology_json():
