@@ -164,7 +164,7 @@ def test_peierls_newton_log_nolog_compare():
     P = 1.7882e9
     T = 3500.0
     edot = 1e-15
-    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton('Idrissi16',P,T, edot, 1e-8, debug=True)
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton('Idrissi16',P,T, edot, 1e-8)
     assert(abs(etap) < 1e-5)
 
 

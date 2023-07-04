@@ -250,6 +250,59 @@ def test_CreepComputeV():
     assert(abs((V - dislocation_creep['V'])/V) < tolerance)
 
 
+# todo_fit
+def test_CreepComputeAfromSS():
+    '''
+    test function CreepComputeAfromSS
+    assert:
+        the A value is correct
+    '''
+    rheology = "HK03_f" 
+    diffusion_creep, dislocation_creep = GetRheology(rheology, use_coh=False)
+    P = 300e6 # Pa
+    T = 1250.0 + 273.15 # K
+    fh2o = 300 # MPa
+    d = 15.1 # mu m
+    stress = 50.0 # MPa
+    strain_rate = CreepStrainRate(diffusion_creep, stress, P, T, d, fh2o)
+    A = CreepComputeAfromSS(diffusion_creep, strain_rate, stress, P, T, d, fh2o)
+    A_std = diffusion_creep['A']
+    assert(abs((A-A_std)/A_std) < 1e-6)
+    strain_rate = CreepStrainRate(dislocation_creep, stress, P, T, d, fh2o)
+    A = CreepComputeAfromSS(dislocation_creep, strain_rate, stress, P, T, d, fh2o)
+    A_std = dislocation_creep['A']
+    assert(abs((A-A_std)/A_std) < 1e-6)
+
+
+def test_RheologyUpdateEV():
+    '''
+    test function RheologyUpdateEV
+    assert:
+        the updated creep law is correct
+    '''
+    stress = 50.0 # MPa
+    P = 100.0e6 # Pa
+    T = 1250.0 + 273.15 # K
+    fh2o = 100.0 # MPa
+    d = 15.0 # mu m
+    # get the original rheology
+    rheology = "HK03_f" 
+    diffusion_creep, dislocation_creep = GetRheology(rheology, use_coh=False)
+    # test 1: preserve the original rheology
+    diffusion_creep_new = RheologyUpdateEV(diffusion_creep, stress, P, T, d, fh2o)
+    A_std = diffusion_creep['A']
+    A = diffusion_creep_new['A']
+    assert(abs((A-A_std)/A_std) < 1e-6)
+    # test 2: change the E and V values and update the rheology
+    diffusion_creep_new = RheologyUpdateEV(diffusion_creep, stress, P, T, d, fh2o,\
+                                            E=diffusion_creep['E'] - 40e3,\
+                                            V=diffusion_creep['V'] - 5.5e-6)
+    print("diffusion_creep_new:", diffusion_creep_new) # debug
+    A_std = 1016892.7892374996
+    A = diffusion_creep_new['A']
+    assert(abs((A-A_std)/A_std) < 1e-6)
+
+
 def test_AspectExample():
     """
     check the implementation of aspcet rheology
