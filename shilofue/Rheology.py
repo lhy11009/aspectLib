@@ -2769,10 +2769,19 @@ def HK03Modify(**kwargs):
     dV_diff = kwargs.get('dV_diff', 0.0)
     dE_disl = kwargs.get('dE_disl', 0.0)
     dV_disl = kwargs.get('dV_disl', 0.0)
+    E_diff = 375e3 + dE_diff
+    V_diff = 23e-6 + dV_diff
+    E_disl = 520e3 + dE_disl
+    V_disl = 24e-6 + dV_disl
+    
     diffusion_creep, dislocation_creep = GetRheology("HK03_f", use_coh=False)
     rheology_dict = {'diffusion': diffusion_creep, 'dislocation': dislocation_creep}
-    rheology_new_dict = RefitHK03Combined(rheology_dict, dE_diff=dE_diff, dV_diff=dV_diff, dE_disl=dE_disl, dV_disl=dV_disl)
-    print("rheology_new_dict: ", rheology_new_dict) # debug
+    rheology_new_dict = RefitHK03Combined(rheology_dict, E_diff=E_diff, V_diff=V_diff, E_disl=E_disl, V_disl=V_disl)
+    # print("rheology_new_dict: ", rheology_new_dict) # debug
+    # modified rheology, accounting for more water than calibrated
+    rheology_modified_dict = rheology_new_dict.copy()
+    rheology_modified_dict['diffusion']['A'] /= 3.5
+    rheology_modified_dict['dislocation']['A'] /= 3.5
 
 
 def RefitHK03Combined(rheology_dict, **kwargs):
@@ -2782,15 +2791,15 @@ def RefitHK03Combined(rheology_dict, **kwargs):
         rheology_dict: dictionary of a composite flow law, including diffusion
             and dislocation
         kwargs:
-            dE_diff - a difference of activation energy between the new and old rheology
-                      (dV_diff, dE_disl, dV_disl) are defined in the same way
+            E_diff - a new value of activation energy for the new rheology
+                      (V_diff, E_disl, V_disl) are defined in the same way
     Returns:
         rheology_new_dict: a dictionary of a updated composite flow law
     '''
-    dE_diff = kwargs.get('dE_diff', 0.0)
-    dV_diff = kwargs.get('dV_diff', 0.0)
-    dE_disl = kwargs.get('dE_disl', 0.0)
-    dV_disl = kwargs.get('dV_disl', 0.0)
+    E_diff = kwargs.get('E_diff', None)
+    V_diff = kwargs.get('V_diff', None)
+    E_disl = kwargs.get('E_disl', None)
+    V_disl = kwargs.get('V_disl', None)
     output_dir = kwargs.get('output_dir', ASPECT_LAB_DIR)
     diffusion_creep = rheology_dict['diffusion']
     dislocation_creep = rheology_dict['dislocation']
@@ -2803,11 +2812,9 @@ def RefitHK03Combined(rheology_dict, **kwargs):
     fh2o = 100.0 # MPa
     d = 15.0 # mu m
     diffusion_creep_new = RheologyUpdateEV(diffusion_creep, stress, P, T, d, fh2o,\
-                                            E=diffusion_creep['E']+dE_diff,\
-                                            V=diffusion_creep['V']+dV_diff)
+                                            E=E_diff, V=V_diff)
     dislocation_creep_new = RheologyUpdateEV(dislocation_creep, stress, P, T, d, fh2o,\
-                                            E=dislocation_creep['E']+dE_disl,\
-                                            V=dislocation_creep['V']+dV_disl)
+                                            E=E_disl, V=V_disl)
     rheology_new_dict = {'diffusion': diffusion_creep_new, 'dislocation': dislocation_creep_new}
     # plot the new results 
     RefitHK03(rheology_new_dict, "HK03_f_refit", output_dir)
