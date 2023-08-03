@@ -356,7 +356,7 @@ but you will get a blank one for this field name' % _yname,
             cols.append(int(self.header[_name]['col']))
         rows = kwargs.get("rows", None)
         if rows != None:
-            my_assert((type(rows) == list), TypeError, "%s: rows must be a list" % Utilities.func_name())
+            Utilities.my_assert((type(rows) == list), TypeError, "%s: rows must be a list" % Utilities.func_name())
             odata = self.data[np.ix_(rows, cols)]
         else:
             odata = self.data[:, cols]
@@ -584,8 +584,8 @@ class MACHINE_TIME_PLOT(LINEARPLOT):
         machine_times = self.data[:, col_mt]
 
         # check step is in range
-        my_assert(type(step) == int, TypeError, "GetStepMT: step mush be an int value")
-        my_assert(step <= np.max(steps), ValueError, "GetStepMT: step given is bigger than maximum step")
+        Utilities.my_assert(type(step) == int, TypeError, "GetStepMT: step mush be an int value")
+        Utilities.my_assert(step <= np.max(steps), ValueError, "GetStepMT: step given is bigger than maximum step")
 
         # interp for step
         machine_time_at_step = np.interp(step, steps, machine_times)
