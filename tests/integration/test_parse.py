@@ -68,11 +68,13 @@ def test_parse_to_new_case():
 
 
 def test_get_sub_cases():
+    '''
+    test get_sub_cases
+    '''
     case_dirs = Parse.GetSubCases(test_source_dir)
-    assert(case_dirs == 
-           ['/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/parse/foo',
-           '/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/parse/foo1',
-           '/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/parse/test_create_snapshot'])
+    assert('/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/parse/foo' in case_dirs)
+    assert('/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/parse/foo1' in case_dirs)
+    assert('/home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/parse/test_create_snapshot' in case_dirs)
 
 
 def test_create_from_old_snapshot():

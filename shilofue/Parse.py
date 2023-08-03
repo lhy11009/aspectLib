@@ -7,7 +7,6 @@ import argparse
 import numpy as np
 import shilofue.Plot as Plot
 import shilofue.ParsePrm as ParsePrm
-from shilofue.Utilities import my_assert, re_neat_word, WriteFileHeader
 from pathlib import Path
 from shilofue.Cases import CASE as sCASE
 
@@ -22,6 +21,9 @@ Future:
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
+
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+from Utilities import my_assert, re_neat_word, WriteFileHeader
 
 class COMPOSITION():
     """

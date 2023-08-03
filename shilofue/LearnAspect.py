@@ -6,9 +6,14 @@ import shilofue.ParsePrm as ParsePrm
 from shilofue.Parse import COMPOSITION
 from shilofue.Parse import CASE, GROUP_CASE, UpdateProjectMd, UpdateProjectJson, AutoMarkdownCase, AutoMarkdownGroup
 from shilofue.Rheology import GetLowerMantleRheology
-from shilofue.Utilities import my_assert
 from shilofue.Doc import UpdateProjectDoc
 from shilofue.Plot import ProjectPlot
+
+# directory to the aspect Lab
+ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+JSON_FILE_DIR = os.path.join(ASPECT_LAB_DIR, "files", "json_examples")
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
 
 _ALL_AVAILABLE_OPERATIONS = ['LowerMantle', 'MeshRefinement', 'Gravity', 'query', 'SinkingBlob']  # all the possible operations
 
@@ -236,7 +241,7 @@ def main():
         # create a directory under the name of the group
         _group_name = _config.get('name', 'foo')
         _odir = os.path.join(arg.output_dir, _group_name)
-        my_assert(not os.path.isdir(_odir), ValueError, "The script doesn't support updating a pr-exiting group")
+        Utilities.my_assert(not os.path.isdir(_odir), ValueError, "The script doesn't support updating a pr-exiting group")
         os.mkdir(_odir)
         # initialte a class instance
         MyGroup = GROUP_CASE(MYCASE, _inputs, _config)
@@ -296,8 +301,8 @@ def main():
         print('Now we query into a group')
         _config_file = os.path.join(arg.output_dir, 'config.json')
         # check this group exist
-        my_assert(os.path.isdir(arg.output_dir), FileExistsError, "%s doesn't exist" % arg.output_dir)
-        my_assert(os.path.isdir(_config_file), FileExistsError, "%s doesn't exist" % arg._config_file)
+        Utilities.my_assert(os.path.isdir(arg.output_dir), FileExistsError, "%s doesn't exist" % arg.output_dir)
+        Utilities.my_assert(os.path.isdir(_config_file), FileExistsError, "%s doesn't exist" % arg._config_file)
         # initial class instance, todo
         # MyCase = MYCASE(_inputs, config=_config['config'], test=_config['test'])
         # call function to return case names
