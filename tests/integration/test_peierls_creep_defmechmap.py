@@ -168,6 +168,23 @@ def test_peierls_newton_log_nolog_compare():
     assert(abs(etap) < 1e-5)
 
 
+def test_peierls_visc_from_edot_newton_aspect_test():
+    '''
+    test peierls_visc_from_edot_newton, using the aspect test
+    assert:
+        values of viscosity and n (number of iteration)
+    '''
+    # test 0
+    P = 0.0
+    T = 1673.0
+    edot = 1e-15
+    etap, sigma, diff, n = flf.peierls_visc_from_edot_newton('MK10',P,T, edot, 1e-6, A=5e-32, debug=True)
+    assert(abs((etap - 1.5733520554952307e+24)/1.5733520554952307e+24) < 1e-5)
+    assert(n == 6)
+    # test 1
+
+
+
 def test_peierls_visc_from_edot_newton():
     '''
     test peierls_visc_from_edot_newton function

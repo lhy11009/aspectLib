@@ -587,7 +587,7 @@ def GetPeierlsStressPDependence(flv):
     return G0, Gp
 
 
-def peierls_visc_from_stress(flv, P, T, sigma):
+def peierls_visc_from_stress(flv, P, T, sigma, **kwargs):
     '''
     Peierls creep flow law 
     flv: flow law version
@@ -613,6 +613,9 @@ def peierls_visc_from_stress(flv, P, T, sigma):
         V = 0.0
     else:
         raise ValueError("flv must be \"MK10\" or \"Idrissi16\".")
+    prescribe_A = kwargs.get("A", None)
+    if prescribe_A is not None:
+        A = prescribe_A
     expo = np.exp(-(E + P*V) / (R*T) * (1 - (sigma/sigp0)**p)**q)
     edot = A * expo * sigma ** n
     eta = sigma / (2 * edot)
@@ -664,6 +667,7 @@ def peierls_visc_from_edot_newton(flv, P, T, edotp0, limit=0.1, **kwargs):
     debug = kwargs.get("debug", False)
     i_max = kwargs.get('i_max', 20)
     mpa = 1e6  # MPa to Pa
+    prescribe_A = kwargs.get("A", None)
     if flv == "MK10":
         # Mei et al., JGR 2010
         q = 1.0
@@ -684,18 +688,21 @@ def peierls_visc_from_edot_newton(flv, P, T, edotp0, limit=0.1, **kwargs):
     else:
         raise ValueError("type of flow law has to be \"MK10\" or \"Idrissi16\"")
 
+
     diff = 1e6  # a big initial value
     sigma_l = 1e-5
     sigma_u = 1e12
     is_first = True
     i = 0
     # using the approx value as initial guess
-    visc0 = peierls_approx_visc(flv, P,T,edotp0)
+    visc0 = peierls_approx_visc(flv, P,T,edotp0, debug=debug, A=prescribe_A)
+    if debug:
+        print("visc0 = ", visc0)
     sigma = 2 * visc0 * edotp0
-    _, edotp = peierls_visc_from_stress(flv, P, T, sigma)
+    _, edotp = peierls_visc_from_stress(flv, P, T, sigma, A=prescribe_A)
     diff = np.log(edotp / edotp0)
     if debug:
-        print("i = %d, sigma = %.4e, edotp = %.4e, diff = %.4e (log (edotp / edotp0))"\
+        print("\ni = %d, sigma = %.4e, edotp = %.4e, diff = %.4e (log (edotp / edotp0))"\
                 % (i, sigma, edotp, diff))
     while (abs(diff) > limit):
         if i > i_max:
@@ -707,7 +714,7 @@ def peierls_visc_from_edot_newton(flv, P, T, edotp0, limit=0.1, **kwargs):
         # compute the new value of stress using the newton method 
         sigma = np.exp(np.log(sigma) - diff / ln_grad)
         # compute the new viscosity and strain rate
-        etap, edotp = peierls_visc_from_stress(flv, P, T, sigma)
+        etap, edotp = peierls_visc_from_stress(flv, P, T, sigma, A=prescribe_A)
         diff = np.log(edotp / edotp0)
         i += 1
         if debug:
@@ -782,13 +789,13 @@ def peierls_visc_from_edot_newton_nolog(flv, P, T, edotp0, limit=0.1, **kwargs):
     return etap, sigma, diff, i
 
 
-def peierls_approx_visc(flv, P,T,edot):
+def peierls_approx_visc(flv, P,T,edot, **kwargs):
     '''
     Peierls creep flow law 
     flv: flow law version
     MK10: for Mei and Kohlstedt, 2010     (gam = 0.17)
     '''
-
+    debug = kwargs.get("debug", False)
     mpa = 1e6  # MPa to Pa
 
     if flv == "MK10":
@@ -810,6 +817,11 @@ def peierls_approx_visc(flv, P,T,edot):
         gam = 0.15  # use the same value they used in the test
     else:
         raise ValueError("type of flow law has to be \"MK10\" or \"Idrissi16\"")
+
+    # prescribe A
+    prescribe_A = kwargs.get('A', None)
+    if prescribe_A is not None:
+        A = prescribe_A
     
     # Pressure dependence of Peierls stress
     # From Kawazoe et al. PEPI 2009 and parameters from Liu et al., GRL 2005 
@@ -820,6 +832,13 @@ def peierls_approx_visc(flv, P,T,edot):
     s = (E/(R*T))*p*q*((1-gam**p)**(q-1))*(gam**p)
     x = 1/(s+n)
     visc = (0.5*gam*sigp*edot**(x-1))/( ((A*(gam*sigp)**n)**x)*np.exp( -(E*(1-gam**p)**q)/(R*T*(s+n)) ) )
+    stress_term = (0.5*gam*sigp)/( ((A*(gam*sigp)**n)**x))
+    strain_rate_term = edot**(x-1)
+    arrehius_term = np.exp((E*(1-gam**p)**q)/(R*T*(s+n)) )
+    if debug:
+        print("stress_term = ", stress_term)
+        print("strain_rate_term = ", strain_rate_term)
+        print("arrehius_term = ", arrehius_term)
     
     return visc
 

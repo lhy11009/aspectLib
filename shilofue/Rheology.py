@@ -4108,7 +4108,7 @@ def main():
     
     elif _commend == 'exact_peierls':
         assert(arg.rheology in ["MK10", "Idrissi16"])
-        visc, _, _, _= peierls_visc_from_edot(arg.rheology, arg.pressure, arg.temperature, arg.strain_rate, 0.01)
+        visc, _, _, _= peierls_visc_from_edot(arg.rheology, arg.pressure, arg.temperature, arg.strain_rate, 1e-6)
         print("viscosity = %.4e Pa s" % visc)
     
     elif _commend == "refit_HK03":
