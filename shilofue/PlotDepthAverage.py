@@ -34,7 +34,7 @@ from scipy.interpolate import interp1d
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 import shilofue.Plot as Plot
-from shilofue.Utilities import ReadHeader2, my_assert, UNITCONVERT
+
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -187,7 +187,7 @@ class DEPTH_AVERAGE_PLOT(Plot.LINEARPLOT):
         assert(os.access(_filename, os.R_OK))
         with open(_filename, 'r') as fin:
             _texts = fin.readlines()  # read the text of the file header
-        self.header = ReadHeader2(_texts)
+        self.header = Utilities.ReadHeader2(_texts)
 
 
     def Import(self, _filename):
@@ -518,7 +518,7 @@ def main():
         plot_options = json_options.get('DepthAverage', {})
     
         # Init the UnitConvert class
-        UnitConvert = UNITCONVERT()
+        UnitConvert = utilities.UNITCONVERT()
 
         # Initiate class for depth average plot
         DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert, options=plot_options)

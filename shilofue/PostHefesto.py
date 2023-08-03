@@ -33,13 +33,16 @@ import numpy as np
 from matplotlib import pyplot as plt
 from shilofue.Plot import LINEARPLOT
 from scipy import interpolate
-from shilofue.Utilities import my_assert, UNITCONVERT
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
+
+# import utilities in subdirectiory
+sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
+import Utilities
 
 
 class HEFESTO():
@@ -150,12 +153,12 @@ class HEFESTO():
         Returns:
             -
         '''
-        UnitConvert = UNITCONVERT()
+        UnitConvert = Utilities.UNITCONVERT()
         print("Outputing Data: %s" % o_path)
         # columns
         print("Outputing fields: %s" % field_names)  # debug
         print('first dimension: ', self.number_out1, ", second dimension: ", self.number_out2, ", size:", self.number_out1 * self.number_out2)
-        my_assert(len(field_names) >= 2, ValueError, 'Entry of field_names must have more than 2 components')
+        Utilities.my_assert(len(field_names) >= 2, ValueError, 'Entry of field_names must have more than 2 components')
         columns = []
 
         missing_last = self.data.shape[1]
@@ -183,7 +186,7 @@ class HEFESTO():
         for field_name in field_names:
             # attach 1 if failed
             try:
-                unit_factors.append(UnitConvert(self.header[field_name]['unit'], self.ounit[field_name]))
+                unit_factors.append(Utilities.UnitConvert(self.header[field_name]['unit'], self.ounit[field_name]))
             except KeyError:
                 unit_factors.append(1.0)
         # check the output values
@@ -191,9 +194,9 @@ class HEFESTO():
         tolerance = 1e-5
         temp1 = self.data[self.indexes[1], columns[0]] - self.data[self.indexes[0], columns[0]]
         temp2 = self.data[self.indexes[self.number_out1], columns[1]] - self.data[self.indexes[0], columns[1]]  
-        my_assert( (abs(temp1 - self.delta_out1) / self.delta_out1) < tolerance,
+        Utilities.my_assert( (abs(temp1 - self.delta_out1) / self.delta_out1) < tolerance,
         ValueError, "Output interval(self.delta_out1) doesn't match the interval in data")
-        my_assert( (abs(temp2 - self.delta_out2) / self.delta_out2) < tolerance,
+        Utilities.my_assert( (abs(temp2 - self.delta_out2) / self.delta_out2) < tolerance,
         ValueError, "Output interval(self.delta_out2) doesn't match the interval in data")
         # mend self.data if needed
         if missing_last > self.data.shape[1]:
@@ -227,7 +230,7 @@ class HEFESTO():
         '''
         Work out indexes by giving interval(default is 1, i.e. consecutive)
         '''
-        my_assert(type(interval1) == int and type(interval2) == int, TypeError, "interval1(%s) or interval2(%s) is not int" % (interval1, interval2))
+        Utilities.my_assert(type(interval1) == int and type(interval2) == int, TypeError, "interval1(%s) or interval2(%s) is not int" % (interval1, interval2))
         # indexes in 
         indexes_1 = range(0, self.number1, interval1) 
         indexes_2 = range(0, self.number2, interval2)
@@ -328,7 +331,7 @@ def ReadSecondDimension(nddata):
             sub_size = i + 1
             break
     # number
-    my_assert(nddata.size % sub_size == 0, ValueError, 'the table is not regular(rectangle)')
+    Utilities.my_assert(nddata.size % sub_size == 0, ValueError, 'the table is not regular(rectangle)')
     number = nddata.size // sub_size
     print('first dimension: ', sub_size, ", second dimension: ", number, ", total size: ", nddata.size)
     return min, delta, number
