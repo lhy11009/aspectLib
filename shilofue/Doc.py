@@ -9,9 +9,13 @@ import pdb
 import shilofue.Plot as Plot
 from matplotlib import pyplot as plt
 from matplotlib import cm
-from importlib import resources
 from shutil import copyfile
 from pathlib import Path
+
+# directory to the aspect Lab
+ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+JSON_FILE_DIR = os.path.join(ASPECT_LAB_DIR, "files", "json_examples")
+
 sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 from Utilities import my_assert, re_neat_word, re_count_indent, touch
 
@@ -47,7 +51,8 @@ class DDOC():
             self.layout = _layout
         except KeyError:
             _layout_json = kwargs.get('layout_json', 'DocLayout.json')
-            with resources.open_text(shilofue.json_files, _layout_json) as fin:
+            json_path = os.path.join(JSON_FILE_DIR, _layout_json)
+            with open(json_path, 'r') as fin:
                 _layout = json.load(fin)
             my_assert(type(_layout) == dict, TypeError, "layout must be a dictionary")
             self.layout = _layout

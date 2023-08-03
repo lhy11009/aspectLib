@@ -8,13 +8,13 @@ import argparse
 import subprocess
 import pathlib
 import numpy as np
-from importlib import resources
 from shilofue.ParsePrm import ParseFromDealiiInput
 from matplotlib import pyplot as plt
 
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+JSON_FILE_DIR = os.path.join(ASPECT_LAB_DIR, "files", "json_examples")
 sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
 
@@ -43,7 +43,8 @@ class LINEARPLOT():
         assert(self.dim in [1, 2, 3])  # dimension must be 1, 2, 3
 
         # reset the options with a option in the options
-        with resources.open_text(shilofue.json_files, 'post_process.json') as fin:
+        json_file_path = os.path.join(JSON_FILE_DIR, "post_process_std.json")
+        with open(json_file_path, 'r') as fin:
             all_options = json.load(fin)
         self.options = all_options.get(self.name, {})
         try:
