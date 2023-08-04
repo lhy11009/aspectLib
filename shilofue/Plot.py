@@ -2,7 +2,6 @@ import sys
 import os
 import json
 import re
-import shilofue.json_files
 import warnings
 import argparse
 import subprocess
@@ -36,8 +35,7 @@ class LINEARPLOT():
                 a unit_convert function, default is None
         '''
         self.name = _name
-        _json_dir = os.path.join(ASPECT_LAB_DIR, 'shilofue', 'json_files')
-        self.options = Utilities.JsonOptions(_name, _json_dir)
+        self.options = Utilities.JsonOptions(_name, JSON_FILE_DIR)
         self.UnitConvert = options.get('unit_convert', None)
         self.dim = options.get('dim', 2)  # dimension
         assert(self.dim in [1, 2, 3])  # dimension must be 1, 2, 3

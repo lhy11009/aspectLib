@@ -23,19 +23,17 @@ Examples of usage:
 
 descriptions
 """ 
+import sys, os, argparse, json, re, warnings
 import numpy as np
-import sys, os, argparse
-import json
-# import pathlib
-# import subprocess
-import numpy as np
-# from matplotlib import cm
 from matplotlib import pyplot as plt
+
 from shilofue.Plot import LINEARPLOT
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
 RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
+JSON_FILE_DIR = os.path.join(ASPECT_LAB_DIR, "files", "json_examples")
+
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 
@@ -319,7 +317,7 @@ def PlotFigure(file_path, fig_path):
     '''
     # Init the UnitConvert class
     UnitConvert = Utilities.UNITCONVERT()
-    json_file = os.path.join(ASPECT_LAB_DIR, 'shilofue', 'json_files', 'post_process.json')
+    json_file = os.path.join(JSON_FILE_DIR, 'post_process.json')
     with open(json_file, 'r') as fin:
         pdict = json.load(fin)
     plot_options = pdict.get('Statistics', {})

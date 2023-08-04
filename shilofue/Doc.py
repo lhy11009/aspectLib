@@ -4,7 +4,6 @@ import os, sys
 import re
 import filecmp
 from shilofue.CaseOptions import ASPECT_LAB_DIR
-import shilofue.json_files
 import pdb
 import shilofue.Plot as Plot
 from matplotlib import pyplot as plt

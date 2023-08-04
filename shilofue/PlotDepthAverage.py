@@ -38,6 +38,7 @@ import shilofue.Plot as Plot
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+JSON_FILE_DIR = os.path.join(ASPECT_LAB_DIR, "files", "json_examples")
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 # import utilities in subdirectiory
@@ -511,7 +512,7 @@ def main():
     elif _commend == 'plot_by_time':
         # example:
         # use a json file
-        json_file = os.path.join(shilofue_DIR, 'json_files', 'post_process.json')
+        json_file = os.path.join(JSON_FILE_DIR, 'post_process.json')
         assert(os.access(json_file, os.R_OK))
         with open(json_file, 'r') as fin:
             json_options = json.load(fin)

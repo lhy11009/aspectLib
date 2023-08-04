@@ -71,6 +71,7 @@ class SCRIPTING():
         self.ex_header = ReadExHeaders(file_path)
         ex_additional = []  # additional commands
         ex_additional.append("current_dir = os.path.dirname(__file__)\n")
+        ex_additional.append("JSON_FILE_DIR = os.path.join(current_dir, \'json_examples\')\n")
         ex_additional.append("sys.path.append(os.path.join(current_dir, \'utilities\', \'python_scripts\'))\n")
         ex_additional.append("import Utilities\n")
         self.ex_header += ex_additional
@@ -91,6 +92,9 @@ class SCRIPTING():
         # write internal header
         for header in self.im_header:
             module, objects = ParseImportSyntax(header)
+            print("im_header: ", self.im_header)  # debug
+            print("module: ", module) # debug
+            print("objects: ", objects) # debug
             explicit_import_contents = ""
             for _object in objects:
                 explicit_import_contents += ExplicitImport(module, _object)
@@ -360,6 +364,16 @@ def main():
         assert(os.path.isdir(utilities_dir))
         copytree(utilities_dir, utilities_o_dir)
         assert(os.path.isdir(utilities_o_dir))
+        # copy the json_files
+        json_dir = os.path.join(ASPECT_LAB_DIR, 'files', "json_examples")
+        json_o_dir = os.path.join(arg.outputs, 'json_examples')
+        if os.path.isdir(json_o_dir):
+            # remove old outputs
+            rmtree(json_o_dir)
+        assert(os.path.isdir(json_dir))
+        copytree(json_dir, json_o_dir)
+        assert(os.path.isdir(json_o_dir))
+
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
