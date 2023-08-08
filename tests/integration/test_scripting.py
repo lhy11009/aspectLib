@@ -21,6 +21,7 @@ descriptions:
 
 
 import os
+import re
 # import pytest
 import filecmp  # for compare file contents
 import numpy as np
@@ -43,6 +44,32 @@ if os.path.isdir(test_dir):
 os.mkdir(test_dir)
 
 
+def test_Utilities():
+    '''
+    test function read header
+    '''
+    file_path = os.path.join(source_dir, "AffinityTest.py")
+    assert(os.path.isfile(file_path))
+    # test 1: ReadInHeader1 function
+    headers = ReadInHeaders1(file_path)
+    assert('import shilofue.Cases as CasesP' in headers)
+    assert('import shilofue.TwoDSubduction0.Cases as CasesTwoDSubduction' in headers) 
+    assert('import shilofue.ThDSubduction0.Cases as CasesThDSubduction' in headers)
+    assert('import shilofue.ParsePrm as ParsePrm' in headers)
+    # test 2:
+    module, alias, objects = FindImportModule("import shilofue.Cases as CasesP", file_path)
+    assert(module=="shilofue.Cases")
+    assert(alias=="CasesP")
+    assert("create_case_with_json" in objects)
+    # test 3: ExplicitImport function
+    # assert: the contents to import
+    module = "shilofue.Cases"
+    _object = "create_case_with_json"
+    alias = "CasesP"
+    explicit_import_contents = ExplicitImport(module, _object, alias=alias)
+    assert(re.match(".*CasesP_create_case_with_json.*", explicit_import_contents.split('\n')[0]))
+
+
 def test_explicit_import():
     '''
     explicitly import a function from a module
@@ -59,14 +86,14 @@ def test_explicit_import():
     # assert something 
     assert(filecmp.cmp(ofile, ofile_std))
     # test 2
-    ofile1 = os.path.join(test_dir, "test_explicit_import1.py")
-    ofile_std1 = os.path.join(source_dir, "test_explicit_import_std1.py")
-    assert(os.path.isfile(ofile_std)) # std file exists
-    contents = ExplicitImport("tests.integration.fixtures.test_scripting.PlotStatistics", "PlotFigure", "function")
-    with open(ofile1, 'w') as fout:
-        fout.write(contents)
-    # assert something 
-    assert(filecmp.cmp(ofile1, ofile_std1))
+#    ofile1 = os.path.join(test_dir, "test_explicit_import1.py")
+#    ofile_std1 = os.path.join(source_dir, "test_explicit_import_std1.py")
+#    assert(os.path.isfile(ofile_std)) # std file exists
+#    contents = ExplicitImport("tests.integration.fixtures.test_scripting.PlotStatistics", "PlotFigure", "function")
+#    with open(ofile1, 'w') as fout:
+#        fout.write(contents)
+#    # assert something 
+#    assert(filecmp.cmp(ofile1, ofile_std1))
 
 
 def test_parse_header():
@@ -89,12 +116,24 @@ def test_scripting():
     Assert:
         file is generated
     '''
+    # test 1: old file
     ifile = os.path.join(source_dir, "PlotStatistics.py")
     ofile = os.path.join(test_dir, "PlotStatistics_scripting.py")
     assert(os.path.isfile(ifile))
     Scripting = SCRIPTING(ifile)
     Scripting(ofile)
     assert(os.path.isfile(ofile))
+    # test 2: new file, check for file contents
+    ifile = os.path.join(source_dir, "PlotStatistics1.py")
+    ofile = os.path.join(test_dir, "PlotStatistics_scripting1.py")
+    ofile_std = os.path.join(source_dir, "PlotStatistics1_std.py")
+    assert(os.path.isfile(ifile))
+    Scripting = SCRIPTING(ifile)
+    Scripting(ofile)
+    assert(os.path.isfile(ofile))
+    assert(filecmp.cmp(ofile, ofile_std))  # assert file contents
+
+
     
 # notes
     

@@ -23,6 +23,7 @@ import sys, os, argparse, re
 # import pathlib
 # import subprocess
 import numpy as np
+import warnings
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 from shutil import copytree, rmtree
@@ -57,6 +58,7 @@ class SCRIPTING():
         Initiation, read contents and header
         Attribute:
             c_header: header that deals with comments
+            file_path: input file to convert
         '''
         self.c_header = []
         self.ex_header = []
@@ -64,9 +66,10 @@ class SCRIPTING():
         self.contents = []
         fin = open(file_path, 'r')
         line = fin.readline()
+        self.file_path = file_path
         self.c_header = ReadCommentingHeaders(file_path)
         # read the importing from an internal module
-        self.im_header = ReadInHeaders(file_path)
+        self.im_header = ReadInHeaders1(file_path)
         # read the importing from an external module
         self.ex_header = ReadExHeaders(file_path)
         ex_additional = []  # additional commands
@@ -91,14 +94,17 @@ class SCRIPTING():
             fout.write(header)
         # write internal header
         for header in self.im_header:
-            module, objects = ParseImportSyntax(header)
-            print("im_header: ", self.im_header)  # debug
-            print("module: ", module) # debug
-            print("objects: ", objects) # debug
+            # module, objects = ParseImportSyntax(header)
+            module, alias, objects = FindImportModule(header, self.file_path)
             explicit_import_contents = ""
             for _object in objects:
-                explicit_import_contents += ExplicitImport(module, _object)
+                # write contents of explicit import
+                explicit_import_contents += ExplicitImport(module, _object, alias=alias)
                 fout.write(explicit_import_contents)
+            for _object in objects:
+                # replace alias.object with alias_object
+                for i in range(len(self.contents)):
+                    self.contents[i] = re.sub("%s.%s" % (alias, _object), "%s_%s" % (alias, _object), self.contents[i])
         for content in self.contents:
             fout.write(content)
         print("SCRIPTING: write scripting %s" % (o_path))  # screen output
@@ -148,9 +154,40 @@ def ReadInHeaders(file_path):
             # this indicates that the next part of the file is reached
             break
         if re.match("^from.*shilofue.*import", line):
-            headers.append(line)
+            headers.append(re.sub('[ \t\n]*$', '', line))
         line = fin.readline()
     return headers
+
+
+class HeaderIncludeError(Exception):
+    pass
+
+
+def ReadInHeaders1(file_path):
+    '''
+    Read the second part of the file header: importing module from inside the package
+    Inputs:
+        file_path(str): path of the file
+    Return:
+        headers: headers that contain the importing of internal modules
+    '''
+    headers = []
+    fin = open(file_path, 'r')
+    line = fin.readline()
+    while line != "":
+        if re.match("^import.*shilofue.*as", line):
+            headers.append(re.sub('[ \t\n]*$', '', line))
+        elif re.match("^from.*shilofue.*import.*", line) or re.match("^import.*shilofue", line):
+            # containing not-allowed header
+            warnings.warn("The shilofue modules need to be " + \
+                          "imported by import shiofue.\{module\} as \{alias\}." + 
+                          "The current line is :\n%s" % line)
+        elif re.match("^def", line) or re.match("^class", line):
+            # this indicates that the next part of the file is reached
+            break
+        line = fin.readline()
+    return headers
+
 
 
 def ReadExHeaders(file_path):
@@ -172,7 +209,7 @@ def ReadExHeaders(file_path):
             # this indicates that the next part of the file is reached
             break
         if (re.match("^from.*import", line) or re.match("^import", line)) and\
-             (not re.match("^from.*shilofue.*import", line)) and\
+             (not re.match(".*shilofue.*", line)) and\
              (not re.match("^import.*Utilities", line)):
             # this indicates this is an importing command from an external module
             # the "from.*shilofue.*import" and "import.*Utilities" will be handled
@@ -188,9 +225,9 @@ def ReadContents(file_path):
     Inputs:
         file_path(str): path of the file
     Return:
-        headers: headers that contain the importing of external modules
+        contents: contents that contain the importing of external modules
     '''
-    headers = []
+    contents = []
     fin = open(file_path, 'r')
     line = fin.readline()
     start = False
@@ -198,13 +235,12 @@ def ReadContents(file_path):
         if re.match("^def", line) or re.match("^class", line):
             start = True
         if start:
-            headers.append(line)
+            contents.append(line)
         line = fin.readline()
-    return headers
+    return contents
 
 
-
-def ExplicitImport(module, _object, _type=None):
+def ExplicitImport(module, _object, _type=None, **kwargs):
     '''
     explicitly import object from module
     Inputs:
@@ -214,6 +250,7 @@ def ExplicitImport(module, _object, _type=None):
     Returns:
         contents of the object
     '''
+    alias = kwargs.get("alias", None)
     prefix = "(class|def)"
     if _type is not None:
         # specify the type of the object
@@ -233,8 +270,15 @@ def ExplicitImport(module, _object, _type=None):
     line = fin.readline()
     content_list = []
     while line != "":
+        ctemp = "^%s %s" % (prefix, _object)
         if re.match("^%s %s" % (prefix, _object), line):
-            content_list.append(line)
+            if alias is not None:
+                # if alias is present, add it as a prefix to the function
+                cline = line.replace(_object, "%s_%s" % (alias, _object))
+                # cline = re.sub(_object, "%s_%s" % (alias, _object), line)
+            else:
+                cline = line
+            content_list.append(cline)
             line = fin.readline()
             while line != "":
                 if re.match("^(class|def)", line):
@@ -282,6 +326,31 @@ def ParseImportSyntax(line):
         objects[i] = re.sub("(\t| )*\n$", '', temp)
     print("module:", module)
     return module, objects
+
+
+def FindImportModule(line, file_path):
+    '''
+    Find imported module based on what is included in the file
+    '''
+    # first read module from header
+    assert(re.match("^import.*", line))
+    temp = re.sub("^import(\t| )", '', line)
+    module = re.sub("(\t| )+as.*$", '', temp)
+    alias = re.sub(".*(\t| )+as(\t| )+", '', temp)
+    # then search for objects in the file
+    objects = []
+    assert(os.access(file_path, os.R_OK))
+    with open(file_path, "r") as fin:
+        sline = fin.readline()
+        while sline != "":
+            if re.match("^.*" + alias, sline) and (not re.match("import", sline)):
+                temp = re.sub(".*" + alias + ".", "", sline)  # remove alias.
+                temp = re.sub("\..*\n$", "", temp) # remove . (class functions)
+                temp = re.sub("\).*\n$", "", temp) # remove right parenthesis (in case this is a class)
+                _object = re.sub("\(.*\n$", "", temp) # remove left
+                objects.append(_object)
+            sline = fin.readline()
+    return module, alias, objects
 
 
 def ParseHeader(file_path):
