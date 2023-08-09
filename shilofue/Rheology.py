@@ -2627,7 +2627,7 @@ def RefitHK03(rheology_dict, _name, o_path):
         strain_rate_dislocation[i] = CreepStrainRate(dislocation_creep, stress, P, T, d, fh2o)
     strain_rate = strain_rate_diffusion + strain_rate_dislocation
     ax = fig.add_subplot(gs[0, 1])
-    PlotHK03DataFig2(ax, "wet", color="r")
+    # PlotHK03DataFig2(ax, "wet", color="r")
     ax.loglog(stresses, strain_rate_dislocation, '--r')
     ax.loglog(stresses, strain_rate, 'r')
     ax.set_xlim([10, 1000])
@@ -2657,7 +2657,7 @@ def RefitHK03(rheology_dict, _name, o_path):
     ax = fig.add_subplot(gs[1, 1])
     ax.semilogy(1e4 / Ts_diff_100_50MPa, etas_diff_100_50MPa, 'r')
     ax.semilogy(1e4 / Ts_diff_400_50MPa, etas_diff_400_50MPa, 'b')
-    PlotHK03DataFig3WetDiff(ax)
+    # PlotHK03DataFig3WetDiff(ax)
     ax.legend()
     ax.set_xlim([6.3, 6.9])
     ax.set_ylim([10**(-6), 3*10**(-5)])
@@ -2685,7 +2685,7 @@ def RefitHK03(rheology_dict, _name, o_path):
         etas_disl_300_50MPa[i] = CreepStrainRate(dislocation_creep, stress, P, T, d, fh2o)
     # plot
     ax = fig.add_subplot(gs[2, 1])
-    PlotHK03DataFig3WetDisl(ax)
+    # PlotHK03DataFig3WetDisl(ax)
     ax.semilogy(10000.0/Ts_disl_100_50MPa, etas_disl_100_50MPa, 'r')
     ax.semilogy(10000.0/Ts_disl_300_50MPa, etas_disl_300_50MPa, 'b')
     ax.legend()
