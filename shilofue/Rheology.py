@@ -275,7 +275,8 @@ class RHEOLOGY_PRM():
                 "V" : 23e-6,
                 "d" : 1e4,
                 "Coh" : 1000.0,
-                "wet": 1.0  # I use this to mark this is a wet rheology, so I need to account for V and E for water later.
+                "wet": 1.0,  # I use this to mark this is a wet rheology, so I need to account for V and E for water later.
+                "use_f": 1
             }
 
         self.HK03_wet_mod_disl = \
@@ -288,7 +289,8 @@ class RHEOLOGY_PRM():
                 "V" : 24e-6,
                 "d" : 1e4,
                 "Coh" : 1000.0,
-                "wet" : 1.0
+                "wet" : 1.0,
+                "use_f": 1
             }
         
         # modified creep laws from Hirth & Kohlstedt 2003
