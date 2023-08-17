@@ -43,9 +43,10 @@ def Usage():
 \n\
 Examples of usage: \n\
 \n\
-  - default usage: \n\
+  - Generate script: \n\
 \n\
-        python -m \
+        python -m shilofue.Scripting generate_script -i /home/lochy/ASPECT_PROJECT/aspectLib/shilofue/PlotStatistics.py -o .test/test_output_scripting\n\
+\n\
         ")
     
 
@@ -81,11 +82,19 @@ class SCRIPTING():
         # read the contents of the file
         self.contents = ReadContents(file_path)
 
-    def __call__(self, o_path):
+    def __call__(self, o_path, **kwargs):
         '''
         Write to an output file
         '''
+        parse_dependence = kwargs.get("parse_dependence", False)
+
+        # todo_script
+        o_dir = os.path.dirname(o_path)
+        o_path1 = os.path.join(o_dir, "dependence.py")
         fout = open(o_path, 'w')
+        if parse_dependence:
+            fout1 = open(o_path1, 'w')
+        
         # write commenting header
         for header in self.c_header:
             fout.write(header)
@@ -95,12 +104,20 @@ class SCRIPTING():
         # write internal header
         for header in self.im_header:
             # module, objects = ParseImportSyntax(header)
-            module, alias, objects = FindImportModule(header, self.file_path)
+            with open(self.file_path, 'r') as fin:
+                slines = fin.readlines()
+            module, alias, objects = FindImportModule(header, slines)
+            # print("module:", module) # debug
+            # print("alias:", alias)
+            # print("objects:", objects)
             explicit_import_contents = ""
             for _object in objects:
                 # write contents of explicit import
                 explicit_import_contents += ExplicitImport(module, _object, alias=alias)
-                fout.write(explicit_import_contents)
+                if parse_dependence:
+                    fout1.write(explicit_import_contents)
+                else:
+                    fout.write(explicit_import_contents)
             for _object in objects:
                 # replace alias.object with alias_object
                 for i in range(len(self.contents)):
@@ -271,6 +288,8 @@ def ExplicitImport(module, _object, _type=None, **kwargs):
     content_list = []
     while line != "":
         ctemp = "^%s %s" % (prefix, _object)
+        # print("ctemp: ") # debug
+        # print(ctemp)
         if re.match("^%s %s" % (prefix, _object), line):
             if alias is not None:
                 # if alias is present, add it as a prefix to the function
@@ -328,10 +347,14 @@ def ParseImportSyntax(line):
     return module, objects
 
 
-def FindImportModule(line, file_path):
+def FindImportModule(line, slines):
     '''
     Find imported module based on what is included in the file
+    Inputs:
+        line (str): string to parse the module and object
+        slines (list): contents to look for the module from
     '''
+    assert(type(slines) == list)
     # first read module from header
     assert(re.match("^import.*", line))
     temp = re.sub("^import(\t| )", '', line)
@@ -339,17 +362,14 @@ def FindImportModule(line, file_path):
     alias = re.sub(".*(\t| )+as(\t| )+", '', temp)
     # then search for objects in the file
     objects = []
-    assert(os.access(file_path, os.R_OK))
-    with open(file_path, "r") as fin:
-        sline = fin.readline()
-        while sline != "":
-            if re.match("^.*" + alias, sline) and (not re.match("import", sline)):
-                temp = re.sub(".*" + alias + ".", "", sline)  # remove alias.
-                temp = re.sub("\..*\n$", "", temp) # remove . (class functions)
-                temp = re.sub("\).*\n$", "", temp) # remove right parenthesis (in case this is a class)
-                _object = re.sub("\(.*\n$", "", temp) # remove left
-                objects.append(_object)
-            sline = fin.readline()
+    for sline in slines:
+        if re.match("^.*" + alias, sline) and (not re.match("import", sline)):
+            temp = re.sub(".*" + alias + ".", "", sline)  # remove alias.
+            temp = re.sub("\..*$", "", temp) # remove . (class functions)
+            temp = re.sub("\).*$", "", temp) # remove right parenthesis (in case this is a class)
+            temp = re.sub("\n", "", temp) # remove endline
+            _object = re.sub("\(.*$", "", temp) # remove left parenthesis
+            objects.append(_object)
     return module, alias, objects
 
 
@@ -422,7 +442,7 @@ def main():
         Scripting = SCRIPTING(arg.inputs)
         assert(os.path.isdir(arg.outputs))
         ofile = os.path.join(arg.outputs, os.path.basename(arg.inputs))
-        Scripting(ofile)
+        Scripting(ofile, parse_dependence=True)
         assert(os.path.isfile(ofile))
         # copy the utilities
         utilities_dir = os.path.join(ASPECT_LAB_DIR, 'utilities')

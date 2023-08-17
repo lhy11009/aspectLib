@@ -57,7 +57,9 @@ def test_Utilities():
     assert('import shilofue.ThDSubduction0.Cases as CasesThDSubduction' in headers)
     assert('import shilofue.ParsePrm as ParsePrm' in headers)
     # test 2:
-    module, alias, objects = FindImportModule("import shilofue.Cases as CasesP", file_path)
+    with open(file_path, 'r') as fin:
+        slines = fin.readlines()
+    module, alias, objects = FindImportModule("import shilofue.Cases as CasesP", slines)
     assert(module=="shilofue.Cases")
     assert(alias=="CasesP")
     assert("create_case_with_json" in objects)

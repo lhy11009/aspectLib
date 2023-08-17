@@ -87,16 +87,16 @@ import math
 import argparse
 import numpy as np
 from scipy.special import erf
-from matplotlib import pyplot as plt
-from matplotlib import gridspec, cm
-from matplotlib import patches as mpatches 
-from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
-from shilofue.FlowLaws import visc_diff_HK, peierls_approx_visc, peierls_visc_from_edot
-from shilofue.ParsePrm import ParseFromDealiiInput, UpperMantleRheologyViscoPlastic, ReplacePhaseOption
-from shilofue.ThermalModel import MANTLE_ADIABAT
 from scipy.interpolate import interp1d
 from mpl_toolkits.mplot3d import Axes3D
 from shutil import rmtree, copy
+from matplotlib import pyplot as plt
+from matplotlib import gridspec, cm
+from matplotlib import patches as mpatches 
+import shilofue.PlotDepthAverage as PDAver
+import shilofue.FlowLaws as FlowLaws
+import shilofue.ParsePrm as ParsePrm
+import shilofue.ThermalModel as TModel
 
 R = 8.314
 
@@ -2124,7 +2124,6 @@ def PeierlsCreepRheology(creep, strain_rate, P, T, **kwargs):
     return eta
 
 
-
 def ReadAspectProfile(depth_average_path, **kwargs):
     """
     read a T,P profile from aspect's depth average file
@@ -2135,7 +2134,7 @@ def ReadAspectProfile(depth_average_path, **kwargs):
     # check file exist
     assert(os.access(depth_average_path, os.R_OK))
     # read that
-    DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
+    DepthAverage = PDAver.DEPTH_AVERAGE_PLOT('DepthAverage')
     DepthAverage.ReadHeader(depth_average_path)
     DepthAverage.ReadData(depth_average_path)
     DepthAverage.SplitTimeStep()
@@ -2203,7 +2202,7 @@ def PlotAlongProfile(depths, pressures, temperatures, fig_path_base, **kwargs):
         mod = 'new'  # orig, new
         Edev = 'mid'
         Vdev = 'mid'
-        eta_diff = visc_diff_HK(temperatures,pressures,d,coh,water,mod,Edev,Vdev)
+        eta_diff = FlowLaws.visc_diff_HK(temperatures,pressures,d,coh,water,mod,Edev,Vdev)
         eta_annotation += '%s_%s_E%s_V%s' % (water,mod, Edev, Vdev)
     else:
         raise CheckValueError('%s is not a valid implementation' % implementation)
@@ -2265,8 +2264,8 @@ def PlotAlongProfileJson(depths, pressures, temperatures, file_path, fig_path_ba
         eta_annotation += '-json'
     elif (file_path.rpartition('.')[-1] == 'prm'):
         with open(file_path, 'r') as fin:
-            inputs = ParseFromDealiiInput(fin)
-        diffusion_creep, dislocation_creep = UpperMantleRheologyViscoPlastic(inputs)
+            inputs = ParsePrm.ParseFromDealiiInput(fin)
+        diffusion_creep, dislocation_creep = ParsePrm.UpperMantleRheologyViscoPlastic(inputs)
         eta_annotation += '-prm'
     else:
         raise FileNotFoundError('Configuration file must be json or prm')
@@ -3859,7 +3858,7 @@ def GetMantleScenario(scenario, **kwargs):
         alpha = 3.1e-5
         g = 10.0
         Ts = 1573.0
-        MantleAdiabat = MANTLE_ADIABAT(cp, alpha, g, Ts, approx="constant variables")
+        MantleAdiabat = TModel.MANTLE_ADIABAT(cp, alpha, g, Ts, approx="constant variables")
         Operator.temperatures = MantleAdiabat.Temperature(depths)
         Operator.pressures = rho_ref * g * depths
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0, use_effective_strain_rate=False)
@@ -3872,7 +3871,7 @@ def GetMantleScenario(scenario, **kwargs):
         alpha = 3.1e-5
         g = 10.0
         Ts = 1573.0
-        MantleAdiabat = MANTLE_ADIABAT(cp, alpha, g, Ts, approx="constant variables and gradient")
+        MantleAdiabat = TModel.MANTLE_ADIABAT(cp, alpha, g, Ts, approx="constant variables and gradient")
         Operator.temperatures = MantleAdiabat.Temperature(depths)
         Operator.pressures = rho_ref * g * depths
         rheology_aspect, viscosity_profile = Operator.MantleRheology(rheology="HK03", jump_lower_mantle=30.0, use_effective_strain_rate=False)
@@ -4037,16 +4036,16 @@ def AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, key, idx, diffusio
             diffusion_creep_aspect = Convert2AspectInput(diffusion_creep, use_effective_strain_rate=True)
         # print("visco_plastic_dict: ", visco_plastic_dict) # debug
         visco_plastic_dict["Prefactors for diffusion creep"] = \
-            ReplacePhaseOption(visco_plastic_dict["Prefactors for diffusion creep"], key, idx, diffusion_creep_aspect['A'])
+            ParsePrm.ReplacePhaseOption(visco_plastic_dict["Prefactors for diffusion creep"], key, idx, diffusion_creep_aspect['A'])
         visco_plastic_dict["Grain size exponents for diffusion creep"] = \
-            ReplacePhaseOption(visco_plastic_dict["Grain size exponents for diffusion creep"], key, idx, diffusion_creep_aspect['m'])
+            ParsePrm.ReplacePhaseOption(visco_plastic_dict["Grain size exponents for diffusion creep"], key, idx, diffusion_creep_aspect['m'])
         visco_plastic_dict["Activation energies for diffusion creep"] = \
-            ReplacePhaseOption(visco_plastic_dict["Activation energies for diffusion creep"], key, idx, diffusion_creep_aspect['E'])
+            ParsePrm.ReplacePhaseOption(visco_plastic_dict["Activation energies for diffusion creep"], key, idx, diffusion_creep_aspect['E'])
         visco_plastic_dict["Activation volumes for diffusion creep"] = \
-            ReplacePhaseOption(visco_plastic_dict["Activation volumes for diffusion creep"], key, idx, diffusion_creep_aspect['V'])
+            ParsePrm.ReplacePhaseOption(visco_plastic_dict["Activation volumes for diffusion creep"], key, idx, diffusion_creep_aspect['V'])
     else:
         visco_plastic_dict["Prefactors for diffusion creep"] = \
-            ReplacePhaseOption(visco_plastic_dict["Prefactors for diffusion creep"], key, idx, 1e-31)
+            ParsePrm.ReplacePhaseOption(visco_plastic_dict["Prefactors for diffusion creep"], key, idx, 1e-31)
     # dislocation creep
     if dislocation_creep is not None:
         if no_convert:
@@ -4054,16 +4053,16 @@ def AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, key, idx, diffusio
         else:
             dislocation_creep_aspect = Convert2AspectInput(dislocation_creep, use_effective_strain_rate=True)
         visco_plastic_dict["Prefactors for dislocation creep"] = \
-            ReplacePhaseOption(visco_plastic_dict["Prefactors for dislocation creep"], key, idx, dislocation_creep_aspect['A'])
+            ParsePrm.ReplacePhaseOption(visco_plastic_dict["Prefactors for dislocation creep"], key, idx, dislocation_creep_aspect['A'])
         visco_plastic_dict["Stress exponents for dislocation creep"] = \
-            ReplacePhaseOption(visco_plastic_dict["Stress exponents for dislocation creep"], key, idx, dislocation_creep_aspect['n'])
+            ParsePrm.ReplacePhaseOption(visco_plastic_dict["Stress exponents for dislocation creep"], key, idx, dislocation_creep_aspect['n'])
         visco_plastic_dict["Activation energies for dislocation creep"] = \
-            ReplacePhaseOption(visco_plastic_dict["Activation energies for dislocation creep"], key, idx, dislocation_creep_aspect['E'])
+            ParsePrm.ReplacePhaseOption(visco_plastic_dict["Activation energies for dislocation creep"], key, idx, dislocation_creep_aspect['E'])
         visco_plastic_dict["Activation volumes for dislocation creep"] = \
-            ReplacePhaseOption(visco_plastic_dict["Activation volumes for dislocation creep"], key, idx, dislocation_creep_aspect['V'])
+            ParsePrm.ReplacePhaseOption(visco_plastic_dict["Activation volumes for dislocation creep"], key, idx, dislocation_creep_aspect['V'])
     else:
         visco_plastic_dict["Prefactors for dislocation creep"] = \
-            ReplacePhaseOption(visco_plastic_dict["Prefactors for dislocation creep"], key, idx, 1e-31)
+            ParsePrm.ReplacePhaseOption(visco_plastic_dict["Prefactors for dislocation creep"], key, idx, 1e-31)
     return visco_plastic_dict
 
 
@@ -4230,12 +4229,12 @@ def main():
     
     elif _commend == 'approx_peierls':
         assert(arg.rheology in ["MK10", "Idrissi16"])
-        visc = peierls_approx_visc(arg.rheology, arg.pressure, arg.temperature, arg.strain_rate)
+        visc = FlowLaws.peierls_approx_visc(arg.rheology, arg.pressure, arg.temperature, arg.strain_rate)
         print("viscosity = %.4e Pa s" % visc)
     
     elif _commend == 'exact_peierls':
         assert(arg.rheology in ["MK10", "Idrissi16"])
-        visc, _, _, _= peierls_visc_from_edot(arg.rheology, arg.pressure, arg.temperature, arg.strain_rate, 1e-6)
+        visc, _, _, _= FlowLaws.peierls_visc_from_edot(arg.rheology, arg.pressure, arg.temperature, arg.strain_rate, 1e-6)
         print("viscosity = %.4e Pa s" % visc)
     
     elif _commend == "refit_HK03":
