@@ -2826,12 +2826,13 @@ def HK03Modify(**kwargs):
     '''
     modify the HK03 rheology
     '''
-    # todo_fit
+    # parse parameters
     dE_diff = kwargs.get('dE_diff', 0.0)
     dV_diff = kwargs.get('dV_diff', 0.0)
     dE_disl = kwargs.get('dE_disl', 0.0)
     dV_disl = kwargs.get('dV_disl', 0.0)
 
+    # values of flow law variables
     E_diff = 375e3 + dE_diff
     V_diff = 23e-6 + dV_diff
     E_disl = 520e3 + dE_disl
@@ -4238,10 +4239,8 @@ def main():
         print("viscosity = %.4e Pa s" % visc)
     
     elif _commend == "refit_HK03":
-        # todo_fit
         HK03Modify()
         # HK03Modify(dE_diff=-40e3, dV_diff=-5.5e-6, dE_disl=20e3, dV_disl=-1.2e-6)
-
     
     else:
         raise CheckValueError('%s is not a valid commend' % _commend)
