@@ -49,17 +49,20 @@ def test_Utilities():
     test function read header
     '''
     file_path = os.path.join(source_dir, "AffinityTest.py")
+    # file_path1 = os.path.join(source_dir, "Rheology.py")
     assert(os.path.isfile(file_path))
+    # assert(os.path.isfile(file_path1))
     # test 1: ReadInHeader1 function
     headers = ReadInHeaders1(file_path)
     assert('import shilofue.Cases as CasesP' in headers)
     assert('import shilofue.TwoDSubduction0.Cases as CasesTwoDSubduction' in headers) 
     assert('import shilofue.ThDSubduction0.Cases as CasesThDSubduction' in headers)
     assert('import shilofue.ParsePrm as ParsePrm' in headers)
-    # test 2:
+    # test 2: find imported modules from file contents
     with open(file_path, 'r') as fin:
         slines = fin.readlines()
-    module, alias, objects = FindImportModule("import shilofue.Cases as CasesP", slines)
+    module, alias = ParseModuleObject("import shilofue.Cases as CasesP") # parse the module and alias
+    objects = FindImportModule(module, alias, slines)
     assert(module=="shilofue.Cases")
     assert(alias=="CasesP")
     assert("create_case_with_json" in objects)
@@ -70,6 +73,17 @@ def test_Utilities():
     alias = "CasesP"
     explicit_import_contents = ExplicitImport(module, _object, alias=alias)
     assert(re.match(".*CasesP_create_case_with_json.*", explicit_import_contents.split('\n')[0]))
+    # todo_script
+    # test 4: find imported modules from file contents recursively
+#    with open(file_path1, 'r') as fin:
+#        slines = fin.readlines()
+#    module, alias, objects = FindImportModuleRecursive("import shilofue.PlotDepthAverage as PDAver", slines)
+#    print("module: ", module)
+#    print("alias: ", alias)
+#    print("objects: ", objects)
+    # assert(module=="shilofue.Cases")
+    # assert(alias=="CasesP")
+    # assert("create_case_with_json" in objects)
 
 
 def test_explicit_import():
