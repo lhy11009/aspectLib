@@ -419,7 +419,6 @@ def FindImportModule(module, alias, slines):
 #        return modules, aliases, all_objects
 
 
-# todo_script
 def ParseModuleObject(line):
     '''
     Parse module and object from a string input
