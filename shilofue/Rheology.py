@@ -2773,15 +2773,17 @@ def RheologyTableFormating(creep, _name, **kwargs):
             HK03 - see table 1, Hirth and Kohlstedt 2003
     '''
     _format = kwargs.get("format", "HK03")
+    header_only = kwargs.get("header_only", False)
     if _format == "HK03":
         header = ["name", "A (${Mpa}^{-n-r} {um}^p s^{-1}$)", "p", "r", "n", "E ($kJ/mol$)", "V (${10}^{-6}m^3/mol$)", "wet", "wet from"]
         data = []
     elif _format == "aspect":
-        # todo_fit
         header = ["name", "A (${pa}^{-n-r} {m}^p s^{-1}$)", "p", "n", "E ($J/mol$)", "V ($m^3/mol$)"]
         data = []
     else:
         return NotImplementedError()
+    if header_only:
+        return header, []
     data.append([_name])
     data.append([creep['A']])
     # grain size power 
@@ -2832,7 +2834,7 @@ def HK03Modify(**kwargs):
     V_diff = 23e-6 + dV_diff
     E_disl = 520e3 + dE_disl
     V_disl = 24e-6 + dV_disl
-    Coh = 1000.0
+    Cohs = [100.0, 300.0, 1000.0]
     
     # The output directory
     output_dir = os.path.join(RESULT_DIR, "HK03Modify_diff_%.0f_%.0f_disl_%.0f_%.0f" %\
@@ -2871,30 +2873,30 @@ def HK03Modify(**kwargs):
     TexTable.append_data(data_disl_coh)
     #   3. generate the table contents
     table_contents = TexTable(format="latex", fix_underscore_in_content=False) # call function to generate the table
-    
-    # plot a figure of the upper mantle viscosity
+
+    # parameters for ASPECT & plot a figure of the upper mantle viscosity
     Operator = RHEOLOGY_OPR()
     # read profile
     source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
     file_path = os.path.join(source_dir, "depth_average.txt")
     assert(os.path.isfile(file_path))
     Operator.ReadProfile(file_path)
-    fig_path = os.path.join(output_dir, "mantle_profile.png")
-    # use 600 as plotting depth to not plot the jump on the 660
-    rheology_aspect, _ = Operator.MantleRheology(assign_rheology=True, diffusion_creep=diffusion_creep_new_coh,\
-        dislocation_creep=dislocation_creep_new_coh, Coh=Coh, save_profile=True, ymax=600.0,\
-        use_effective_strain_rate=True, save_json=False, fig_path=fig_path)
-    print("rheology_aspect:")  # debug
-    print(rheology_aspect)
-
-    # generate the table contents for aspect rheology prm file
-    diffusion_creep_aspect = rheology_aspect['diffusion_creep']
-    dislocation_creep_aspect = rheology_aspect['dislocation_creep']
-    header, data_diff = RheologyTableFormating(diffusion_creep_aspect, "ASPECT diffusion (Coh=%.1f)" % Coh, format="aspect")
-    _, data_disl = RheologyTableFormating(dislocation_creep_aspect, "ASPECT dislocation (Coh=%.1f)" % Coh, format="aspect")
-    TexTable = Utilities.TEX_TABLE("table-aspect",\
-                                    header=header, data=data_diff) # class initiation
-    TexTable.append_data(data_disl)
+    header, _ = RheologyTableFormating({}, "", format="aspect", header_only=True) # generate header
+    TexTable = Utilities.TEX_TABLE("table-aspect", header=header) # class initiation
+    for Coh in Cohs: 
+        fig_path = os.path.join(output_dir, "mantle_profile_Coh_%.0f.png" % Coh)
+        # loop values of Coh & use 600 as plotting depth to not plot the jump on the 660
+        rheology_aspect, _ = Operator.MantleRheology(assign_rheology=True, diffusion_creep=diffusion_creep_new_coh,\
+            dislocation_creep=dislocation_creep_new_coh, Coh=Coh, save_profile=True, ymax=600.0,\
+            use_effective_strain_rate=True, save_json=False, fig_path=fig_path)
+        # generate the table contents for aspect rheology prm file
+        diffusion_creep_aspect = rheology_aspect['diffusion_creep']
+        dislocation_creep_aspect = rheology_aspect['dislocation_creep']
+        _, data_diff = RheologyTableFormating(diffusion_creep_aspect, "ASPECT diffusion (Coh=%.1f)" % Coh, format="aspect")
+        _, data_disl = RheologyTableFormating(dislocation_creep_aspect, "ASPECT dislocation (Coh=%.1f)" % Coh, format="aspect")
+        TexTable.append_data(data_diff)
+        TexTable.append_data(data_disl)
+    table_contents += "\n"
     table_contents += TexTable(format="latex", fix_underscore_in_content=False) # call function to generate the table
     
     # write the table 
