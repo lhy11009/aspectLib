@@ -45,6 +45,23 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
+def test_ConvertFCoh():
+    da_file = os.path.join(source_dir, "depth_average.txt")
+    assert(os.path.isfile(da_file))
+    Operator = RHEOLOGY_OPR()
+    # read profile
+    # debug
+    Operator.ReadProfile(da_file)
+    rheology_aspect, _ = Operator.MantleRheology(rheology="HK03_wet_mod", debug=True)
+
+    rheology = "HK03_wet_mod"
+    diffusion_creep, dislocation_creep = GetRheology(rheology, use_coh=False)
+    diffusion_creep_coh = ConvertFCoh(diffusion_creep)
+    dislocation_creep_coh = ConvertFCoh(dislocation_creep)
+    assert(abs(diffusion_creep_coh['A'] - 81787.10427350427) / 81787.10427350427 < 1e-6)
+    assert(abs(dislocation_creep_coh['A'] - 2.1289006184840544) / 2.1289006184840544 < 1e-6)
+
+
 def test_RheologyTableFormating():
     '''
     test function RheologyTableFormating

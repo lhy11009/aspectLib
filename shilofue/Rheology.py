@@ -920,7 +920,7 @@ class RHEOLOGY_OPR():
         Read a depth, pressure and temperature profile from a depth_average output
         These values are saved as class variables
         '''
-        self.depths, self.pressures, self.temperatures = ReadAspectProfile(file_path)
+        self.depths, self.pressures, self.temperatures = ReadAspectProfile(file_path, interp=3000)
 
 
     # todo_HK03
@@ -1018,10 +1018,6 @@ class RHEOLOGY_OPR():
         '''
         strain_rate = kwargs.get('strain_rate', 1e-15)
         use_effective_strain_rate = kwargs.get('use_effective_strain_rate', True)
-        eta_diff = np.ones(self.depths.size)
-        eta_disl = np.ones(self.depths.size)
-        eta_disl13 = np.ones(self.depths.size)
-        eta13 = np.ones(self.depths.size)
         eta = np.ones(self.depths.size) 
         # these options are for a differences from the central value
         dEdiff = float(kwargs.get('dEdiff', 0.0))  # numbers for the variation in the rheology
@@ -1036,15 +1032,27 @@ class RHEOLOGY_OPR():
         debug = kwargs.get('debug', False)
         fig_path = kwargs.get("fig_path", None)
         Coh = kwargs.get("Coh", 1000.0)
+        assign_rheology = kwargs.get("assign_rheology", False)
+        ymax = kwargs.get("ymax", 2890.0) # km, only used for plots
 
-        # First, read in the flow law and apply the difference to the medium value 
-        diffusion_creep, dislocation_creep = GetRheology(rheology)
-        diffusion_creep['A'] *= dAdiff_ratio
-        diffusion_creep['E'] += dEdiff
-        dislocation_creep['A'] *= dAdisl_ratio
-        dislocation_creep['E'] += dEdisl
-        diffusion_creep['V'] += dVdiff
-        dislocation_creep['V'] += dVdisl
+        
+        eta_diff = np.ones(self.depths.size)
+        eta_disl = np.ones(self.depths.size)
+        eta_disl13 = np.ones(self.depths.size)
+        eta13 = np.ones(self.depths.size)
+
+        # First, read in the flow law and apply the diffeorence to the medium value 
+        if assign_rheology:
+            diffusion_creep = kwargs["diffusion_creep"]
+            dislocation_creep = kwargs['dislocation_creep']
+        else:
+            diffusion_creep, dislocation_creep = GetRheology(rheology)
+            diffusion_creep['A'] *= dAdiff_ratio
+            diffusion_creep['E'] += dEdiff
+            dislocation_creep['A'] *= dAdisl_ratio
+            dislocation_creep['E'] += dEdisl
+            diffusion_creep['V'] += dVdiff
+            dislocation_creep['V'] += dVdisl
         self.diff = diffusion_creep  # record these with the class variables
         self.disl = dislocation_creep
 
@@ -1101,6 +1109,9 @@ class RHEOLOGY_OPR():
         
         # dump json file 
         constrained_rheology = {'diffusion_creep': diffusion_creep, 'dislocation_creep': dislocation_creep, 'diffusion_lm': diff_lm}
+        if debug:
+            print("constrained_rheology: ")
+            print(constrained_rheology)
         
         # convert aspect rheology
         if debug:
@@ -1160,19 +1171,24 @@ class RHEOLOGY_OPR():
         # plot the profile of viscosity if it's required
         if save_profile == 1:
             # plots
+            ylim=[ymax, 0.0]
+            masky = (self.depths/1e3 < ymax)
             fig, axs = plt.subplots(1, 3, figsize=(15, 5))
             color = 'tab:blue'
             axs[0].plot(self.pressures/1e9, self.depths/1e3, color=color, label='pressure')
             axs[0].set_ylabel('Depth [km]') 
-            axs[0].set_xlabel('Pressure [GPa] P660: %.4e' % (P660), color=color) 
+            axs[0].set_xlabel('Pressure [GPa] P660: %.4e' % (P660), color=color)
+            Pmax = np.ceil(np.max(self.pressures[masky]/1e9) / 10.0) *10.0
+            axs[0].set_xlim([0.0, Pmax])
             # axs[0].invert_yaxis()
-            ylim=[2890, 0.0]
             axs[0].set_ylim(ylim)
             # ax2: temperature
             color = 'tab:red'
             ax2 = axs[0].twiny()
             ax2.set_ylim(ylim)
             ax2.plot(self.temperatures, self.depths/1e3, color=color, label='temperature')
+            Tmax = np.ceil(np.max(self.temperatures[masky]) / 100.0) *100.0
+            ax2.set_xlim([0.0, Tmax])
             ax2.set_xlabel('Temperature [K] T660: %.4e' % (T660), color=color) 
             # second: viscosity
             #   upper mantle
@@ -1582,6 +1598,21 @@ def GetRheology(rheology, **kwargs):
         dislocation_creep = None
     # return the rheology 
     return diffusion_creep, dislocation_creep
+
+
+def ConvertFCoh(creep):
+    '''
+    convert from using fugacity to Coh
+    '''
+    # initiate the class object
+    RheologyPrm = RHEOLOGY_PRM()
+    water_creep = getattr(RheologyPrm, "water")
+    creep_new = creep.copy()
+    creep_new['A'] = creep['A'] / (water_creep['A'] ** creep['r'])
+    creep_new['V'] = creep['V'] - water_creep['V'] * creep['r']
+    creep_new['E'] = creep['E'] - water_creep['E'] * creep['r']
+    creep_new.pop('use_f')  # pop the use_f flag
+    return creep_new
 
 
 def GetPeierlsRheology(rheology):
@@ -2098,6 +2129,7 @@ def ReadAspectProfile(depth_average_path, **kwargs):
     """
     # include options
     include_adiabatic_temperature = kwargs.get("include_adiabatic_temperature", False)
+    interp = kwargs.get("interp", 0)
     # check file exist
     assert(os.access(depth_average_path, os.R_OK))
     # read that
@@ -2122,6 +2154,16 @@ def ReadAspectProfile(depth_average_path, **kwargs):
     temperatures = data[:, col_T]
     if include_adiabatic_temperature:
         adiabatic_temperatures = data[:, col_Tad]
+    if interp > 0:
+        depths_old = depths.copy()
+        depths = np.linspace(depths[0], depths[-1], interp)
+        pressures_old = pressures.copy()
+        pressures = np.interp(depths, depths_old, pressures_old)
+        temperatures_old = temperatures.copy()
+        temperatures = np.interp(depths, depths_old, temperatures_old) 
+        if include_adiabatic_temperature:
+            adiabatic_temperatures_old = adiabatic_temperatures.copy()
+            adiabatic_temperatures = np.interp(depths, depths_old, adiabatic_temperatures_old) 
     # return type is determined by whether there are included terms
     if include_adiabatic_temperature:
         return depths, pressures, temperatures, adiabatic_temperatures
@@ -2734,54 +2776,134 @@ def RheologyTableFormating(creep, _name, **kwargs):
     if _format == "HK03":
         header = ["name", "A (${Mpa}^{-n-r} {um}^p s^{-1}$)", "p", "r", "n", "E ($kJ/mol$)", "V (${10}^{-6}m^3/mol$)", "wet", "wet from"]
         data = []
+    elif _format == "aspect":
+        # todo_fit
+        header = ["name", "A (${pa}^{-n-r} {m}^p s^{-1}$)", "p", "n", "E ($J/mol$)", "V ($m^3/mol$)"]
+        data = []
     else:
         return NotImplementedError()
     data.append([_name])
     data.append([creep['A']])
-    data.append([creep['p']])
-    data.append([creep['r']])
+    # grain size power 
+    if _format == "HK03":
+        data.append([creep['p']])
+    elif _format == "aspect":
+        data.append([creep['m']])
+    # water content power
+    if _format == "HK03":
+        data.append([creep['r']])
+    # strain rate power
     data.append([creep['n']])
-    data.append([creep['E'] / 1e3])
-    data.append([creep['V'] * 1e6])
-    # append if wet rheology or not
-    try:
-        _ = creep['wet']
-    except KeyError:
-        data.append(['No'])
-    else:
-        data.append(['Yes'])
-
-    try:
-        _ = creep['use_f']
-    except KeyError:
-        data.append(['$C_{OH}$ ($H/{10}^6 Si$)'])
-    else:
-        data.append(["$f_{H_2O}$ (MPa)"])
+    # activation energy and volume
+    if _format == "HK03":
+        data.append([creep['E'] / 1e3])
+        data.append([creep['V'] * 1e6])
+    elif _format == "aspect":
+        data.append([creep['E']])
+        data.append([creep['V']])
+    # how the wet rheology is formulated
+    if _format == "HK03":
+        try:
+            _ = creep['wet']
+        except KeyError:
+            data.append(['No'])
+        else:
+            data.append(['Yes'])
+        try:
+            _ = creep['use_f']
+        except KeyError:
+            data.append(['$C_{OH}$ ($H/{10}^6 Si$)'])
+        else:
+            data.append(["$f_{H_2O}$ (MPa)"])
     return header, data
     
 
-# todo_fit
 def HK03Modify(**kwargs):
     '''
     modify the HK03 rheology
     '''
+    # todo_fit
     dE_diff = kwargs.get('dE_diff', 0.0)
     dV_diff = kwargs.get('dV_diff', 0.0)
     dE_disl = kwargs.get('dE_disl', 0.0)
     dV_disl = kwargs.get('dV_disl', 0.0)
+
     E_diff = 375e3 + dE_diff
     V_diff = 23e-6 + dV_diff
     E_disl = 520e3 + dE_disl
     V_disl = 24e-6 + dV_disl
+    Coh = 1000.0
+    
+    # The output directory
+    output_dir = os.path.join(RESULT_DIR, "HK03Modify_diff_%.0f_%.0f_disl_%.0f_%.0f" %\
+    (E_diff/1e3, V_diff*1e6, E_disl/1e3, V_disl*1e6))
+    if os.path.isdir(output_dir):
+        rmtree(output_dir)
+    os.mkdir(output_dir)
     
     diffusion_creep, dislocation_creep = GetRheology("HK03_f", use_coh=False)
     rheology_dict = {'diffusion': diffusion_creep, 'dislocation': dislocation_creep}
-    rheology_new_dict = RefitHK03Combined(rheology_dict, E_diff=E_diff, V_diff=V_diff, E_disl=E_disl, V_disl=V_disl)
+    rheology_new_dict = RefitHK03Combined(rheology_dict, E_diff=E_diff, V_diff=V_diff,\
+                                            E_disl=E_disl, V_disl=V_disl, output_dir=output_dir)
     # print("rheology_new_dict: ", rheology_new_dict) # debug
     # modified rheology, accounting for more water than calibrated
     rheology_modified_dict = rheology_new_dict.copy()
     rheology_modified_dict['diffusion']['A'] /= 3.5
     rheology_modified_dict['dislocation']['A'] /= 3.5
+    
+    # convert to using coh 
+    diffusion_creep_new = rheology_modified_dict['diffusion']
+    diffusion_creep_new_coh = ConvertFCoh(diffusion_creep_new)
+    dislocation_creep_new = rheology_modified_dict['dislocation']
+    dislocation_creep_new_coh = ConvertFCoh(dislocation_creep_new)
+    
+    # generate the table contents for the refitted rheology
+    #   1. table with unit of fh2o
+    header, data_diff = RheologyTableFormating(diffusion_creep_new, "HK03 diffusion", format="HK03")
+    _, data_disl = RheologyTableFormating(dislocation_creep_new, "HK03 dislocation", format="HK03")
+    TexTable = Utilities.TEX_TABLE("table-HK03",\
+                                    header=header, data=data_diff) # class initiation
+    TexTable.append_data(data_disl)
+    #   2. table with unit of coh
+    _, data_diff_coh = RheologyTableFormating(diffusion_creep_new_coh, "HK03 diffusion", format="HK03")
+    _, data_disl_coh = RheologyTableFormating(dislocation_creep_new_coh, "HK03 dislocation", format="HK03")
+    TexTable.append_data(data_diff_coh)
+    TexTable.append_data(data_disl_coh)
+    #   3. generate the table contents
+    table_contents = TexTable(format="latex", fix_underscore_in_content=False) # call function to generate the table
+    
+    # plot a figure of the upper mantle viscosity
+    Operator = RHEOLOGY_OPR()
+    # read profile
+    source_dir = os.path.join(ASPECT_LAB_DIR, 'tests', 'integration', 'fixtures', 'test_rheology')
+    file_path = os.path.join(source_dir, "depth_average.txt")
+    assert(os.path.isfile(file_path))
+    Operator.ReadProfile(file_path)
+    fig_path = os.path.join(output_dir, "mantle_profile.png")
+    # use 600 as plotting depth to not plot the jump on the 660
+    rheology_aspect, _ = Operator.MantleRheology(assign_rheology=True, diffusion_creep=diffusion_creep_new_coh,\
+        dislocation_creep=dislocation_creep_new_coh, Coh=Coh, save_profile=True, ymax=600.0,\
+        use_effective_strain_rate=True, save_json=False, fig_path=fig_path)
+    print("rheology_aspect:")  # debug
+    print(rheology_aspect)
+
+    # generate the table contents for aspect rheology prm file
+    diffusion_creep_aspect = rheology_aspect['diffusion_creep']
+    dislocation_creep_aspect = rheology_aspect['dislocation_creep']
+    header, data_diff = RheologyTableFormating(diffusion_creep_aspect, "ASPECT diffusion (Coh=%.1f)" % Coh, format="aspect")
+    _, data_disl = RheologyTableFormating(dislocation_creep_aspect, "ASPECT dislocation (Coh=%.1f)" % Coh, format="aspect")
+    TexTable = Utilities.TEX_TABLE("table-aspect",\
+                                    header=header, data=data_diff) # class initiation
+    TexTable.append_data(data_disl)
+    table_contents += TexTable(format="latex", fix_underscore_in_content=False) # call function to generate the table
+    
+    # write the table 
+    file_out = os.path.join(output_dir, "rheology_latex_table.tex")
+    with open(file_out, 'w') as fout:
+        fout.write(table_contents)
+    print("%s: table %s generated." % (Utilities.func_name(), file_out))
+
+    
 
 
 def RefitHK03Combined(rheology_dict, **kwargs):
@@ -4113,7 +4235,8 @@ def main():
     
     elif _commend == "refit_HK03":
         # todo_fit
-        HK03Modify(dE_diff=-40e3, dV_diff=-5.5e-6, dE_disl=20e3, dV_disl=-1.2e-6)
+        HK03Modify()
+        # HK03Modify(dE_diff=-40e3, dV_diff=-5.5e-6, dE_disl=20e3, dV_disl=-1.2e-6)
 
     
     else:
