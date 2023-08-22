@@ -2971,6 +2971,7 @@ def RheologyUpdateEV(creep, stress, P, T, d, Coh, **kwargs):
         creep_new['V'] = V
     # pinpoint the (strain_rate, stress) with the condition given 
     strain_rate = CreepStrainRate(creep, stress, P, T, d, Coh)
+    print("%s: update E, V value with condition stress = %.4e, strain rate = %.4e." % (Utilities.func_name(), stress, strain_rate))
     # compute a new A value that fits the pinpointed results
     A = CreepComputeAfromSS(creep_new, strain_rate, stress, P, T, d, Coh)
     creep_new['A'] = A
@@ -4238,7 +4239,7 @@ def main():
         print("viscosity = %.4e Pa s" % visc)
     
     elif _commend == "refit_HK03":
-        HK03Modify()
+        HK03Modify(dE_diff=-40e3)
         # HK03Modify(dE_diff=-40e3, dV_diff=-5.5e-6, dE_disl=20e3, dV_disl=-1.2e-6)
     
     else:

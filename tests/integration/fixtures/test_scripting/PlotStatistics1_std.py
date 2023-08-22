@@ -387,6 +387,8 @@ but you will get a blank one for this field name' % _yname,
             print('Export data to %s' % output_path)
             print('\tData layout: ', odata.shape)
         return odata
+
+
 class sPlot_LINEARPLOT():
     '''
     LINEARPLOT():
@@ -744,6 +746,8 @@ but you will get a blank one for this field name' % _yname,
             print('Export data to %s' % output_path)
             print('\tData layout: ', odata.shape)
         return odata
+
+
 class sPlot_LINEARPLOT():
     '''
     LINEARPLOT():
@@ -1101,6 +1105,8 @@ but you will get a blank one for this field name' % _yname,
             print('Export data to %s' % output_path)
             print('\tData layout: ', odata.shape)
         return odata
+
+
 class STATISTICS_PLOT(sPlot_LINEARPLOT):
     '''
     Class for plotting depth average file.

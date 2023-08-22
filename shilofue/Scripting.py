@@ -54,17 +54,24 @@ class SCRIPTING():
     '''
     A class that deals with scripting
     '''
-    def __init__(self, file_path):
+    def __init__(self, file_path, **kwargs):
         '''
         Initiation, read contents and header
         Attribute:
             c_header: header that deals with comments
             file_path: input file to convert
+        Inputs:
+            **kwargs:
+                parse_dependence: parse dependence to a separate file
+        
         '''
         self.c_header = []
         self.ex_header = []
         self.im_header = []
         self.contents = []
+
+        parse_dependence = kwargs.get("parse_dependence", False)
+
         fin = open(file_path, 'r')
         line = fin.readline()
         self.file_path = file_path
@@ -76,8 +83,12 @@ class SCRIPTING():
         ex_additional = []  # additional commands
         ex_additional.append("current_dir = os.path.dirname(__file__)\n")
         ex_additional.append("JSON_FILE_DIR = os.path.join(current_dir, \'json_examples\')\n")
+        if parse_dependence:
+            ex_additional.append("sys.path.append(os.path.join(current_dir))\n")
         ex_additional.append("sys.path.append(os.path.join(current_dir, \'utilities\', \'python_scripts\'))\n")
         ex_additional.append("import Utilities\n")
+        if parse_dependence:
+            ex_additional.append("from dependence import *\n")
         self.ex_header += ex_additional
         # read the contents of the file
         self.contents = ReadContents(file_path)
@@ -89,7 +100,6 @@ class SCRIPTING():
         parse_dependence = kwargs.get("parse_dependence", False)
         recursive = kwargs.get("recursive", False)
 
-        # todo_script
         o_dir = os.path.dirname(o_path)
         o_path1 = os.path.join(o_dir, "dependence.py")
         fout = open(o_path, 'w')
@@ -126,6 +136,7 @@ class SCRIPTING():
             for _object in objects:
                 # write contents of explicit import
                 explicit_import_contents += ExplicitImport(module, _object, alias=alias)
+                explicit_import_contents += "\n\n"
                 if parse_dependence:
                     fout1.write(explicit_import_contents)
                 else:
@@ -139,6 +150,10 @@ class SCRIPTING():
         for content in self.contents:
             fout.write(content)
         print("SCRIPTING: write scripting %s" % (o_path))  # screen output
+        if parse_dependence:
+            print("SCRIPTING: write scripting %s" % (o_path1))  # screen output
+
+
 
 
 ####
@@ -386,39 +401,6 @@ def FindImportModule(module, alias, slines):
     return objects
 
 
-# todo_script
-#def FindImportModuleRecursive(modules, aliases, all_objects, slines):
-#    '''
-#    Find imported module based on what is included in the file
-#    Perform the lookup recursively until all the dependence is
-#    found.
-#    Inputs:
-#        modules (str): name of the modules
-#        aliases (str): aliases of the modules
-#        all_objects (list): a list of all the objects imported in all modules
-#        slines (list): contents to look for the module from
-#    Returns:
-#        modules (str): name of the modules
-#        aliases (str): aliases of the modules
-#        all_objects (list): a list of all the objects imported in all modules
-#        slines (list): current file contents
-#    '''
-#    objects = FindImportModule(module, alias, slines)
-#    explicit_import_contents = ""
-#    for _object in objects:
-#        # write contents of explicit import
-#        explicit_import_contents += ExplicitImport(module, _object, alias=alias)
-#    new_lines = explicit_import_contents.split('\n')
-#    for header in headers
-#        ParseModuleObject(headers)
-#    for line in new_lines:
-#
-#    if  
-#        return FindImportModuleRecursive(modules, aliases, all_objects, new_lines)
-#    else:
-#        return modules, aliases, all_objects
-
-
 def ParseModuleObject(line):
     '''
     Parse module and object from a string input
@@ -502,7 +484,7 @@ def main():
         # inputs: a file
         # outputs: a directory that exists
         assert(os.path.isfile(arg.inputs))
-        Scripting = SCRIPTING(arg.inputs)
+        Scripting = SCRIPTING(arg.inputs, parse_dependence=True)
         assert(os.path.isdir(arg.outputs))
         ofile = os.path.join(arg.outputs, os.path.basename(arg.inputs))
         Scripting(ofile, parse_dependence=True)
