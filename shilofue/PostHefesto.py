@@ -137,9 +137,9 @@ class LOOKUP_TABLE():
         # output intervals
         self.delta_out1 = self.delta1 * interval1 # output intervals
         self.delta_out2 = self.delta2 * interval2 # output intervals
-        self.OutputPerplex(field_names, o_path)
+        self.OutputHefesto(field_names, o_path)
 
-    def OutputPerplex(self, field_names, o_path):
+    def OutputHefesto(self, field_names, o_path):
         '''
         Process the Hefesto lookup table for aspect
     
@@ -351,15 +351,15 @@ def ProcessHefesto(filein, fileout, interval1, interval2):
     assert(os.path.isfile(fileout))
 
 
-def CheckLookupTable(filein, first_dimension_name):
+def CheckHefesto(filein, first_dimension_name):
     '''
     check the data format of a HeFESTo lookup table
     '''
     # input file
     assert(os.path.isfile(filein))
-    LookupTable = LOOKUP_TABLE()
-    LookupTable.read_table(filein)
-    LookupTable.Check(first_dimension_name)
+    Hefesto = LOOKUP_TABLE()
+    Hefesto.read_table(filein)
+    Hefesto.Check(first_dimension_name)
 
 
 def main():
@@ -395,7 +395,7 @@ def main():
 
     # commands
     if _commend == 'plot':
-        # Plot the LookupTable lookup table
+        # Plot the Hefesto lookup table
         PlotHefesto(arg.inputs)
     
     elif _commend == 'process':
