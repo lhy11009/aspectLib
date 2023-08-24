@@ -37,6 +37,40 @@ if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
 
+
+def test_parse_perplex_header():
+    '''
+    test the ParsePerplexHeader function
+    '''
+    line = "T(K)           P(bar)         s,J/K/kg       rho,kg/m3      alpha,1/K      cp,J/K/m3      vp,km/s        vs,km/s"
+    header, unit = ParsePerplexHeader(line)
+    assert(header==['T', 'P', 's', 'rho', 'alpha', 'cp', 'vp', 'vs'])
+    assert(unit==['K', 'bar', 'J/K/kg', 'kg/m3', '1/K', 'J/K/m3', 'km/s', 'km/s'])
+
+
+def test_read_perplex():
+    '''
+    test function ReadPerplex 
+    '''
+    # todo_perplex
+    # input file
+    filein = os.path.join(source_dir, 'perplex_lookup_table.txt')
+    assert(os.path.isfile(filein))
+    LookupTable = LOOKUP_TABLE()
+    LookupTable.ReadPerplex(filein, n_col_header=4)
+
+    # output file
+    fileout = os.path.join(test_dir, 'perpelx_lookup_table_0.txt')
+    fileout_std = os.path.join(source_dir, 'perpelx_lookup_table_0_std.txt')
+    if os.path.isfile(fileout):
+        # remove previous results
+        os.remove(fileout)
+    field_names = ['Temperature', 'Pressure', 'Density']
+    LookupTable.Process(field_names, fileout, first_dimension="Temperature", second_dimension="Pressure")
+    assert(os.path.isfile(fileout))
+    assert(filecmp.cmp(fileout, fileout_std))
+
+
 def test_read_n_output():
     '''
     test read in and output hefesto lookup table

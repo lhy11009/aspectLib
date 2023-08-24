@@ -25,7 +25,7 @@ descriptions
 """ 
 import numpy as np
 import sys, os, argparse
-# import json, re
+import re
 # import pathlib
 # import subprocess
 import numpy as np
@@ -68,7 +68,11 @@ class LOOKUP_TABLE():
         self.delta_out2 = 0.0 
         self.oheader = { 'Temperature': 'T(K)',  'Pressure': 'P(bar)' ,  'Density': 'rho,kg/m3',\
         'Thermal_expansivity': 'alpha,1/K', 'Isobaric_heat_capacity': 'cp,J/K/kg',\
-        'VP': 'vp,km/s', 'VS': 'vs,km/s', 'Enthalpy': 'h,J/kg' }
+        'VP': 'vp,km/s', 'VS': 'vs,km/s', 'Enthalpy': 'h,J/kg', "Entropy": 's,J/K/kg'}
+        # header for perplex table
+        self.perplex_header = { 'T': "Temperature", "P": 'Pressure', "rho": 'Density',\
+                               "alpha": 'Thermal_expansivity', 'cp': "Isobaric_heat_capacity",\
+                                'vp': "VP", 'vs': "VS", 'h': "Enthalpy", "s": "Entropy"}
         # unit to output
         self.ounit = {'Temperature': 'K', 'Pressure': 'bar', 'Thermal_expansivity': '1/K',\
         'Isobaric_heat_capacity': 'J/K/kg', 'Density': 'kg/m3', 'VP':'km/s', 'VS':'km/s', 'Enthalpy': 'J/kg'}
@@ -84,6 +88,35 @@ class LOOKUP_TABLE():
         Plotter.ReadData(path)
         self.header = Plotter.header
         self.data = Plotter.data
+
+
+    def ReadPerplex(self, path, **kwargs):
+        '''
+        read Perplex data
+        Inputs:
+            path(str):
+                file path of the table
+            kwargs:
+                n_col_header : number of header columns
+        '''
+        n_col_header = kwargs.get('n_col_header', 0)
+        line = ""
+        with open(path, 'r') as fin:
+            for i in range(n_col_header):
+                line = fin.readline()
+                assert(line != "")
+        header, unit = ParsePerplexHeader(line)
+
+        # match the header
+        for i in range(len(header)):
+            header_to = self.perplex_header[header[i]]
+            self.header[header_to] = {}
+            self.header[header_to]['col'] = i
+            self.header[header_to]['unit'] = unit[i]
+        
+        # read data
+        self.data = np.loadtxt(path, skiprows=n_col_header) 
+        
 
     def Check(self, first_dimension_name, **kwargs):
         '''
@@ -252,6 +285,34 @@ class LOOKUP_TABLE():
             -col_alpagg
         '''
         pass
+
+
+def ParsePerplexHeader(line):
+    '''
+    Parse header of a perplex file
+    Inputs:
+        line (str) - header inputs
+    Returns:
+        header (list) - a list of header
+        unit (list) - a list of unit
+    '''
+    words = line.split(' ')
+    header = []
+    unit = []
+    for word in words:
+        word = Utilities.re_neat_word(word)
+        if len(word) > 0:
+            temp = word.split(',')
+            if len(temp) == 2:
+                unit.append(temp[1])
+                header.append(temp[0])
+            else:
+                temp = word.split('(')
+                assert(len(temp) == 2)
+                unit.append(temp[1].replace(')', ''))
+                header.append(temp[0])
+    assert(len(header) == len(unit))
+    return header, unit
 
 
 def CheckDataDimension(nddata, min1, delta1, number1):
