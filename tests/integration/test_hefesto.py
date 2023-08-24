@@ -51,8 +51,9 @@ def test_parse_perplex_header():
 def test_read_perplex():
     '''
     test function ReadPerplex 
+    assert:
+        contents of perplex table
     '''
-    # todo_perplex
     # input file
     filein = os.path.join(source_dir, 'perplex_lookup_table.txt')
     assert(os.path.isfile(filein))
