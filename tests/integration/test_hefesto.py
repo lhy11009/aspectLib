@@ -52,7 +52,7 @@ def test_read_n_output():
         os.remove(fileout)
     # call processfunction
     LookupTable = LOOKUP_TABLE()
-    LookupTable.read_table(filein)
+    LookupTable.ReadHeFestoTable(filein)
     field_names = ['Pressure', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity']
     LookupTable.Process(field_names, fileout)
     # assert something 

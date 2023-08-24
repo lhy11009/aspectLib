@@ -73,7 +73,7 @@ class LOOKUP_TABLE():
         self.ounit = {'Temperature': 'K', 'Pressure': 'bar', 'Thermal_expansivity': '1/K',\
         'Isobaric_heat_capacity': 'J/K/kg', 'Density': 'kg/m3', 'VP':'km/s', 'VS':'km/s', 'Enthalpy': 'J/kg'}
 
-    def read_table(self, path):
+    def ReadHeFestoTable(self, path):
         '''
         read data
         '''
@@ -343,7 +343,7 @@ def ProcessHefesto(filein, fileout, interval1, interval2):
     assert(os.path.isfile(filein))
     # call processfunction
     LookupTable = LOOKUP_TABLE()
-    LookupTable.read_table(filein)
+    LookupTable.ReadHeFestoTable(filein)
     # fields to read in
     field_names = ['Pressure', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity', 'VP', 'VS', 'Enthalpy']
     LookupTable.Process(field_names, fileout, interval1=interval1, interval2=interval2)
@@ -357,9 +357,9 @@ def CheckHefesto(filein, first_dimension_name):
     '''
     # input file
     assert(os.path.isfile(filein))
-    Hefesto = LOOKUP_TABLE()
-    Hefesto.read_table(filein)
-    Hefesto.Check(first_dimension_name)
+    LookupTable = LOOKUP_TABLE()
+    LookupTable.ReadHeFestoTable(filein)
+    LookupTable.Check(first_dimension_name)
 
 
 def main():
