@@ -51,10 +51,10 @@ def test_read_n_output():
     if os.path.isfile(fileout):
         os.remove(fileout)
     # call processfunction
-    Hefesto = HEFESTO()
-    Hefesto.read_table(filein)
+    LookupTable = LOOKUP_TABLE()
+    LookupTable.read_table(filein)
     field_names = ['Pressure', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity']
-    Hefesto.Process(field_names, fileout)
+    LookupTable.Process(field_names, fileout)
     # assert something 
     assert(os.path.isfile(fileout))
 

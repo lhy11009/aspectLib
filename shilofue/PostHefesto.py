@@ -45,7 +45,7 @@ sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
 
 
-class HEFESTO():
+class LOOKUP_TABLE():
 
     def __init__(self):
         '''
@@ -54,6 +54,7 @@ class HEFESTO():
         self.header = {}
         self.data = []
         self.version = "1.0.0"
+        self.UnitConvert = Utilities.UNITCONVERT()
         self.min1 = 0.0 
         self.delta1 = 0.0 
         self.number1 = 0
@@ -136,9 +137,9 @@ class HEFESTO():
         # output intervals
         self.delta_out1 = self.delta1 * interval1 # output intervals
         self.delta_out2 = self.delta2 * interval2 # output intervals
-        self.OutputHefesto(field_names, o_path)
+        self.OutputPerplex(field_names, o_path)
 
-    def OutputHefesto(self, field_names, o_path):
+    def OutputPerplex(self, field_names, o_path):
         '''
         Process the Hefesto lookup table for aspect
     
@@ -186,7 +187,7 @@ class HEFESTO():
         for field_name in field_names:
             # attach 1 if failed
             try:
-                unit_factors.append(Utilities.UnitConvert(self.header[field_name]['unit'], self.ounit[field_name]))
+                unit_factors.append(self.UnitConvert(self.header[field_name]['unit'], self.ounit[field_name]))
             except KeyError:
                 unit_factors.append(1.0)
         # check the output values
@@ -341,24 +342,24 @@ def ProcessHefesto(filein, fileout, interval1, interval2):
     # input file
     assert(os.path.isfile(filein))
     # call processfunction
-    Hefesto = HEFESTO()
-    Hefesto.read_table(filein)
+    LookupTable = LOOKUP_TABLE()
+    LookupTable.read_table(filein)
     # fields to read in
     field_names = ['Pressure', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity', 'VP', 'VS', 'Enthalpy']
-    Hefesto.Process(field_names, fileout, interval1=interval1, interval2=interval2)
+    LookupTable.Process(field_names, fileout, interval1=interval1, interval2=interval2)
     # assert something 
     assert(os.path.isfile(fileout))
 
 
-def CheckHefesto(filein, first_dimension_name):
+def CheckLookupTable(filein, first_dimension_name):
     '''
     check the data format of a HeFESTo lookup table
     '''
     # input file
     assert(os.path.isfile(filein))
-    Hefesto = HEFESTO()
-    Hefesto.read_table(filein)
-    Hefesto.Check(first_dimension_name)
+    LookupTable = LOOKUP_TABLE()
+    LookupTable.read_table(filein)
+    LookupTable.Check(first_dimension_name)
 
 
 def main():
@@ -394,7 +395,7 @@ def main():
 
     # commands
     if _commend == 'plot':
-        # Plot the Hefesto lookup table
+        # Plot the LookupTable lookup table
         PlotHefesto(arg.inputs)
     
     elif _commend == 'process':
