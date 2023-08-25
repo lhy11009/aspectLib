@@ -52,13 +52,14 @@ def test_read_perplex():
     '''
     test function ReadPerplex 
     assert:
-        contents of perplex table
+        1. contents of perplex table generated
     '''
     # input file
     filein = os.path.join(source_dir, 'perplex_lookup_table.txt')
     assert(os.path.isfile(filein))
     LookupTable = LOOKUP_TABLE()
     LookupTable.ReadPerplex(filein, n_col_header=4)
+    LookupTable.Update()
 
     # output file
     fileout = os.path.join(test_dir, 'perpelx_lookup_table_0.txt')
@@ -68,6 +69,17 @@ def test_read_perplex():
         os.remove(fileout)
     field_names = ['Temperature', 'Pressure', 'Density']
     LookupTable.Process(field_names, fileout, first_dimension="Temperature", second_dimension="Pressure")
+    assert(os.path.isfile(fileout))
+    assert(filecmp.cmp(fileout, fileout_std))
+
+    # output pressure entropy lookup tableq
+    fileout = os.path.join(test_dir, 'perpelx_ps_lookup_table.txt')
+    fileout_std = os.path.join(source_dir, 'perpelx_ps_lookup_table_std.txt')
+    entropies = np.linspace(1000.0, 3000.0, 21)
+    field_names = ['Temperature']
+    output_field_names = ['Entropy', 'Pressure', 'Temperature']
+    LookupTable.InterpolatePressureEntropy(entropies, field_names)
+    LookupTable.OutputPressureEntropyTable(output_field_names, fileout)
     assert(os.path.isfile(fileout))
     assert(filecmp.cmp(fileout, fileout_std))
 

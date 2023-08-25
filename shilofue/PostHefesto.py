@@ -55,9 +55,11 @@ class LOOKUP_TABLE():
         self.data = []
         self.version = "1.0.0"
         self.UnitConvert = Utilities.UNITCONVERT()
+        self.first_dimension_name = None
         self.min1 = 0.0 
         self.delta1 = 0.0 
         self.number1 = 0
+        self.second_dimension_name = None
         self.min2 = 0.0
         self.delta2 = 0.0
         self.number2 = 0
@@ -76,6 +78,14 @@ class LOOKUP_TABLE():
         # unit to output
         self.ounit = {'Temperature': 'K', 'Pressure': 'bar', 'Thermal_expansivity': '1/K',\
         'Isobaric_heat_capacity': 'J/K/kg', 'Density': 'kg/m3', 'VP':'km/s', 'VS':'km/s', 'Enthalpy': 'J/kg'}
+        # pressure entropy table
+        self.Pinterp_rows = None
+        self.PS_data = None
+        self.PS_number_out1 = 0 # number of output
+        self.PS_number_out2 = 0
+        self.PS_delta_out1 = 0.0  # intervals used to outptu
+        self.PS_delta_out2 = 0.0 
+
 
     def ReadHeFestoTable(self, path):
         '''
@@ -118,7 +128,7 @@ class LOOKUP_TABLE():
         self.data = np.loadtxt(path, skiprows=n_col_header) 
         
 
-    def Check(self, first_dimension_name, **kwargs):
+    def Update(self, **kwargs):
         '''
         Checkt the Hefesto lookup table, this only check that the first dimension
         is aligned and no data is missings.
@@ -131,8 +141,25 @@ class LOOKUP_TABLE():
         '''
         # read dimension info
         print("Read information of the 1st dimension")
-        col_first = self.header[first_dimension_name]['col']
+
+        # get first dimension name
+        find_first = False
+        find_second = False
+        for key, value in self.header.items():
+            if value['col'] == 0:
+                self.first_dimension_name = key
+                find_first = True
+            elif value['col'] == 1:
+                self.second_dimension_name = key
+                find_second = True
+        assert(find_first and find_second)
+
+        # update and check the first dimension
+        col_first = self.header[self.first_dimension_name]['col']
         min1, delta1, number1 = ReadFirstDimension(self.data[:, col_first])
+        self.min1 = min1
+        self.delta1 = delta1
+        self.number1 = number1
         print("Dimention 1 has %d entries" % number1)
         print("Checking data")
         is_correct = CheckDataDimension(self.data[:, col_first], min1, delta1, number1)
@@ -140,6 +167,13 @@ class LOOKUP_TABLE():
             print('Everything is all right of this file')
         else:
             raise Exception('Something is wrong')
+        
+        # update the second dimension information
+        col_second = self.header[self.second_dimension_name]['col']
+        min2, delta2, number2 = ReadSecondDimension(self.data[:, col_second])
+        self.min2 = min2
+        self.delta2 = delta2
+        self.number2 = number2
     
     def Process(self, field_names, o_path, **kwargs):
         '''
@@ -170,18 +204,17 @@ class LOOKUP_TABLE():
         # output intervals
         self.delta_out1 = self.delta1 * interval1 # output intervals
         self.delta_out2 = self.delta2 * interval2 # output intervals
-        self.OutputHefesto(field_names, o_path)
+        self.OutputPerplexTable(field_names, o_path)
 
-    def OutputHefesto(self, field_names, o_path):
+    def OutputPerplexTable(self, field_names, o_path):
         '''
         Process the Hefesto lookup table for aspect
     
         Inputs:
-            odata: data to be outputed
             o_path: a output path
+            field_names: field_name to output, the first two are the first and second dimension
             kwargs: options
                 version: version of this file
-            field_names: field_name to output, the first two are the first and second dimension
         Outputs:
             Output of this function is the Perplex file form that could be recognized by aspect
         Returns:
@@ -190,7 +223,7 @@ class LOOKUP_TABLE():
         UnitConvert = Utilities.UNITCONVERT()
         print("Outputing Data: %s" % o_path)
         # columns
-        print("Outputing fields: %s" % field_names)  # debug
+        print("Outputing fields: %s" % field_names)
         print('first dimension: ', self.number_out1, ", second dimension: ", self.number_out2, ", size:", self.number_out1 * self.number_out2)
         Utilities.my_assert(len(field_names) >= 2, ValueError, 'Entry of field_names must have more than 2 components')
         columns = []
@@ -216,6 +249,7 @@ class LOOKUP_TABLE():
                     # ask for value
                     missing_fix_value = float(input('Input value:'))
                     missing_fix_values.append(missing_fix_value)
+
         unit_factors = []
         for field_name in field_names:
             # attach 1 if failed
@@ -232,11 +266,13 @@ class LOOKUP_TABLE():
         ValueError, "Output interval(self.delta_out1) doesn't match the interval in data")
         Utilities.my_assert( (abs(temp2 - self.delta_out2) / self.delta_out2) < tolerance,
         ValueError, "Output interval(self.delta_out2) doesn't match the interval in data")
+
         # mend self.data if needed
         if missing_last > self.data.shape[1]:
             print("Concatenating missing data")
             new_data = np.ones((self.data.shape[0], missing_last - self.data.shape[1])) *  missing_fix_values
             self.data = np.concatenate((self.data, new_data), axis=1)
+
         # output
         with open(o_path, 'w') as fout: 
             fout.write(self.version + '\n')  # version
@@ -259,6 +295,41 @@ class LOOKUP_TABLE():
             # data is indexes, so that only part of the table is output
             np.savetxt(fout, self.data[np.ix_(self.indexes, columns)] * unit_factors, fmt='%-19.8e')
         print("New file generated: %s" % o_path) 
+    
+    def OutputPressureEntropyTable(self, field_names, o_path):
+        '''
+        Converts the dataset and generate a lookup table
+        from (P, S) -> T
+            o_path: a output path
+            field_names: field_name to output, the first two are the first and second dimension
+        '''
+        # initiation
+        UnitConvert = Utilities.UNITCONVERT()
+        Utilities.my_assert(len(field_names) == self.PS_data.shape[1], ValueError,\
+                            'Entry of field_names must equal the size of the pressure-entropy dataset')
+
+        # figure out the factors of unit converting 
+        unit_factors = []
+        for field_name in field_names:
+            # attach 1 if failed
+            try:
+                unit_factors.append(self.UnitConvert(self.header[field_name]['unit'], self.ounit[field_name]))
+            except KeyError:
+                unit_factors.append(1.0)
+
+        # write output
+        with open(o_path, 'w') as fout:
+            fout.write("# This is a data output from.\n")
+            fout.write("# Independent variables are entropy and pressure.\n")
+            fout.write("# POINTS: %s %s\n" % (self.PS_number_out1, self.PS_number_out2))
+            temp = ''
+            for field_name in field_names:
+                temp += '%-20s' % self.oheader[field_name]
+            temp += '\n'
+            fout.write(temp)
+            np.savetxt(fout, self.PS_data * unit_factors, fmt='%-19.8e')
+        print("New file generated: %s" % o_path) 
+
 
     def IndexesByInterval(self, interval1, interval2):
         '''
@@ -274,6 +345,80 @@ class LOOKUP_TABLE():
             for index_1 in indexes_1: 
                 indexes.append(index_1 + self.number1 * index_2)
         return indexes
+
+    def InterpolatePressureEntropyByIndex(self, index_p, entropies, field_names, PS_rows):
+        '''
+        Interpolate the data with a pressure index
+        Inputs:
+            index_p (int): pressure index
+            entropies (list): entropy inputs
+            field_names (list): names of field to interpolate
+            PS_rows (list): range of rows to enter into the PS_data 2-d ndarray
+        '''
+        # initiate
+        assert(self.PS_data is not None) # PS_data is initiated
+        col_entropy = self.header["Entropy"]['col']
+        col_pressure = self.header["Pressure"]['col']
+        pressure = 0.0
+
+        # row index for this pressure
+        if self.first_dimension_name == "Pressure":
+            if self.Pinterp_rows is None:
+                self.Pinterp_rows = np.zeros(self.number2).astype(int)
+            for i in range(self.number2):
+                row = self.number1 * i + index_p 
+                self.Pinterp_rows[i] = row
+            pressure = self.min1 + self.delta1 * index_p
+        elif self.second_dimension_name == "Pressure":
+            if self.Pinterp_rows is None:
+                self.Pinterp_rows = np.zeros(self.number1).astype(int)
+            for i in range(self.number1):
+                row = index_p + self.number2 * i
+                self.Pinterp_rows[i] = row
+            pressure = self.min2 + self.delta2 * index_p
+        else:
+            return ValueError("The column of Pressure is not found.")
+        
+        # pressure and entropy
+        for j in range(len(entropies)):
+            self.PS_data[PS_rows[0] + j, 0] = entropies[j]
+            self.PS_data[PS_rows[0] + j, 1] = pressure
+
+        # extrapolate data 
+        entropy_data = self.data[np.ix_(self.Pinterp_rows), col_entropy]
+        for i in range(len(field_names)) :
+            field_name = field_names[i]
+            col_data = self.header[field_name]['col']
+            field_data = self.data[np.ix_(self.Pinterp_rows), col_data]
+            temp = np.interp(entropies, entropy_data[0], field_data[0])
+            for j in range(len(entropies)):
+                self.PS_data[PS_rows[0]+j, i+2] = temp[j]
+    
+    def InterpolatePressureEntropy(self, entropies, field_names):
+        '''
+        Interpolate the data to pressure entropy field
+        Inputs:
+            entropies (list): entropy inputs
+            field_names (list): names of field to interpolate
+        '''
+        # initiate
+        n_field = len(field_names)
+        n_entropy = len(entropies)
+        if self.first_dimension_name == "Pressure":
+            n_p = self.number1
+        elif self.second_dimension_name == "Pressure":
+            n_p = self.number2
+        else:
+            return ValueError("The column of Pressure is not found.")
+        self.PS_data = np.zeros([n_entropy*n_p, n_field + 2]) 
+
+        # call the function to interpolate data for one pressure value
+        for index_p in range(n_p):
+            PS_rows = [n_entropy * index_p, n_entropy * (index_p + 1)]
+            self.InterpolatePressureEntropyByIndex(index_p, entropies, field_names, PS_rows)
+        self.PS_number_out1 = n_entropy
+        self.PS_number_out2 = n_p
+
 
     def PlotHefesto(self):
         '''
@@ -340,7 +485,6 @@ def CheckDataDimension(nddata, min1, delta1, number1):
                 i += 1
             i += 1
         else:
-            # print(i, nddata[i], value1)  # debug
             # move to the next value
             i1 += 1
             i += 1
@@ -420,7 +564,29 @@ def CheckHefesto(filein, first_dimension_name):
     assert(os.path.isfile(filein))
     LookupTable = LOOKUP_TABLE()
     LookupTable.ReadHeFestoTable(filein)
-    LookupTable.Check(first_dimension_name)
+    LookupTable.Update(first_dimension_name)
+
+
+def ConvertPS_Table(filein, fileout):
+    '''
+    Converts a (P, T) -> S lookup table to a (P, S) -> T lookup table
+    Inputs:
+        filein(str) - path to the input lookup table
+        fileout(str) - path to the output lookup table
+    '''
+    # input file
+    assert(os.path.isfile(filein))
+    LookupTable = LOOKUP_TABLE()
+    LookupTable.ReadPerplex(filein, n_col_header=4)
+    LookupTable.Update()
+
+    # output pressure entropy lookup table
+    entropies = np.linspace(1000.0, 3000.0, 21)
+    field_names = ['Temperature']
+    output_field_names = ['Entropy', 'Pressure', 'Temperature']
+    LookupTable.InterpolatePressureEntropy(entropies, field_names)
+    LookupTable.OutputPressureEntropyTable(output_field_names, fileout)
+    assert(os.path.isfile(fileout))
 
 
 def main():
@@ -466,6 +632,10 @@ def main():
     elif _commend == 'check':
         # Check the Hefesto lookup table
         CheckHefesto(arg.inputs, 'Pressure')
+
+    elif _commend == "convert_ps":
+        # Convert to (P, S) -> T lookup table
+        ConvertPS_Table(arg.inputs, arg.outputs)
 
 # run script
 if __name__ == '__main__':
