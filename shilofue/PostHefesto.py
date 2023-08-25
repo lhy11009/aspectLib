@@ -346,7 +346,7 @@ class LOOKUP_TABLE():
                 indexes.append(index_1 + self.number1 * index_2)
         return indexes
 
-    def InterpolatePressureEntropyByIndex(self, index_p, entropies, field_names, PS_rows):
+    def InterpolatePressureEntropyByIndex(self, index_p, entropies, field_names, PS_rows, **kwargs):
         '''
         Interpolate the data with a pressure index
         Inputs:
@@ -354,12 +354,15 @@ class LOOKUP_TABLE():
             entropies (list): entropy inputs
             field_names (list): names of field to interpolate
             PS_rows (list): range of rows to enter into the PS_data 2-d ndarray
+        kwargs:
+            debug: run debug mode
         '''
         # initiate
         assert(self.PS_data is not None) # PS_data is initiated
         col_entropy = self.header["Entropy"]['col']
         col_pressure = self.header["Pressure"]['col']
         pressure = 0.0
+        debug = kwargs.get("debug", False)
 
         # row index for this pressure
         if self.first_dimension_name == "Pressure":
@@ -373,7 +376,7 @@ class LOOKUP_TABLE():
             if self.Pinterp_rows is None:
                 self.Pinterp_rows = np.zeros(self.number1).astype(int)
             for i in range(self.number1):
-                row = index_p + self.number2 * i
+                row = index_p*self.number1 + i
                 self.Pinterp_rows[i] = row
             pressure = self.min2 + self.delta2 * index_p
         else:
@@ -386,10 +389,23 @@ class LOOKUP_TABLE():
 
         # extrapolate data 
         entropy_data = self.data[np.ix_(self.Pinterp_rows), col_entropy]
+
+        if debug:
+            print("pressure: ")
+            print(pressure)
+            print("self.Pinterp_rows")
+            print(self.Pinterp_rows)
+            print("entropy_data: ")
+            print(entropy_data) # debug
+
+
         for i in range(len(field_names)) :
             field_name = field_names[i]
             col_data = self.header[field_name]['col']
             field_data = self.data[np.ix_(self.Pinterp_rows), col_data]
+            if debug:
+                print("field_data: ")
+                print(field_data)
             temp = np.interp(entropies, entropy_data[0], field_data[0])
             for j in range(len(entropies)):
                 self.PS_data[PS_rows[0]+j, i+2] = temp[j]
@@ -581,7 +597,7 @@ def ConvertPS_Table(filein, fileout):
     LookupTable.Update()
 
     # output pressure entropy lookup table
-    entropies = np.linspace(1000.0, 3000.0, 21)
+    entropies = np.linspace(550.0, 3300.0, 56)
     field_names = ['Temperature']
     output_field_names = ['Entropy', 'Pressure', 'Temperature']
     LookupTable.InterpolatePressureEntropy(entropies, field_names)
