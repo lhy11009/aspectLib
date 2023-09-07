@@ -598,8 +598,8 @@ def ConvertPS_Table(filein, fileout):
 
     # output pressure entropy lookup table
     entropies = np.linspace(550.0, 3300.0, 56)
-    field_names = ['Temperature']
-    output_field_names = ['Entropy', 'Pressure', 'Temperature']
+    field_names = ['Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity', 'VP', 'VS', 'Enthalpy']
+    output_field_names = ['Entropy', 'Pressure', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity', 'VP', 'VS', 'Enthalpy']
     LookupTable.InterpolatePressureEntropy(entropies, field_names)
     LookupTable.OutputPressureEntropyTable(output_field_names, fileout)
     assert(os.path.isfile(fileout))
