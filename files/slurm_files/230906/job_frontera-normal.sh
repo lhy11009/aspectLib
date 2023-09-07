@@ -8,6 +8,7 @@
 #SBATCH -t 48:00:00
 #SBATCH --partition=normal
 #SBATCH --switches=1
+#SBATCH --mail-user=hylli@ucdavis.edu
 #SBATCH -A EAR23021
 
 >&2 echo "list of modules:"

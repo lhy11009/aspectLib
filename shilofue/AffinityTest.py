@@ -123,7 +123,7 @@ it only takes effect if the input is positiveh",\
             assert(base_file.split('.')[-1] in ["json", "prm"])
         slurm_base_path = Utilities.var_subs(self.values[2])
         server = self.values[3]
-        assert(server in ['peloton-rome', 'peloton-high2', 'stampede2'])
+        assert(server in ['peloton-rome', 'peloton-high2', 'stampede2', "frontera"])
         refinement_levels = self.values[5]  # assert refinement levels are integers
         for refinement_level in refinement_levels:
             assert(type(refinement_level) == int) 

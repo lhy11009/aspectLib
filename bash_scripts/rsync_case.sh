@@ -159,6 +159,24 @@ main(){
         local stampede2_addr=$(eval "awk '{ if(\$1 == \"stampede2\") print \$2;}' $SERVER_LIST")
         echo "stampede2_addr: ${stampede2_addr}"  # debug
         rsync_server "${case_dir}" "${local_dir}" "${stampede2_dir}" "${stampede2_addr}"
+    elif [[ "$1" = "frontera" ]]; then
+        ##
+        # tranfer data to & from frontera
+        # Innputs:
+        # Terninal Outputs
+        ##
+        shift;
+        project="$1" 
+        shift;
+        case_dir="$1"; shift
+        parse_options $@
+        local query="${project}_DIR"
+        local_dir=${!query}
+        frontera_dir=`awk '{if ($2 ~ /'"${project}_DIR"'/){split($2, array, "="); gsub("\"", "", array[2]) ;print array[2]}}' "${ASPECT_LAB_DIR}/env/enable_frontera.sh"`
+        echo "frontera_dir: ${frontera_dir}"  # debug
+        local frontera_addr=$(eval "awk '{ if(\$1 == \"frontera\") print \$2;}' $SERVER_LIST")
+        echo "frontera_addr: ${frontera_addr}"  # debug
+        rsync_server "${case_dir}" "${local_dir}" "${frontera_dir}" "${frontera_addr}"
     elif [[ "$1" = "ucd" && "$2" = "TwoDSubduction" ]]; then
         # TODO
         # rsync workplace
