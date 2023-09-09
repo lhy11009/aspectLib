@@ -1,0 +1,67 @@
+{
+  "base directory": "${ASPECT_LAB_DIR}/files/ThDSubduction/06032023",
+  "depth average file": "${ASPECT_LAB_DIR}/files/ThDSubduction/reference/depth_average_1573.txt",
+  "output directory": "${ASPECT_LAB_DIR}/.test",
+  "name": "test_fix_reset_corner",
+  "type": "2d_consistent",
+  "use world builder": 1,
+  "branch": "master_TwoD_knl",
+  "post process": {
+    "visualization software": "paraview"
+  },
+  "world builder": {
+    "use new ridge implementation": 1
+  },
+  "include fast first step": 1,
+  "geometry setup": {
+    "box width": 4000000.0,
+    "box length": 5000000.0,
+    "box depth": 2890000.0,
+    "box length before adjusting": 6783000.0,
+    "adjust box trailing length": 1,
+    "repitition slice method": "nearest",
+    "fix boudnary temperature auto": 1
+  },
+  "plate setup": {
+    "sp width": 1000000.0,
+    "sp length": 3000000.0,
+    "trailing length": 600000.0,
+    "reset trailing morb": 1,
+    "sp depth refining": 300000.0,
+    "ov age": 40000000.0,
+    "sp age": 80000000.0,
+    "assign side plate": 1,
+    "ov transit age": 20000000.0,
+    "ov transit length": 700000.0,
+    "sp ridge x": 600000.0,
+    "prescribe mantle sp start": 0,
+    "ov side dist": 600000.0,
+    "prescribe mantle ov end": 1
+  },
+  "mantle rheology": {
+    "scheme": "HK03_wet_mod_twod",
+    "flow law": "composite"
+  },
+  "shear zone": {
+    "thickness": 15000.0,
+    "slab core viscosity": 1e+23
+  },
+  "slab setup": {
+    "length": 530000.0,
+    "dip": 70.0
+  },
+  "refinement": {
+    "global refinement": 3,
+    "adaptive refinement": 3,
+    "coarsen side": 1,
+    "coarsen side interval": 100000.0,
+    "coarsen side level": 1
+  },
+  "rheology": {
+    "reset trailing ov viscosity": 0
+  },
+  "setup method": "2d_consistent",
+  "stokes solver": {
+    "type": "block GMG with iterated defect correction Stokes"
+  }
+}

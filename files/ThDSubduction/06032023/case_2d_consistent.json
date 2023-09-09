@@ -1,0 +1,83 @@
+{
+  "_comments": "This case is modified from the Schellart 2007 paper, but include newtonian T-dependent rheology",
+  "base directory": "${APSECT_LAB_DIR}/files/ThDSubduction/05222023",
+  "output directory": "${ASPECT_LAB_DIR}/.test",
+  "depth average file": "${ASPECT_LAB_DIR}/files/ThDSubduction/reference/depth_average_1573.txt",
+  "name": "foo",
+  "type": "2d_consistent",
+  "use world builder": 1,
+  "branch": "master_TwoD_knl",
+  "post process": {
+    "visualization software" : "paraview"
+  },
+  "world builder": {
+    "use new ridge implementation": 1
+  },
+  "include fast first step": 1,
+  "geometry setup": {
+    "box width": 4000000.0,
+    "box length": 5000000.0,
+    "box depth": 2890000.0,
+    "box length before adjusting": 6783000.0,
+    "adjust box trailing length": 1,
+    "repitition slice method": "nearest",
+    "fix boudnary temperature auto": 1
+  },
+  "plate setup": {
+    "sp width": 1000000.0,
+    "sp length": 3000000.0,
+    "trailing length": 275000.0,
+    "reset trailing morb": 1,
+    "sp depth refining": 300000.0,
+    "ov age": 40000000.0,
+    "sp age": 80000000.0,
+    "assign side plate": 1,
+    "ov transit age": 20e6,
+    "ov transit length": 700e3,
+    "sp ridge x": 600e3,
+    "prescribe mantle sp start": 0,
+    "ov side dist": 600e3,
+    "prescribe mantle ov end": 1
+  },
+  "mantle rheology": {
+    "scheme": "HK03_wet_mod_twod",
+    "flow law": "composite"
+  },
+  "shear zone": {
+    "thickness": 15000.0
+  },
+  "slab setup": {
+    "length": 530000.0,
+    "dip": 70.0
+  },
+  "refinement": {
+    "global refinement": 4
+  },
+  "rheology": {
+    "reset trailing ov viscosity": 0
+  },
+  "setup method": "2d_consistent",
+  "stokes solver": {
+    "type": "block GMG with iterated defect correction Stokes"
+  },
+  "slurm": [
+    {
+      "slurm file": "./files/slurm_files/221018/job_p-billen.sh",
+      "build directory": "master_TwoD_p-billen",
+      "tasks per node": 128,
+      "cpus": 512
+    },
+    {
+      "slurm file": "./files/slurm_files/221018/job_skx-normal.sh",
+      "build directory": "master_TwoD",
+      "tasks per node": 48,
+      "cpus": 960
+    },
+    {
+      "slurm file": "./files/slurm_files/221018/job_normal.sh",
+      "build directory": "master_TwoD_knl",
+      "tasks per node": 68,
+      "cpus": 1360
+    }
+  ]
+}
