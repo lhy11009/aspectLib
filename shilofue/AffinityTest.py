@@ -670,6 +670,11 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
     # plot the speedup
     fig, axs = plt.subplots(1, len(resolution_options), tight_layout=True,\
                             figsize=(5*len(resolution_options), 5))
+
+    if len(resolution_options) == 1:
+        # fix the issue where only 1 resolution presents
+        axs = [axs]
+
     for i in range(len(resolution_options)):
         resolution = resolution_options[i]
         label_speedup = 'Speed Up(resolution=%d)' % resolution
@@ -700,6 +705,11 @@ def analyze_affinity_test_results(test_results_dir, output_dir, **kwargs):
     # plot the parallel efficiency
     fig, axs = plt.subplots(1, len(resolution_options), tight_layout=True,\
                             figsize=(5*len(resolution_options), 5))
+
+    if len(resolution_options) == 1:
+        # fix the issue where only 1 resolution presents
+        axs = [axs]
+
     for i in range(len(resolution_options)):
         resolution = resolution_options[i]
         label_parallel_efficiency = 'Parallel Efficiency(resolution=%d)' % resolution
