@@ -1,16 +1,11 @@
-export ASPECT_PROJECT_DIR="$HOME/ASPECT_PROJECT"
+##### path to the script folder #####
 export ASPECT_LAB_DIR="$HOME/ASPECT_PROJECT/aspectLib"
+##### directories #####
 export TwoDSubduction_DIR="$HOME/ASPECT_PROJECT/TwoDSubduction"
-export TwoDSubduction_ucd_DIR="$HOME/ASPECT_PROJECT/TwoDSubduction"
-alias TwoDSubduction_update="${ASPECT_LAB_DIR}/aspect_lib.sh TwoDSubduction post_process"
-alias TwoDSubduction_build="${ASPECT_LAB_DIR}/bash_scripts/build_aspect.sh all TwoDSubduction release"
-alias plt_connect='ssh -X lochy@peloton.cse.ucdavis.edu'
-alias plt_update='process.sh update_from_server .output/job.log lochy@peloton.cse.ucdavis.edu'
-alias plt_clean='process.sh clean_from_server .output/job.log lochy@peloton.cse.ucdavis.edu'
-alias plt_download='process.sh update_outputs_from_server .output/job.log lochy@peloton.cse.ucdavis.edu'
-alias plt_submit='aspect_lib.sh TwoDSubduction create_submit lochy@peloton.cse.ucdavis.edu .output/job.log'
-alias plt_submit_group='aspect_lib.sh TwoDSubduction create_submit_group lochy@peloton.cse.ucdavis.edu .output/job.log'
-export LearnAspect_DIR="/home/lochy/ASPECT_PROJECT/LearnAspect"
-alias plt_submit1='aspect_lib.sh LearnAspect create_submit lochy@peloton.cse.ucdavis.edu .output/job.log'
-alias plt_submit_group1='aspect_lib.sh LearnAspect create_submit_group lochy@peloton.cse.ucdavis.edu .output/job.log'
-alias project_update1="python -m shilofue.LearnAspect update -o /home/lochy/ASPECT_PROJECT/LearnAspect"
+export ThDSubduction_DIR="/home/lochy/ASPECT_PROJECT/ThDSubduction_DIR"
+export EntropySub_DIR="/home/lochy/ASPECT_PROJECT/EntropySub_DIR"
+##### docker commands #####
+# run the visit docker
+alias Lib_TwoDSubduction0_run_docker="xhost + && docker run --user root --rm -ti --net=host --ipc=host -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix --env="QT_X11_NO_MITSHM=1" -it visitdev:3.1.3-ubuntu16-work"
+# run the docker tester
+alias Lib_EntropySub_aspect_run_docker="docker run -v $ASPECT_SOURCE_DIR:/home/dealii/aspect -v $ASPECT_LAB_DIR/bash_scripts/build_aspect_docker.sh:/opt/build_aspect_docker.sh -v $WORLD_BUILDER_SOURCE_DIR:/home/worldbuilder --name=aspect-tester --rm -it geodynamics/aspect-tester:focal-dealii-9.4-v3"
