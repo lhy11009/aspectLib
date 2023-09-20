@@ -447,12 +447,17 @@ class VTKP(VtkPp.VTKP):
         query_poly_data = VtkPp.InterpolateGrid(self.i_poly_data, query_grid, quiet=True)
         query_vs = vtk_to_numpy(query_poly_data.GetPointData().GetArray('velocity'))
         if project_velocity:
-            cos_sp = x_sp_query / (x_sp_query**2.0 + y_sp_query**2.0)**0.5
-            sin_sp = y_sp_query / (x_sp_query**2.0 + y_sp_query**2.0)**0.5
-            self.vsp = query_vs[0, 0] * (-sin_sp) + query_vs[0, 1] * cos_sp
-            cos_ov = x_ov_query / (x_ov_query**2.0 + y_ov_query**2.0)**0.5
-            sin_ov = y_ov_query / (x_ov_query**2.0 + y_ov_query**2.0)**0.5
-            self.vov = query_vs[1, 0] * (-sin_ov) + query_vs[1, 1] * cos_ov
+            # project velocity to theta direction in a spherical geometry
+            if self.geometry == "chunk":
+                cos_sp = x_sp_query / (x_sp_query**2.0 + y_sp_query**2.0)**0.5
+                sin_sp = y_sp_query / (x_sp_query**2.0 + y_sp_query**2.0)**0.5
+                self.vsp = query_vs[0, 0] * (-sin_sp) + query_vs[0, 1] * cos_sp
+                cos_ov = x_ov_query / (x_ov_query**2.0 + y_ov_query**2.0)**0.5
+                sin_ov = y_ov_query / (x_ov_query**2.0 + y_ov_query**2.0)**0.5
+                self.vov = query_vs[1, 0] * (-sin_ov) + query_vs[1, 1] * cos_ov
+            elif self.geometry == "box":
+                self.vsp = query_vs[0, 0]
+                self.vov = query_vs[1, 0]
         else:
             self.vsp = query_vs[0, :]
             self.vov = query_vs[1, :]
@@ -1124,7 +1129,10 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     _time, step = Visit_Options.get_time_and_step(vtu_step)
     geometry = Visit_Options.options['GEOMETRY']
     Ro =  Visit_Options.options['OUTER_RADIUS']
-    Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
+    if geometry == "chunk":
+        Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
+    else:
+        Xmax = Visit_Options.options['XMAX']
     VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
     VtkP.ReadFile(filein)
     field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity']
