@@ -2074,6 +2074,7 @@ class SLABPLOT(LINEARPLOT):
         kwargs(dict):
             defined but not used
         '''
+        save_pdf = kwargs.get("save_pdf", False) 
         # initialization
         findmdd = False
         # path
@@ -2189,8 +2190,12 @@ class SLABPLOT(LINEARPLOT):
             ax.legend()
         fig.tight_layout()
         # save figure
-        o_path = os.path.join(morph_dir, 'trench.png')
-        plt.savefig(o_path)
+        if save_pdf:
+            o_path = os.path.join(morph_dir, 'trench.pdf')
+            plt.savefig(o_path, format="pdf", bbox_inches="tight")
+        else:
+            o_path = os.path.join(morph_dir, 'trench.png')
+            plt.savefig(o_path)
         print("%s: figure %s generated" % (Utilities.func_name(), o_path))
 
     def PlotTWedge(self, case_dir, **kwargs):
@@ -3308,6 +3313,9 @@ def main():
     parser.add_argument('-t', '--time', type=float,
                         default=0.0,
                         help='Time')
+    parser.add_argument('-sp', '--save_pdf', type=int,
+                        default=0,
+                        help='save file to pdf format')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -3345,7 +3353,7 @@ def main():
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
-        SlabPlot.PlotMorph(arg.inputs)
+        SlabPlot.PlotMorph(arg.inputs, save_pdf=arg.save_pdf)
     elif _commend == 'plot_wedge_T':
         PlotWedgeTCase(arg.inputs, time_interval=arg.time_interval)
     elif _commend == 'combine_slab_morph':
