@@ -36,6 +36,7 @@ if geometry == 'chunk':
     global_trench_view = (-200000, 200000, 6.1e+06, 6.372e+06)
     global_upper_mantle_view = (-1.0e+06, 1.0e+06, 5.4e+06, 6.4e+06)
     global_shear_zone_view = (-67000, 136000, 6.2e+06, 6.4e+06) # note this only applies to the first step
+    global_full_mantle=(-6.71475e+06, 4.40508e+06, -2.89728e+06, 8.0711e+06)
 elif geometry == 'box':
     global_trench_view = (3.98859e+06, 4.21503e+06, 2.77067e+06, 2.99403e+06)  # upper 100 km centered on trench
     global_upper_mantle_view = GLOBAL_UPPER_MANTLE_VIEW_BOX
