@@ -26,7 +26,8 @@
   },
   "include peierls creep": 1,
   "peierls creep":{
-     "two stage intial time" : 2e6
+     "two stage intial time" : 2e6,
+     "flow law": "approximation"
   },
   "additional files": [
     "job_rome.sh",

@@ -628,7 +628,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             Operator_Sp.SetRheology(disl=rheology_experiment_dislocation, brittle=brittle_yielding)
             fig_path = os.path.join(ASPECT_LAB_DIR, "results", "shear_zone_strength.png")
             # PlotShearZoneStrengh(Operator_Sp, fig_path) # deprecated
-            self.output_imgs.append(fig_path)
+            # self.output_imgs.append(fig_path)
 
         # Include peierls rheology
         if if_peierls:

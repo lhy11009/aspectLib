@@ -25,6 +25,9 @@
     "box width before adjusting": 6783000.0
   },
   "include peierls creep": 1,
+  "peierls creep": {
+	  "flow law": "approximation"
+  },
   "additional files": [
     "job_rome.sh",
     "job_high2.sh",
