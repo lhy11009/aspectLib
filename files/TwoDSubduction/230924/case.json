@@ -1,14 +1,14 @@
 {
-  "base directory": "${ASPECT_LAB_DIR}/files/TwoDSubduction/230924",
-  "output directory": "${ASPECT_LAB_DIR}/.test/TwoDSubduction_cases",
-  "name": "test_reference_case",
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220708",
+  "version": 1.0,
+  "branch": "master_TwoD_p-billen",
+  "output directory": "",
+  "name": "eba_cdpt_SA80.0_OA40.0",
   "depth average file": "${ASPECT_LAB_DIR}/files/TwoDSubduction/depth_average.txt",
   "include fast first step": 1,
-  "branch": "master_TwoD",
-  "version": 1.0,
-  "test initial steps": {
+  "test initial steps":{
     "number of outputs": 3,
-    "interval of outputs": 10000.0
+    "interval of outputs": 1e4
   },
   "geometry": "chunk",
   "potential temperature": 1573.0,
@@ -33,6 +33,7 @@
       }
     }
   },
+  "Include peierls creep": 0,
   "coupling the eclogite phase to shear zone viscosity": 0,
   "slurm": [
     {
@@ -59,10 +60,5 @@
       "tasks per node": 68,
       "cpus": 48
     }
-  ],
-  "include peierls creep": 1,
-  "peierls creep": {
-    "scheme": "MK10"
-  },
-  "refinement level": 10
+  ]
 }

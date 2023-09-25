@@ -4,7 +4,7 @@ set Start time = 0
 set End time = 60e6
 set Output directory = output
 set Timing output frequency = 10
-set Additional shared libraries = $ASPECT_SOURCE_DIR/build_master_TwoD/prescribe_field/libprescribed_temperature.so, $ASPECT_SOURCE_DIR/build_master_TwoD/visco_plastic_TwoD/libvisco_plastic_TwoD.so, $ASPECT_SOURCE_DIR/build_master_TwoD/isosurfaces_TwoD1/libisosurfaces_TwoD1.so
+set Additional shared libraries = $ASPECT_SOURCE_DIR/build_master_TwoD_p-billen/prescribe_field/libprescribed_temperature.so, $ASPECT_SOURCE_DIR/build_master_TwoD_p-billen/visco_plastic_TwoD/libvisco_plastic_TwoD.so, $ASPECT_SOURCE_DIR/build_master_TwoD_p-billen/isosurfaces_TwoD1/libisosurfaces_TwoD1.so
 set Pressure normalization = surface
 set Surface pressure = 0
 set Adiabatic surface temperature = 1573.0
@@ -65,9 +65,9 @@ subsection Geometry model
     subsection Chunk
         set Chunk inner radius = 3.481e6
         set Chunk outer radius = 6.371e6
-        set Chunk maximum longitude = 1.4002e+02
+        set Chunk maximum longitude = 6.1001e+01
         set Chunk minimum longitude = 0.0
-        set Longitude repetitions = 5
+        set Longitude repetitions = 2
     end
 end
 
@@ -84,7 +84,7 @@ subsection Mesh refinement
     set Skip solvers on initial refinement = true
     subsection IsosurfacesTwoD1
         set Isosurfaces = max, max, spcrust: 0.5 | 1.0; max-1, max, spharz: 0.5 | 1.0;  max-1, max, opcrust: 0.5 | 1.0; max-2, max, opharz: 0.5 | 1.0; max-1, max, Temperature: 270.0 | 1173.0
-        set Depth for coarsening the lower mantle = 750e3
+	    set Depth for coarsening the lower mantle = 750e3
         set Level for coarsening the lower mantle = 3
     end
     subsection Minimum refinement function
@@ -119,7 +119,7 @@ end
 
 
 subsection Boundary temperature model
-    set Fixed temperature boundary indicators = bottom, top
+    set Fixed temperature boundary indicators = 0, 1
     set List of model names = spherical constant
     subsection Spherical constant
         set Inner temperature = 3500
@@ -187,33 +187,31 @@ subsection Material model
         set Activation volumes for dislocation creep = background:1.3400e-05|1.3400e-05|1.3400e-05|1.3400e-05|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00, spcrust:0.0000e+00|1.3400e-05|0.0000e+00|0.0000e+00, spharz:1.3400e-05|1.3400e-05|1.3400e-05|1.3400e-05|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00, opcrust:1.3400e-05, opharz:1.3400e-05
         set Angles of internal friction = 25.0
         set Cohesions = 50.e6
-        set Include Peierls creep = true
+        # Parameters for Mei Low Temperature Plasticity
+	    set Include Peierls creep = true
         set Peierls creep flow law = exact
         set Peierls fitting parameters = 0.17
         set Peierls glide parameters p = 0.5
         set Peierls glide parameters q = 1.0
         set Stress exponents for Peierls creep = 2.0
-        set Peierls stresses = 5.9000e+09
-        set Prefactors for Peierls creep = 1.4000e-19
-        set Activation energies for Peierls creep = 3.2000e+05
+        set Peierls stresses = 5.9e9
+        set Prefactors for Peierls creep = background: 1.4e-19|1.4e-19|1.4e-19|1.4e-19|1e-31|1e-31|1e-31|1e-31, spcrust: 1.4e-19|1.4e-19|1e-31|1e-31, spharz: 1.4e-19|1.4e-19|1.4e-19|1.4e-19|1e-31|1e-31|1e-31|1e-31, opcrust: 1.4e-19, opharz: 1.4e-19
+        set Activation energies for Peierls creep = 3.20e+05
         set Activation volumes for Peierls creep = 0.0
-        set Peierls shear modulus = 7.74e10
-        set Peierls shear modulus derivative = 0.0
-        set Peierls strain rate residual tolerance = 1.0000e-22
-        set Maximum Peierls strain rate iterations = 40
-        set Cutoff pressures for Peierls creep = background: 2.5e+10|2.5e+10|2.5e+10|2.5e+10|0.0|0.0|0.0|0.0, spcrust: 0.0|2.5e+10|0.0|0.0, spharz: 2.5e+10|2.5e+10|2.5e+10|2.5e+10|0.0|0.0|0.0|0.0, opcrust: 2.5e+10, opharz: 2.5e+10
+        set Peierls shear modulus = 7.74e10  # these two parameters are from  From Kawazoe et al. PEPI 2009 and parameters from Liu et al., GRL 2005 
+        set Peierls shear modulus derivative = 1.61
         set Reset viscosity = true
         subsection Reset viscosity function
             set Coordinate system = spherical
             set Variable names = r, phi
-            set Function constants = Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=2.4439e+00, CV=1e20
+            set Function constants = Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=1.0647e+00, CV=1e20
             set Function expression = (((r > Ro - Depth) && ((Ro*phi < Width) || (Ro*(PHIM-phi) < Width)))? CV: -1.0)
         end
         set Reaction mor = true
         subsection Reaction mor function
             set Coordinate system = spherical
             set Variable names = r, phi
-            set Function constants = Width=2.75e5, Ro=6.371e6, PHIM=2.4439e+00, DCS=7.500e+03, DHS=3.520e+04
+            set Function constants = Width=2.75e5, Ro=6.371e6, PHIM=1.0647e+00, DCS=7.500e+03, DHS=3.520e+04
             set Function expression = ((r > Ro - DCS) && (Ro*phi < Width)) ? 0:\
                                         ((r < Ro - DCS) && (r > Ro - DHS) && (Ro*phi < Width)) ? 1:\
                                         ((r > Ro - DCS) && (Ro*(PHIM - phi) < Width)) ? 2:\
@@ -229,16 +227,17 @@ subsection Material model
             set Max pressure width for eclogite transition = 1.5e9
         end
         subsection Eclogite decoupled viscosity
-            set Decoupled depth = 100000.0
+            set Decoupled depth = 100e3
             set Decoupled depth width = 10e3
         end
-        subsection Lookup table
-            set Data directory = ./
-            set Material file names = test_table_pyrolite, test_table_basalt, test_table_hartzburgite
-            set Material lookup indexes = 0, 1, 2, 1, 2
-            set Bilinear interpolation = true
-            set Latent heat = false
-        end
+        set Use lookup table = false
+	    subsection Lookup table
+	        set Data directory                                = ./
+	        set Material file names                           = test_table_pyrolite, test_table_basalt, test_table_hartzburgite 
+	        set Material lookup indexes = 0, 1, 2, 1, 2 
+	        set Bilinear interpolation                        = true
+	        set Latent heat                                   = false
+	    end
     end
 end
 
@@ -247,19 +246,18 @@ subsection Gravity model
     set Model name = ascii data
 end
 
-
 subsection Prescribed temperatures
     subsection Indicator function
         set Coordinate system = spherical
         set Variable names = r, phi
-        set Function constants = Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=2.4439e+00
+        set Function constants = Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=1.0647e+00
         set Function expression = (((r>Ro-Depth)&&((r*phi<Width)||(r*(PHIM-phi)<Width))) ? 1:0)
     end
     subsection Temperature function
         set Coordinate system = spherical
         set Variable names = r, phi
-        set Function constants = Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=2.4439e+00,\
-                             AGEOP=1.2614e+15, TS=2.730e+02, TM=1.5730e+03, K=1.000e-06, VSUB=1.5855e-09, PHILIM=1e-6
+        set Function constants = Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=1.0647e+00,\
+                             AGEOP=1.2614e+15, TS=2.730e+02, TM=1.6730e+03, K=1.000e-06, VSUB=1.5855e-09, PHILIM=1e-6
         set Function expression = ((r*(PHIM-phi)<Width) ? TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt(K*AGEOP)))):\
 	(phi > PHILIM)? (TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt((K*Ro*phi)/VSUB))))): TM)
     end
@@ -284,4 +282,3 @@ end
 subsection Checkpointing
     set Steps between checkpoint = 50
 end
-
