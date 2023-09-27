@@ -1,14 +1,14 @@
 {
-  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220708",
-  "version": 1.0,
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/220924",
   "branch": "master_TwoD_p-billen",
   "output directory": "",
   "name": "eba_cdpt_SA80.0_OA40.0",
   "depth average file": "${ASPECT_LAB_DIR}/files/TwoDSubduction/depth_average.txt",
   "include fast first step": 1,
-  "test initial steps":{
+  "version": 1.0,
+  "test initial steps": {
     "number of outputs": 3,
-    "interval of outputs": 1e4
+    "interval of outputs": 10000.0
   },
   "geometry": "chunk",
   "potential temperature": 1573.0,
@@ -33,32 +33,36 @@
       }
     }
   },
-  "Include peierls creep": 0,
   "coupling the eclogite phase to shear zone viscosity": 0,
   "slurm": [
     {
-      "slurm file": "./files/slurm_files/221010/job_p-billen.sh",
+      "slurm file": "./files/slurm_files/230924/job_p-billen.sh",
       "build directory": "master_TwoD_p-billen",
-      "tasks per node": 64,
-      "cpus": 64
+      "tasks per node": 32,
+      "cpus": 32
     },
     {
-      "slurm file": "./files/slurm_files/221010/job_high2.sh",
+      "slurm file": "./files/slurm_files/230924/job_high2.sh",
       "build directory": "master_TwoD",
       "tasks per node": 32,
       "cpus": 64
     },
     {
-      "slurm file": "./files/slurm_files/221010/job_skx-normal.sh",
+      "slurm file": "./files/slurm_files/230924/job_skx-normal.sh",
       "build directory": "master_TwoD",
       "tasks per node": 48,
       "cpus": 48
     },
     {
-      "slurm file": "./files/slurm_files/221010/job_normal.sh",
+      "slurm file": "./files/slurm_files/230924/job_normal.sh",
       "build directory": "master_TwoD_knl",
       "tasks per node": 68,
-      "cpus": 48
+      "cpus": 68
     }
-  ]
+  ],
+  "include peierls creep": 1,
+  "peierls creep": {
+    "scheme": "MK10"
+  },
+  "refinement level": 10
 }

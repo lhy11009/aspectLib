@@ -68,6 +68,15 @@ class LOOKUP_TABLE():
         self.number_out2 = 0
         self.delta_out1 = 0.0  # intervals used to outptu
         self.delta_out2 = 0.0 
+        self.fort_56_header = { "Pressure": {"col": 0, "unit": "GPa"}, "Depth": {"col": 1, "unit": "km"},\
+                               "Temperature": {"col": 2, "unit": "K"}, "Density": {"col": 3, "unit": "g/cm^3"},\
+                                "Bulk sound Velocity": {"col": 4, "unit": "km/s"}, "Shear wave velocity": {"col": 5, "unit": "km/s"},\
+                                "Longitudinal wave velocity": {"col": 6, "unit": 'km/s'}, "VS modified by attenuation": {"col": 7, "unit": 'km/s'},\
+                                "VP modified by attenuation": {"col": 8, "unit": 'km/s'}, "Enthalpy":{"col": 9, "unit": 'kJ/g'},\
+                                "Entropy": {"col": 10, "unit": "J/g/K"}, "thermal expansivity": {"col": 11, "unit": "10-5 K-1"},\
+                                "isobaric heat capacity": {"col": 12, "unit": "J/g/K)"}, "isothermal bulk modulus": {"col": 13, "unit": "GPa"},\
+                                "Shear attenuation": {"col": 14, "unit": "1"}, "Longitudinal attenuation":{"col": 15, "unit": "1"},\
+                                "Quenched density": {"col": 16, "unit": "g/cm^3"}, "most abundant phase": {"col": 17, "unit": None}}
         self.oheader = { 'Temperature': 'T(K)',  'Pressure': 'P(bar)' ,  'Density': 'rho,kg/m3',\
         'Thermal_expansivity': 'alpha,1/K', 'Isobaric_heat_capacity': 'cp,J/K/kg',\
         'VP': 'vp,km/s', 'VS': 'vs,km/s', 'Enthalpy': 'h,J/kg', "Entropy": 's,J/K/kg'}
@@ -126,6 +135,26 @@ class LOOKUP_TABLE():
         
         # read data
         self.data = np.loadtxt(path, skiprows=n_col_header) 
+
+    def ReadRawFort56(self, _path):
+        '''
+        Read a raw fort.56 file
+        Inputs:
+            _path: _path to the input fort.56
+        '''
+        assert(os.path.isfile(_path))  # assert file exists
+        self.header = self.fort_56_header
+        self.data = np.genfromtxt(_path)
+    
+    def export_fort56_vss(self):
+        '''
+        export the vss data from the fort.56 file
+        '''
+        col_depth = self.header["Depth"]["col"]
+        col_vs = self.header["Shear wave velocity"]["col"]
+        depths = self.data[:, col_depth]
+        Vss = self.data[:, col_vs]
+        return depths, Vss
         
 
     def Update(self, **kwargs):
@@ -605,6 +634,56 @@ def ConvertPS_Table(filein, fileout):
     assert(os.path.isfile(fileout))
 
 
+def PlotBao22_sup_fig1d(ax):
+    '''
+    Plot data from supplimentary file in Bao 2022, figure 1d
+    Inputs:
+        ax - a matplotlib axis
+    '''
+    depths = np.array([268.2926829268293, 291.5989159891599, 298.1029810298103, 308.9430894308943, 322.49322493224935, 337.1273712737127,\
+                        340.10840108401084, 341.19241192411926, 355.55555555555554, 371.81571815718155, 395.66395663956644, 402.9810298102981,\
+                            406.5040650406504, 409.7560975609756, 410.840108401084, 415.17615176151764, 421.1382113821138, 430.08130081300817,\
+                                449.32249322493226, 460.70460704607046, 484.2818428184282, 488.8888888888889, 500.8130081300813, 527.9132791327913,\
+                                    535.7723577235772, 542.0054200542006, 556.0975609756097, 599.4579945799458])
+    vss = np.array([4.540342298288504, 4.5599022004889935, 4.564792176039116, 4.5721271393643, 4.586797066014666, 4.599022004889972,\
+                     4.603911980440094, 4.635696821515889, 4.645476772616133, 4.6601466992665, 4.6797066014669895, 4.68215158924205,\
+                        4.83374083129584, 5.002444987775059, 5.061124694376526, 5.066014669926648, 5.073349633251831, 5.085574572127136,\
+                            5.107579462102687, 5.119804400977992, 5.134474327628359, 5.1369193154034205, 5.144254278728604, 5.163814180929093,\
+                            5.166259168704154, 5.20048899755501, 5.293398533007332, 5.315403422982883])
+    ax.plot(depths, vss, "b--", label="Bao 22 sup fig1d")
+    ax.set_title("Compare Vs from HeFesto (S = 2.5731454607326154)")
+    ax.set_xlabel("Depth (km)")
+    ax.set_ylabel("Vs (m/s)")
+
+
+def CompareHeFestoVs(_path, **kwargs):
+    '''
+    Compare HeFesto outputs to standard results in paper
+    kwargs:
+        o_dir: output directory
+    '''
+    o_dir = kwargs.get("o_dir", RESULT_DIR)
+    fig, ax = plt.subplots()
+    # plot results from 22 paper
+    PlotBao22_sup_fig1d(ax)
+    # 
+    LookupTable=LOOKUP_TABLE()
+    LookupTable.ReadRawFort56(_path)
+    depths, VSs = LookupTable.export_fort56_vss()
+    ax.plot(depths, VSs, "r", label="Hefesto Outputs")
+    # plot settings
+    ax.grid()
+    ax.set_xlim([250.0, 600.0])
+    ax.legend()
+    # save figures
+    fig_path = os.path.join(o_dir, "HeFesto_compare.png")
+    if os.path.isfile(fig_path):
+        # remove old files
+        os.remove(fig_path)
+    fig.savefig(fig_path)
+    print("Plot figure %s" % fig_path)
+
+
 def main():
     '''
     main function of this module
@@ -652,6 +731,11 @@ def main():
     elif _commend == "convert_ps":
         # Convert to (P, S) -> T lookup table
         ConvertPS_Table(arg.inputs, arg.outputs)
+
+    elif _commend == "compare_hefesto_outputs":
+        # Compare outputs to standard
+        CompareHeFestoVs(arg.inputs)
+
 
 # run script
 if __name__ == '__main__':
