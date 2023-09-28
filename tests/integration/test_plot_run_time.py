@@ -25,6 +25,8 @@ import os
 # import filecmp  # for compare file contents
 # import numpy as np
 import shilofue.PlotRunTime as PlotRunTime  # import test module
+from matplotlib import pyplot as plt
+from matplotlib import gridspec
 # from shilofue.Utilities import 
 # from matplotlib import pyplot as plt
 # from shutil import rmtree  # for remove directories
@@ -35,6 +37,32 @@ source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_plot_run_
 if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
+
+
+def test_plot_run_time_complex():
+    '''
+    test read from a log file and then generate run time plot
+    Asserts:
+    '''
+    ifile = os.path.join(source_dir, "log.txt")
+    o_path = os.path.join(test_dir, "RunTime_Complex.png")
+    if os.path.isfile(o_path):
+        os.remove(o_path)
+
+    # generate plots 
+    fig = plt.figure(tight_layout=True, figsize=(6, 18))
+    gs = gridspec.GridSpec(3,1)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[1, 0])
+    ax3 = fig.add_subplot(gs[2, 0])
+    
+    PlotRunTime.PlotFigure(ifile, o_path, axis=ax1, ax2=ax2, ax3=ax3, savefig=False, fix_restart=True) 
+    fig.savefig(o_path)
+
+    print("New figure: %s" % o_path)
+
+    # assert plot is generated successfully 
+    assert(os.path.isfile(o_path))  # assert figure is generated
 
 
 def test_plot_run_time():

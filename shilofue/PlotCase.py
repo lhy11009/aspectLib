@@ -25,6 +25,7 @@ import json
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from matplotlib import gridspec
 from shilofue.ParsePrm import ReadPrmFile
 import shilofue.PlotVisit as PlotVisit
 import shilofue.PlotRunTime as PlotRunTime
@@ -187,11 +188,21 @@ def PlotCaseRun(case_path, **kwargs):
         os.mkdir(os.path.dirname(fig_path))
     # time range
     time_range = kwargs.get('time_range', None)
+    fig = plt.figure(tight_layout=True, figsize=(6, 18))
+    gs = gridspec.GridSpec(3,1)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[1, 0])
+    ax3 = fig.add_subplot(gs[2, 0])
     if time_range is not None:
-        fig_output_path, step_range = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True, time_range=time_range)
+        fig_output_path, step_range = PlotRunTime.PlotFigure(log_file, fig_path, axis=ax1, ax2=ax2, ax3=ax3,\
+                                                             savefig=False, fix_restart=True, time_range=time_range) 
+        fig.savefig(fig_path)
     else:
-        fig_output_path = PlotRunTime.PlotFigure(log_file, fig_path, fix_restart=True, save_temp_file_local=True)
+        fig_output_path = PlotRunTime.PlotFigure(log_file, fig_path, axis=ax1, ax2=ax2, ax3=ax3,\
+                                                             savefig=False, fix_restart=True, save_temp_file_local=True) 
+        fig.savefig(fig_path)
         step_range = None
+    print("New figure: %s" % fig_path)
 
     # Newton history
     # determine whether newton is used

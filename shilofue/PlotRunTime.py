@@ -31,6 +31,7 @@ import numpy as np
 import shilofue.Plot as Plot
 import warnings
 from matplotlib import pyplot as plt
+from matplotlib import gridspec
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -124,7 +125,9 @@ def PlotFigure(log_path, fig_path, **kwargs):
     savefig = kwargs.get('savefig', True)
     _color = kwargs.get('color', None)
     ax1 = kwargs.get('axis', None)
-    ax2 = kwargs.get('twin_axis', None)
+    ax1_twinx = kwargs.get('twin_axis', None)
+    ax2 = kwargs.get('ax2', None) # wallclock - step gradient
+    ax3 = kwargs.get('ax3', None) # wallclock - time gradient
     if_legend = kwargs.get('if_legend', False)
     x_variable = kwargs.get('x_variable', 'step')
     save_temp_file_local = kwargs.get('save_temp_file_local', False)  # save temp file to a local place
@@ -209,6 +212,10 @@ def PlotFigure(log_path, fig_path, **kwargs):
             steps_fixed = steps[re_inds]
             times_fixed = times[re_inds]
             wallclocks_fixed = wallclocks[re_inds]
+        else:
+            steps_fixed = steps
+            times_fixed = times
+            wallclocks_fixed = wallclocks
 
     # mask for time
     t_mask = (times >= 0.0)  # should always be true
@@ -252,8 +259,8 @@ def PlotFigure(log_path, fig_path, **kwargs):
     if if_legend:
         ax1.legend()
     # line 2: wall clock
-    if ax2 == None:
-        ax2 = ax1.twinx()
+    if ax1_twinx == None:
+        ax1_twinx = ax1.twinx()
     if _color is None:
         color = 'tab:red'
         color_tab = 'tab:red'
@@ -263,22 +270,49 @@ def PlotFigure(log_path, fig_path, **kwargs):
         color_tab = 'k'
         line_type = '--'
     if x_variable == 'step':
-        ax2.plot(steps[t_mask], wallclocks[t_mask] / hr, line_type, color=color, label='Wall Clock [s]')
-        ax2.plot(steps_fixed[t_mask_fixed], wallclocks_fixed[t_mask_fixed] / hr, '.', color=color)
+        ax1_twinx.plot(steps[t_mask], wallclocks[t_mask] / hr, line_type, color=color, label='Wall Clock [s]')
+        ax1_twinx.plot(steps_fixed[t_mask_fixed], wallclocks_fixed[t_mask_fixed] / hr, '.', color=color)
     elif x_variable == 'time':
-        ax2.plot(times[t_mask] / to_myr, wallclocks[t_mask] / hr, line_type, color=color, label='Wall Clock [s]')
-        ax2.plot(times_fixed[t_mask_fixed] / to_myr, wallclocks_fixed[t_mask_fixed] / hr, '.', color=color)
+        ax1_twinx.plot(times[t_mask] / to_myr, wallclocks[t_mask] / hr, line_type, color=color, label='Wall Clock [s]')
+        ax1_twinx.plot(times_fixed[t_mask_fixed] / to_myr, wallclocks_fixed[t_mask_fixed] / hr, '.', color=color)
     else:
         raise ValueError("x_variable needs to be \"time\" or \"step\"")  
     if append_extra_label:
-        ax2.set_ylabel('Wall Clock [hr]', color=color_tab)
+        ax1_twinx.set_ylabel('Wall Clock [hr]', color=color_tab)
         if x_variable == 'step':
-            ax2.set_xlabel('Step')
+            ax1_twinx.set_xlabel('Step')
         elif x_variable == 'time':
-            ax2.set_xlabel('Time [myr]')
-        ax2.tick_params(axis='y', labelcolor=color_tab)
+            ax1_twinx.set_xlabel('Time [myr]')
+        ax1_twinx.tick_params(axis='y', labelcolor=color_tab)
     if if_legend:
-        ax2.legend()
+        ax1_twinx.legend()
+    
+    # plot wallclock / step gradient
+    if ax2 is not None:
+        assert(fix_restart is True) # only work if the restart steps are fixed
+        # additional plot: time gradient
+        ax2_twinx = ax2.twinx()
+        wc_gradient_fixed = np.gradient(wallclocks_fixed/hr, steps_fixed)
+        t_gradient_fixed = np.gradient(times_fixed / to_myr, steps_fixed)
+        ax2.plot(steps_fixed, t_gradient_fixed, '--', color='tab:blue')
+        ax2_twinx.plot(steps_fixed, wc_gradient_fixed, '--', color='tab:red')
+        ax2.set_xlabel('Step')
+        ax2.set_ylabel('Time Gradient [myr / step]', color='tab:blue')
+        ax2_twinx.set_ylabel("Wall Clock Gradient [hr / step]", color='tab:red')
+        ax2.tick_params(axis='y', labelcolor="tab:blue")
+        ax2_twinx.tick_params(axis='y', labelcolor="tab:red")
+
+    # plot wallclock / time gradient
+    if ax3 is not None:
+        assert(fix_restart is True) # only work if the restart steps are fixed
+        # additional plot: time gradient
+        gradient_fixed = np.gradient(wallclocks_fixed/hr, times_fixed/to_myr)
+        ax3.plot(times_fixed / to_myr, gradient_fixed, '--', color='tab:red')
+        ax3.grid()
+        ax3.set_xlabel('Time [myr]')
+        ax3.set_ylabel("Wall Clock Gradient [hr / myr]", color='tab:red')
+        ax3.tick_params(axis='y', labelcolor="tab:red")
+
     # save figure
     if savefig: 
         _name, _extension = Utilities.get_name_and_extention(fig_path)
@@ -478,10 +512,20 @@ def main():
         # example:
         log_file = os.path.join(arg.inputs, 'output', 'log.txt')
         assert(log_file)
-        fig_path = os.path.join(arg.inputs, 'img', 'run_time.png')
-        if not os.path.isdir(os.path.dirname(fig_path)):
-            os.mkdir(os.path.dirname(fig_path))
-        PlotFigure(log_file, fig_path, fix_restart=True)
+        img_dir = os.path.join(arg.inputs, 'img')
+        if not os.path.isdir(img_dir):
+            os.mkdir(img_dir)
+        fig_path = os.path.join(img_dir, 'run_time.png')
+
+        fig = plt.figure(tight_layout=True, figsize=(6, 18))
+        gs = gridspec.GridSpec(3,1)
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax2 = fig.add_subplot(gs[1, 0])
+        ax3 = fig.add_subplot(gs[2, 0])
+        PlotFigure(log_file, fig_path, axis=ax1, ax2=ax2, ax3=ax3, savefig=False, fix_restart=True) 
+        fig.savefig(fig_path)
+    
+        print("New figure: %s" % fig_path)
     
     elif _commend == 'case_run_time_info':
         # example:
