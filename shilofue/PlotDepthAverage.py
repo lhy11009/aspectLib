@@ -519,7 +519,7 @@ def main():
         plot_options = json_options.get('DepthAverage', {})
     
         # Init the UnitConvert class
-        UnitConvert = utilities.UNITCONVERT()
+        UnitConvert = Utilities.UNITCONVERT()
 
         # Initiate class for depth average plot
         DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage', unit_convert=UnitConvert, options=plot_options)
