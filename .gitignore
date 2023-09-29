@@ -3,8 +3,17 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# json files on the top level
+*.json
+
 # C extensions
 *.so
+
+# enable.sh
+enable.sh
+
+# Results
+results
 
 # Distribution / packaging
 .Python

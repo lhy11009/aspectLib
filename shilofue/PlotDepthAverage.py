@@ -33,11 +33,14 @@ import numpy as np
 from scipy.interpolate import interp1d
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from matplotlib import gridspec
+from scipy.interpolate import interp1d
 import shilofue.Plot as Plot
 
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
+RESULT_DIR = os.path.join(ASPECT_LAB_DIR, 'results')
 JSON_FILE_DIR = os.path.join(ASPECT_LAB_DIR, "files", "json_examples")
 # directory to shilofue
 shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
@@ -474,6 +477,103 @@ def ExportData(depth_average_path, output_dir, **kwargs):
     return odata, output_path
 
 
+def ComputeBuoyancy(da_file0, da_file1, **kwargs):
+    '''
+    Inputs:
+        da_file0 (str): reference profile
+        da_file1 (str): another profile
+        kwargs:
+            odir (str): output directory
+            ax1 (matplotlib axis): axis to plot the buoyancy
+            ax2 (matplotlib axis): axis to plot the buoyancy ratio
+    '''
+    assert(os.path.isfile(da_file0))
+    assert(os.path.isfile(da_file1))
+    ax1 = kwargs.get('ax1', None)
+    ax2 = kwargs.get('ax2', None)
+    odir = kwargs.get("odir", RESULT_DIR)
+    max_depth = 2890e3
+    n_depth = 2891
+    g = 9.8
+    interval = max_depth / (n_depth - 1)
+
+    # read data
+    odata0, _ = ExportData(da_file0, RESULT_DIR, names=['depth', 'temperature', 'adiabatic_density'])
+    odata1, _ = ExportData(da_file1, RESULT_DIR, names=['depth', 'temperature', 'adiabatic_density'])
+    depths_0 = odata0[:, 0]
+    densities_0 = odata0[:, 2]
+    depths_1 = odata1[:, 0]
+    densities_1 = odata1[:, 2]
+
+    # interpolate data
+    DensityFunc0 = interp1d(depths_0, densities_0, assume_sorted=True, fill_value="extrapolate")
+    DensityFunc1 = interp1d(depths_1, densities_1, assume_sorted=True, fill_value="extrapolate")
+
+    # compute buoyancy and buoyancy number
+    # the buoyancy number is computed with buoyancy / density1
+    # density1 is chosen instead of density0 to simulate the buoyancy ratio of density0
+    depths = np.linspace(0, max_depth, n_depth)
+    buoyancies = np.zeros(n_depth)
+    buoyancy_ratios = np.zeros(n_depth)
+    for i in range(n_depth):
+        depth = depths[i]
+        density0 = DensityFunc0(depth)
+        density1 = DensityFunc1(depth)
+        buoyancy = (density0 - density1) * g
+        buoyancies[i] = buoyancy
+        buoyancy_ratios[i] = buoyancy / density1
+
+    # plot buoyancy
+    if ax1 is not None:
+        ax1.plot(buoyancies, depths/1e3, label="buoyancy", color="tab:blue")
+        ax1.set_ylabel("Depth [km]")
+        ax1.set_xlabel("Buoyancy [N/m^3]")
+        ax1.legend()
+    # plot buoyancy ratio
+    if ax2 is not None:
+        ax2.plot(buoyancy_ratios, depths/1e3, label="buoyancy", color="tab:red")
+        ax2.set_ylabel("Depth [km]")
+        ax2.set_xlabel("Buoyancy Ratio")
+        ax2.legend()
+
+    # return variables
+    return depths, buoyancies, buoyancy_ratios
+
+
+def PlotBuoyancy(da_file0, da_file1, **kwargs):
+    '''
+    Plot Buoyancy from two profiles
+    Inputs:
+        da_file0 (str): reference profile
+        da_file1 (str): another profile
+        kwargs:
+            odir: output directory
+    '''
+    odir = kwargs.get("odir", RESULT_DIR)
+    fig_path = os.path.join(odir, "buoyancy.png")
+    fig = plt.figure(tight_layout=True, figsize=(6, 10))
+    gs = gridspec.GridSpec(2, 1)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[1, 0])
+
+    if os.path.isfile(fig_path):
+        os.remove(fig_path)
+    # plot figures
+    depths, buoyancies, buoyancy_ratios = ComputeBuoyancy(da_file0, da_file1, odir=odir, ax1=ax1, ax2=ax2)
+    ax1.grid()
+    ax2.grid()
+    ax1.invert_yaxis()
+    ax2.invert_yaxis()
+    # save figures
+    fig_path = os.path.join(fig_path)
+    if os.path.isfile(fig_path):
+        # remove previous files
+        os.remove(fig_path)
+    fig.savefig(fig_path)
+    assert(os.path.isfile(fig_path))
+    print("%s: New figue %s" % (Utilities.func_name(), fig_path))
+
+
 def main():
     '''
     main function of this module
@@ -487,6 +587,9 @@ def main():
     # parse options
     parser = argparse.ArgumentParser(description='Parse parameters')
     parser.add_argument('-i', '--inputs', type=str,
+                        default='',
+                        help='Some inputs')
+    parser.add_argument('-i1', '--inputs1', type=str,
                         default='',
                         help='Some inputs')
     parser.add_argument('-o', '--outputs', type=str,
@@ -531,14 +634,17 @@ def main():
         DepthAverage(arg.inputs, fileout=arg.outputs, time=arg.time)
 
     # commands
-    if _commend == 'plot_case':
+    elif _commend == 'plot_case':
         depth_average_path = os.path.join(arg.inputs, 'output', 'depth_average.txt')
         fig_path_base = os.path.join(arg.inputs, 'img', 'DepthAverage.png')
         PlotDaFigure(depth_average_path, fig_path_base, time=arg.time)
     
-    if _commend == 'export_case':
+    elif _commend == 'export_case':
         depth_average_path = os.path.join(arg.inputs, 'output', 'depth_average.txt')
         ExportData(depth_average_path, arg.outputs, time_step=arg.step)
+    
+    elif _commend == 'plot_buoyancy':
+        PlotBuoyancy(arg.inputs, arg.inputs1)
 
 # run script
 if __name__ == '__main__':
