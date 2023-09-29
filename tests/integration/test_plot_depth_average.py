@@ -55,7 +55,7 @@ def test_buoyancy():
         os.remove(fig_path)
 
     # plot figures
-    _, buoyancies, buoyancy_ratios = ComputeBuoyancy(da_file0, da_file1, odir=test_dir, ax1=ax1, ax2=ax2)
+    _, buoyancies, buoyancy_ratios = ComputeBuoyancy(da_file0, da_file1, ax1=ax1, ax2=ax2)
     ax1.invert_yaxis()
     ax2.invert_yaxis()
     # save figures

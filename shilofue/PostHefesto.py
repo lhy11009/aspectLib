@@ -165,6 +165,36 @@ class LOOKUP_TABLE():
         depths = self.data[:, col_depth]
         densities = self.data[:, col_density]
         return depths, densities
+    
+    def export_temperature_profile(self):
+        '''
+        export temperature profile
+        '''
+        col_depth = self.header["Depth"]["col"]
+        col_T = self.header["Temperature"]["col"]
+        depths = self.data[:, col_depth]
+        temperatures = self.data[:, col_T]
+        return depths, temperatures
+    
+    def export_thermal_expansivity_profile(self):
+        '''
+        export density profile
+        '''
+        col_depth = self.header["Depth"]["col"]
+        col_alpha = self.header["thermal expansivity"]["col"]
+        depths = self.data[:, col_depth]
+        alphas = self.data[:, col_alpha]
+        return depths, alphas
+
+    def export_pressure_profile(self):
+        '''
+        export density profile
+        '''
+        col_depth = self.header["Depth"]["col"]
+        col_pressure = self.header["Pressure"]["col"]
+        depths = self.data[:, col_depth]
+        pressures = self.data[:, col_pressure]
+        return depths, pressures
         
 
     def Update(self, **kwargs):
@@ -694,6 +724,53 @@ def CompareHeFestoVs(_path, **kwargs):
     print("Plot figure %s" % fig_path)
 
 
+def PlotHeFestoProfile(_path0, **kwargs):
+    '''
+    Plot the profile from HeFesto. Note that the profile needs to be an adiabat
+    Inputs:
+        _path0 (str): path of the Hefesto Outputs
+        kwargs:
+            axT (matplotlib axis): axis to plot the temperatures
+            ax_density (matplotlib axis): axis to plot the density
+    
+    '''
+    axT = kwargs.get('axT', None)
+    axP = kwargs.get('axP', None)
+    ax_density = kwargs.get('ax_density', None)
+
+    # get data 
+    LookupTable=LOOKUP_TABLE()
+    LookupTable.ReadRawFort56(_path0)
+    depths_0, Ts_0 = LookupTable.export_temperature_profile()
+    _, densities_0 = LookupTable.export_density_profile()
+    _, pressures_0 = LookupTable.export_pressure_profile()
+    
+    # plot temperature
+    if axT is not None:
+        axT.plot(Ts_0, depths_0, "--", label="HeFesto T0", color="tab:red")
+        axT.set_ylabel("Depth [km]")
+        axT.set_xlabel("Temperature [K]")
+        axT.legend()
+ 
+    # plot pressure
+    if axP is not None:
+        axP.plot(pressures_0, depths_0, "--", label="HeFesto P0", color="tab:green")
+        axP.set_ylabel("Depth [km]")
+        axP.set_xlabel("Pressure [GPa]")
+        axP.legend()
+
+    # plot density 
+    if ax_density is not None:
+        ax_density.plot(densities_0*1000.0, depths_0, "--", label="HeFesto Density", color="tab:blue")
+        ax_density.set_ylabel("Depth [km]")
+        ax_density.set_xlabel("Density [kg/m^3]")
+        ax_density.legend()
+
+
+    
+    return depths_0, densities_0, Ts_0
+
+
 def ComputeBuoyancy(_path0, _path1, **kwargs):
     '''
     Compute Buoyancy from two Hefesto Outputs
@@ -701,23 +778,27 @@ def ComputeBuoyancy(_path0, _path1, **kwargs):
         _path0 (str): path of the first file
         _path1 (str): path of the second file
         kwargs:
-            odir (str): output directory
-            ax1 (matplotlib axis): axis to plot the buoyancy
-            ax2 (matplotlib axis): axis to plot the buoyancy ratio
+            axT (matplotlib axis): axis to plot the temperatures
+            ax_density_ratio (matplotlib axis): axis to plot the density differences
+            ax_buoy (matplotlib axis): axis to plot the buoyancy ratio
     '''
     n_depth = 1000
     g = 9.8
-    ax1 = kwargs.get('ax1', None)
-    ax2 = kwargs.get('ax2', None)
-    odir = kwargs.get("odir", RESULT_DIR)
+    axT = kwargs.get('axT', None)
+    ax_density_ratio = kwargs.get('ax_density_ratio', None)
+    ax_buoy = kwargs.get('ax_buoy', None)
     # read data
     LookupTable=LOOKUP_TABLE()
     LookupTable.ReadRawFort56(_path0)
     depths_0, densities_0 = LookupTable.export_density_profile()
+    _, alphas_0 = LookupTable.export_thermal_expansivity_profile()
+    _, Ts_0 = LookupTable.export_temperature_profile()
     min_depth0 = depths_0[0]
     max_depth0 = depths_0[-1]
     LookupTable.ReadRawFort56(_path1)
     depths_1, densities_1 = LookupTable.export_density_profile()
+    _, alphas_1 = LookupTable.export_thermal_expansivity_profile()
+    _, Ts_1 = LookupTable.export_temperature_profile()
     min_depth1 = depths_1[0]
     max_depth1 = depths_1[-1]
     # choose the mutual range in the data
@@ -726,37 +807,58 @@ def ComputeBuoyancy(_path0, _path1, **kwargs):
     
     # interpolate data
     DensityFunc0 = interpolate.interp1d(depths_0, densities_0, assume_sorted=True, fill_value="extrapolate")
+    AlphaFunc0 = interpolate.interp1d(depths_0, alphas_0, assume_sorted=True, fill_value="extrapolate")
+    TFunc0 = interpolate.interp1d(depths_0, Ts_0, assume_sorted=True, fill_value="extrapolate")
     DensityFunc1 = interpolate.interp1d(depths_1, densities_1, assume_sorted=True, fill_value="extrapolate")
+    AlphaFunc1 = interpolate.interp1d(depths_1, alphas_1, assume_sorted=True, fill_value="extrapolate")
+    TFunc1 = interpolate.interp1d(depths_1, Ts_1, assume_sorted=True, fill_value="extrapolate")
 
     # compute buoyancy and buoyancy number
     # the buoyancy number is computed with buoyancy / density1
     # density1 is chosen instead of density0 to simulate the buoyancy ratio of density0
     depths = np.linspace(min_depth, max_depth, n_depth)
+    diff_densities = np.zeros(n_depth)
     buoyancies = np.zeros(n_depth)
-    buoyancy_ratios = np.zeros(n_depth)
+    density_ratios = np.zeros(n_depth)
     for i in range(n_depth):
+        # get values at depth
         depth = depths[i]
-        density0 = DensityFunc0(depth)
-        density1 = DensityFunc1(depth)
-        buoyancy = (density0 - density1) * g
+        alpha = AlphaFunc1(depth)
+        alpha = np.min(np.array([alpha, 5.0]))
+        # print("alpha: ", alpha) # debug
+        density0 = DensityFunc0(depth) * 1000.0
+        density1 = DensityFunc1(depth) * 1000.0
+        T0 = TFunc0(depth)
+        T1 = TFunc1(depth)
+        diff_density = density1 - density0
+        # print("diff_density: ", diff_density) # debug
+        diff_densities[i] = diff_density
+        buoyancy =  - diff_density * g
         buoyancies[i] = buoyancy
-        buoyancy_ratios[i] = buoyancy / density1
+        density_ratios[i] = diff_density / density1
 
-        # plot buoyancy
-    if ax1 is not None:
-        ax1.plot(buoyancies, depths, label="buoyancy", color="tab:blue")
-        ax1.set_ylabel("Depth [km]")
-        ax1.set_xlabel("Buoyancy [N/m^3]")
-        ax1.legend()
-    # plot buoyancy ratio
-    if ax2 is not None:
-        ax2.plot(buoyancy_ratios, depths, label="buoyancy", color="tab:red")
-        ax2.set_ylabel("Depth [km]")
-        ax2.set_xlabel("Buoyancy Ratio")
-        ax2.legend()
+    # plot temperature
+    if axT is not None:
+        axT.plot(Ts_0, depths_0, "--", label="HeFesto T0", color="tab:red")
+        axT.plot(Ts_1, depths_1, "--", label="HeFesto T1", color="tab:blue")
+        axT.set_ylabel("Depth [km]")
+        axT.set_xlabel("Temperature [K]")
+        axT.legend()
+    # plot density ratio
+    if ax_density_ratio is not None:
+        ax_density_ratio.plot(density_ratios, depths, "--", label="HeFesto Density Ratio", color="tab:red")
+        ax_density_ratio.set_ylabel("Depth [km]")
+        ax_density_ratio.set_xlabel("Density Ratio")
+        ax_density_ratio.legend()
+    # plot buoyancy
+    if ax_buoy is not None:
+        ax_buoy.plot(buoyancies, depths, "--", label="HeFesto buoyancy", color="tab:blue")
+        ax_buoy.set_ylabel("Depth [km]")
+        ax_buoy.set_xlabel("Buoyancy [N/m^3]")
+        ax_buoy.legend()
 
     # return variables
-    return depths, buoyancies, buoyancy_ratios
+    return depths, buoyancies, density_ratios
 
 
 

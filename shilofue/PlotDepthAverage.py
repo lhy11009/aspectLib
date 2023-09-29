@@ -35,6 +35,7 @@ from scipy.interpolate import interp1d
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
 import shilofue.Plot as Plot
+import shilofue.PostHefesto as PHefesto
 
 
 # directory to the aspect Lab
@@ -438,6 +439,65 @@ def PlotDaFigure(depth_average_path, fig_path_base, **kwargs):
     print("New figure: %s" % fig_path)
 
 
+def PlotDaFigureByName(depth_average_path, **kwargs):
+    '''
+    plot figure
+    Inputs:
+        kwargs:
+            time_step - time_step to plot the figure, default is 0
+    '''
+    time = kwargs.get('time', 0.0)
+    assert(os.access(depth_average_path, os.R_OK))
+    axT = kwargs.get('axT', None)
+    axP = kwargs.get('axP', None)
+    ax_density = kwargs.get('ax_density', None)
+    # read that
+    DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
+    DepthAverage.ReadHeader(depth_average_path)
+    DepthAverage.ReadData(depth_average_path)
+    
+    # manage data
+    DepthAverage.SplitTimeStep()
+    names = ['depth', 'adiabatic_pressure', 'temperature', 'adiabatic_temperature', 'viscosity', 'vertical_heat_flux', 'vertical_mass_flux', 'adiabatic_density']
+    data, exact_time = DepthAverage.ExportDataByTime(time, names)
+    # get depth
+    depths = data[:, 0]
+    # get pressure
+    pressures = data[:, 1]
+    # get temperature
+    temperatures = data[:, 2]
+    adiabat = data[:, 3]
+    # get viscosity
+    eta = data[:, 4]
+    # heat_flux
+    hf = data[:, 5]
+    # heat_flux
+    mf = data[:, 6]
+    # density
+    densities = data[:, 7]
+
+    # plot temperature
+    if axT is not None:
+        axT.plot(temperatures, depths/1e3, "-", label="T", color="tab:red")
+        axT.set_ylabel("Depth [km]")
+        axT.set_xlabel("Temperature [K]")
+        axT.legend()
+
+    # plot pressure 
+    if axP is not None:
+        axP.plot(pressures / 1e9, depths/1e3, "-", label="Pressure", color="tab:green")
+        axP.set_ylabel("Depth [km]")
+        axP.set_xlabel("Pressure [GPa]")
+        axT.legend()
+
+    # plot density 
+    if ax_density is not None:
+        ax_density.plot(densities, depths/1e3, "-", label="Density", color="tab:blue")
+        ax_density.set_ylabel("Depth [km]")
+        ax_density.set_xlabel("Density [kg/m^3]")
+        ax_density.legend()
+
+
 def ExportData(depth_average_path, output_dir, **kwargs):
     '''
     Export data of a step to separate file
@@ -483,13 +543,15 @@ def ComputeBuoyancy(da_file0, da_file1, **kwargs):
         da_file1 (str): another profile
         kwargs:
             odir (str): output directory
-            ax1 (matplotlib axis): axis to plot the buoyancy
-            ax2 (matplotlib axis): axis to plot the buoyancy ratio
+            axT (matplotlib axis): axis to plot the temperature
+            ax_density_ratio (matplotlib axis): axis to plot the density ratio
+            ax_buoy (matplotlib axis): axis to plot the buoyancy
     '''
     assert(os.path.isfile(da_file0))
     assert(os.path.isfile(da_file1))
-    ax1 = kwargs.get('ax1', None)
-    ax2 = kwargs.get('ax2', None)
+    axT = kwargs.get('axT', None)
+    ax_density_ratio = kwargs.get('ax_density_ratio', None)
+    ax_buoy = kwargs.get('ax_buoy', None)
     odir = kwargs.get("odir", RESULT_DIR)
     max_depth = 2890e3
     n_depth = 2891
@@ -500,43 +562,62 @@ def ComputeBuoyancy(da_file0, da_file1, **kwargs):
     odata0, _ = ExportData(da_file0, RESULT_DIR, names=['depth', 'temperature', 'adiabatic_density'])
     odata1, _ = ExportData(da_file1, RESULT_DIR, names=['depth', 'temperature', 'adiabatic_density'])
     depths_0 = odata0[:, 0]
+    Ts_0 = odata0[:, 1]
     densities_0 = odata0[:, 2]
     depths_1 = odata1[:, 0]
+    Ts_1 = odata1[:, 1]
     densities_1 = odata1[:, 2]
 
     # interpolate data
     DensityFunc0 = interp1d(depths_0, densities_0, assume_sorted=True, fill_value="extrapolate")
+    TFunc0 = interp1d(depths_0, Ts_0, assume_sorted=True, fill_value="extrapolate")
     DensityFunc1 = interp1d(depths_1, densities_1, assume_sorted=True, fill_value="extrapolate")
+    TFunc1 = interp1d(depths_1, Ts_1, assume_sorted=True, fill_value="extrapolate")
 
     # compute buoyancy and buoyancy number
     # the buoyancy number is computed with buoyancy / density1
     # density1 is chosen instead of density0 to simulate the buoyancy ratio of density0
     depths = np.linspace(0, max_depth, n_depth)
     buoyancies = np.zeros(n_depth)
-    buoyancy_ratios = np.zeros(n_depth)
+    density_ratios = np.zeros(n_depth)
+    adiabatic_diff_densities = np.zeros(n_depth)
+    alpha = 3.1e-5  # thermal expansivity: contant value
     for i in range(n_depth):
         depth = depths[i]
         density0 = DensityFunc0(depth)
         density1 = DensityFunc1(depth)
-        buoyancy = (density0 - density1) * g
+        T0 = TFunc0(depth)
+        T1 = TFunc1(depth)
+        adiabatic_diff_density = density1 - density0
+        diff_density = adiabatic_diff_density + alpha*(T0 - T1)*density1
+        buoyancy = -diff_density * g
         buoyancies[i] = buoyancy
-        buoyancy_ratios[i] = buoyancy / density1
+        density_ratios[i] = diff_density / density1
+    
+    # plot temperature
+    if axT is not None:
+        axT.plot(Ts_0, depths_0, "-", label="T0", color="tab:red")
+        axT.plot(Ts_1, depths_1, "-", label="T1", color="tab:blue")
+        axT.set_ylabel("Depth [km]")
+        axT.set_xlabel("Temperature [K]")
+        axT.legend()
 
+    # plot density ratio
+    if ax_density_ratio is not None:
+        ax_density_ratio.plot(density_ratios, depths/1e3, label="density ratio", color="tab:red")
+        ax_density_ratio.set_ylabel("Depth [km]")
+        ax_density_ratio.set_xlabel("Density Ratio")
+        ax_density_ratio.legend()
+    
     # plot buoyancy
-    if ax1 is not None:
-        ax1.plot(buoyancies, depths/1e3, label="buoyancy", color="tab:blue")
-        ax1.set_ylabel("Depth [km]")
-        ax1.set_xlabel("Buoyancy [N/m^3]")
-        ax1.legend()
-    # plot buoyancy ratio
-    if ax2 is not None:
-        ax2.plot(buoyancy_ratios, depths/1e3, label="buoyancy", color="tab:red")
-        ax2.set_ylabel("Depth [km]")
-        ax2.set_xlabel("Buoyancy Ratio")
-        ax2.legend()
+    if ax_buoy is not None:
+        ax_buoy.plot(buoyancies, depths/1e3, label="buoyancy", color="tab:blue")
+        ax_buoy.set_ylabel("Depth [km]")
+        ax_buoy.set_xlabel("Buoyancy [N/m^3]")
+        ax_buoy.legend()
 
     # return variables
-    return depths, buoyancies, buoyancy_ratios
+    return depths, buoyancies, density_ratios
 
 
 def PlotBuoyancy(da_file0, da_file1, **kwargs):
@@ -550,15 +631,16 @@ def PlotBuoyancy(da_file0, da_file1, **kwargs):
     '''
     odir = kwargs.get("odir", RESULT_DIR)
     fig_path = os.path.join(odir, "buoyancy.png")
-    fig = plt.figure(tight_layout=True, figsize=(6, 10))
-    gs = gridspec.GridSpec(2, 1)
+    fig = plt.figure(tight_layout=True, figsize=(6, 15))
+    gs = gridspec.GridSpec(3, 1)
     ax1 = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[1, 0])
-
+    ax3 = fig.add_subplot(gs[2, 0])
     if os.path.isfile(fig_path):
         os.remove(fig_path)
+
     # plot figures
-    depths, buoyancies, buoyancy_ratios = ComputeBuoyancy(da_file0, da_file1, odir=odir, ax1=ax1, ax2=ax2)
+    depths, buoyancies, buoyancy_ratios = ComputeBuoyancy(da_file0, da_file1, odir=odir, ax1=ax1, ax2=ax2, ax3=ax3)
     ax1.grid()
     ax2.grid()
     ax1.invert_yaxis()
@@ -571,6 +653,114 @@ def PlotBuoyancy(da_file0, da_file1, **kwargs):
     fig.savefig(fig_path)
     assert(os.path.isfile(fig_path))
     print("%s: New figue %s" % (Utilities.func_name(), fig_path))
+
+
+def CompareHefestoBuoyancy(**kwargs):
+    '''
+    Compare the buoyancy from two ASPECT depth_average file
+    to the buoyancy from two Hefesto files
+    '''
+    file_type = kwargs.get("file_type", "png")
+    source_dir = os.path.join(ASPECT_LAB_DIR, "tests", "integration", 'fixtures', 'post_hefesto')
+    fort56_file0 = os.path.join(source_dir, "fort.56.0")
+    fort56_file1 = os.path.join(source_dir, "fort.56.1")
+    # fort56_file1 = "/home/lochy/Softwares/HeFESTo/HeFESToRepository/output_2.7749999983454376/fort.56"
+    # fort56_file1 = "/home/lochy/Softwares/HeFESTo/HeFESToRepository/output_2.0249999999999124/fort.56"
+    assert(os.path.isfile(fort56_file0) and os.path.isfile(fort56_file1))
+    da_file0 = "/home/lochy/ASPECT_PROJECT/TwoDSubduction_DIR/HeFesto_Compare/adb_T_1650.1_fix_width_refine/output/depth_average.txt"
+    da_file1 = "/home/lochy/ASPECT_PROJECT/TwoDSubduction_DIR/HeFesto_Compare/adb_T_676.23_fix_width_refine/output/depth_average.txt"
+    # da_file1 = "/home/lochy/ASPECT_PROJECT/TwoDSubduction_DIR/HeFesto_Compare/adb_T_1921.7_fix_width_refine/output/depth_average.txt"
+    # da_file1 = "/home/lochy/ASPECT_PROJECT/TwoDSubduction_DIR/HeFesto_Compare/adb_T_1059.4_fixT_2/output/depth_average.txt"
+    assert(os.path.isfile(da_file0) and os.path.isfile(da_file1))
+
+    # first compare outputs from ASPECT and HeFesto
+    fig_path = os.path.join(RESULT_DIR, "HeFesto_DA_compare.png")
+    fig = plt.figure(tight_layout=True, figsize=(6, 18))
+    gs = gridspec.GridSpec(3, 1)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[1, 0])
+    ax3 = fig.add_subplot(gs[2, 0])
+    # plot depth average profile
+    PlotDaFigureByName(da_file0, axT=ax1, ax_density=ax3, axP=ax2)
+    # plot HeFesto Profile
+    PHefesto.PlotHeFestoProfile(fort56_file0, axT=ax1, ax_density=ax3, axP=ax2)
+    ax1.invert_yaxis()
+    ax1.grid()
+    ax2.invert_yaxis()
+    ax2.grid()
+    ax3.invert_yaxis()
+    ax3.grid()
+    fig.savefig(fig_path)
+    assert(os.path.isfile(fig_path))
+    print("%s: new figure %s" % (Utilities.func_name(), fig_path))
+    ax1.set_ylim([1000, 0])
+    ax2.set_ylim([1000, 0])
+    ax3.set_ylim([1000, 0])
+    fig_path = os.path.join(RESULT_DIR, "HeFesto_DA_compare_1000.%s" % file_type)
+    fig.savefig(fig_path)
+    assert(os.path.isfile(fig_path))
+    print("%s: new figure %s" % (Utilities.func_name(), fig_path))
+
+
+    # first compare outputs of cold internal from ASPECT and HeFesto
+    fig_path = os.path.join(RESULT_DIR, "HeFesto_DA_compare_cold.%s" % file_type)
+    fig = plt.figure(tight_layout=True, figsize=(6, 18))
+    gs = gridspec.GridSpec(3, 1)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[1, 0])
+    ax3 = fig.add_subplot(gs[2, 0])
+    # plot depth average profile
+    PlotDaFigureByName(da_file1, axT=ax1, ax_density=ax3, axP=ax2)
+    # plot HeFesto Profile
+    PHefesto.PlotHeFestoProfile(fort56_file1, axT=ax1, ax_density=ax3, axP=ax2)
+    ax1.invert_yaxis()
+    ax1.grid()
+    ax2.invert_yaxis()
+    ax2.grid()
+    ax3.invert_yaxis()
+    ax3.grid()
+    fig.savefig(fig_path)
+    assert(os.path.isfile(fig_path))
+    print("%s: new figure %s" % (Utilities.func_name(), fig_path))
+    ax1.set_ylim([1000, 0])
+    ax2.set_ylim([1000, 0])
+    ax3.set_ylim([1000, 0])
+    fig_path = os.path.join(RESULT_DIR, "HeFesto_DA_compare_cold_1000.%s" % file_type)
+    fig.savefig(fig_path)
+    assert(os.path.isfile(fig_path))
+    print("%s: new figure %s" % (Utilities.func_name(), fig_path))
+    
+    
+    # then plot the buoyancy forces 
+    fig_path = os.path.join(RESULT_DIR, "buoyancy_hefesto_compare.%s" % file_type)
+    # initial plot 
+    fig = plt.figure(tight_layout=True, figsize=(6, 15))
+    gs = gridspec.GridSpec(3, 1)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[1, 0])
+    ax3 = fig.add_subplot(gs[2, 0])
+    if os.path.isfile(fig_path):
+        os.remove(fig_path)
+    # plot figures with Hefesto
+    _, buoyancies, buoyancy_ratios = PHefesto.ComputeBuoyancy(fort56_file0, fort56_file1, axT=ax1,\
+                                                              ax_density_ratio=ax2, ax_buoy=ax3)
+    # plot figures with ASPECT profiles
+    _, buoyancies, buoyancy_ratios = ComputeBuoyancy(da_file0, da_file1, axT=ax1, ax_density_ratio=ax2, ax_buoy=ax3)
+    # save figures
+    ax1.set_ylim([0.0, 1000.0])
+    ax1.invert_yaxis()
+    ax1.grid()
+    ax2.set_ylim([0.0, 1000.0])
+    ax2.invert_yaxis()
+    ax2.grid()
+    ax3.set_ylim([0.0, 1000.0])
+    ax3.invert_yaxis()
+    ax3.grid()
+    # save
+    fig.savefig(fig_path)
+    assert(os.path.isfile(fig_path))
+    print("%s: new figure %s" % (Utilities.func_name(), fig_path))
+
 
 
 def main():
@@ -600,6 +790,9 @@ def main():
     parser.add_argument('-s', '--step', type=int,
                         default=0,
                         help='step')
+    parser.add_argument('-ft', '--file_type', type=str,
+                        default="png",
+                        help='file output type')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -644,6 +837,9 @@ def main():
     
     elif _commend == 'plot_buoyancy':
         PlotBuoyancy(arg.inputs, arg.inputs1)
+    
+    elif _commend == 'compare_hefesto_buoyancy':
+        CompareHefestoBuoyancy(file_type=arg.file_type)
 
 # run script
 if __name__ == '__main__':
