@@ -155,6 +155,16 @@ class LOOKUP_TABLE():
         depths = self.data[:, col_depth]
         Vss = self.data[:, col_vs]
         return depths, Vss
+    
+    def export_density_profile(self):
+        '''
+        export density profile
+        '''
+        col_depth = self.header["Depth"]["col"]
+        col_density = self.header["Density"]["col"]
+        depths = self.data[:, col_depth]
+        densities = self.data[:, col_density]
+        return depths, densities
         
 
     def Update(self, **kwargs):
@@ -682,6 +692,72 @@ def CompareHeFestoVs(_path, **kwargs):
         os.remove(fig_path)
     fig.savefig(fig_path)
     print("Plot figure %s" % fig_path)
+
+
+def ComputeBuoyancy(_path0, _path1, **kwargs):
+    '''
+    Compute Buoyancy from two Hefesto Outputs
+    Inputs
+        _path0 (str): path of the first file
+        _path1 (str): path of the second file
+        kwargs:
+            odir (str): output directory
+            ax1 (matplotlib axis): axis to plot the buoyancy
+            ax2 (matplotlib axis): axis to plot the buoyancy ratio
+    '''
+    n_depth = 1000
+    g = 9.8
+    ax1 = kwargs.get('ax1', None)
+    ax2 = kwargs.get('ax2', None)
+    odir = kwargs.get("odir", RESULT_DIR)
+    # read data
+    LookupTable=LOOKUP_TABLE()
+    LookupTable.ReadRawFort56(_path0)
+    depths_0, densities_0 = LookupTable.export_density_profile()
+    min_depth0 = depths_0[0]
+    max_depth0 = depths_0[-1]
+    LookupTable.ReadRawFort56(_path1)
+    depths_1, densities_1 = LookupTable.export_density_profile()
+    min_depth1 = depths_1[0]
+    max_depth1 = depths_1[-1]
+    # choose the mutual range in the data
+    min_depth = np.max(np.array([min_depth0, min_depth1]))
+    max_depth = np.min(np.array([max_depth0, max_depth1]))
+    
+    # interpolate data
+    DensityFunc0 = interpolate.interp1d(depths_0, densities_0, assume_sorted=True, fill_value="extrapolate")
+    DensityFunc1 = interpolate.interp1d(depths_1, densities_1, assume_sorted=True, fill_value="extrapolate")
+
+    # compute buoyancy and buoyancy number
+    # the buoyancy number is computed with buoyancy / density1
+    # density1 is chosen instead of density0 to simulate the buoyancy ratio of density0
+    depths = np.linspace(min_depth, max_depth, n_depth)
+    buoyancies = np.zeros(n_depth)
+    buoyancy_ratios = np.zeros(n_depth)
+    for i in range(n_depth):
+        depth = depths[i]
+        density0 = DensityFunc0(depth)
+        density1 = DensityFunc1(depth)
+        buoyancy = (density0 - density1) * g
+        buoyancies[i] = buoyancy
+        buoyancy_ratios[i] = buoyancy / density1
+
+        # plot buoyancy
+    if ax1 is not None:
+        ax1.plot(buoyancies, depths, label="buoyancy", color="tab:blue")
+        ax1.set_ylabel("Depth [km]")
+        ax1.set_xlabel("Buoyancy [N/m^3]")
+        ax1.legend()
+    # plot buoyancy ratio
+    if ax2 is not None:
+        ax2.plot(buoyancy_ratios, depths, label="buoyancy", color="tab:red")
+        ax2.set_ylabel("Depth [km]")
+        ax2.set_xlabel("Buoyancy Ratio")
+        ax2.legend()
+
+    # return variables
+    return depths, buoyancies, buoyancy_ratios
+
 
 
 def main():

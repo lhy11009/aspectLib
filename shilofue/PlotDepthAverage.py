@@ -34,7 +34,6 @@ from scipy.interpolate import interp1d
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
-from scipy.interpolate import interp1d
 import shilofue.Plot as Plot
 
 
