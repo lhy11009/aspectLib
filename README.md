@@ -12,3 +12,8 @@ with two depth_average files, the first will be taken as the reference profile.
     python -m shilofue.PlotDepthAverage plot_buoyancy\
     -i {case0}/output/depth_average.txt \
     -i1 {case0}/output/depth_average.txt
+
+Plot the density change between two profiles and compared to HeFesto Output.
+The path of the files are not hard coded into the "CompareHefestoBuoyancy" function.
+
+    python -m shilofue.PlotDepthAverage compare_hefesto_buoyancy
