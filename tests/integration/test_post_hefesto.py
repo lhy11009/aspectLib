@@ -28,7 +28,7 @@ import filecmp  # for compare file contents
 from shilofue.PostHefesto import *
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
-# from shutil import rmtree  # for remove directories
+from shutil import rmtree  # for remove directories
 
 test_dir = ".test"
 source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'post_hefesto')
@@ -36,6 +36,67 @@ source_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'post_hefesto')
 if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
+
+def test_distribute_parallel_control():
+    '''
+    assert function DistributeParallelControl
+    '''
+    case_dir = os.path.join(test_dir, "test_hefesto_parallel")
+    # remove older results
+    if os.path.isdir(case_dir):
+        rmtree(case_dir)
+
+    json_file = os.path.join(source_dir, "test_hefesto.json")
+    HeFESTo_Opt = HEFESTO_OPT()
+    # read in json options
+    if type(json_file) == str:
+        if not os.access(json_file, os.R_OK):
+            raise FileNotFoundError("%s doesn't exist" % json_file)
+        HeFESTo_Opt.read_json(json_file)
+    elif type(json_file) == dict:
+        HeFESTo_Opt.import_options(json_file)
+    else:
+        raise TypeError("Type of json_opt must by str or dict")
+    
+    DistributeParallelControl(*HeFESTo_Opt.to_distribute_parallel_control())
+
+    # check directories
+    assert(os.path.isdir(case_dir))
+    sub0_dir = os.path.join(case_dir, "sub_0000")
+    assert(os.path.isdir(sub0_dir))
+    control0_path = os.path.join(sub0_dir, "control")
+    assert(os.path.isfile(control0_path))
+    sub1_dir = os.path.join(case_dir, "sub_0001")
+    assert(os.path.isdir(sub1_dir))
+    sub2_dir = os.path.join(case_dir, "sub_0002")
+    assert(os.path.isdir(sub2_dir))
+
+    # check the control file
+    control2_std_path = os.path.join(source_dir, "control_std")
+    control2_path = os.path.join(sub2_dir, "control")
+    assert(os.path.isfile(control2_path))
+    assert(filecmp.cmp(control2_path, control2_std_path))
+
+
+
+def test_control_file():
+    '''
+    test class CONTROL_FILE
+    '''
+    ifile = os.path.join(source_dir, "control")
+    ofile = os.path.join(test_dir, "test_control")
+    ControlFile = CONTROL_FILE()
+    # read file
+    ControlFile.ReadFile(ifile)
+    # configure P, T
+    ControlFile.configureP(0.0, 30.0, 31)
+    # write file
+    ControlFile.WriteFile(ofile)
+    ofile_std = os.path.join(source_dir, "test_control_std")
+    assert(filecmp.cmp(ofile, ofile_std))
+
+    pass
+
 
 def test_process_hefesto_table():
     '''

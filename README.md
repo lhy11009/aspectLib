@@ -17,3 +17,25 @@ Plot the density change between two profiles and compared to HeFesto Output.
 The path of the files are not hard coded into the "CompareHefestoBuoyancy" function.
 
     python -m shilofue.PlotDepthAverage compare_hefesto_buoyancy
+
+#### shilofue/PostHefesto.py
+
+Plot the buoyancy and density ratio from two HeFESTo profiles
+
+    python -m shilofue.PostHefesto plot_hefesto_buoyancy -i hefesto_buoyancy_input
+
+input file as an example:
+
+    files/configure_files/hefesto_buoyancy_input
+
+Create hefesto cases from json files
+
+    python -m shilofue.PostHefesto create_case -i `pwd`/config_hefesto.json
+
+json file as an example
+
+    files/json_examples/config_hefesto_case.json
+
+Assemble the parallel files. Do this after getting the results from the server
+
+    python -m shilofue.PostHefesto assemble_parallel_files -i /home/lochy/ASPECT_PROJECT/HeFESTo_DIR/test_hefesto_parallel1

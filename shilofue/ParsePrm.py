@@ -675,6 +675,10 @@ def ParseToSlurmBatchFile(fout, outputs, **kwargs):
             # append the cpu options after mpirun
             contents += " "
             contents += ("-n " + outputs['config']['-n'])
+    # extra contents
+    if outputs['extra'] is not None:
+        contents += outputs['extra']
+        contents += '\n'
     fout.write(contents)
     pass
 
@@ -687,7 +691,7 @@ class SLURM_OPERATOR():
         o_dict (dict): output options
     '''
     def __init__(self, slurm_base_file_path):
-        assert(os.path.isfile(slurm_base_file_path))
+        Utilities.my_assert(FileExistsError, os.path.isfile(slurm_base_file_path), "%s doesn't exist" % slurm_base_file_path)
         with open(slurm_base_file_path, 'r') as fin:
             self.i_dict = ParseFromSlurmBatchFile(fin)
         self.check() # call the check function to check the contents of the file
@@ -726,8 +730,6 @@ class SLURM_OPERATOR():
             if self.o_dict['command'][0] == "srun":
                 self.o_dict['command'].insert(1, "--cpu-bind=" + bind_to + "s")
 
-            
-
     def SetName(self, _name):
         '''
         set the name of the job
@@ -743,6 +745,26 @@ class SLURM_OPERATOR():
         else:
             self.o_dict['command'][-2] = "${ASPECT_SOURCE_DIR}/build/aspect"
         self.o_dict['command'][-1] = prm_file
+
+    def ResetCommand(self):
+        '''
+        reset the command
+        '''
+        self.o_dict['command'] = []
+        self.o_dict['others'] = []
+
+    def SetTimeByHour(self, hr):
+        '''
+        set the time limit
+        '''
+        self.o_dict['config']['-t'] = "%d:00:00" % hr
+    
+    def SetExtra(self, contents):
+        '''
+        set extra commands
+        '''
+        self.o_dict['extra'] = contents
+        pass
 
     def __call__(self, slurm_file_path):
         with open(slurm_file_path, 'w') as fout:

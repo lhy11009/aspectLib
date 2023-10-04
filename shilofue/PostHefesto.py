@@ -25,13 +25,16 @@ descriptions
 """ 
 import numpy as np
 import sys, os, argparse
-import re
+import json, re
 # import pathlib
 # import subprocess
 import numpy as np
+from shutil import copy2, rmtree, copytree
 # from matplotlib import cm
 from matplotlib import pyplot as plt
+from matplotlib import gridspec
 from shilofue.Plot import LINEARPLOT
+import shilofue.ParsePrm as ParsePrm
 from scipy import interpolate
 
 # directory to the aspect Lab
@@ -43,6 +46,89 @@ shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 # import utilities in subdirectiory
 sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
+
+
+class HEFESTO_OPT(Utilities.JSON_OPT):
+    '''
+    Define a class to work with CASE
+    List of keys:
+    '''
+    def __init__(self):
+        '''
+        Initiation, first perform parental class's initiation,
+        then perform daughter class's initiation.
+        '''
+        Utilities.JSON_OPT.__init__(self)
+        self.add_key("HeFESTo Repository", str, ["HeFESTo repository"], ".", nick='hefesto_dir')
+        self.add_key("Output directory", str, ["output directory"], ".", nick='o_dir')
+        self.add_key("Case name", str, ["case name"], "foo", nick='case_name')
+        self.add_key("Number of processor", int, ["nproc"], 1, nick='nproc')
+        self.add_key("Path of a control file", str, ["control path"], ".", nick='control_path')
+        self.add_key("dimension T: T1", float, ["T", "T1"], 0.0, nick='T1')
+        self.add_key("dimension T: T2", float, ["T", "T2"], 0.0, nick='T2')
+        self.add_key("dimension T: nT", int, ["T", "nT"], 0, nick='nT')
+        self.add_key("dimension P: P1", float, ["P", "P1"], 0.0, nick='P1')
+        self.add_key("dimension P: P2", float, ["P", "P2"], 0.0, nick='P2')
+        self.add_key("dimension P: nP", int, ["P", "nP"], 0, nick='nP')
+        self.add_key("dimension T: variable", str, ["T", "variable"], 'temperature', nick='T_variable')
+        self.add_key("path of the slurm file", str, ["slurm path"], 'foo', nick='slurm_file_base')
+        self.add_key("path of the parameter directory", str, ["prm directory"], 'foo', nick='prm_dir')
+        self.add_key("split by", str, ["split by"], 'P', nick='split_by')
+
+
+    def check(self):
+        '''
+        check inputs are valid
+        '''
+        hefesto_dir = Utilities.var_subs(self.values[0])
+        o_dir = Utilities.var_subs(self.values[1])
+        Utilities.my_assert(os.path.isdir(o_dir), FileNotFoundError, "No such directory: %s" % o_dir)
+        control_path = Utilities.var_subs(self.values[4])
+        Utilities.my_assert(os.path.isfile(control_path), FileNotFoundError, "No such file: %s" % control_path)
+        # order of T1, T2; P1, P2
+        T1 = self.values[5]
+        T2 = self.values[6]
+        assert(T1 <= T2)
+        P1 = self.values[8]
+        P2 = self.values[9]
+        assert(P1 <= P2)
+        T_variable = self.values[11]
+        assert(T_variable in ["temperature", "entropy"])
+        slurm_file_base = Utilities.var_subs(self.values[12])
+        assert(os.path.isfile(slurm_file_base))
+
+
+    def to_distribute_parallel_control(self):
+        '''
+        Interface to the DistributeParallelControl function
+        '''
+        hefesto_dir = Utilities.var_subs(self.values[0])
+        o_dir = Utilities.var_subs(self.values[1])
+        case_name = Utilities.var_subs(self.values[2])
+        nproc = self.values[3]
+        control_path = Utilities.var_subs(self.values[4])
+        T1 = self.values[5]
+        T2 = self.values[6]
+        nT = self.values[7]
+        P1 = self.values[8]
+        P2 = self.values[9]
+        nP = self.values[10]
+        T_variable = self.values[11]
+        slurm_file_base = Utilities.var_subs(self.values[12])
+        prm_dir = Utilities.var_subs(self.values[13])
+        split_by = Utilities.var_subs(self.values[14])
+        return hefesto_dir, o_dir, case_name, nproc, control_path,\
+            T1, T2, nT, P1, P2, nP, T_variable, slurm_file_base, prm_dir,\
+            split_by
+
+    def case_dir(self):
+        '''
+        return the path to the case directory
+        '''
+        o_dir = Utilities.var_subs(self.values[1])
+        case_name = Utilities.var_subs(self.values[2])
+        case_dir = os.path.join(o_dir, case_name)
+        return case_dir
 
 
 class LOOKUP_TABLE():
@@ -517,6 +603,121 @@ class LOOKUP_TABLE():
         pass
 
 
+class CONTROL_FILE():
+
+    def __init__(self):
+        '''
+        initiation
+        Attributes:
+            lines: line inputs
+            n_raw (int): number of line inputs
+            P1, P2, nP: entries for the P / density dimention
+            T1, T2, nT: entries for the T / entropy dimention
+            useT (int): 0 - use S; 1 - use T
+            prm_dir: directory to the parameter files
+        '''
+        self.lines = []
+        self.n_raw = 0
+        self.P1 = 0.0
+        self.P2 = 0.0
+        self.nP = 0
+        self.useT = 1
+        self.prm_dir = None
+        pass
+
+    def ReadFile(self, _path):
+        '''
+        Inputs:
+            _path (str): _path of a control file
+        '''
+        assert(os.path.isfile(_path))
+        with open(_path, 'r') as fin:
+            contents = fin.read()
+        self.lines = contents.split('\n')
+        self.n_raw = len(self.lines)
+
+        # read the first line, dimentions in P, T
+        line1 = self.lines[0]
+        temp = line1.split(',')
+        foo = Utilities.re_neat_word(temp[0])
+        self.P1 = float(foo)
+        foo = Utilities.re_neat_word(temp[1])
+        self.P2 = float(foo)
+        foo = Utilities.re_neat_word(temp[2])
+        self.nP = int(foo)
+        foo = Utilities.re_neat_word(temp[3])
+        self.T1 = float(foo)
+        foo = Utilities.re_neat_word(temp[4])
+        self.T2 = float(foo)
+        foo = Utilities.re_neat_word(temp[5])
+        self.nT = int(foo)
+
+    def configureP(self, P1, P2, nP):
+        '''
+        Inputs:
+            P1, P2, nP: entries for the P / density dimention
+        '''
+        self.P1 = P1
+        self.P2 = P2
+        self.nP = nP
+    
+    def configureT(self, T1, T2, nT, **kwargs):
+        '''
+        Inputs:
+            T1, T2, nT: entries for the T / entropy dimention
+            kwargs:
+                use_T: use temperature
+
+        '''
+        useT = kwargs.get("useT", 1)
+        self.useT = useT
+        self.T1 = T1
+        self.T2 = T2
+        self.nT = nT
+    
+    def configurePrm(self, prm_dir):
+        '''
+        Inputs:
+            directory of the parameter files
+        '''
+        self.prm_dir = prm_dir
+
+    def WriteFile(self, _path):
+        '''
+        Inputs:
+            _path (str): _path of a control file to write
+        '''
+        o_lines = self.lines.copy()
+        # first line: P, T dimension
+        o_lines[0] = ''
+        line1 = self.lines[0]
+        temp = line1.split(',')
+        foo = "%s,%s,%s" % (self.P1, self.P2, self.nP)
+        o_lines[0] += foo
+        foo = ",%s,%s,%s" % (self.T1, self.T2, self.nT)
+        o_lines[0] += foo
+        if self.useT == 1:
+            temp1 = 0
+        else:
+            # use entropy
+            temp1 = -2
+        foo = ",%s,%s,%s" % (temp1, temp[7], temp[8])
+        o_lines[0] += foo
+        # path of the parameter files
+        if self.prm_dir is not None:
+            o_lines[10] = self.prm_dir
+
+        # write file
+        with open(_path, 'w') as fout:
+            for i in range(self.n_raw):
+                line = o_lines[i]
+                if i > 0:
+                    fout.write('\n')
+                fout.write(line)
+        assert(os.path.isfile(_path))
+        print("Write file %s" % _path)
+
+
 def ParsePerplexHeader(line):
     '''
     Parse header of a perplex file
@@ -861,6 +1062,238 @@ def ComputeBuoyancy(_path0, _path1, **kwargs):
     return depths, buoyancies, density_ratios
 
 
+def DistributeParallelControl(hefesto_dir, o_dir, case_name, nproc, control_path,\
+                              T1, T2, nT, P1, P2, nP, T_variable, slurm_file_base, prm_dir, split_by):
+    '''
+    Generate controls file for running HeFesto in parallel
+    Inputs;
+        json_opt (dict or json file): inputs
+    '''
+    assert(split_by in ["P", "T"])
+
+    if T_variable == "temperature":
+        useT = 1
+    else:
+        useT = 0
+    
+    # make directory
+    case_dir = os.path.join(o_dir, case_name)
+    if os.path.isdir(case_dir):
+        foo = input("Case directory %s exist, remove? [y/n]" % case_dir)
+        if foo == 'y':
+            rmtree(case_dir)
+        else:
+            "Terminating"
+            exit(0)
+    
+    # read file
+    ControlFile = CONTROL_FILE()
+    ControlFile.ReadFile(control_path)
+    ControlFile.configurePrm(prm_dir)
+
+    # P Ranges
+    p_ranges = []
+    T_ranges = []
+    if split_by == "P":
+        p_interval = (P2 - P1) / nP
+        for i in range(nproc):
+            if nP >= nproc and nproc > 1:
+                foo = nP // nproc
+                foo1 = nP % nproc
+                if i == nproc - 1:
+                    p_range = [P1 + p_interval * foo*i, P2, int(foo + foo1 + 1)]
+                else:
+                    p_range = [P1 + p_interval * foo * i, P1 + p_interval * foo * (i+1), int(foo + 1)]
+            else:
+                p_range = [P1, P2, nP]
+            p_ranges.append(p_range)
+    elif split_by == "T":
+        t_interval = (T2 - T1) / nT
+        for i in range(nproc):
+            if nT >= nproc and nproc > 1:
+                foo = nT  // nproc
+                foo1 = nT % nproc
+                if i == nproc - 1:
+                    t_range = [T1 + t_interval * foo*i, T2, int(foo + foo1 + 1)]
+                else:
+                    t_range = [T1 + t_interval * foo * i, T1 + t_interval * foo * (i+1), int(foo + 1)]
+            else:
+                t_range = [T1, T2, nT]
+            T_ranges.append(t_range)
+
+    # generate cases 
+    os.mkdir(case_dir)
+    # make subdirectories
+    exe_path = os.path.join(hefesto_dir, "main")
+    sh_path = os.path.join(case_dir, "configure.sh")
+    sh_contents = "#!/bin/bash\n"
+    for iproc in range(nproc):
+        sub_dir_name = "sub_%04d" % iproc
+        sub_dir = os.path.join(case_dir, sub_dir_name)
+        os.mkdir(sub_dir)
+        # append new line to sh file 
+        o_exe_path = os.path.join(sub_dir_name, "main")
+        new_line = "cp %s %s" % (exe_path, o_exe_path)
+        sh_contents += (new_line + '\n')
+        # configure P, T
+        print("split_by: ", split_by) # debug
+        if split_by == "P":
+            p_range = p_ranges[iproc]
+            ControlFile.configureP(p_range[0], p_range[1], p_range[2])
+        else:
+            ControlFile.configureP(P1, P2, nP)
+        if split_by == "T":
+            T_range = T_ranges[iproc]
+            ControlFile.configureT(T_range[0], T_range[1], T_range[2], useT=useT)
+        else:
+            ControlFile.configureT(T1, T2, nT, useT=useT)
+        # write file
+        temp = os.path.join(sub_dir, "control")
+        ControlFile.WriteFile(temp)
+
+    # generate bash file 
+    with open(sh_path, 'w') as fin:
+        fin.write(sh_contents)
+    
+    # generate the slurm file
+    slurm_file_path = os.path.join(case_dir, "job.sh")
+    SlurmOperator = ParsePrm.SLURM_OPERATOR(slurm_file_base)
+    SlurmOperator.SetAffinity(1, nproc, 1)
+    SlurmOperator.ResetCommand()
+    SlurmOperator.SetName(case_name)
+    SlurmOperator.SetTimeByHour(300)
+    # generate the command to run
+    extra_contents = ""
+    temp = "subdirs=("
+    for iproc in range(nproc):
+        if iproc > 0:
+            temp += " "
+        sub_dir_name = "sub_%04d" % iproc
+        temp += "\"%s\"" % sub_dir_name
+    temp += ")\n"
+    extra_contents += temp
+
+    temp = """
+for subdir in ${subdirs[@]}; do
+        cd ${subdir}
+        srun --exclusive --ntasks 1 ./main control &
+        cd ..
+done
+wait
+"""
+    extra_contents += temp
+    SlurmOperator.SetExtra(extra_contents)
+    SlurmOperator(slurm_file_path)
+    print("%s: make new case %s" % (Utilities.func_name(), case_dir))
+
+
+def CreateHeFESToCaseFromJSON(json_option):
+    '''
+    Create HeFESTo case from a json file
+    Inputs:
+        json_option (str or dict): either a file to import or a dict of
+            options
+    '''
+    HeFESTo_Opt = HEFESTO_OPT()
+    # read in json options
+    if type(json_option) == str:
+        if not os.access(json_option, os.R_OK):
+            raise FileNotFoundError("%s doesn't exist" % json_option)
+        HeFESTo_Opt.read_json(json_option)
+    elif type(json_option) == dict:
+        HeFESTo_Opt.import_options(json_option)
+    else:
+        raise TypeError("Type of json_opt must by str or dict")
+    
+    DistributeParallelControl(*HeFESTo_Opt.to_distribute_parallel_control())
+
+    # copy the json file
+    case_dir = HeFESTo_Opt.case_dir()
+    json_o_path = os.path.join(case_dir, "case.json")
+    if type(json_option) == str:
+        copy2(json_option, json_o_path)
+    elif type(json_option) == dict:
+        with open(json_o_path, 'w') as fout:
+            json.dump(fout)
+    
+
+def AssembleParallelFiles(case_dir):
+    '''
+    Inputs:
+        case_dir: path to the case directory
+    '''
+    # load options
+    json_file = os.path.join(case_dir, "case.json")
+    assert(os.path.isfile(json_file))
+    with open(json_file, 'r') as fin:
+        case_opt = json.load(fin)
+    nproc = case_opt['nproc']
+    nP = case_opt['P']['nP']
+
+    # read file contents 
+    # read first file
+    sub_dir_name = "sub_0000"
+    sub_dir = os.path.join(case_dir, sub_dir_name)
+    output_dir = os.path.join(case_dir, "output")
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+    fort_56_o_path = os.path.join(output_dir, "fort.56")
+    # read subsequent files
+    fort_56_path = os.path.join(sub_dir, "fort.56")
+    with open(fort_56_path, 'r') as fin:
+        lines = fin.readlines()
+    for i in range(1, nproc):
+        sub_dir_name = "sub_%04d" % i
+        sub_dir = os.path.join(case_dir, sub_dir_name)
+        fort_56_path = os.path.join(sub_dir, "fort.56")
+        with open(fort_56_path, 'r') as fin:
+            temp = fin.readlines()
+        for i in range(nP+1,len(temp)):
+            lines.append(temp[i])
+
+    # write file 
+    with open(fort_56_o_path, 'w') as fout:
+        for _line in lines:
+            fout.write(_line)
+    
+    print("File generated:", fort_56_o_path) # debug
+
+
+# todo_para
+def PlotHeFestoBuoyancy(ifile):
+    '''
+    Inputs:
+        ifile: input file
+    '''
+    # read input file
+    assert(os.path.isfile(ifile))
+    with open(ifile, 'r') as fin:
+        lines = fin.readlines()
+    dir0 = Utilities.re_neat_word(lines[0])
+    path0 = os.path.join(dir0, "fort.56")
+    dir1 = Utilities.re_neat_word(lines[1])
+    path1 = os.path.join(dir1, "fort.56")
+    o_dir = Utilities.re_neat_word(lines[2])
+
+    fig = plt.figure(tight_layout=True, figsize=(15, 5))  # plot of wallclock
+    gs = gridspec.GridSpec(1, 3)
+    axT = fig.add_subplot(gs[0, 0])
+    ax_density_ratio = fig.add_subplot(gs[0, 1])
+    ax_buoy = fig.add_subplot(gs[0, 2])
+    ComputeBuoyancy(path0, path1, axT=axT, ax_density_ratio=ax_density_ratio, ax_buoy=ax_buoy)
+    axT.invert_yaxis()
+    ax_density_ratio.invert_yaxis()
+    ax_buoy.invert_yaxis()
+    axT.grid()
+    ax_density_ratio.grid()
+    ax_buoy.grid()
+
+    o_path = os.path.join(o_dir, "buoyancy.pdf")
+    fig.savefig(o_path) # debug
+    print("Figure generated: ", o_path)
+
+
+    
 
 def main():
     '''
@@ -914,7 +1347,17 @@ def main():
         # Compare outputs to standard
         CompareHeFestoVs(arg.inputs)
 
+    elif _commend == "create_case":
+        CreateHeFESToCaseFromJSON(arg.inputs)
+
+    elif _commend == "assemble_parallel_files":
+        AssembleParallelFiles(arg.inputs)
+
+    elif _commend == "plot_hefesto_buoyancy":
+        # todo_para 
+        PlotHeFestoBuoyancy(arg.inputs)
+
 
 # run script
 if __name__ == '__main__':
-    main()
+    main( )
