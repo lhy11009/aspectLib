@@ -95,12 +95,17 @@ def PlotCaseRun(case_path, **kwargs):
         kwargs:
             time_range
             step(int): if this is given as an int, only plot this step
+            visualization (str): visualization software, visit or paraview.
+            last_step: number of last steps to plot
     Returns:
         -
     '''
     run_visual = kwargs.get('run_visual', 0)
     step = kwargs.get('step', None)
     time_interval = kwargs.get('time_interval', None)
+    visualization = kwargs.get('visualization', 'visit')
+    last_step = kwargs.get('last_step', 3)
+    assert(visualization in ["paraview", "visit"])
     print("PlotCaseRun in TwoDSubduction0: operating")
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
@@ -111,17 +116,32 @@ def PlotCaseRun(case_path, **kwargs):
     if type(step) == int:
         Visit_Options.Interpret(steps=[step], time_interval=time_interval)  # only plot a single step
     else:
-        Visit_Options.Interpret(last_step=3, time_interval=time_interval)  # by default, plot the last 3 steps
-    odir = os.path.join(case_path, 'visit_scripts')
-    if not os.path.isdir(odir):
-        os.mkdir(odir)
-    print("Generating visit scripts")
-    py_script = 'slab.py'
-    ofile = os.path.join(odir, py_script)
-    visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', py_script)
-    visit_script_base = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'base.py')
-    Visit_Options.read_contents(visit_script_base, visit_script)  # combine these two scripts
-    Visit_Options.substitute()
+        Visit_Options.Interpret(last_step=last_step, time_interval=time_interval)  # by default, plot the last 3 steps
+
+    # generate scripts 
+    if visualization == 'visit':
+        odir = os.path.join(case_path, 'visit_scripts')
+        if not os.path.isdir(odir):
+            os.mkdir(odir)
+        print("Generating visit scripts")
+        py_script = 'slab.py'
+        ofile = os.path.join(odir, py_script)
+        visit_script = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'TwoDSubduction', py_script)
+        visit_script_base = os.path.join(ASPECT_LAB_DIR, 'visit_scripts', 'base.py')
+        Visit_Options.read_contents(visit_script_base, visit_script)  # combine these two scripts
+        Visit_Options.substitute()
+    elif visualization == 'paraview':
+        odir = os.path.join(case_path, 'paraview_scripts')
+        if not os.path.isdir(odir):
+            os.mkdir(odir)
+        print("Generating paraview scripts")
+        py_script = 'slab.py'
+        ofile = os.path.join(odir, py_script)
+        paraview_script = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts', 'TwoDSubduction', py_script)
+        paraview_script_base = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts', 'base.py')
+        Visit_Options.read_contents(paraview_script_base, paraview_script)  # combine these two scripts
+        Visit_Options.substitute()
+
     ofile_path = Visit_Options.save(ofile, relative=True)
     if run_visual == 1:
         print("Visualizing using visit")
@@ -210,9 +230,9 @@ def main():
     else:
         assert(type(arg.time) == float and type(arg.time1) == float)
         time_range = [arg.time, arg.time1]
-
     if _commend == 'plot_case':
-        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization, time_interval=arg.time_interval)
+        PlotCase.PlotCaseCombined([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization,\
+        time_interval=arg.time_interval, visualization="paraview", last_step=1)
         # PlotCase.PlotCaseCombined([PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization, time_interval=arg.time_interval)
     elif _commend == 'plot_case_in_dir':
         PlotCase.PlotCaseCombinedDir([PlotCase.PlotCaseRun, PlotCaseRun], arg.inputs, time_range=time_range, run_visual=arg.run_visualization, time_interval=arg.time_interval)

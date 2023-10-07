@@ -3,6 +3,8 @@
 # e.g. open file vtk files, add plots, choose color schemes, etc
 # Usage of this class is to be combined with classes defined for
 # individual visualizations
+# use environmental variables:
+# PV_INTERFACE_PATH - path to load xml files
 import os
 # trace generated using paraview version 5.10.1
 #import paraview
@@ -22,8 +24,18 @@ class PARAVIEW_PLOT():
         Args:
             filein(str): path of vtu file
             plots(list): lists of plot
+            kwargs:
+                project: name of the project
         """
+        # import xmls
+        PV_INTERFACE_PATH = os.environ["PV_INTERFACE_PATH"]
+        if PV_INTERFACE_PATH != "" and os.path.isdir(PV_INTERFACE_PATH):
+            print("import files under: %s" % PV_INTERFACE_PATH)
+            import_xmls(PV_INTERFACE_PATH)
+
         # get variables
+        project = kwargs.get("project", "ThDSubduction")
+        assert(project in ["TwoDSubduction", "ThDSubduction"])
         self.output_dir = kwargs.get('output_dir', ".")
         if not os.path.isdir(self.output_dir):
             os.mkidr(self.output_dir)
@@ -32,10 +44,14 @@ class PARAVIEW_PLOT():
         # 'current_cohesions', 'current_friction_angles', 'plastic_yielding', 'dislocation_viscosity', 
         # 'diffusion_viscosity', 'peierls_viscosity', 'error_indicator']
         self.view_solution_pvd = True  # if the solutionpvd is included as a view
-        self.all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'sp_upper', 'sp_lower']
-        HAS_PLATE_EDGE = True
-        if HAS_PLATE_EDGE:
-            self.all_variables.append('plate_edge')
+        if project == "ThDSubduction":
+            self.all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'sp_upper', 'sp_lower']
+            HAS_PLATE_EDGE = True
+            if HAS_PLATE_EDGE:
+                self.all_variables.append('plate_edge')
+        elif project == "TwoDSubduction":
+            self.all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'spcrust', 'spharz',\
+            'dislocation_viscosity', 'diffusion_viscosity', 'peierls_viscosity']
         # open data base
         self.filein = filein
         # assign initial values 
@@ -69,6 +85,57 @@ class PARAVIEW_PLOT():
         animationScene1.AnimationTime = _time
         self.time = _time
         print("Time: %.4e" % _time)
+
+
+def import_xmls(_dir, **kwargs):
+    '''
+    Import xmls files
+    Inputs:
+        _dir: directory contains xml files
+        **kwargs:
+            debug - output debug options
+    '''
+    debug = kwargs.get("debug", False)
+    i = 0
+    for subdir, dirs, files in os.walk(_dir):
+        for filename in files:
+            if filename.endswith("PARAVIEW.xml"):
+                filepath = os.path.join(subdir, filename)
+                if debug:
+                    print("Find filepath: ", filepath)  # debug
+                ImportPresets(filename=filepath)
+                i += 1
+                if debug:
+                    print("Filepath imported: ", filepath)
+    print("%d file imported" % i)
+
+
+def apply_rotation(_source, origin, angles, **kwargs):
+    '''
+    apply rotation to a dataset
+    Inputs:
+        source(str): _source of data
+        origin (list): the origin point of visualization
+        angles (list): the angles of rotation in x, y, z
+        kwargs:
+            registrationName : the name of registration
+    '''
+    registrationName = kwargs.get("registrationName", 'Transform')
+
+    # find source
+    solutionpvd = FindSource(_source)
+
+    # create a new 'Transform'
+    transform = Transform(registrationName=registrationName, Input=solutionpvd)
+    transform.Transform = 'Transform'
+
+    # Properties modified on transform1.Transform
+    transform.Transform.Translate = origin
+    # Properties modified on transform1.Transform
+    transform.Transform.Rotate = angles
+
+    # same as uncheck "show box"
+    Hide3DWidgets()
 
 
 def add_slice(solutionpvd, field, Origin, Normal, **kwargs):
@@ -245,3 +312,66 @@ def adjust_color_bar(colorTransferFunc, renderView, color_bar_config):
     # change scalar bar placement
     colorBar.Position = position
     colorBar.ScalarBarLength = length
+
+
+def add_plot(_source, field, **kwargs):
+    '''
+    simply add a plot on the original viewer
+    Inputs:
+        _source (str): the data source
+        field (str): name of the field to plot
+        kwargs:
+            use_log - use log value
+            lim - limits of values
+            color - color scheme to use
+    '''
+    # get inputs
+    use_log = kwargs.get("use_log", False)
+    lim = kwargs.get("lim", None)
+    _color = kwargs.get("color", None)
+
+    # get active source.
+    pvd = FindSource(_source)
+    # set active source
+    SetActiveSource(pvd)
+    # get active view
+    renderView1 = GetActiveViewOrCreate('RenderView')
+
+    # get display properties
+    # pvdDisplay = GetDisplayProperties(pvd, view=renderView1)
+    pvdDisplay = Show(pvd, renderView1, 'UnstructuredGridRepresentation')
+    # set scalar coloring
+    ColorBy(pvdDisplay, ('POINTS', field))
+    
+    
+    # rescale color and/or opacity maps used to include current data range
+    pvdDisplay.RescaleTransferFunctionToDataRange(True, False)
+    # show color bar/color legend
+    pvdDisplay.SetScalarBarVisibility(renderView1, True)
+    # get color transfer function/color map for 'field'
+    fieldLUT = GetColorTransferFunction(field)
+    # get opacity transfer function/opacity map for 'field'
+    fieldPWF = GetOpacityTransferFunction(field)
+
+    # reset limit 
+    fieldLUT.RescaleTransferFunction(lim[0], lim[1]) # Rescale transfer function
+    fieldPWF.RescaleTransferFunction(lim[0], lim[1]) # Rescale transfer function
+    # set using log values
+    if use_log:
+        # convert to log space
+        fieldLUT.MapControlPointsToLogSpace()
+        # Properties modified on fieldLUT
+        fieldLUT.UseLogScale = 1
+    # apply a color scheme
+    if _color is not None: 
+        # Apply a preset using its name. Note this may not work as expected when presets have duplicate names.
+        fieldLUT.ApplyPreset(_color, True)
+   
+    # reset view to fit data
+    # without this, the figure won't show
+    renderView1.ResetCamera(False)
+
+    # Hide the scalar bar for this color map if no visible data is colored by it.
+    HideScalarBarIfNotNeeded(fieldLUT, renderView1)
+    # hide data in view
+    Hide(pvd, renderView1)
