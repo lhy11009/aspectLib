@@ -4,6 +4,12 @@ This is a repository of my scripts post-processing ASPECT
 
 ### Python scripts in shilofue folder
 
+#### Input Options
+
+Output file type, png or pdf:
+
+    -ft, --file_type
+
 #### shilofue/PlotDepthAverage.py
 
 Plot the buoyancy and the buoyancy ratio (buoyancy / density in the second file)
@@ -39,3 +45,9 @@ json file as an example
 Assemble the parallel files. Do this after getting the results from the server
 
     python -m shilofue.PostHefesto assemble_parallel_files -i /home/lochy/ASPECT_PROJECT/HeFESTo_DIR/test_hefesto_parallel1
+
+#### shilofue/Rheology.py
+
+Plot summary of mantle rheology from multiple rheologies:
+
+    python -m shilofue.Rheology compare_mantle_rheology

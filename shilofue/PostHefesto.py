@@ -156,11 +156,11 @@ class LOOKUP_TABLE():
         self.delta_out2 = 0.0 
         self.fort_56_header = { "Pressure": {"col": 0, "unit": "GPa"}, "Depth": {"col": 1, "unit": "km"},\
                                "Temperature": {"col": 2, "unit": "K"}, "Density": {"col": 3, "unit": "g/cm^3"},\
-                                "Bulk sound Velocity": {"col": 4, "unit": "km/s"}, "Shear wave velocity": {"col": 5, "unit": "km/s"},\
-                                "Longitudinal wave velocity": {"col": 6, "unit": 'km/s'}, "VS modified by attenuation": {"col": 7, "unit": 'km/s'},\
+                                "Bulk sound Velocity": {"col": 4, "unit": "km/s"}, "VS": {"col": 5, "unit": "km/s"},\
+                                "VP": {"col": 6, "unit": 'km/s'}, "VS modified by attenuation": {"col": 7, "unit": 'km/s'},\
                                 "VP modified by attenuation": {"col": 8, "unit": 'km/s'}, "Enthalpy":{"col": 9, "unit": 'kJ/g'},\
-                                "Entropy": {"col": 10, "unit": "J/g/K"}, "thermal expansivity": {"col": 11, "unit": "10-5 K-1"},\
-                                "isobaric heat capacity": {"col": 12, "unit": "J/g/K)"}, "isothermal bulk modulus": {"col": 13, "unit": "GPa"},\
+                                "Entropy": {"col": 10, "unit": "J/g/K"}, "Thermal_expansivity": {"col": 11, "unit": "10-5 K-1"},\
+                                "Isobaric_heat_capacity": {"col": 12, "unit": "J/g/K)"}, "isothermal bulk modulus": {"col": 13, "unit": "GPa"},\
                                 "Shear attenuation": {"col": 14, "unit": "1"}, "Longitudinal attenuation":{"col": 15, "unit": "1"},\
                                 "Quenched density": {"col": 16, "unit": "g/cm^3"}, "most abundant phase": {"col": 17, "unit": None}}
         self.oheader = { 'Temperature': 'T(K)',  'Pressure': 'P(bar)' ,  'Density': 'rho,kg/m3',\
@@ -237,7 +237,7 @@ class LOOKUP_TABLE():
         export the vss data from the fort.56 file
         '''
         col_depth = self.header["Depth"]["col"]
-        col_vs = self.header["Shear wave velocity"]["col"]
+        col_vs = self.header["VS"]["col"]
         depths = self.data[:, col_depth]
         Vss = self.data[:, col_vs]
         return depths, Vss
@@ -267,7 +267,7 @@ class LOOKUP_TABLE():
         export density profile
         '''
         col_depth = self.header["Depth"]["col"]
-        col_alpha = self.header["thermal expansivity"]["col"]
+        col_alpha = self.header["Thermal_expansivity"]["col"]
         depths = self.data[:, col_depth]
         alphas = self.data[:, col_alpha]
         return depths, alphas

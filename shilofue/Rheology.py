@@ -3900,18 +3900,21 @@ def GetMantleScenario(scenario, **kwargs):
     return rheology_aspect, viscosity_profile
     
 
-
-def CompareMantleRheology():
+def CompareMantleRheology(**kwargs):
     '''
     compare different scenario of mantle rheology
+    kwargs:
+        file_type - format of figure
     '''
+    _format = kwargs.get("file_type", "png")
+
     # initiate the canvas
     fig = plt.figure(tight_layout=True, figsize=(12, 10))
     gs = gridspec.GridSpec(2, 2)    
 
-    scenarios = ["wet_modified_modified", "wet_modified_modified_300", "wet_modified_modified_100", "wet_modified_modified_30", "wet_modified_modified_10", "HK03_dry"]
+    # scenarios = ["wet_modified_modified", "wet_modified_modified_300", "wet_modified_modified_100", "wet_modified_modified_30", "wet_modified_modified_10", "HK03_dry"]
     # scenarios = ["HK03_wet", "HK03_dry", "wet_modified_medium", "wet_modified_modified", "two_d_subduction"]
-    # scenarios = ["HK03_wet", "HK03_wet_F", "HK03_dry", "two_d_subduction", "AB17"]
+    scenarios = ["HK03_wet", "HK03_wet_F", "HK03_dry", "two_d_subduction", "AB17"]
     # scenarios = ["HK03_wet_with_synthetic_adiabat", "HK03_wet_with_synthetic_adiabat_constant_gradient"]
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray']
 
@@ -4009,7 +4012,7 @@ def CompareMantleRheology():
     if os.path.isdir(o_dir):
         rmtree(o_dir)
     os.mkdir(o_dir)
-    figure_path = os.path.join(o_dir, 'compare.png')
+    figure_path = os.path.join(o_dir, 'compare.%s' % _format)
     fig.savefig(figure_path)
     print("%s: figure saved %s" % (Utilities.func_name(), figure_path))
 
@@ -4122,6 +4125,9 @@ def main():
     parser.add_argument('-th', '--thermal', type=str,
                         default="hpc",
                         help='the thermal profile to use')
+    parser.add_argument('-ft', '--file_type', type=str,
+                        default="png",
+                        help='file output type')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -4223,7 +4229,7 @@ def main():
         PlotShearZoneRheologySummary()
     
     elif _commend == "compare_mantle_rheology":
-        CompareMantleRheology()
+        CompareMantleRheology(file_type = arg.file_type)
     
     elif _commend == "plot_rheology_summary":
         PlotRheologySummaryJson(arg.json)
