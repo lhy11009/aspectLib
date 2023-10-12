@@ -376,7 +376,7 @@ class LOOKUP_TABLE():
             -
         '''
         UnitConvert = Utilities.UNITCONVERT()
-        print("Outputing Data: %s" % o_path)
+        print("%s: Outputing Data" % Utilities.func_name())
         # columns
         print("Outputing fields: %s" % field_names)
         print('first dimension: ', self.number_out1, ", second dimension: ", self.number_out2, ", size:", self.number_out1 * self.number_out2)
@@ -825,7 +825,6 @@ def ReadSecondDimension(nddata):
     # number
     Utilities.my_assert(nddata.size % sub_size == 0, ValueError, 'the table is not regular(rectangle)')
     number = nddata.size // sub_size
-    print('first dimension: ', sub_size, ", second dimension: ", number, ", total size: ", nddata.size)
     return min, delta, number
 
 
