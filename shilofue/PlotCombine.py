@@ -751,27 +751,37 @@ def PlotColorLabels(ax, case_names, colors):
     ax.axis("off")
 
 
-def PlotCombineExecute(PLOT_COMBINE_CLASS, PLOT_COMBINE_OPT, _name, json_path, **kwargs):
+def PlotCombineExecute(PLOT_COMBINE_CLASS, PLOT_COMBINE_OPT, _name, json_option, **kwargs):
     '''
     Combine runtime plot
     Inputs:
-        json_path: path to a json file for configuration
+        json_option: path to a json file for configuration
     '''
-    Utilities.my_assert(os.path.isfile(json_path), FileExistsError, "the json file %s doesn't exit" % json_path)
-    Utilities.my_assert(os.access(json_path, os.R_OK), FileExistsError, "the json file %s cannot be read" % json_path)
+    print("json_option: ", json_option) # debug
+
+    if type(json_option) == str:
+        Utilities.my_assert(os.path.isfile(json_option), FileExistsError, "the json file %s doesn't exit" % json_option)
+        Utilities.my_assert(os.access(json_option, os.R_OK), FileExistsError, "the json file %s cannot be read" % json_option)
+    else:
+        assert(type(json_option) == dict)
     Pc_opt = PLOT_COMBINE_OPT()
-    Pc_opt.read_json(json_path)  # read options
+    Pc_opt.read_json(json_option)  # read options
     # plot the combined figure
     PlotCombiner = PLOT_COMBINE_CLASS(Pc_opt.to_init())
     PlotCombiner(*Pc_opt.to_call(), dump_color_to_json=Pc_opt.get_color_json_output_path(),\
     color_method='list')
     # save the configuration file
     json_copy_path = os.path.join(Pc_opt.get_output_dir(), '%s.json' % _name)
-    try:
-        shutil.copy(json_path, json_copy_path)
+    if type(json_option) == str:
+        try:
+            shutil.copy(json_option, json_copy_path)
+            print("Saved json file: ", json_copy_path)
+        except shutil.SameFileError:
+            print("Saing json file: The two files are the same, skip")
+    else:
+        with open(json_copy_path, 'w') as fout:
+            json.dump(json_option, fout)
         print("Saved json file: ", json_copy_path)
-    except shutil.SameFileError:
-        print("Saing json file: The two files are the same, skip")
     
 
 
