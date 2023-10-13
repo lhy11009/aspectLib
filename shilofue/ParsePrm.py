@@ -676,9 +676,10 @@ def ParseToSlurmBatchFile(fout, outputs, **kwargs):
             contents += " "
             contents += ("-n " + outputs['config']['-n'])
     # extra contents
-    if outputs['extra'] is not None:
-        contents += outputs['extra']
-        contents += '\n'
+    if 'extra' in outputs:
+        if outputs['extra'] is not None:
+            contents += outputs['extra']
+            contents += '\n'
     fout.write(contents)
     pass
 

@@ -501,7 +501,6 @@ class CASE(CasesP.CASE):
         elif _type == '2d_consistent':
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
             "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
-        # todo_density
         # rewrite the reset density part
         if _type == '2d_consistent':
             if "Reset density function" in o_dict['Material model'][material_model_subsection]:

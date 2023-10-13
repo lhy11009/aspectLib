@@ -157,6 +157,7 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("Adaptive refinement", int, ['refinement', 'adaptive refinement'], 2, nick='adaptive_refinement')
         self.add_key("remove overiding plate composition", int, ['world builder', 'remove ov comp'], 0, nick='rm_ov_comp')
         self.add_key("peierls creep scheme", str, ['peierls creep', 'flow law'], "exact", nick='peierls_flow_law')
+        self.add_key("reset density in the two corners", int, ["reset density"], 0, nick='reset_density')
     
     def check(self):
         '''
@@ -301,6 +302,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         rm_ov_comp = self.values[self.start + 51]
         comp_method = self.values[25] 
         peierls_flow_law = self.values[self.start + 52]
+        reset_density = self.values[self.start + 53]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -311,7 +313,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
-        rm_ov_comp, comp_method, peierls_flow_law
+        rm_ov_comp, comp_method, peierls_flow_law, reset_density
 
     def to_configure_wb(self):
         '''
@@ -403,7 +405,7 @@ class CASE(CasesP.CASE):
     sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,\
     version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length,\
     slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice,\
-    global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law):
+    global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -549,7 +551,8 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
               prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, sp_trailing_length, ov_trailing_length)
         elif geometry == 'box':
             o_dict['Material model']['Visco Plastic TwoD'] =\
-              prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_trailing_length, ov_trailing_length)
+              prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_trailing_length,\
+                                           ov_trailing_length, Dsz, reset_density=reset_density)
        
         # set up subsection Prescribed temperatures
         if geometry == 'chunk':
@@ -1773,7 +1776,8 @@ def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, sp_trail
     return o_dict
 
 
-def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_trailing_length, ov_trailing_length, **kwargs):
+def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_trailing_length,\
+                                ov_trailing_length, Dsz, **kwargs):
     '''
     reset subsection Visco Plastic TwoD
     Inputs:
@@ -1781,6 +1785,7 @@ def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_tr
         part in a prm file
         kwargs(dict):
     '''
+    reset_density = kwargs.get("reset_density", False)
     o_dict = visco_plastic_twoD.copy()
     o_dict['Reset viscosity function'] =\
         prm_reset_viscosity_function_cart(box_width, sp_trailing_length, ov_trailing_length)
@@ -1788,13 +1793,21 @@ def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_tr
         o_dict["Reaction mor"] = 'true'
     else:
         o_dict["Reaction mor"] = 'false'
+    print("Dsz: ", Dsz)  # debug
     o_dict["Reaction mor function"] =\
-        prm_reaction_mor_function_cart(box_width, sp_trailing_length, ov_trailing_length)
+        prm_reaction_mor_function_cart(box_width, sp_trailing_length, ov_trailing_length, Dsz)
     if type_of_bd in ["all free slip"]:
         # use free slip on both sides, set ridges on both sides
         o_dict['Reset viscosity'] = 'true'
     else:
         o_dict['Reset viscosity'] = 'false'
+    # reset density
+    # if reset_density is 1, then this option will show up in the prm file
+    if reset_density:
+        o_dict['Reset density'] = 'true'
+        o_dict['Reset density function'] = \
+            prm_reaction_density_function_cart(box_width)
+
     return o_dict
 
 
@@ -1878,19 +1891,19 @@ def prm_reaction_mor_function_sph(max_phi, sp_trailing_length, ov_trailing_lengt
     return odict
 
 
-def prm_reaction_mor_function_cart(box_width, sp_trailing_length, ov_trailing_length):
+def prm_reaction_mor_function_cart(box_width, sp_trailing_length, ov_trailing_length, Dsz):
     '''
     Default setting for Reaction mor function in cartesian geometry
     '''
     if sp_trailing_length < 1e-6 and ov_trailing_length < 1e-6:
-        function_constants_str = "Width=2.75e5, Do=2.890e6, xm=%.4e, DCS=7.500e+03, DHS=3.520e+04" % box_width
+        function_constants_str = "Width=2.75e5, Do=2.890e6, xm=%.4e, DCS=%.4e, DHS=%.4e" % (box_width, Dsz, Dsz*35.2/7.5)
         function_expression_str = "((y > Do - DCS) && (x < Width)) ? 0:\
 \\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (x < Width)) ? 1:\
 \\\n                                        ((y > Do - DCS) && (xm - x < Width)) ? 2:\
 \\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (xm - x < Width)) ? 3: -1" 
     elif sp_trailing_length > 1e-6 and ov_trailing_length > 1e-6:
-        function_constants_str = "Width=2.75e5, SPTL=%.4e, OPTL=%.4e, Do=2.890e6, xm=%.4e, DCS=7.500e+03, DHS=3.520e+04" % \
-        (sp_trailing_length, ov_trailing_length, box_width)
+        function_constants_str = "Width=2.75e5, SPTL=%.4e, OPTL=%.4e, Do=2.890e6, xm=%.4e, DCS=%.4e, DHS=%.4e" % \
+        (sp_trailing_length, ov_trailing_length, box_width, Dsz, Dsz*35.2/7.5)
         function_expression_str = "((y > Do - DCS) && (x > SPTL) && (x < Width + SPTL)) ? 0:\
 \\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (x > SPTL) && (x < Width + SPTL)) ? 1:\
 \\\n                                        ((y > Do - DCS) && (xm - x > OPTL) && (xm - x < Width + OPTL)) ? 2:\
@@ -1905,6 +1918,19 @@ def prm_reaction_mor_function_cart(box_width, sp_trailing_length, ov_trailing_le
     }
     return odict
 
+def prm_reaction_density_function_cart(box_width):
+    '''
+    Default setting for Reaction mor function in cartesian geometry
+    '''
+    function_constants_str = "Depth=1.45e5, SPTL=6.0000e+05, OPTL=6.0000e+05, Do=2.890e6, xm=%.4e, CD=3300.0" % (box_width)
+    function_expression_str = "(((y > Do - Depth) && ((x < SPTL) || (xm-x < OPTL)))? CD: -1.0)"
+    odict = {
+        "Coordinate system": "cartesian",\
+        "Variable names": "x, y",\
+        "Function constants": function_constants_str,\
+        "Function expression": function_expression_str
+    }
+    return odict
 
 def prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age):
     '''

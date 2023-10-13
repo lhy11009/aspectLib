@@ -40,7 +40,6 @@ if not os.path.isdir(test_dir):
 
 def test_2d_consistent_reset_density():
     '''
-    # todo_density
     test for
     1. Adding reseting density utilites in a 2d consistent geometry
     '''

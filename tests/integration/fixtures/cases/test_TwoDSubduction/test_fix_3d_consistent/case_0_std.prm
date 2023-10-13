@@ -208,7 +208,7 @@ subsection Material model
         subsection Reaction mor function
             set Coordinate system = cartesian
             set Variable names = x, y
-            set Function constants = Width=2.75e5, SPTL=6.0000e+05, OPTL=6.0000e+05, Do=2.890e6, xm=7.3830e+06, DCS=7.500e+03, DHS=3.520e+04
+            set Function constants = Width=2.75e5, SPTL=6.0000e+05, OPTL=6.0000e+05, Do=2.890e6, xm=7.3830e+06, DCS=1.5000e+04, DHS=7.0400e+04
             set Function expression = ((y > Do - DCS) && (x > SPTL) && (x < Width + SPTL)) ? 0:\
                                         ((y < Do - DCS) && (y > Do - DHS) && (x > SPTL) && (x < Width + SPTL)) ? 1:\
                                         ((y > Do - DCS) && (xm - x > OPTL) && (xm - x < Width + OPTL)) ? 2:\
