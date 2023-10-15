@@ -38,6 +38,51 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
+def test_process_hefesto_fort56_PS():
+    '''
+    Test processing hefesto table
+    Asserts:
+    '''
+    input_file = os.path.join(source_dir, "fort.56.PS")
+    assert(os.path.isfile(input_file))  # assert there is an existing Hefesto table
+
+    # test 1
+    # output paths
+    output_file = os.path.join(test_dir, "hefesto_PS_table_from_fort56")
+    if (os.path.isfile(output_file)):  # remove old files
+        os.remove(output_file)
+    output_file_std = os.path.join(source_dir, "hefesto_PS_table_from_fort56_std")
+    assert(os.path.isfile(output_file_std))  # assert there is an existing standard file
+    # call processfunction
+    LookupTable = LOOKUP_TABLE()
+    LookupTable.ReadRawFort56(input_file)
+    # fields to read in
+    field_names = ['Pressure', 'Entropy', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity', 'VP', 'VS', 'Enthalpy']
+    LookupTable.Process(field_names, output_file, interval1=1, interval2=1, second_dimension="Entropy")
+    # assert something 
+    assert(os.path.isfile(output_file))
+    # filecmp
+    assert(filecmp.cmp(output_file, output_file_std))
+    
+    # test 2: add fix minor coordinate
+    # output paths
+    output_file = os.path.join(test_dir, "hefesto_PS_table_from_fort56_fix_minor")
+    if (os.path.isfile(output_file)):  # remove old files
+        os.remove(output_file)
+    output_file_std = os.path.join(source_dir, "hefesto_PS_table_from_fort56_fix_minor_std")
+    assert(os.path.isfile(output_file_std))  # assert there is an existing standard file
+    # call processfunction
+    LookupTable = LOOKUP_TABLE()
+    LookupTable.ReadRawFort56(input_file)
+    # fields to read in
+    field_names = ['Pressure', 'Entropy', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity', 'VP', 'VS', 'Enthalpy']
+    LookupTable.Process(field_names, output_file, interval1=1, interval2=1, second_dimension="Entropy", fix_coordinate_minor=True)
+    # assert something 
+    assert(os.path.isfile(output_file))
+    # filecmp
+    assert(filecmp.cmp(output_file, output_file_std))
+
+
 def test_process_hefesto_fort56():
     '''
     Test processing hefesto table

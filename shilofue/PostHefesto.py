@@ -172,7 +172,7 @@ class LOOKUP_TABLE():
                                 'vp': "VP", 'vs': "VS", 'h': "Enthalpy", "s": "Entropy"}
         # unit to output
         self.ounit = {'Temperature': 'K', 'Pressure': 'bar', 'Thermal_expansivity': '1/K',\
-        'Isobaric_heat_capacity': 'J/K/kg', 'Density': 'kg/m3', 'VP':'km/s', 'VS':'km/s', 'Enthalpy': 'J/kg'}
+        'Isobaric_heat_capacity': 'J/K/kg', 'Density': 'kg/m3', 'VP':'km/s', 'VS':'km/s', 'Enthalpy': 'J/kg', "Entropy": "J/K/kg"}
         # pressure entropy table
         self.Pinterp_rows = None
         self.PS_data = None
@@ -228,9 +228,11 @@ class LOOKUP_TABLE():
         Inputs:
             _path: _path to the input fort.56
         '''
+        print("%s: reading file" % Utilities.func_name())
         assert(os.path.isfile(_path))  # assert file exists
         self.header = self.fort_56_header
         self.data = np.genfromtxt(_path)
+        print("%s: data dimension: " % Utilities.func_name(), self.data.shape)
     
     def export_fort56_vss(self):
         '''
@@ -338,18 +340,30 @@ class LOOKUP_TABLE():
             o_path: a output path
             kwargs: options
                 interval1 & 2: interval in the first & second dimension
+                digit: digit of output numbers
+                file_type: type of the output file, perple_x or structured
         Outputs:
             Output of this function is the Perplex file form that could be recognized by aspect
         Returns:
             -
         '''
-        # read dimension info
         first_dimension_name = kwargs.get('first_dimension', 'Pressure')
         second_dimension_name = kwargs.get('second_dimension', 'Temperature')
+        digit = kwargs.get('digit', 8)
+        file_type = kwargs.get("file_type", 'perple_x')
+        fix_coordinate_minor = kwargs.get("fix_coordinate_minor", False)
+
+        # read dimension info
         col_first = self.header[first_dimension_name]['col']
         col_second = self.header[second_dimension_name]['col']
         self.min1, self.delta1, self.number1 = ReadFirstDimension(self.data[:, col_first])
         self.min2, self.delta2, self.number2 = ReadSecondDimension(self.data[:, col_second])
+
+        # fix minor error in the coordinate data
+        if fix_coordinate_minor:
+            FixFirstDimensionMinor(self.data[:, col_first], self.number1)
+            FixSecondDimensionMinor(self.data[:, col_second], self.number1)
+
         # output
         interval1 = kwargs.get('interval1', 1)
         interval2 = kwargs.get('interval2', 1)
@@ -359,9 +373,9 @@ class LOOKUP_TABLE():
         # output intervals
         self.delta_out1 = self.delta1 * interval1 # output intervals
         self.delta_out2 = self.delta2 * interval2 # output intervals
-        self.OutputPerplexTable(field_names, o_path)
+        self.OutputPerplexTable(field_names, o_path, digit=digit, file_type=file_type)
 
-    def OutputPerplexTable(self, field_names, o_path):
+    def OutputPerplexTable(self, field_names, o_path, **kwargs):
         '''
         Process the Hefesto lookup table for aspect
     
@@ -370,11 +384,17 @@ class LOOKUP_TABLE():
             field_names: field_name to output, the first two are the first and second dimension
             kwargs: options
                 version: version of this file
+                digit: digit of output numbers
+                file_type: type of the output file, perple_x or structured
         Outputs:
             Output of this function is the Perplex file form that could be recognized by aspect
         Returns:
             -
         '''
+        digit = kwargs.get('digit', 8)
+        file_type = kwargs.get("file_type", 'perple_x')
+        assert(file_type in ['perple_x', 'structured'])
+
         UnitConvert = Utilities.UNITCONVERT()
         print("%s: Outputing Data" % Utilities.func_name())
         # columns
@@ -430,25 +450,34 @@ class LOOKUP_TABLE():
 
         # output
         with open(o_path, 'w') as fout: 
-            fout.write(self.version + '\n')  # version
-            fout.write(os.path.basename(o_path) + '\n') # filenamea
-            fout.write('2\n')  # dimension
-            fout.write('%s\n' % self.oheader[field_names[0]])
-            fout.write('\t%.8f\n' % (float(self.min1) * unit_factors[0])) # min value
-            fout.write('\t%.8f\n' % (float(self.delta_out1) * unit_factors[0]))  # difference, use the output value
-            fout.write('\t%s\n' % self.number_out1)  # number of output
-            fout.write('%s\n' % self.oheader[field_names[1]])
-            fout.write('\t%.8f\n' % (float(self.min2) * unit_factors[1]))
-            fout.write('\t%.8f\n' % (float(self.delta_out2) * unit_factors[1]))
-            fout.write('\t%s\n' % self.number_out2)
-            fout.write('\t%s\n' % len(columns))
+            if file_type == "perple_x":
+                # write header for perple_x file
+                fout.write(self.version + '\n')  # version
+                fout.write(os.path.basename(o_path) + '\n') # filenamea
+                fout.write('2\n')  # dimension
+                fout.write('%s\n' % self.oheader[field_names[0]])
+                fout.write('\t%.8f\n' % (float(self.min1) * unit_factors[0])) # min value
+                fout.write('\t%.8f\n' % (float(self.delta_out1) * unit_factors[0]))  # difference, use the output value
+                fout.write('\t%s\n' % self.number_out1)  # number of output
+                fout.write('%s\n' % self.oheader[field_names[1]])
+                fout.write('\t%.8f\n' % (float(self.min2) * unit_factors[1]))
+                fout.write('\t%.8f\n' % (float(self.delta_out2) * unit_factors[1]))
+                fout.write('\t%s\n' % self.number_out2)
+                fout.write('\t%s\n' % len(columns))
+            elif file_type == "structured":
+                # write header for structured file
+                fout.write("# This is a data output from HeFESTo\n")
+                fout.write("# Independent variables are %s and %s\n" % (self.oheader[field_names[0]], self.oheader[field_names[1]]))
+                fout.write("# POINTS: %d %d\n" % (self.number_out1, self.number_out2)) 
             temp = ''
             for field_name in field_names:
                 temp += '%-20s' % self.oheader[field_name]
             temp += '\n'
             fout.write(temp)
+
             # data is indexes, so that only part of the table is output
-            np.savetxt(fout, self.data[np.ix_(self.indexes, columns)] * unit_factors, fmt='%-19.8e')
+            _format = '%-' + str(digit + 11) + '.' + str(digit) + 'e'
+            np.savetxt(fout, self.data[np.ix_(self.indexes, columns)] * unit_factors, fmt=_format)
         print("New file generated: %s" % o_path) 
     
     def OutputPressureEntropyTable(self, field_names, o_path):
@@ -780,7 +809,6 @@ def CheckDataDimension(nddata, min1, delta1, number1):
 def ReadFirstDimension(nddata):
     '''
     Process the data in the fisrt dimension(min, delta, number)
-    
     Inputs:
         nddata: a ndarray of the first dimension data
     Returns:
@@ -799,6 +827,48 @@ def ReadFirstDimension(nddata):
             number = i + 1
             break
     return min, delta, number
+
+
+def FixFirstDimensionMinor(nddata, number1, **kwargs):
+    '''
+    fix minor differences in the data in the first dimension
+    Inputs:
+        nddata: a ndarray of the first dimension data
+        number1: number1 i the first dimention
+    '''
+    limits = kwargs.get('limits', [1e-16, 1e-4])
+    for i in range(0, nddata.size):
+        if i >= number1:
+            if nddata[i-number1] < 1e-32:
+                # don't divide a 0 value
+                diff = abs(nddata[i] - nddata[i-number1])
+            else:
+                diff = abs((nddata[i] - nddata[i-number1])/nddata[i-number1])
+            if diff > limits[0] and diff < limits[1]:
+                nddata[i] = nddata[i-number1]
+            elif diff > limits[1]:
+                raise ValueError("Two coordinates (%d, %d) in the first dimension have large differences" % (i-number1, i))
+
+
+def FixSecondDimensionMinor(nddata, number1, **kwargs):
+    '''
+    fix minor differences in the data in the second dimension
+    Inputs:
+        nddata: a ndarray of the second dimension data
+        number1: number1 in the second dimention
+    '''
+    limits = kwargs.get('limits', [1e-16, 1e-4])
+    for i in range(0, nddata.size):
+        if i % number1 != 0:
+            if nddata[i-1] < 1e-32:
+                # don't divide a 0 value
+                diff = abs((nddata[i] - nddata[i-1]))
+            else:
+                diff = abs((nddata[i] - nddata[i-1])/nddata[i-1])
+            if diff > limits[0] and diff < limits[1]:
+                nddata[i] = nddata[i-1]
+            elif diff > limits[1]:
+                raise ValueError("Two coordinates (%d, %d) in the second dimension have large differences" % (i-1, i))
 
 
 def ReadSecondDimension(nddata):
