@@ -201,8 +201,8 @@ build_aspect_plugin(){
     cd ${plugin_to_dir}
     # remove cache before compling
     [[ -e "${plugin_to_dir}/CMakeCache.txt" ]] && eval "rm ${plugin_to_dir}/CMakeCache.txt"
-    echo "cmake -DAspect_DIR=${build_dir}"
-    eval "cmake -DAspect_DIR=${build_dir}"
+    echo "cmake -DAspect_DIR=${build_dir} ."
+    eval "cmake -DAspect_DIR=${build_dir} ."
     quit_if_fail "${FUNCNAME[0]}: cmake inside ${plugin_to_dir} failed"
     echo "make"
     eval "make"
