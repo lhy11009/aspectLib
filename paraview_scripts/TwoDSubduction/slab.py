@@ -31,6 +31,7 @@ class SLAB(PARAVIEW_PLOT):
         apply_rotation("solution.pvd", [0.0, 0.0, 0.0], [0.0, 0.0, ROTATION_ANGLE], registrationName="Transform1")
         add_plot("Transform1", "viscosity", use_log=True, lim=[self.eta_min, self.eta_max], color="roma")
         add_plot("Transform1", "T", lim=[self.T_min, self.T_max], color="vik")
+        add_glyph1("Transform1", "velocity", "T", 5e6, registrationName="Glyph1")
 
     def plot_step(self): 
         '''

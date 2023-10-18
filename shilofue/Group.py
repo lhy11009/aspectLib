@@ -22,6 +22,7 @@ import sys, os, argparse
 import json, re
 from shilofue.Cases import create_case_with_json
 from shilofue.PlotRunTime import RunTimeInfo
+import shilofue.ParsePrm as ParsePrm
 # import pathlib
 # import subprocess
 import numpy as np
@@ -150,6 +151,9 @@ class GROUP_OPT(Utilities.JSON_OPT):
         self.add_key("Bindings in feature", list, ["bindings"], [], nick='bindings')
         self.add_key("Base directory to import", str, ["base directory"], ".", nick='base_dir')
         self.add_features('Base Feature to set up for the group', ['base features'], FEATURE_OPT)
+        # todo_comb
+        self.add_key('Combine case run', int, ['combine case run'], 0, nick='combine_case_run')
+        self.add_key('Slurm options', list, ['slurm'], [], nick='slurm options')
     
     def check(self):
         if self.values[4] != []:
@@ -161,6 +165,12 @@ class GROUP_OPT(Utilities.JSON_OPT):
         base_features = self.values[6]
         for base_feature in base_features:
             assert(len(base_feature.get_values())==1)
+
+        # check the slurm file paths
+        slurm_options = self.values[8]
+        for slurm_option in slurm_options:
+            slurm_file_base =  Utilities.var_subs(slurm_option["slurm file"])
+            assert(os.path.isfile(slurm_file_base))
 
     def get_base_json_path(self):
         return Utilities.var_subs(self.values[2])
@@ -180,8 +190,11 @@ class GROUP_OPT(Utilities.JSON_OPT):
     def to_create_group(self):
         base_features = self.values[6]
         features = self.values[1]
+        combine_case_run = self.values[7]
+        slurm_options = self.values[8]
         return base_features, features, Utilities.var_subs(self.values[5]),\
-        Utilities.var_subs(self.values[3]), self.values[0], self.values[4]
+        Utilities.var_subs(self.values[3]), self.values[0], self.values[4],\
+        combine_case_run, slurm_options
 
 
 class GROUP():
@@ -206,7 +219,8 @@ class GROUP():
         with open(json_file, 'r') as fin:
             self.base_options = json.load(fin)
 
-    def create_group(self, base_features, features, base_dir, output_dir, base_name, bindings, **kwargs):
+    def create_group(self, base_features, features, base_dir, output_dir, base_name, bindings,\
+                     combine_case_run, slurm_options, **kwargs):
         '''
         create new group
         Inputs:
@@ -225,7 +239,12 @@ class GROUP():
             options = Utilities.write_dict_recursive(options,\
                     base_feature.get_keys(), base_feature.get_values()[0])
         self.base_options = options
+        # todo_comb
+        # slurm configurations
+        self.base_options['slurm'] = slurm_options
+        
         # handle features, varying the value of variables in cases
+        case_names = []
         for feature in features:
             sub_totals.append(total)
             sizes.append(len(feature.get_values()))
@@ -251,6 +270,7 @@ class GROUP():
                 options["output directory"] = output_dir
                 # call function to create the case
                 case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT, update=is_update, fix_base_dir=base_dir)
+                case_names.append(os.path.basename(case_dir))
                 json_path = os.path.join(case_dir, "case.json")
                 with open(json_path, 'w') as fout:
                     json.dump(options, fout, indent=2)
@@ -280,11 +300,17 @@ It's likely a wrong value is assigned in the \"binding\" part of the json file."
                         options['name'] += ('_' + name_appendix)
                 # call function to create the case
                 case_dir = create_case_with_json(options, self.CASE, self.CASE_OPT, update=is_update)
+                case_names.append(os.path.basename(case_dir))
                 json_path = os.path.join(case_dir, "case.json")
                 with open(json_path, 'w') as fout:
                     json.dump(options, fout, indent=2)
-            
-        pass
+
+        # todo_comb 
+        # Combine case run in slurm
+        if combine_case_run:
+            for slurm_option in slurm_options:
+                GenerateSlurmCombine(slurm_option, output_dir, case_names)
+
 
 
 def get_name_appendix(options, value):
@@ -344,6 +370,66 @@ def CreateGroup(json_path, CASE, CASE_OPT):
         % (json_path, os.path.join(group_opt.get_output_dir(), "group.json")))
     
     group.create_group(*group_opt.to_create_group(), update=is_update_existing)
+
+
+####
+# classes and functions for slurm configuration
+# todo_comb
+####
+def GenerateSlurmCombine(slurm_option, _dir, case_names, **kwargs):
+    '''
+    Inputs:
+        slurm_options - options for slurm file
+        _dir - output directory (the group directory)
+        cases_names - names of cases in a group
+        wargs:
+            slurm_case_name: name of the slurm case
+    ''' 
+    size = len(case_names)
+    slurm_file_base = slurm_option["slurm file"]
+    nproc = slurm_option["cpus"]
+    build_dir = slurm_option["build directory"]
+    aspect_exec = "${ASPECT_SOURCE_DIR}/build_%s/aspect" % build_dir
+    slurm_case_name = kwargs.get("slurm_case_name", os.path.basename(_dir))  # take the group name
+    slurm_file_base_base = os.path.basename(slurm_file_base)
+
+    # generate the slurm file
+    slurm_file_path = os.path.join(_dir, slurm_file_base_base)
+    SlurmOperator = ParsePrm.SLURM_OPERATOR(slurm_file_base)
+    SlurmOperator.SetAffinity(1, nproc * size, 1)
+    SlurmOperator.ResetCommand(command_only=1)
+    SlurmOperator.SetName(slurm_case_name)
+    SlurmOperator.SetTimeByHour(300)
+
+    # generate the command to run
+    extra_contents = ""
+    # directories to run
+    temp = "subdirs=("
+    i = 0
+    for case_name in case_names:
+        if i > 0:
+            temp += " "
+        temp += "\"%s\"" % case_name
+        i += 1
+    temp += ")\n"
+    extra_contents += temp
+    # command
+    exec =  "srun --exclusive --ntasks %d %s case.prm &" % (nproc, aspect_exec)
+    # generate the loop
+    temp = """
+for subdir in ${subdirs[@]}; do
+    cd ${subdir}
+    %s
+    cd ..
+done
+wait
+""" % (exec)
+    extra_contents += temp
+    SlurmOperator.SetExtra(extra_contents)
+
+    # generate file
+    SlurmOperator(slurm_file_path)
+
 
 ####
 # classes and functions for documenting

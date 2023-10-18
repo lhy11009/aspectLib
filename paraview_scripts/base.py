@@ -375,3 +375,57 @@ def add_plot(_source, field, **kwargs):
     HideScalarBarIfNotNeeded(fieldLUT, renderView1)
     # hide data in view
     Hide(pvd, renderView1)
+
+
+def add_glyph1(_source, field, ghost_field, scale_factor, **kwargs):
+    '''
+    add glyph in plots
+    Inputs:
+        scale_factor: scale of arrows
+        ghost_field: the colorbar of a previous "ghost field" needs to be hide again to
+            prevent it from being shown.
+        kwargs:
+            registrationName : the name of registration
+    '''
+    registrationName = kwargs.get("registrationName", 'Glyph1')
+    
+    # get active source.
+    pvd = FindSource(_source)
+    # set active source
+    # SetActiveSource(pvd)
+    # get active view
+    renderView1 = GetActiveViewOrCreate('RenderView')
+
+    # add glyph
+    glyph1 = Glyph(registrationName=registrationName, Input=pvd, GlyphType='Arrow')
+    # adjust orientation and scale
+    glyph1.OrientationArray = ['POINTS', 'velocity']
+    glyph1.ScaleArray = ['POINTS', 'velocity']
+    glyph1.ScaleFactor = scale_factor
+
+    glyph1Display = Show(glyph1, renderView1, 'GeometryRepresentation')
+    # show color bar/color legend
+    glyph1Display.SetScalarBarVisibility(renderView1, True)
+    # get color transfer function/color map for 'field'
+    fieldLUT = GetColorTransferFunction(field)
+    # get opacity transfer function/opacity map for 'field'
+    fieldPWF = GetOpacityTransferFunction(field)
+
+    # update the view to ensure updated data information
+    renderView1.Update()
+    
+    # reset view to fit data
+    # without this, the figure won't show
+    renderView1.ResetCamera(False)
+
+    # set scalar coloring
+    ColorBy(glyph1Display, ('POINTS', field, 'Magnitude'))
+
+    # Hide the scalar bar for this color map if no visible data is colored by it.
+    HideScalarBarIfNotNeeded(fieldLUT, renderView1)
+    fieldLUT1 = GetColorTransferFunction(ghost_field)
+    HideScalarBarIfNotNeeded(fieldLUT1, renderView1)
+    # hide data in view
+    # Hide(pvd, renderView1)
+    # hide glaph in view
+    Hide(glyph1, renderView1)

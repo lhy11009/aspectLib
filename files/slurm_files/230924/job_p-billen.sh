@@ -6,12 +6,12 @@
 #SBATCH -o task-%j.stdout
 #SBATCH -e task-%j.stderr
 #SBATCH -t 300:00:00
-#SBATCH -A billen
+#SBATCH -A billengrp
 #SBATCH --partition=p-billen
 #SBATCH --mem-per-cpu=4G
 #SBATCH --switches=1
 
-source /group/billengrp/Software/deal.ii/deal.ii-9.5.0-Native-32bit-candi-gcc-11.3.0-openmpi4.1.5-mpi-io-rome-256-512/deal.II-v9.5.0
+source /group/billengrp/Software/deal.ii/deal.ii-9.5.0-Native-32bit-candi-gcc-11.3.0-openmpi4.1.5-mpi-io-rome-256-512/configuration/enable.sh
 
 >&2 echo "list of modules:"
 >&2 module list

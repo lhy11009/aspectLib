@@ -747,12 +747,14 @@ class SLURM_OPERATOR():
             self.o_dict['command'][-2] = "${ASPECT_SOURCE_DIR}/build/aspect"
         self.o_dict['command'][-1] = prm_file
 
-    def ResetCommand(self):
+    def ResetCommand(self, **kwargs):
         '''
         reset the command
         '''
+        command_only = kwargs.get("command_only", False)
         self.o_dict['command'] = []
-        self.o_dict['others'] = []
+        if not command_only:
+            self.o_dict['others'] = []
 
     def SetTimeByHour(self, hr):
         '''
@@ -765,7 +767,13 @@ class SLURM_OPERATOR():
         set extra commands
         '''
         self.o_dict['extra'] = contents
-        pass
+    
+    def GetOthers(self):
+        '''
+        get other commands
+        '''
+        contents = self.o_dict['others']
+        return contents
 
     def __call__(self, slurm_file_path):
         with open(slurm_file_path, 'w') as fout:
