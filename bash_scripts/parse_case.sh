@@ -161,6 +161,21 @@ parse_run_time_info_last_step(){
     printf "${return_value[*]}\n"
 }
 
+parse_run_time_info_last_step_in_dir(){
+    # parse run time output from cases in a directory
+    [[ -d ${1} ]] || cecho ${BAD} "${FUNCNAME[0]}: diretory path(${1}) doesn't exist"
+    local dir="$1"
+    local log_file
+    for sub_dir in "${dir}"/*; do
+        log_file="${sub_dir}/output/log.txt"
+	if [[ -e "${log_file}" ]]; then
+	    local case_name=$(basename "${sub_dir}")
+	    echo "${case_name}"
+	    parse_run_time_info_last_step "${log_file}"
+	fi
+    done
+}
+
 parse_run_time_info_last_step_with_id(){
     # parse run time output with job id
     # $1(str): job id
@@ -408,6 +423,11 @@ restart_case(){
     return 0
 }
 
+# todo_restart
+check_time_restart_case_combined(){
+    return 0
+}
+
 check_time_restart_case(){
     ####
     # restart a case if the run time of that case is not reached
@@ -512,6 +532,8 @@ main(){
 	parse_export_all_run_time_info_in_directory "$2"
     elif [[ "$1" = "all_case_info" ]]; then
 	parse_all_time_info
+    elif [[ "$1" = "case_info_in_dir" ]]; then
+	parse_run_time_info_last_step_in_dir "$2"
     elif [[ "$1" == "restart" ]]; then
         restart_case "$2"
     elif [[ "$1" == "check_time_restart" ]]; then
