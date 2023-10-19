@@ -336,18 +336,6 @@ locate_workdir_with_id(){
 # functions to submit cases
 ################################################################################
 
-submit_case_peloton_rome(){
-    ####
-    # submit case to slurm
-    # Inputs:
-    #   $1: case directory
-    now=$(pwd)
-    cd "$1"
-    eval "sbatch -A billen job_rome.sh"
-    cd "${now}"
-    return 0
-}
-
 submit_case_peloton_p-billen(){
     ####
     # submit case to slurm
@@ -355,7 +343,7 @@ submit_case_peloton_p-billen(){
     #   $1: case directory
     now=$(pwd)
     cd "$1"
-    eval "sbatch -A billen job_p-billen.sh"
+    eval "sbatch job_p-billen.sh"
     cd "${now}"
     return 0
 }
@@ -406,14 +394,12 @@ restart_case(){
     # change options in the case.prm file
     local case_dir="$1"
     local partition
-    [[ -n "$2" ]] && partition="$2" || partition="rome"
+    [[ -n "$2" ]] && partition="$2"
     local prm_file="${case_dir}/case.prm"
     [[ -e ${prm_file} ]] || { cecho "${BAD}" "No such file ${prm_file}"; exit 1; } 
     unset return_values  # rewrite prm file
     util_substitute_prm_file_contents "${prm_file}" "Resume computation" "true"
-    if [[ ${partition} == "rome" ]]; then
-        submit_case_peloton_rome "${case_dir}"
-    elif [[ ${partition} == "high2" ]]; then
+    if [[ ${partition} == "high2" ]]; then
         submit_case_peloton_high2 "${case_dir}"
     elif [[ ${partition} == "p-billen" ]]; then
         submit_case_peloton_p-billen "${case_dir}"
@@ -433,7 +419,7 @@ check_time_restart_case(){
     local case_dir="$1"
     local time_plan="$2"
     local partition
-    [[ -n "$3" ]] && partition="$3" || partition="rome"
+    [[ -n "$3" ]] && partition="$3"
     # check if this is running
     check_case_running "$1" || return 0
     # read run_time
@@ -454,9 +440,7 @@ check_time_restart_case(){
         fi
     else
         echo "${FUNCNAME[0]}: no snapshots to restart from, going to run from the start"
-        if [[ ${partition} == "rome" ]]; then
-            submit_case_peloton_rome "${case_dir}"
-        elif [[ ${partition} == "high2" ]]; then
+        if [[ ${partition} == "high2" ]]; then
             submit_case_peloton_high2 "${case_dir}"
     	elif [[ ${partition} == "p-billen" ]]; then
             submit_case_peloton_p-billen "${case_dir}"
@@ -479,7 +463,7 @@ check_time_restart_case_in_directory(){
     [[ -d "$1" ]] || { cecho "${BAD}" "no such directory $1"; exit 1; }
     [[ -n "$2" ]] || { cecho "${BAD}" "an end time must by assigned"; exit 1; }
     local partition
-    [[ -n "$3" ]] && partition="$3" || partition="rome"
+    [[ -n "$3" ]] && partition="$3"
     for sub_dir in "$1"/*; do
 	local full_route=$(fix_route "${sub_dir}")
     	if [[ -d "${full_route}" ]]; then

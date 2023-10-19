@@ -283,7 +283,18 @@ class LOOKUP_TABLE():
         depths = self.data[:, col_depth]
         pressures = self.data[:, col_pressure]
         return depths, pressures
-        
+    
+    def export_field_profile(self, field):
+        '''
+        export field profile
+        Inputs:
+            field (str): the field to output
+        '''
+        col_depth = self.header["Depth"]["col"]
+        col_field = self.header[field]["col"]
+        depths = self.data[:, col_depth]
+        _data = self.data[:, col_field]
+        return depths, _data
 
     def Update(self, **kwargs):
         '''
