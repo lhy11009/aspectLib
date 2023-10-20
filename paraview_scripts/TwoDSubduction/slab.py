@@ -33,11 +33,160 @@ class SLAB(PARAVIEW_PLOT):
         add_plot("Transform1", "T", lim=[self.T_min, self.T_max], color="vik")
         add_glyph1("Transform1", "velocity", "T", 5e6, registrationName="Glyph1")
 
+
     def plot_step(self): 
         '''
         plot a step
         '''
-        pass
+        # get active view and source
+        renderView1 = GetActiveViewOrCreate('RenderView')
+
+        # set source and field
+        _source = "Transform1"
+        _source_v = "Glyph1"
+        field1 = "T"
+        field2 = "viscosity"
+        # get color transfer function/color map for 'field'
+        field2LUT = GetColorTransferFunction(field2)
+       
+        # find source
+        source1 = FindSource(_source)
+        sourceV = FindSource(_source_v)
+    
+        # show source1
+        source1Display = Show(source1, renderView1, 'GeometryRepresentation')
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        # get color transfer function/color map for 'field'
+        field1LUT = GetColorTransferFunction(field1)
+        # set scalar coloring
+        ColorBy(source1Display, ('POINTS', field1, 'Magnitude'))
+        HideScalarBarIfNotNeeded(field2LUT, renderView1)
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        # Rescale transfer function, 2d transfer function
+        field1LUT.RescaleTransferFunction(273.0, 2273.0)
+        field1TF2D = GetTransferFunction2D(field1)
+        field1TF2D.RescaleTransferFunction(273.0, 2273.0, 0.0, 1.0)
+        # colorbar position
+        field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
+        field1LUTColorBar.Orientation = 'Horizontal'
+        field1LUTColorBar.WindowLocation = 'Any Location'
+        field1LUTColorBar.Position = [0.041, 0.908]
+        field1LUTColorBar.ScalarBarLength = 0.33
+        # hide the grid axis
+        renderView1.OrientationAxesVisibility = 0
+        
+        # show sourceV (vector field)
+        sourceVDisplay = Show(sourceV, renderView1, 'GeometryRepresentation')
+        sourceVDisplay.SetScalarBarVisibility(renderView1, True)
+        # get color transfer function/color map for 'field'
+        fieldVLUT = GetColorTransferFunction('velocity')
+        # colorbar position
+        fieldVLUTColorBar = GetScalarBar(fieldVLUT, renderView1)
+        fieldVLUTColorBar.Orientation = 'Horizontal'
+        fieldVLUTColorBar.WindowLocation = 'Any Location'
+        fieldVLUTColorBar.Position = [0.630, 0.908]
+        fieldVLUTColorBar.ScalarBarLength = 0.33
+        # hide the grid axis
+        renderView1.OrientationAxesVisibility = 0
+        
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(1350, 704)
+        renderView1.InteractionMode = '2D'
+        renderView1.CameraPosition = [0.0, 5.6e5, 2.5e7]
+        renderView1.CameraFocalPoint = [0.0, 6e6, 0.0]
+        renderView1.CameraParallelScale = 4.5e5
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "T_t%.4e.pdf" % self.time)
+        ExportView(fig_path, view=renderView1)
+
+        # second plot
+        field2 = "viscosity"
+        # get color transfer function/color map for 'field'
+        field2LUT = GetColorTransferFunction(field2)
+        # set scalar coloring
+        ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        # hide the grid axis
+        renderView1.OrientationAxesVisibility = 0
+        # Hide the scalar bar for the first field color map
+        HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(1350, 704)
+        renderView1.InteractionMode = '2D'
+        renderView1.CameraPosition = [0.0, 5.6e5, 2.5e7]
+        renderView1.CameraFocalPoint = [0.0, 6e6, 0.0]
+        renderView1.CameraParallelScale = 4.5e5
+        # colorbar position
+        field2LUTColorBar = GetScalarBar(field2LUT, renderView1)
+        field2LUTColorBar.Orientation = 'Horizontal'
+        field2LUTColorBar.WindowLocation = 'Any Location'
+        field2LUTColorBar.Position = [0.041, 0.908]
+        field2LUTColorBar.ScalarBarLength = 0.33
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "viscosity_t%.4e.pdf" % self.time)
+        ExportView(fig_path, view=renderView1)
+
+        # hide plots
+        Hide(source1, renderView1)
+        Hide(sourceV, renderView1)
+        HideScalarBarIfNotNeeded(field2LUT, renderView1)
+        HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+
+
+def add_glyph1(_source, field, ghost_field, scale_factor, **kwargs):
+    '''
+    add glyph in plots
+    Inputs:
+        scale_factor: scale of arrows
+        ghost_field: the colorbar of a previous "ghost field" needs to be hide again to
+            prevent it from being shown.
+        kwargs:
+            registrationName : the name of registration
+    '''
+    registrationName = kwargs.get("registrationName", 'Glyph1')
+    
+    # get active source and renderview
+    pvd = FindSource(_source)
+    renderView1 = GetActiveViewOrCreate('RenderView')
+
+    # add glyph
+    glyph1 = Glyph(registrationName=registrationName, Input=pvd, GlyphType='Arrow')
+    # adjust orientation and scale
+    glyph1.GlyphType = '2D Glyph'
+    glyph1.OrientationArray = ['POINTS', 'velocity']
+    glyph1.ScaleArray = ['POINTS', 'No scale array']
+    glyph1.ScaleFactor = 7.5e4
+
+    glyph1Display = Show(glyph1, renderView1, 'GeometryRepresentation')
+    # set the vector line width
+    glyph1Display.LineWidth = 2.0
+    # show color bar/color legend
+    glyph1Display.SetScalarBarVisibility(renderView1, True)
+    # get color transfer function/color map for 'field'
+    fieldLUT = GetColorTransferFunction(field)
+    # get opacity transfer function/opacity map for 'field'
+    fieldPWF = GetOpacityTransferFunction(field)
+
+    # change the color scheme 
+    fieldLUT.ApplyPreset('X Ray', True)
+
+    # set scalar coloring
+    ColorBy(glyph1Display, ('POINTS', field, 'Magnitude'))
+
+    # Hide the scalar bar for this color map if no visible data is colored by it.
+    HideScalarBarIfNotNeeded(fieldLUT, renderView1)
+    fieldLUT1 = GetColorTransferFunction(ghost_field)
+    HideScalarBarIfNotNeeded(fieldLUT1, renderView1)
+    # hide data in view
+    # Hide(pvd, renderView1)
+    # hide glaph in view
+    Hide(glyph1, renderView1)
+    
+    # update the view to ensure updated data information
+    renderView1.Update()
+
 
 def main():
     all_available_graphical_snapshots = ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS
