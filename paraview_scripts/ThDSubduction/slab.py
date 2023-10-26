@@ -255,12 +255,49 @@ class SLAB(PARAVIEW_PLOT):
         '''
         plot a step
         '''
-        self.plot_slice("slice_trench_center_y", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
-        self.plot_slice("slice_trench_center_y", "T", color='vik')
-        self.plot_slice("slice_trench_edge_y", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
-        self.plot_slice("slice_surface_z", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
-        self.plot_slice("slice_trench_center_y", "viscosity", use_log=True, color='roma', lim=[self.eta_min, self.eta_max])
-        self.plot_slab_volume("T", color='vik', lim_slice=[self.eta_min, self.eta_max], use_log_slice=True, color_slice='roma')
+        # get active view and source
+        renderView1 = GetActiveViewOrCreate('RenderView')
+        
+        _source1 = "slice_trench_center_y"
+        field1 = "T"
+        field2 = "viscosity"
+
+        # part 1: plot the center slice 
+        source1 = FindSource(_source1)
+        
+        source1Display = Show(source1, renderView1, 'GeometryRepresentation')
+        
+        # get the original plot field, in order to hide
+        # redundant color in later codes
+        field0 = source1Display.ColorArrayName[1]
+        field0LUT = GetColorTransferFunction(field0)
+
+        # get color transfer function/color map for 'field'
+        field1LUT = GetColorTransferFunction(field1)
+
+        # set scalar coloring
+        ColorBy(source1Display, ('POINTS', field1, 'Magnitude'))
+        HideScalarBarIfNotNeeded(field0LUT, renderView1)
+        # high redundant colorbar
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        # Rescale transfer function, 2d transfer function
+        field1LUT.RescaleTransferFunction(273.0, 2273.0)
+        
+        # colorbar position
+        field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
+        field1LUTColorBar.Orientation = 'Horizontal'
+        field1LUTColorBar.WindowLocation = 'Any Location'
+        field1LUTColorBar.Position = [0.041, 0.908]
+        field1LUTColorBar.ScalarBarLength = 0.33
+        # hide the grid axis
+        renderView1.OrientationAxesVisibility = 0
+
+        # self.plot_slice("slice_trench_center_y", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
+        # self.plot_slice("slice_trench_center_y", "T", color='vik')
+        # self.plot_slice("slice_trench_edge_y", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
+        # self.plot_slice("slice_surface_z", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
+        # self.plot_slice("slice_trench_center_y", "viscosity", use_log=True, color='roma', lim=[self.eta_min, self.eta_max])
+        # self.plot_slab_volume("T", color='vik', lim_slice=[self.eta_min, self.eta_max], use_log_slice=True, color_slice='roma')
 
 
 def adjust_slice_colorbar_camera(renderView, colorLUT, _camera):
