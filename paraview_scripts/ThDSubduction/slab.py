@@ -88,13 +88,16 @@ class SLAB(PARAVIEW_PLOT):
         '''
         clip the model domain along both the x and y axis.
         '''
+        # add clip 0
         clip_active0, active0Display, _ = add_clip(self.solutionpvd, [TRENCH_INITIAL + 3e6, 2e6, 5e5],\
         [1.0, 0.0, 0.0], name="active_0")
         Hide(clip_active0, self.renderView1)  # hide data in view
+        # add clip 1 
         clip_active1, active1Display, _ = add_clip(clip_active0, [1e6, TRENCH_EDGE_Y + 5e5 , 5e5],\
         [0.0, 1.0, 0.0], name="active_1")
         Hide(clip_active1, self.renderView1)  # hide data in view
-        glyph1, glyph1Display, _ = add_glyph(clip_active1, "velocity", 2e5, 500)
+        # add glyph
+        add_glyph("clip_active_1", "velocity", 2e5, 500)
 
     def plot_slice(self, _source, field_name, **kwargs):
         '''
@@ -218,13 +221,12 @@ class SLAB(PARAVIEW_PLOT):
         color_bar_slice = [[0.03, 0.03], 0.36285420944558516]  # this doesn't work for now
         adjust_color_bar(fieldLUTslice, renderView1, color_bar_slice)
         # show the glyph
-        glyph1 = FindSource(_source2)
+        glyph1 = FindSource("Glyph1")
         SetActiveSource(glyph1)
         renderView1 = GetActiveViewOrCreate('RenderView')
         if show_axis:
             renderView1.AxesGrid.Visibility = 1 
-        # _display = Show(glyph1, renderView1, 'GeometryRepresentation')
-        glyph1Display = GetDisplayProperties(glyph1, view=renderView1)
+        glyph1Display = Show(glyph1, renderView1, 'GeometryRepresentation')
         # adjust the colormap for the glyph
         ColorBy(glyph1Display, ('POINTS', 'velocity', 'Magnitude'))
         custom_range = [0.01, 0.1]
@@ -236,7 +238,7 @@ class SLAB(PARAVIEW_PLOT):
             # Rescale transfer function
             velocityLUT.RescaleTransferFunction(custom_range[0], custom_range[1])
         # adjust colorbar for the glyph
-        # _display.SetScalarBarVisibility(renderView1, True)
+        glyph1Display.SetScalarBarVisibility(renderView1, True)
         color_bar_slice = [[0.03, 0.53], 0.36285420944558516]  # this doesn't work for now
         adjust_color_bar(velocityLUT, renderView1, color_bar_slice)
         # adjust colorbar and camera

@@ -234,7 +234,7 @@ def add_isovolume(solutionpvd, field, thresholds, **kwargs):
     return isoVolume1, isoVolume1Display, renderView1
 
 
-def add_glyph(solutionpvd, field, scalefactor, nsample, **kwargs):
+def add_glyph(_source, field, scalefactor, nsample, **kwargs):
     '''
     Inputs:
         solutionpvd: a solutionpvd object of paraview
@@ -243,24 +243,44 @@ def add_glyph(solutionpvd, field, scalefactor, nsample, **kwargs):
         nsample: number of sample points
     '''
     # addtional variables
-    renderView0 = kwargs.get('renderView', None)
-    _name = kwargs.get('name', 0)
-    glyph1 = Glyph(registrationName='glyph_%s' % _name, Input=solutionpvd,
-    GlyphType='Arrow')
+    registrationName = kwargs.get("registrationName", 'Glyph1')
+    
+    # get active source and renderview
+    pvd = FindSource(_source)
+    renderView1 = GetActiveViewOrCreate('RenderView')
+    
+    glyph1 = Glyph(registrationName=registrationName, Input=pvd, GlyphType='Arrow')
     glyph1.OrientationArray = ['POINTS', 'No orientation array']
     glyph1.ScaleArray = ['POINTS', 'No scale array']
     glyph1.ScaleFactor = scalefactor
     glyph1.GlyphTransform = 'Transform2'
     glyph1.OrientationArray = ['POINTS', field]
     glyph1.MaximumNumberOfSamplePoints = nsample
-    # get active view
-    if renderView0 == None:
-        renderView1 = GetActiveViewOrCreate('RenderView')
-    else:
-        renderView1 = renderView0
-    # show data in view
+
     glyph1Display = Show(glyph1, renderView1, 'GeometryRepresentation')
-    return glyph1, glyph1Display, renderView1
+    # set the vector line width
+    glyph1Display.LineWidth = 2.0
+    # show color bar/color legend
+    glyph1Display.SetScalarBarVisibility(renderView1, True)
+    # get color transfer function/color map for 'field'
+    fieldLUT = GetColorTransferFunction(field)
+    # get opacity transfer function/opacity map for 'field'
+    fieldPWF = GetOpacityTransferFunction(field)
+
+    # change the color scheme 
+    fieldLUT.ApplyPreset('X Ray', True)
+
+    # set scalar coloring
+    ColorBy(glyph1Display, ('POINTS', field, 'Magnitude'))
+    
+    # Hide the scalar bar for this color map if no visible data is colored by it.
+    HideScalarBarIfNotNeeded(fieldLUT, renderView1)
+    
+    # hide glaph in view
+    Hide(glyph1, renderView1)
+    
+    # update the view to ensure updated data information
+    renderView1.Update()
 
 
     
