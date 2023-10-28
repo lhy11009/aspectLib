@@ -418,6 +418,8 @@ restart_case(){
         submit_case_peloton_high2 "${case_dir}"
     elif [[ ${partition} == "p-billen" ]]; then
         submit_case_peloton_p-billen "${case_dir}"
+    else
+        echo "no valid partition, skip restarting"
     fi
     # check for the restarted case
     return 0
