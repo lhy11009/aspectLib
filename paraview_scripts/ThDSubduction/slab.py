@@ -5,10 +5,6 @@
 #   IMG_OUTPUT_DIR
 # y coordinates for trench edge
 #   TRENCH_EDGE_Y
-# minimum viscosity
-#   ETA_MIN
-# maximum viscosity
-#   ETA_MAX
 
 class SLAB(PARAVIEW_PLOT):
     '''
@@ -17,8 +13,8 @@ class SLAB(PARAVIEW_PLOT):
     '''
     def __init__(self, filein, **kwargs):
         PARAVIEW_PLOT.__init__(self, filein, **kwargs)
-        self.eta_min = ETA_MIN
-        self.eta_max = ETA_MAX
+        self.eta_min = 1e19
+        self.eta_max = 1e24
         
 
     def setup_surface_slice(self):
@@ -251,19 +247,19 @@ class SLAB(PARAVIEW_PLOT):
         if hide_plot:
             Hide(isoVolume1, renderView1)  # hide data in view
 
-    def plot_step(self): 
+    def plot_slice(self, _source): 
         '''
-        plot a step
+        plot a slice
         '''
         # get active view and source
         renderView1 = GetActiveViewOrCreate('RenderView')
         
-        _source1 = "slice_trench_center_y"
         field1 = "T"
         field2 = "viscosity"
 
         # part 1: plot the center slice 
-        source1 = FindSource(_source1)
+        # part 1a: temperature
+        source1 = FindSource(_source)
         
         source1Display = Show(source1, renderView1, 'GeometryRepresentation')
         
@@ -274,14 +270,17 @@ class SLAB(PARAVIEW_PLOT):
 
         # get color transfer function/color map for 'field'
         field1LUT = GetColorTransferFunction(field1)
+        field1PWF = GetOpacityTransferFunction(field1)
 
         # set scalar coloring
         ColorBy(source1Display, ('POINTS', field1, 'Magnitude'))
         HideScalarBarIfNotNeeded(field0LUT, renderView1)
         # high redundant colorbar
         source1Display.SetScalarBarVisibility(renderView1, True)
-        # Rescale transfer function, 2d transfer function
-        field1LUT.RescaleTransferFunction(273.0, 2273.0)
+        
+        # reset limit
+        field1LUT.RescaleTransferFunction(273.0, 2273.0) # Rescale transfer function
+        field1PWF.RescaleTransferFunction(273.0, 2273.0) # Rescale transfer function
         
         # colorbar position
         field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
@@ -289,15 +288,69 @@ class SLAB(PARAVIEW_PLOT):
         field1LUTColorBar.WindowLocation = 'Any Location'
         field1LUTColorBar.Position = [0.041, 0.908]
         field1LUTColorBar.ScalarBarLength = 0.33
-        # hide the grid axis
+        
+        # Properties modified on renderView1.AxesGrid
+        renderView1.AxesGrid.Visibility = 1
+        # hide the orientation axes
         renderView1.OrientationAxesVisibility = 0
 
-        # self.plot_slice("slice_trench_center_y", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
-        # self.plot_slice("slice_trench_center_y", "T", color='vik')
-        # self.plot_slice("slice_trench_edge_y", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
-        # self.plot_slice("slice_surface_z", "sp_upper", color='Reds', invert_color=True, lim=[0.0, 1.0])
-        # self.plot_slice("slice_trench_center_y", "viscosity", use_log=True, color='roma', lim=[self.eta_min, self.eta_max])
-        # self.plot_slab_volume("T", color='vik', lim_slice=[self.eta_min, self.eta_max], use_log_slice=True, color_slice='roma')
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(1350, 704)
+        renderView1.InteractionMode = '2D'
+        renderView1.CameraPosition = [4688116.467077909, -15316645.446003344, 2608614.9857629854]
+        renderView1.CameraFocalPoint = [4688116.467077909, 1.0, 2608614.9857629854]
+        renderView1.CameraViewUp = [0.0, 0.0, 1.0]
+        renderView1.CameraParallelScale = 486990.898610654
+
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "%s_slice_center_t%.4e.pdf" % (field1, self.time))
+        ExportView(fig_path, view=renderView1)
+
+        # part 1b: viscosity
+        # get color transfer function/color map for 'field'
+        field2LUT = GetColorTransferFunction(field2)
+        field2PWF = GetOpacityTransferFunction(field2)
+        
+        # convert to log space
+        field2LUT.MapControlPointsToLogSpace()
+        field2LUT.UseLogScale = 1
+        field2LUT.ApplyPreset('roma', True)
+        # set scalar coloring
+        ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        # hide the grid axis
+        renderView1.OrientationAxesVisibility = 0
+        # Hide the scalar bar for the first field color map
+        HideScalarBarIfNotNeeded(field1LUT, renderView1)
+
+        # colorbar position
+        field2LUTColorBar = GetScalarBar(field2LUT, renderView1)
+        field2LUTColorBar.Orientation = 'Horizontal'
+        field2LUTColorBar.WindowLocation = 'Any Location'
+        field2LUTColorBar.Position = [0.041, 0.908]
+        field2LUTColorBar.ScalarBarLength = 0.33
+        
+        # Properties modified on renderView1.AxesGrid
+        renderView1.AxesGrid.Visibility = 1
+        # hide the orientation axes
+        renderView1.OrientationAxesVisibility = 0
+
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.pdf" % (_source, field2, self.time))
+        ExportView(fig_path, view=renderView1)
+
+        # hide plots 
+        Hide(source1, renderView1)
+        HideScalarBarIfNotNeeded(field2LUT, renderView1)
+    
+    def plot_step(self): 
+        '''
+        plot a step
+        '''
+        self.plot_slice("slice_trench_center_y")
+        self.plot_slice("slice_trench_edge_y")
+        pass
 
 
 def adjust_slice_colorbar_camera(renderView, colorLUT, _camera):
