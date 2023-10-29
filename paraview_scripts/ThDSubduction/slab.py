@@ -109,6 +109,7 @@ class SLAB(PARAVIEW_PLOT):
         streamTracer1 = StreamTracer(registrationName='StreamTracer1', Input=active_clip, SeedType='Line')
         streamTracer1.Vectors = ['POINTS', 'velocity']
         streamTracer1.MaximumStreamlineLength = 7383000.0
+        streamTracer1.IntegratorType = 'Runge-Kutta 4'
 
         # init the 'Line' selected for 'SeedType'
         streamTracer1.SeedType.Point2 = [0.0, 0.0, 0.0]
@@ -124,6 +125,7 @@ class SLAB(PARAVIEW_PLOT):
         streamTracer2 = StreamTracer(registrationName='StreamTracer2', Input=active_clip, SeedType='Line')
         streamTracer2.Vectors = ['POINTS', 'velocity']
         streamTracer2.MaximumStreamlineLength = 7383000.0
+        streamTracer2.IntegratorType = 'Runge-Kutta 4'
 
 
         # init the 'sphere' selected for 'SeedType'
@@ -385,12 +387,68 @@ class SLAB(PARAVIEW_PLOT):
         Hide(source1, renderView1)
         HideScalarBarIfNotNeeded(field2LUT, renderView1)
     
+    def plot_iso_volume(self):
+        # get active view and source
+        renderView1 = GetActiveViewOrCreate('RenderView')
+
+        _source = "isoVolume_slab_lower"
+        _source_stream1 = "StreamTracer1"
+        _source_stream2 = "StreamTracer2"
+
+        # part 1: plot the center slice 
+        # part 1a: temperature
+        source1 = FindSource(_source)
+        
+        source1Display = Show(source1, renderView1, 'GeometryRepresentation')
+
+        # get the original plot field, in order to hide
+        # redundant color in later codes
+        field0 = source1Display.ColorArrayName[1]
+        field0LUT = GetColorTransferFunction(field0)
+
+        # set scalar coloring
+        ColorBy(source1Display, None)
+        HideScalarBarIfNotNeeded(field0LUT, renderView1)
+
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(1350, 704)
+        renderView1.InteractionMode = '2D'
+        renderView1.CameraPosition = [-2840438.6751601123, -6329726.657407373, 4570510.036975652]
+        renderView1.CameraFocalPoint = [2864614.8331994326, 1817934.1389134214, 950295.6586639492]
+        renderView1.CameraViewUp = [0.19617469496901074, 0.2801664995932357, 0.9396926207859084]
+        renderView1.CameraParallelScale = 3e6
+        
+        # set the first tracer
+        source_stream1 = FindSource(_source_stream1)
+        streamTracer1Display = Show(source_stream1, renderView1, 'GeometryRepresentation')
+        ColorBy(streamTracer1Display, ('POINTS', 'velocity', 'Magnitude'))
+
+        # set the second tracer 
+        source_stream2 = FindSource(_source_stream2)
+        streamTracer2Display = Show(source_stream2, renderView1, 'GeometryRepresentation')
+        ColorBy(streamTracer2Display, ('POINTS', 'velocity', 'Magnitude'))
+
+        # adjust the color 
+        streamTracer1Display.RescaleTransferFunctionToDataRange(True, False)
+        streamTracer1Display.SetScalarBarVisibility(renderView1, True)
+        velocityLUT = GetColorTransferFunction('velocity')
+        velocityPWF = GetOpacityTransferFunction('velocity')
+        velocityLUT.ApplyPreset('hawaii', True)
+        velocityLUT.InvertTransferFunction()
+        # Rescale transfer function
+        velocityLUT.RescaleTransferFunction(0.0, 0.07)
+        # Rescale transfer function
+        velocityPWF.RescaleTransferFunction(0.0, 0.07)
+        streamTracer1Display.Opacity = 0.2
+    
     def plot_step(self): 
         '''
         plot a step
         '''
         self.plot_slice("slice_trench_center_y")
         self.plot_slice("slice_trench_edge_y")
+        self.plot_iso_volume()
         pass
 
 
