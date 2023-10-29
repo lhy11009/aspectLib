@@ -95,6 +95,47 @@ class SLAB(PARAVIEW_PLOT):
         # add glyph
         add_glyph("clip_active_1", "velocity", 2e5, 500)
 
+    
+    def setup_stream_tracer(self, _source):
+        '''
+        setup stream tracer
+        '''
+        # show the slice
+        active_clip = FindSource(_source)
+        SetActiveSource(active_clip)
+        renderView1 = GetActiveViewOrCreate('RenderView')
+
+        # create a new 'Stream Tracer'
+        streamTracer1 = StreamTracer(registrationName='StreamTracer1', Input=active_clip, SeedType='Line')
+        streamTracer1.Vectors = ['POINTS', 'velocity']
+        streamTracer1.MaximumStreamlineLength = 7383000.0
+
+        # init the 'Line' selected for 'SeedType'
+        streamTracer1.SeedType.Point2 = [0.0, 0.0, 0.0]
+        streamTracer1.SeedType.Point2 = [7383000.0, 0.0, 2890000.0]
+
+        # show data in view
+        Show(streamTracer1, renderView1, 'GeometryRepresentation')
+        # streamTracer1Display = GetDisplayProperties(streamTracer1, view=renderView1)
+        Hide3DWidgets()
+        Hide(streamTracer1, renderView1)
+
+        # add the 2nd one
+        streamTracer2 = StreamTracer(registrationName='StreamTracer2', Input=active_clip, SeedType='Line')
+        streamTracer2.Vectors = ['POINTS', 'velocity']
+        streamTracer2.MaximumStreamlineLength = 7383000.0
+
+
+        # init the 'sphere' selected for 'SeedType'
+        streamTracer2.SeedType = 'Point Cloud'
+        streamTracer2.SeedType.Radius = 300e3
+        streamTracer2.SeedType.Center = [4000e3, 300e3, 2500e3]
+        streamTracer2.SeedType.NumberOfPoints = 100
+
+        Show(streamTracer2, renderView1, 'GeometryRepresentation')
+        Hide3DWidgets()
+        Hide(streamTracer2, renderView1)
+
     def plot_slice(self, _source, field_name, **kwargs):
         '''
         Plot surface slice
@@ -385,6 +426,7 @@ def main():
     Slab.setup_trench_slice_edge()
     Slab.setup_slab_iso_volume_upper()
     Slab.setup_active_clip()
+    Slab.setup_stream_tracer('clip_active_1')
     # First number is the number of initial adaptive refinements
     # Second one is the snapshot to plot
     # here we prefer to use a series of snapshots.
