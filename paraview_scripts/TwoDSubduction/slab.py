@@ -11,6 +11,10 @@
 #   ETA_MAX
 # rotation of the domain
 #   ROTATION_ANGLE
+# geometry of the model
+#   GEOMETRY
+# plot model axis
+#   PLOT_AXIS
 
 class SLAB(PARAVIEW_PLOT):
     '''
@@ -40,6 +44,8 @@ class SLAB(PARAVIEW_PLOT):
         '''
         # get active view and source
         renderView1 = GetActiveViewOrCreate('RenderView')
+        renderView1.UseColorPaletteForBackground = 0
+        renderView1.Background = [1.0, 1.0, 1.0]
 
         # set source and field
         _source = "Transform1"
@@ -56,6 +62,12 @@ class SLAB(PARAVIEW_PLOT):
         # show source1
         source1Display = Show(source1, renderView1, 'GeometryRepresentation')
         source1Display.SetScalarBarVisibility(renderView1, True)
+        if PLOT_AXIS:
+            source1Display.DataAxesGrid.GridAxesVisibility = 1
+            source1Display.DataAxesGrid.GridColor = [0.0, 0.0, 0.0]
+            source1Display.DataAxesGrid.XLabelColor = [0.0, 0.0, 0.0]
+            source1Display.DataAxesGrid.YLabelColor = [0.0, 0.0, 0.0]
+            source1Display.DataAxesGrid.ZLabelColor = [0.0, 0.0, 0.0]
         # get color transfer function/color map for 'field'
         field1LUT = GetColorTransferFunction(field1)
         # set scalar coloring
@@ -72,6 +84,10 @@ class SLAB(PARAVIEW_PLOT):
         field1LUTColorBar.WindowLocation = 'Any Location'
         field1LUTColorBar.Position = [0.041, 0.908]
         field1LUTColorBar.ScalarBarLength = 0.33
+        field1LUTColorBar.TitleColor = [0.0, 0.0, 0.0]
+        field1LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
+        field1LUTColorBar.TitleFontFamily = 'Times'
+        field1LUTColorBar.LabelFontFamily = 'Times'
         # hide the grid axis
         renderView1.OrientationAxesVisibility = 0
         
@@ -80,12 +96,18 @@ class SLAB(PARAVIEW_PLOT):
         sourceVDisplay.SetScalarBarVisibility(renderView1, True)
         # get color transfer function/color map for 'field'
         fieldVLUT = GetColorTransferFunction('velocity')
+        if MAX_VELOCITY > 0.0:
+            fieldVLUT.RescaleTransferFunction(0.0, MAX_VELOCITY)
         # colorbar position
         fieldVLUTColorBar = GetScalarBar(fieldVLUT, renderView1)
         fieldVLUTColorBar.Orientation = 'Horizontal'
         fieldVLUTColorBar.WindowLocation = 'Any Location'
         fieldVLUTColorBar.Position = [0.630, 0.908]
         fieldVLUTColorBar.ScalarBarLength = 0.33
+        fieldVLUTColorBar.TitleColor = [0.0, 0.0, 0.0]
+        fieldVLUTColorBar.LabelColor = [0.0, 0.0, 0.0]
+        fieldVLUTColorBar.TitleFontFamily = 'Times'
+        fieldVLUTColorBar.LabelFontFamily = 'Times'
         # hide the grid axis
         renderView1.OrientationAxesVisibility = 0
         
@@ -93,9 +115,14 @@ class SLAB(PARAVIEW_PLOT):
         layout1 = GetLayout()
         layout1.SetSize(1350, 704)
         renderView1.InteractionMode = '2D'
-        renderView1.CameraPosition = [0.0, 5.6e5, 2.5e7]
-        renderView1.CameraFocalPoint = [0.0, 6e6, 0.0]
-        renderView1.CameraParallelScale = 4.5e5
+        if "GEOMETRY" == "chunk":
+            renderView1.CameraPosition = [0.0, 5.6e5, 2.5e7]
+            renderView1.CameraFocalPoint = [0.0, 6e6, 0.0]
+            renderView1.CameraParallelScale = 4.5e5
+        elif "GEOMETRY" == "box":
+            renderView1.CameraPosition = [4700895.868280185, 2538916.5897593317, 15340954.822755022]
+            renderView1.CameraFocalPoint = [4700895.868280185, 2538916.5897593317, 0.0]
+            renderView1.CameraParallelScale = 487763.78047352127
         # save figure
         fig_path = os.path.join(self.pv_output_dir, "T_t%.4e.pdf" % self.time)
         ExportView(fig_path, view=renderView1)
@@ -104,6 +131,9 @@ class SLAB(PARAVIEW_PLOT):
         field2 = "viscosity"
         # get color transfer function/color map for 'field'
         field2LUT = GetColorTransferFunction(field2)
+        field2PWF = GetOpacityTransferFunction('viscosity')
+        field2LUT.RescaleTransferFunction(ETA_MIN, ETA_MAX)
+        field2PWF.RescaleTransferFunction(ETA_MIN, ETA_MAX)
         # set scalar coloring
         ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
         source1Display.SetScalarBarVisibility(renderView1, True)
@@ -115,15 +145,24 @@ class SLAB(PARAVIEW_PLOT):
         layout1 = GetLayout()
         layout1.SetSize(1350, 704)
         renderView1.InteractionMode = '2D'
-        renderView1.CameraPosition = [0.0, 5.6e5, 2.5e7]
-        renderView1.CameraFocalPoint = [0.0, 6e6, 0.0]
-        renderView1.CameraParallelScale = 4.5e5
+        if "GEOMETRY" == "chunk":
+            renderView1.CameraPosition = [0.0, 5.6e5, 2.5e7]
+            renderView1.CameraFocalPoint = [0.0, 6e6, 0.0]
+            renderView1.CameraParallelScale = 4.5e5
+        elif "GEOMETRY" == "box":
+            renderView1.CameraPosition = [4700895.868280185, 2538916.5897593317, 15340954.822755022]
+            renderView1.CameraFocalPoint = [4700895.868280185, 2538916.5897593317, 0.0]
+            renderView1.CameraParallelScale = 487763.78047352127
         # colorbar position
         field2LUTColorBar = GetScalarBar(field2LUT, renderView1)
         field2LUTColorBar.Orientation = 'Horizontal'
         field2LUTColorBar.WindowLocation = 'Any Location'
         field2LUTColorBar.Position = [0.041, 0.908]
         field2LUTColorBar.ScalarBarLength = 0.33
+        field2LUTColorBar.TitleColor = [0.0, 0.0, 0.0]
+        field2LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
+        field2LUTColorBar.TitleFontFamily = 'Times'
+        field2LUTColorBar.LabelFontFamily = 'Times'
         # save figure
         fig_path = os.path.join(self.pv_output_dir, "viscosity_t%.4e.pdf" % self.time)
         ExportView(fig_path, view=renderView1)
@@ -157,7 +196,8 @@ def add_glyph1(_source, field, ghost_field, scale_factor, **kwargs):
     glyph1.GlyphType = '2D Glyph'
     glyph1.OrientationArray = ['POINTS', 'velocity']
     glyph1.ScaleArray = ['POINTS', 'No scale array']
-    glyph1.ScaleFactor = 7.5e4
+    glyph1.ScaleFactor = 4e4
+    glyph1.MaximumNumberOfSamplePoints = 20000
 
     glyph1Display = Show(glyph1, renderView1, 'GeometryRepresentation')
     # set the vector line width
@@ -170,7 +210,7 @@ def add_glyph1(_source, field, ghost_field, scale_factor, **kwargs):
     fieldPWF = GetOpacityTransferFunction(field)
 
     # change the color scheme 
-    fieldLUT.ApplyPreset('X Ray', True)
+    fieldLUT.ApplyPreset('tokyo', True)
 
     # set scalar coloring
     ColorBy(glyph1Display, ('POINTS', field, 'Magnitude'))

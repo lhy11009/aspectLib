@@ -104,7 +104,9 @@ def PlotCaseRun(case_path, **kwargs):
     step = kwargs.get('step', None)
     time_interval = kwargs.get('time_interval', None)
     visualization = kwargs.get('visualization', 'visit')
+    plot_axis = kwargs.get('plot_axis', False)
     last_step = kwargs.get('last_step', 3)
+    max_velocity = kwargs.get('max_velocity', -1.0)
     assert(visualization in ["paraview", "visit"])
     print("PlotCaseRun in TwoDSubduction0: operating")
     # get case parameters
@@ -114,9 +116,11 @@ def PlotCaseRun(case_path, **kwargs):
     Visit_Options = VISIT_OPTIONS(case_path)
     # provide steps to plot and interpret
     if type(step) == int:
-        Visit_Options.Interpret(steps=[step], time_interval=time_interval)  # only plot a single step
+        Visit_Options.Interpret(steps=[step], time_interval=time_interval, plot_axis=plot_axis, max_velocity=max_velocity)  # only plot a single step
+    elif type(step) == list:
+        Visit_Options.Interpret(steps=step, time_interval=time_interval, plot_axis=plot_axis, max_velocity=max_velocity)  # only plot a single step
     else:
-        Visit_Options.Interpret(last_step=last_step, time_interval=time_interval)  # by default, plot the last 3 steps
+        Visit_Options.Interpret(last_step=last_step, time_interval=time_interval, plot_axis=plot_axis, max_velocity=max_velocity)  # by default, plot the last 3 steps
 
     # generate scripts 
     if visualization == 'visit':

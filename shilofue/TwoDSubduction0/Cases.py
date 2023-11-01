@@ -158,6 +158,7 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("remove overiding plate composition", int, ['world builder', 'remove ov comp'], 0, nick='rm_ov_comp')
         self.add_key("peierls creep scheme", str, ['peierls creep', 'flow law'], "exact", nick='peierls_flow_law')
         self.add_key("reset density in the two corners", int, ["reset density"], 0, nick='reset_density')
+        self.add_key("Maximum Peierls strain rate iterations", int, ['peierls creep', "maximum peierls iterations"], 40, nick='maximum_peierls_iterations')
     
     def check(self):
         '''
@@ -303,6 +304,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         comp_method = self.values[25] 
         peierls_flow_law = self.values[self.start + 52]
         reset_density = self.values[self.start + 53]
+        maximum_peierls_iterations = self.values[self.start + 54]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -313,7 +315,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
-        rm_ov_comp, comp_method, peierls_flow_law, reset_density
+        rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations
 
     def to_configure_wb(self):
         '''
@@ -405,7 +407,8 @@ class CASE(CasesP.CASE):
     sp_age_trench, use_embeded_fault_feature_surface, ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match,\
     version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length,\
     slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice,\
-    global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density):
+    global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density,\
+    maximum_peierls_iterations):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -661,7 +664,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                             'Peierls strain rate residual tolerance', '%.4e' % 1e-22,'Peierls shear modulus derivative')
                         # o_dict['Material model']['Visco Plastic TwoD']['Maximum Peierls strain rate iterations'] = '%d' % 40
                         o_dict['Material model']['Visco Plastic TwoD'] = Utilities.insert_dict_after(o_dict['Material model']['Visco Plastic TwoD'],\
-                            'Maximum Peierls strain rate iterations', '%d' % 40, 'Peierls strain rate residual tolerance')
+                            'Maximum Peierls strain rate iterations', '%d' % maximum_peierls_iterations, 'Peierls strain rate residual tolerance')
                         # note that this part contains the different choices of phases
                         # in order to set up for the Idrissi flow law
                         # an additional parameter of Cutoff pressure is needed

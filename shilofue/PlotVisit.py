@@ -81,6 +81,8 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         steps = kwargs.get('steps', None)
         last_step = kwargs.get('last_step', None)
         time_interval = kwargs.get('time_interval', None)
+        plot_axis = kwargs.get('plot_axis', False)
+        max_velocity = kwargs.get('max_velocity', -1.0)
         # call function from parent
         CASE_OPTIONS.Interpret(self)
         # particle file
@@ -99,7 +101,13 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         else:
             if re.match('.*nonadiabatic\ pressure', visualization_output_variables):
                 self.options["HAS_DYNAMIC_PRESSURE"] = '1'
-            
+        # plot axis
+        if plot_axis:
+            self.options["PLOT_AXIS"] = '1'
+        else: 
+            self.options["PLOT_AXIS"] = '0'
+        # maximum velocity
+        self.options["MAX_VELOCITY"] = str(max_velocity)
 
         # get all the available snaps for ploting by checking on the existence of the pvtu file
         # the correspondent, time, time step are also figured out.
