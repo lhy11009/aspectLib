@@ -35,7 +35,7 @@ class SLAB(PARAVIEW_PLOT):
         apply_rotation("solution.pvd", [0.0, 0.0, 0.0], [0.0, 0.0, ROTATION_ANGLE], registrationName="Transform1")
         add_plot("Transform1", "viscosity", use_log=True, lim=[self.eta_min, self.eta_max], color="roma")
         add_plot("Transform1", "T", lim=[self.T_min, self.T_max], color="vik")
-        add_glyph1("Transform1", "velocity", "T", 5e6, registrationName="Glyph1")
+        add_glyph1("Transform1", "velocity", 1e6, registrationName="Glyph1")
 
 
     def plot_step(self): 
@@ -110,6 +110,16 @@ class SLAB(PARAVIEW_PLOT):
         fieldVLUTColorBar.LabelFontFamily = 'Times'
         # hide the grid axis
         renderView1.OrientationAxesVisibility = 0
+
+        # show the representative point                                                                                                    
+        _source_v_re = _source_v + "_representative"                                                                                       
+        sourceVRE = FindSource(_source_v_re)                                                                                               
+        sourceVREDisplay = Show(sourceVRE, renderView1, 'GeometryRepresentation') 
+        # show the annotation
+        _source_v_txt = _source_v + "_text" 
+        sourceVTXT = FindSource(_source_v_txt)                                                                                               
+        sourceVTXTDisplay = Show(sourceVTXT, renderView1, 'GeometryRepresentation')
+        sourceVTXTDisplay.Color = [0.0, 0.0, 0.0]
         
         # adjust layout and camera & get layout & set layout/tab size in pixels
         layout1 = GetLayout()
@@ -170,11 +180,13 @@ class SLAB(PARAVIEW_PLOT):
         # hide plots
         Hide(source1, renderView1)
         Hide(sourceV, renderView1)
+        Hide(sourceVRE, renderView1)
+        Hide(sourceVTXT, renderView1)
         HideScalarBarIfNotNeeded(field2LUT, renderView1)
         HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
 
 
-def add_glyph1(_source, field, ghost_field, scale_factor, **kwargs):
+def add_glyph1(_source, field, scale_factor, **kwargs):
     '''
     add glyph in plots
     Inputs:
@@ -183,23 +195,26 @@ def add_glyph1(_source, field, ghost_field, scale_factor, **kwargs):
             prevent it from being shown.
         kwargs:
             registrationName : the name of registration
+            representative_value: a value to represent by the constant vector
     '''
     registrationName = kwargs.get("registrationName", 'Glyph1')
+    representative_value = kwargs.get("representative_value", 0.05)
     
     # get active source and renderview
     pvd = FindSource(_source)
     renderView1 = GetActiveViewOrCreate('RenderView')
 
     # add glyph
-    glyph1 = Glyph(registrationName=registrationName, Input=pvd, GlyphType='Arrow')
+    glyph1 = Glyph(registrationName=registrationName, Input=pvd, GlyphType='2D Glyph')
     # adjust orientation and scale
-    glyph1.GlyphType = '2D Glyph'
     glyph1.OrientationArray = ['POINTS', 'velocity']
-    glyph1.ScaleArray = ['POINTS', 'No scale array']
-    glyph1.ScaleFactor = 4e4
+    glyph1.ScaleArray = ['POINTS', 'velocity']
+    glyph1.ScaleFactor = scale_factor
     glyph1.MaximumNumberOfSamplePoints = 20000
 
     glyph1Display = Show(glyph1, renderView1, 'GeometryRepresentation')
+    field0 = glyph1Display.ColorArrayName[1]
+    field0LUT = GetColorTransferFunction(field0)
     # set the vector line width
     glyph1Display.LineWidth = 2.0
     # show color bar/color legend
@@ -209,20 +224,71 @@ def add_glyph1(_source, field, ghost_field, scale_factor, **kwargs):
     # get opacity transfer function/opacity map for 'field'
     fieldPWF = GetOpacityTransferFunction(field)
 
-    # change the color scheme 
-    fieldLUT.ApplyPreset('tokyo', True)
-
     # set scalar coloring
-    ColorBy(glyph1Display, ('POINTS', field, 'Magnitude'))
+    ColorBy(glyph1Display, None)
+    glyph1Display.AmbientColor = [1.0, 1.0, 1.0]
+    glyph1Display.DiffuseColor = [1.0, 1.0, 1.0]
 
     # Hide the scalar bar for this color map if no visible data is colored by it.
     HideScalarBarIfNotNeeded(fieldLUT, renderView1)
-    fieldLUT1 = GetColorTransferFunction(ghost_field)
+    fieldLUT1 = GetColorTransferFunction(field0)
     HideScalarBarIfNotNeeded(fieldLUT1, renderView1)
+    
+    # add a representative vector
+    pointName = "PointSource_" + registrationName
+    pointSource1 = PointSource(registrationName=pointName)
+    if "GEOMETRY" == "chunk":
+        pointSource1.Center = [0, 6.4e6, 0]
+    else:
+        raise NotImplementedError
+    # pointSource1.Center 
+    pointSource1Display = Show(pointSource1, renderView1, 'GeometryRepresentation')
+    print(dir(pointSource1))
+    print(pointSource1.Center)
+
+    calculatorName="Calculator_" + registrationName
+    calculator1 = Calculator(registrationName=calculatorName, Input=pointSource1)
+    calculator1.ResultArrayName = 'constant_velocity'
+    calculator1.Function = '%.4e*iHat' % (scale_factor*representative_value)
+    calculator1Display = Show(calculator1, renderView1, 'GeometryRepresentation')
+
+    # add glyph
+    glyph2Name = registrationName+"_representative"
+    glyph2 = Glyph(registrationName=glyph2Name, Input=calculator1, GlyphType='2D Glyph')
+    # adjust orientation and scale
+    glyph2.OrientationArray = ['POINTS', 'constant_velocity']
+    # glyph2.ScaleArray = ['POINTS', 'No scale array']
+    glyph2.ScaleArray = ['POINTS', 'constant_velocity']
+    # glyph2.ScaleFactor = 4e4
+    glyph2.ScaleFactor = 1.0
+    glyph2Display = Show(glyph2, renderView1, 'GeometryRepresentation')
+    glyph2Display.AmbientColor = [0.0, 0.0, 0.0]
+    glyph2Display.DiffuseColor = [0.0, 0.0, 0.0]
+    # set the vector line width
+    glyph2Display.LineWidth = 2.0
+    # show color bar/color legend
+    glyph2Display.SetScalarBarVisibility(renderView1, False)
+
+    # add text
+    # create a new 'Text'
+    textName = registrationName + "_text"
+    text1 = Text(registrationName=textName)
+    # Properties modified on text1
+    text1.Text = '5cm / yr'
+    # show data in view
+    text1Display = Show(text1, renderView1, 'TextSourceRepresentation')
+    # Properties modified on text1Display
+    text1Display.WindowLocation = 'Upper Center'
+    text1Display.Color = [0.0, 0.0, 0.0]
+    
     # hide data in view
     # Hide(pvd, renderView1)
     # hide glaph in view
     Hide(glyph1, renderView1)
+    Hide(pointSource1, renderView1)
+    Hide(calculator1)
+    Hide(glyph2, renderView1)
+    Hide(text1, renderView1)
     
     # update the view to ensure updated data information
     renderView1.Update()
