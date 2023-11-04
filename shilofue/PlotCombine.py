@@ -496,27 +496,35 @@ class PLOT_COMBINE():
         return new_image_path
 
 
-def PlotCombineFigures(json_path):
+def PlotCombineFigures(json_option):
     '''
     Combine figures into a single image
     Inputs:
-        json_path(str): path to the json file
+        json_option(str): path to the json file
     '''
-    assert(os.access(json_path, os.R_OK))
+    if type(json_option) == str:
+        assert(os.access(json_option, os.R_OK))
+    else:
+        assert(type(json_option) == dict)
     Pc_opt = PC_OPT()
-    Pc_opt.read_json(json_path)  # read options
+    Pc_opt.read_json(json_option)  # read options
     # combine images
     Plot_Combine = PLOT_COMBINE(Pc_opt.to_PC_init())
     Plot_Combine.set_plots(Pc_opt.to_PC_set_plots())
     figure_path = Plot_Combine(*Pc_opt.to_PC_call())
     # save the json file in new location
     json_copy_path = os.path.join(os.path.dirname(figure_path), "combine_figure.json")
-    try:
-        shutil.copy(json_path, json_copy_path)
+    if type(json_option)  == str:
+        try:
+            shutil.copy(json_option, json_copy_path)
+            print("Saved json file: ", json_copy_path)
+        except shutil.SameFileError:
+            print("Saing json file: The two files are the same, skip")
+        assert(os.path.isfile(figure_path))
+    else:
+        with open(json_copy_path, 'w') as fout:
+            json.dump(json_option, fout)
         print("Saved json file: ", json_copy_path)
-    except shutil.SameFileError:
-        print("Saing json file: The two files are the same, skip")
-    assert(os.path.isfile(figure_path))
 
 
 def PrepareResults(json_path):

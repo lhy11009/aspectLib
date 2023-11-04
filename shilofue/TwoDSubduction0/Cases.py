@@ -1831,7 +1831,7 @@ def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_tr
     if reset_density:
         o_dict['Reset density'] = 'true'
         o_dict['Reset density function'] = \
-            prm_reaction_density_function_cart(box_width)
+            prm_reaction_density_function_cart(box_width, sp_trailing_length, ov_trailing_length)
 
     return o_dict
 
@@ -1943,11 +1943,11 @@ def prm_reaction_mor_function_cart(box_width, sp_trailing_length, ov_trailing_le
     }
     return odict
 
-def prm_reaction_density_function_cart(box_width):
+def prm_reaction_density_function_cart(box_width, sp_trailing_length, ov_trailing_length):
     '''
     Default setting for Reaction mor function in cartesian geometry
     '''
-    function_constants_str = "Depth=1.45e5, SPTL=6.0000e+05, OPTL=6.0000e+05, Do=2.890e6, xm=%.4e, CD=3300.0" % (box_width)
+    function_constants_str = "Depth=1.45e5, SPTL=%.4e, OPTL=%.4e, Do=2.890e6, xm=%.4e, CD=3300.0" % (sp_trailing_length, ov_trailing_length, box_width)
     function_expression_str = "(((y > Do - Depth) && ((x < SPTL) || (xm-x < OPTL)))? CD: -1.0)"
     odict = {
         "Coordinate system": "cartesian",\

@@ -209,9 +209,12 @@ def PlotFigure(log_path, fig_path, **kwargs):
                 wallclocks[re_ind: re_ind_next] += wallclocks[re_ind - 1]
             re_ind = re_inds[-1]  # deal with the last one seperately
             wallclocks[re_ind: ] += wallclocks[re_ind - 1]
-            steps_fixed = steps[re_inds]
-            times_fixed = times[re_inds]
-            wallclocks_fixed = wallclocks[re_inds]
+            # steps_fixed = steps[re_inds]
+            steps_fixed = steps
+            # times_fixed = times[re_inds]
+            times_fixed = times
+            # wallclocks_fixed = wallclocks[re_inds]
+            wallclocks_fixed = wallclocks
         else:
             steps_fixed = steps
             times_fixed = times
