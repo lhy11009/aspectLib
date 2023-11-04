@@ -194,15 +194,24 @@ def PlotCaseRun(case_path, **kwargs):
     ax2 = fig.add_subplot(gs[1, 0])
     ax3 = fig.add_subplot(gs[2, 0])
     if time_range is not None:
-        fig_output_path, step_range = PlotRunTime.PlotFigure(log_file, fig_path, axis=ax1, ax2=ax2, ax3=ax3,\
+        try:
+            fig_output_path, step_range = PlotRunTime.PlotFigure(log_file, fig_path, axis=ax1, ax2=ax2, ax3=ax3,\
                                                              savefig=False, fix_restart=True, time_range=time_range) 
-        fig.savefig(fig_path)
+            fig.savefig(fig_path)
+            print("New figure: %s" % fig_path)
+        except Exception:
+            print("PlotRunTime is unsuccessful\n")
     else:
-        fig_output_path = PlotRunTime.PlotFigure(log_file, fig_path, axis=ax1, ax2=ax2, ax3=ax3,\
+        try:
+            fig_output_path = PlotRunTime.PlotFigure(log_file, fig_path, axis=ax1, ax2=ax2, ax3=ax3,\
                                                              savefig=False, fix_restart=True, save_temp_file_local=True) 
-        fig.savefig(fig_path)
-        step_range = None
-    print("New figure: %s" % fig_path)
+        
+            fig.savefig(fig_path)
+            step_range = None
+            print("New figure: %s" % fig_path)
+        except Exception:
+            step_range = None
+            print("PlotRunTime is unsuccessful\n")
 
     # Newton history
     # determine whether newton is used
