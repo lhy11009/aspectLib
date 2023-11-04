@@ -590,29 +590,51 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         Operator.ReadProfile(da_file)
         if mantle_rheology_scheme == "HK03_wet_mod_twod":  # get the type of rheology
             # note that the jump on 660 is about 15.0 in magnitude
+            # deprecated
             rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
     dVdiff=-5.5e-6, dVdisl=2.12e-6, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.040297619, save_json=1,\
     jump_lower_mantle=15.0, Coh=mantle_coh)
+            if sz_viscous_scheme == "constant" and\
+                abs(sz_constant_viscosity - 1e20)/1e20 < 1e-6 and slab_core_viscosity < 0.0:  # assign the rheology
+                if abs(minimum_viscosity - 1e18) / 1e18 > 1e-6:
+                    # modify the minimum viscosity if a different value is given
+                    o_dict['Material model']['Visco Plastic TwoD']['Minimum viscosity'] = str(minimum_viscosity)
+                print("mantle_coh: ", mantle_coh)  # debug
+            else:
+                CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
+                sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
+        elif mantle_rheology_scheme == "HK03_wet_mod_twod1":  # get the type of rheology
+            # note that the jump on 660 is about 15.0 in magnitude
+            # fix the issue that in the previous scheme, the rheolog is not assigned to the prm.
+            rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
+    dVdiff=-5.5e-6, dVdisl=2.12e-6, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.040297619, save_json=1,\
+    jump_lower_mantle=15.0, Coh=mantle_coh)
+            if sz_viscous_scheme == "constant" and\
+                abs(sz_constant_viscosity - 1e20)/1e20 < 1e-6 and slab_core_viscosity < 0.0:  # assign the rheology
+                if abs(minimum_viscosity - 1e18) / 1e18 > 1e-6:
+                    # modify the minimum viscosity if a different value is given
+                    o_dict['Material model']['Visco Plastic TwoD']['Minimum viscosity'] = str(minimum_viscosity)
+                print("mantle_coh: ", mantle_coh)  # debug
+            CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
+            sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         elif mantle_rheology_scheme == "HK03_wet_mod_weakest_diffusion":
             # in this rheology, I maintained the prefactors from the derivation of the "HK03_wet_mod" rheology
             rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
     dVdiff=-5.5e-6, dVdisl=-1.2e-6, save_profile=1, save_json=1, jump_lower_mantle=15.0, Coh=mantle_coh)
+            CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
+            sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         elif mantle_rheology_scheme == "HK03":
             # in this one, I don't include F because of the issue related to pressure calibration
             rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, use_effective_strain_rate=False, save_profile=1, save_json=1,\
     jump_lower_mantle=15.0)
+            CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
+            sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         else:
             # default is to fix F
             rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, save_profile=1, save_json=1)
-        if mantle_rheology_scheme == "HK03_wet_mod_twod" and sz_viscous_scheme == "constant" and\
-            abs(sz_constant_viscosity - 1e20)/1e20 < 1e-6 and slab_core_viscosity < 0.0:  # assign the rheology
-            if abs(minimum_viscosity - 1e18) / 1e18 > 1e-6:
-                # modify the minimum viscosity if a different value is given
-                o_dict['Material model']['Visco Plastic TwoD']['Minimum viscosity'] = str(minimum_viscosity)
-            # this is just the default, so skip. Note here we just skip assigning the mantle rheology in the prm
-        else:
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
+
         # these files are generated with the rheology variables
         self.output_files.append(Operator.output_json)
         self.output_files.append(Operator.output_json_aspect)
