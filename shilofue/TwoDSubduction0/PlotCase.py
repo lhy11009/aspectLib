@@ -107,7 +107,7 @@ def PlotCaseRun(case_path, **kwargs):
     plot_axis = kwargs.get('plot_axis', False)
     last_step = kwargs.get('last_step', 3)
     max_velocity = kwargs.get('max_velocity', -1.0)
-    assert(visualization in ["paraview", "visit"])
+    assert(visualization in ["paraview", "visit", "pygmt"])
     print("PlotCaseRun in TwoDSubduction0: operating")
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
@@ -144,6 +144,17 @@ def PlotCaseRun(case_path, **kwargs):
         paraview_script = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts', 'TwoDSubduction', py_script)
         paraview_script_base = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts', 'base.py')
         Visit_Options.read_contents(paraview_script_base, paraview_script)  # combine these two scripts
+        Visit_Options.substitute()
+    elif visualization == 'pygmt':
+        odir = os.path.join(case_path, 'pygmt_scripts')
+        if not os.path.isdir(odir):
+            os.mkdir(odir)
+        print("Generating pygmt scripts")
+        py_script = 'make_lateral_flow_fig.py'
+        ofile = os.path.join(odir, py_script)
+        pygmt_script = os.path.join(ASPECT_LAB_DIR, 'pygmt_scripts', 'TwoDSubduction', py_script)
+        pygmt_script_base = os.path.join(ASPECT_LAB_DIR, 'pygmt_scripts', 'aspect_plotting_util.py')
+        Visit_Options.read_contents(pygmt_script_base, pygmt_script)  # combine these two scripts
         Visit_Options.substitute()
 
     ofile_path = Visit_Options.save(ofile, relative=True)
