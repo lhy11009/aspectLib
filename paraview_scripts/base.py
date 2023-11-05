@@ -48,7 +48,7 @@ class PARAVIEW_PLOT():
         # 'diffusion_viscosity', 'peierls_viscosity', 'error_indicator']
         self.view_solution_pvd = True  # if the solutionpvd is included as a view
         if project == "ThDSubduction":
-            self.all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'sp_upper', 'sp_lower']
+            self.all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'sp_upper', 'sp_lower', "strain_rate"]
             HAS_PLATE_EDGE = True
             if HAS_PLATE_EDGE:
                 self.all_variables.append('plate_edge')

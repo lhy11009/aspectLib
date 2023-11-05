@@ -52,6 +52,7 @@ class SLAB(PARAVIEW_PLOT):
         _source_v = "Glyph1"
         field1 = "T"
         field2 = "viscosity"
+        layout_resolution = (1350, 704)
         # get color transfer function/color map for 'field'
         field2LUT = GetColorTransferFunction(field2)
        
@@ -76,8 +77,6 @@ class SLAB(PARAVIEW_PLOT):
         source1Display.SetScalarBarVisibility(renderView1, True)
         # Rescale transfer function, 2d transfer function
         field1LUT.RescaleTransferFunction(273.0, 2273.0)
-        field1TF2D = GetTransferFunction2D(field1)
-        field1TF2D.RescaleTransferFunction(273.0, 2273.0, 0.0, 1.0)
         # colorbar position
         field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
         field1LUTColorBar.Orientation = 'Horizontal'
@@ -123,7 +122,7 @@ class SLAB(PARAVIEW_PLOT):
         
         # adjust layout and camera & get layout & set layout/tab size in pixels
         layout1 = GetLayout()
-        layout1.SetSize(1350, 704)
+        layout1.SetSize(layout_resolution[0], layout_resolution[1])
         renderView1.InteractionMode = '2D'
         if "GEOMETRY" == "chunk":
             renderView1.CameraPosition = [0.0, 5.6e5, 2.5e7]
@@ -135,6 +134,8 @@ class SLAB(PARAVIEW_PLOT):
             renderView1.CameraParallelScale = 487763.78047352127
         # save figure
         fig_path = os.path.join(self.pv_output_dir, "T_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "T_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
         ExportView(fig_path, view=renderView1)
 
         # second plot
@@ -175,6 +176,8 @@ class SLAB(PARAVIEW_PLOT):
         field2LUTColorBar.LabelFontFamily = 'Times'
         # save figure
         fig_path = os.path.join(self.pv_output_dir, "viscosity_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "viscosity_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
         ExportView(fig_path, view=renderView1)
 
         # hide plots
