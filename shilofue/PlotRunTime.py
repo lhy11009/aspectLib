@@ -32,6 +32,7 @@ import shilofue.Plot as Plot
 import warnings
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
+import pdb
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -395,7 +396,11 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     '''
     # read log file
     temp_path = os.path.join(RESULT_DIR, 'run_time_output_newton')
+    
+    query_iterations = kwargs.get('query_iterations', None)  # number of iteration to query
+    
     trailer = None
+    
     print("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
     os.system("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
     Plotter = Plot.LINEARPLOT('SolverHistory', {})
@@ -408,14 +413,19 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     col_number_of_iteration = Plotter.header['Index_of_nonlinear_iteration']['col']
     col_residual = Plotter.header['Relative_nonlinear_residual']['col']
     end_step = int(Plotter.data[-1, col_step])
+    
     # steps to plot, todo get from default or read in
     steps = np.array([i for i in range(end_step)])
     number_of_iterations = np.zeros(end_step)
     residuals = np.zeros(end_step)
-    residuals_at_iteration0 = np.zeros(end_step)
-    residuals_at_iteration1 = np.zeros(end_step)
-    query_iteration0 = kwargs.get('query', 10)  # number of iteration to query
-    query_iteration1 = kwargs.get('query', 20)  # number of iteration to query
+
+    # outputs for querying additional iterations 
+    n_query_iteration = 0
+    if query_iterations is not None:
+        for iteration in query_iterations:
+            assert(type(iteration) == int)
+        n_query_iteration = len(query_iterations)
+        residuals_at_iterations = np.zeros([n_query_iteration, end_step])
 
     for i in range(steps.size):
         step = steps[i]
@@ -423,15 +433,17 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
         data = Plotter.data[mask_step, :]
         number_of_iterations[step] = data[-1, col_number_of_iteration]
         residuals[step] = data[-1, col_residual]
-        # query residual of iteration 'query_iteration'
-        try:
-            residuals_at_iteration0[step] = data[query_iteration0, col_residual]
-        except IndexError:
-            residuals_at_iteration0[step] = data[-1, col_residual]
-        try:
-            residuals_at_iteration1[step] = data[query_iteration1, col_residual]
-        except IndexError:
-            residuals_at_iteration1[step] = data[-1, col_residual]
+        
+    # query residual of iteration 'query_iteration'
+    for i in range(steps.size):
+        step = steps[i]
+        mask_step = (Plotter.data[:, col_step] == step)
+        data = Plotter.data[mask_step, :]
+        for j in range(n_query_iteration):
+            try:
+                residuals_at_iterations[j, step] = data[query_iterations[j], col_residual]
+            except IndexError:
+                residuals_at_iterations[j, step] = data[-1, col_residual]
 
     # plot mask
     step_range = kwargs.get('step_range', None)
@@ -448,8 +460,9 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     # residual of iteration, plot mask
     ax.semilogy(steps[s_mask], residuals[s_mask], '-', linewidth=1.5, color=color, label='Residuals')
     # query residual of iteration 'query_iteration'
-    ax.semilogy(steps[s_mask], residuals_at_iteration0[s_mask], '--', linewidth=0.5, color='tab:orange', label='Residuals at iteration %d' % query_iteration0)
-    ax.semilogy(steps[s_mask], residuals_at_iteration1[s_mask], '--', linewidth=0.5, color='tab:green', label='Residuals at iteration %d' % query_iteration1)
+    if query_iterations is not None:
+        for j in range(n_query_iteration):
+            ax.semilogy(steps[s_mask], residuals_at_iterations[j, s_mask], '--', linewidth=0.5, label='Residuals at iteration %d' % query_iterations[j])
     ax.set_ylabel('Relative non-linear residual', color=color)
     ax.set_xlabel('Steps')
     ax.set_title('Solver History')
