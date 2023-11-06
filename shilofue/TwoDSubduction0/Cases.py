@@ -593,7 +593,6 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         assert(os.path.isfile(da_file))
 
         # CDPT model
-        # todo_CDPT
         if phase_model == "CDPT":
             CDPT_set_parameters(o_dict, CDPT_type)
 
@@ -2161,7 +2160,6 @@ def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_
     return box_width
 
 
-# todo_CDPT
 def CDPT_set_parameters(o_dict, CDPT_type):
     '''
     set parameters for the CDPT model
