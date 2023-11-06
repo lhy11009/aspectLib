@@ -134,6 +134,7 @@ dmypy.json
 
 # compressed format
 *.tar
+*.zip
 
 # temp files
 *temp
@@ -148,6 +149,7 @@ __pycache__/
 
 # figures
 *.png
+*.jpg
 
 # diff&patch files
 *.diff
