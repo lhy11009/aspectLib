@@ -159,6 +159,8 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("peierls creep scheme", str, ['peierls creep', 'flow law'], "exact", nick='peierls_flow_law')
         self.add_key("reset density in the two corners", int, ["reset density"], 0, nick='reset_density')
         self.add_key("Maximum Peierls strain rate iterations", int, ['peierls creep', "maximum peierls iterations"], 40, nick='maximum_peierls_iterations')
+        self.add_key("Type of CDPT Model to use for mantle phase transitions", str,\
+         ["phase transition model CDPT type"], 'Billen2018_old', nick="CDPT_type")
     
     def check(self):
         '''
@@ -237,6 +239,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         comp_method = self.values[25] 
         if use_embeded_fault == 1:
             assert(comp_method == "field")
+        # CDPT model type 
+        CDPT_type = self.values[self.start + 55]
+        assert(CDPT_type in ["Billen2018_old", "HeFESTo_consistent", "Billen2018"])
 
     def to_configure_prm(self):
         if_wb = self.values[8]
@@ -305,6 +310,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         peierls_flow_law = self.values[self.start + 52]
         reset_density = self.values[self.start + 53]
         maximum_peierls_iterations = self.values[self.start + 54]
+        CDPT_type = self.values[self.start + 55]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -315,7 +321,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
-        rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations
+        rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type
 
     def to_configure_wb(self):
         '''
@@ -408,7 +414,7 @@ class CASE(CasesP.CASE):
     version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length,\
     slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice,\
     global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density,\
-    maximum_peierls_iterations):
+    maximum_peierls_iterations, CDPT_type):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -585,6 +591,12 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         # Material model
         da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
         assert(os.path.isfile(da_file))
+
+        # CDPT model
+        # todo_CDPT
+        if phase_model == "CDPT":
+            CDPT_set_parameters(o_dict, CDPT_type)
+
         Operator = RHEOLOGY_OPR()
         # mantle rheology
         Operator.ReadProfile(da_file)
@@ -1876,6 +1888,8 @@ def prm_reset_viscosity_function_cart(box_width, sp_trailing_length, ov_trailing
         function_constants_str = "Depth=1.45e5, SPTL=%.4e, OPTL=%.4e, Do=2.890e6, xm=%.4e, CV=1e20" % \
         (sp_trailing_length, ov_trailing_length, box_width)
         function_expression_str =  "(((y > Do - Depth) && ((x < SPTL) || (xm-x < OPTL)))? CV: -1.0)"
+    else:
+        raise ValueError("Must set the trailing edges of the subducting plate and the overiding palte as the same time.")
     odict = {
         "Coordinate system": "cartesian",
         "Variable names": "x, y",
@@ -2145,6 +2159,43 @@ def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_
     '''
     box_width = box_width0 + (sp_age - sp_age0) * sp_rate + sp_trailing_length + ov_trailing_length
     return box_width
+
+
+# todo_CDPT
+def CDPT_set_parameters(o_dict, CDPT_type):
+    '''
+    set parameters for the CDPT model
+    '''
+    print("CDPT_type: ", CDPT_type) # debug
+    if CDPT_type == 'HeFESTo_consistent':
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition depths'] = \
+        'background:410e3|520e3|560e3|660e3|660e3|660e3|660e3, spcrust: 80e3|665e3|720e3, spharz: 410e3|520e3|560e3|660e3|660e3|660e3|660e3'
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition widths'] = \
+        'background:13e3|25e3|60e3|5e3|5e3|5e3|5e3, spcrust: 5e3|60e3|5e3, spharz: 13e3|25e3|60e3|5e3|5e3|5e3|5e3'
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition temperatures'] = \
+        'background:1780.0|1850.0|1870.0|1910.0|2000.0|2000.0|2000.0, spcrust: 1173.0|1870.0|2000.0, spharz: 1780.0|1850.0|1870.0|1910.0|2000.0|2000.0|2000.0'
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition Clapeyron slopes'] = \
+        'background:2e6|4.1e6|4e6|-1e6|0|-1e6|2e6, spcrust: 0.0|4e6|2e6, spharz: 2e6|4.1e6|4e6|-1e6|0|-1e6|2e6'
+    elif CDPT_type == 'Billen2018_old':
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition depths'] = \
+        'background:410e3|520e3|560e3|670e3|670e3|670e3|670e3, spcrust: 80e3|665e3|720e3, spharz: 410e3|520e3|560e3|670e3|670e3|670e3|670e3'
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition widths'] = \
+        "background:5e3|5e3|5e3|10e3|5e3|5e3|5e3, spcrust: 5e3|5e3|5e3, spharz: 5e3|5e3|5e3|10e3|5e3|5e3|5e3"
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition temperatures'] = \
+        "background:1662.0|1662.0|1662.0|1662.0|1662.0|1662.0|1662.0, spcrust: 1173.0|1662.0|1662.0, spharz: 1662.0|1662.0|1662.0|1662.0|1662.0|1662.0|1662.0"
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition Clapeyron slopes'] = \
+        "background:4e6|4.1e6|4e6|-2e6|4e6|-3.1e6|1.3e6, spcrust: 0.0|4e6|1.3e6, spharz: 4e6|4.1e6|4e6|-2e6|4e6|-3.1e6|1.3e6"
+    elif CDPT_type == 'Billen2018':
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition depths'] = \
+        'background:410e3|520e3|560e3|670e3|670e3|670e3|670e3, spcrust: 80e3|665e3|720e3, spharz: 410e3|520e3|560e3|670e3|670e3|670e3|670e3'
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition widths'] = \
+        "background:5e3|5e3|5e3|10e3|5e3|5e3|5e3, spcrust: 5e3|5e3|5e3, spharz: 5e3|5e3|5e3|10e3|5e3|5e3|5e3"
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition temperatures'] = \
+        "background:1800.0|1800.0|1800.0|1800.0|1800.0|1800.0|1800.0, spcrust: 1173.0|1800.0|1800.0, spharz: 1800.0|1800.0|1800.0|1800.0|1800.0|1800.0|1800.0"
+        o_dict['Material model']['Visco Plastic TwoD']['Phase transition Clapeyron slopes'] = \
+        "background:4e6|4.1e6|4e6|-2e6|4e6|-3.1e6|1.3e6, spcrust: 0.0|4e6|1.3e6, spharz: 4e6|4.1e6|4e6|-2e6|4e6|-3.1e6|1.3e6"
+
+
 
 
 def CDPT_assign_mantle_rheology(o_dict, rheology, **kwargs):

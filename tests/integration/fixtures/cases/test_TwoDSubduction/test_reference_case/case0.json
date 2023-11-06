@@ -34,6 +34,7 @@
     }
   },
   "coupling the eclogite phase to shear zone viscosity": 0,
+  "phase transition model CDPT type": "Billen2018",
   "slurm": [
     {
       "slurm file": "./files/slurm_files/221010/job_p-billen.sh",
