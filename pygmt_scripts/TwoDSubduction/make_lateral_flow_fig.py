@@ -51,12 +51,13 @@ def plot_step(infile_dir, timestep):
     # Does not interpolate
     velo_angle, velo_length = get_2Dvelocity(reader,'velocity')
     m2cm = 100 # cm/m
-    velmax = velo_length.max()*m2cm  # cm/yr 
+    velmax = 0.05 * m2cm
+    # velmax = velo_length.max()*m2cm  # cm/yr 
     print('Max length = ', velmax, ' cm/yr')
     #Scale vector: for movies or comparing different time-steps... will want to fix this scaling.
     velo_length = velo_length/velo_length.max()
-    
-    # For plotting region smaller than model size, choose plot limits
+
+    # plot the figres
     lonmin = 40
     lonmax = 60
     zmax = 1200
@@ -69,28 +70,55 @@ def plot_step(infile_dir, timestep):
     
     proj2 = 'P10c+a+t' + str(mid2) + '+z'
     frame2 = ["xa5f","ya200f","WNse+gbisque",] 
-    
+
+    # 1. plot density 
     fig = pygmt.Figure() 
     fig.basemap(region=region2, projection=proj2, frame=frame2)
     pygmt.makecpt(cmap='davos',reverse=True, series=[3025,4225])
     fig.grdimage(density)
-    fig.grdcontour(T,interval=300,limit=[600,2400])
+    # fig.grdcontour(T,interval=300,limit=[600,2400])
     fig.colorbar(frame=["a200f100", "x+lDensity", "y+lkg/m@+3@+"])
     
-    npts = 161 # plot every nth point
+    npts = 321 # plot every nth point
     sc = 0.5  # scale vector lengths
     style_w = "v0.08c+e+a40+gwhite+h0+p0.5p,white"
     fig.plot(x=theta[0::npts],y=r[0::npts],direction=[velo_angle[0::npts]+mid2,velo_length[0::npts]*sc], style=style_w, pen="0.5p,white")
     
     # Plot a velocity vector to show scaling
     style_b = "v0.08c+e+a40+gwhite+h0+p0.5p,black" 
-    vtext = 'v@-max@- = ' + str(round(velmax,2)) + "cm/yr"
+    vtext = 'v@-0@- = ' + str(round(velmax,2)) + "cm/yr"
     yvel = erad-zmax-80
     fig.plot(x=[mid2-5, mid2-5], y=[yvel,yvel], direction=[[0,0], [1*0.5, 1*0.5]], style=style_b, pen="0.5p,black", no_clip=True)
     fig.text(text=vtext, x=mid2, y=yvel, font="10p,Times-Roman,black", no_clip=True)
     
     fig.show()
-    pdffile_name = mod_name + '_s%04d' % timestep + '_lateralflow_new.pdf'
+    pdffile_name = mod_name + '_s%04d' % timestep + '_density.pdf'
+    pdffile = os.path.join(pygmt_img_dir, pdffile_name)
+    print('Figure saved to ', pdffile)
+    fig.savefig(pdffile)
+    
+    # 2. plot viscosity
+    fig = pygmt.Figure() 
+    fig.basemap(region=region2, projection=proj2, frame=frame2)
+    pygmt.makecpt(cmap='roma',reverse=False, series=[18, 24])
+    fig.grdimage(visclog)
+    # fig.grdcontour(T,interval=300,limit=[600,2400])
+    fig.colorbar(frame=["a1f0.5", "x+lViscosity", "y+lPas+"])
+    
+    npts = 321 # plot every nth point
+    sc = 0.5  # scale vector lengths
+    style_w = "v0.08c+e+a40+gwhite+h0+p0.5p,white"
+    fig.plot(x=theta[0::npts],y=r[0::npts],direction=[velo_angle[0::npts]+mid2,velo_length[0::npts]*sc], style=style_w, pen="0.5p,white")
+    
+    # Plot a velocity vector to show scaling
+    style_b = "v0.08c+e+a40+gwhite+h0+p0.5p,black" 
+    vtext = 'v@-0@- = ' + str(round(velmax,2)) + "cm/yr"
+    yvel = erad-zmax-80
+    fig.plot(x=[mid2-5, mid2-5], y=[yvel,yvel], direction=[[0,0], [1*0.5, 1*0.5]], style=style_b, pen="0.5p,black", no_clip=True)
+    fig.text(text=vtext, x=mid2, y=yvel, font="10p,Times-Roman,black", no_clip=True)
+    
+    fig.show()
+    pdffile_name = mod_name + '_s%04d' % timestep + '_viscosity.pdf'
     pdffile = os.path.join(pygmt_img_dir, pdffile_name)
     print('Figure saved to ', pdffile)
     fig.savefig(pdffile)
