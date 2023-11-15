@@ -767,6 +767,25 @@ def test_Byerlee():
     assert(abs(tau - tau_std)/tau_std < 1e-6)
 
 
+def test_PeierlsStressLimiter():
+    '''
+    test the stress limiter approach
+    '''
+    # test 1: strain rate = reference strain rate
+    tau_y = 500e6 # 500 Mpa
+    strain_rate_y = 1e-15
+    ny = 10
+    strain_rate = 1e-15
+    tau = PeierlsStressLimiter(tau_y, strain_rate_y, ny, strain_rate)
+    tau_std = 500e6
+    assert(abs(tau-tau_std)/tau_std < 1e-6)
+    # test 2: strain rate is 2 orders higher
+    strain_rate = 1e-13
+    tau = PeierlsStressLimiter(tau_y, strain_rate_y, ny, strain_rate)
+    tau_std = 792.4465962305567e6
+    assert(abs(tau-tau_std)/tau_std < 1e-6)
+
+
 
 # notes
     

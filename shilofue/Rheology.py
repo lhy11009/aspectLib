@@ -3254,6 +3254,14 @@ def CoulumbYielding(P, cohesion, friction, _lambda=0.0):
     return tau
 
 
+def PeierlsStressLimiter(tau_y, strain_rate_y, ny, strain_rate):
+    '''
+    The stress limiter approach mentioned in Hana Cizcova's 2013 paper
+    '''
+    tau = tau_y * strain_rate_y**(-1.0/ny) * strain_rate**(1.0/ny)
+    return tau
+
+
 def pressure_from_lithostatic(z,Tad):
     '''
     A lithostatic pressure profile
