@@ -3204,25 +3204,33 @@ def PlotStrengh(Operator, fig_path_base, **kwargs):
 
 
 # yielding criteria
-def Byerlee(P):
+def Byerlee(P, **kwargs):
     '''
     byerlee's law for yielding
     Inputs:
         P (pressure, Pa) - lithostatic pressure
     '''
+    _lambda = kwargs.get('_lambda', 0.0)
     if type(P) == float:
         sigma_n = P  # future: pore pressure
         if P < 200e6:
-            tau = 0.85 * P
+            tau_dry = 0.85 * P
         else:
-            tau = 0.6 * P + 60e6
+            tau_dry = 0.6 * P + 60e6
     elif type(P) == np.ndarray:
-        tau = np.zeros(P.shape)
+        if type(_lambda) == np.ndarray:
+            assert(P.size == _lambda.size)
+        elif type(_lambda) == float:
+            _lambda = _lambda * np.ones(P.shape)
+        else:
+            raise TypeError("_lambda needs to be float or ndarray.")
+        tau_dry = np.zeros(P.shape)
         mask = (P < 200e6)
-        tau[mask] = 0.85 * P[mask]
-        tau[~mask] = 0.6 * P[~mask] + 60e6
+        tau_dry[mask] = 0.85 * P[mask]
+        tau_dry[~mask] = 0.6 * P[~mask] + 60e6
     else:
         raise TypeError("Wrong type of entry")
+    tau = tau_dry * (1- _lambda)
     return tau
 
 
@@ -3234,11 +3242,15 @@ def StressDependentYielding(P, cohesion, friction, strain_rate_ref, n, strain_ra
     tau = tau_y * (strain_rate / strain_rate_ref) ** (1.0/n)
     return tau
 
-def CoulumbYielding(P, cohesion, friction):
+def CoulumbYielding(P, cohesion, friction, _lambda=0.0):
     '''
     a yielding criteria that include a stress dependence on strain rate
+    Inputs:
+        _lambda is the coefficient for fluid pore pressure
+        (_lambda = P_fluid/P_lith)
     '''
-    tau = cohesion + friction * P
+    tau_dry = cohesion + friction * P
+    tau = tau_dry * (1-_lambda)
     return tau
 
 

@@ -730,6 +730,43 @@ def test_Idrissi16_peierls():
     assert(abs(strain_rate_std - strain_rate)/strain_rate_std < 1e-6)
 
 
+def test_CoulumbYielding():
+    '''
+    test the function CoulumbYielding
+    '''
+    # test 1: dry profile
+    P = 500e6
+    cohesion=2e6
+    friction=0.6
+    tau_std = 302e6
+    tau = CoulumbYielding(P, cohesion, friction)
+    assert(abs(tau - tau_std)/tau_std < 1e-6)
+    # test 2: Otherwise same as 1, hydrate profile with _lambda = 0.1
+    P = 500e6
+    cohesion=2e6
+    friction=0.6
+    _lambda=0.1
+    tau_std = 271.8e6
+    tau = CoulumbYielding(P, cohesion, friction, _lambda)
+    assert(abs(tau - tau_std)/tau_std < 1e-6)
+
+
+def test_Byerlee():
+    '''
+    test the Byerlee function
+    '''
+    # test 1: dry condition
+    P = np.linspace(0.0, 100e6, 10)
+    tau = Byerlee(P)
+    assert(abs(tau[-1] - 85e6)/85e6 < 1e-6)
+    # test 2: wet condition
+    P = 330e6
+    _lambda = 0.99
+    tau = Byerlee(P, _lambda=_lambda)
+    tau_std = 2.58e6 # 2.58 MPa
+    assert(abs(tau - tau_std)/tau_std < 1e-6)
+
+
 
 # notes
     
