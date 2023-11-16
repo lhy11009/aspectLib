@@ -55,7 +55,19 @@ def test_plate_model():
 
     year = 365.25 * 24 * 3600.0  # s in year
     Pmodel1 = PLATE_MODEL(150e3, 0.804e-6, 273.0, 1673.0, 0.05/year) # initiate the plate model
-    print(Pmodel1.PM_B(0, 1.38895e+15))
+    # test 3: check the temperature
+    # 0 km, 50 km, 95 km (plate thickness)
+    # the following parameters are from T&S book
+    Myr = 1e6 * year
+    Pmodel2 = PLATE_MODEL(95e3,1e-6, 273.0, 1573.0) # initiate the plate model
+    Ts = Pmodel2.T(np.array([0.0, 50e3, 95e3]), 60.4 * Myr) 
+    T0km_std = 273.0
+    assert(abs(Ts[0] - T0km_std) / T0km_std < 1e-6)
+    T50km_std = 1059.7755706447608
+    assert(abs(Ts[1] - T50km_std) / T50km_std < 1e-6)
+    T95km_std = 1573.0
+    assert(abs(Ts[2] - T95km_std) / T95km_std < 1e-6)
+
 
 
 def test_mantle_adiabat():

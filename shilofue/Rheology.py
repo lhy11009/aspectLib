@@ -2040,7 +2040,6 @@ def PeierlsCreepStrainRate(creep, stress, P, T):
     # calculate B
     # compute F
     exponential = -(E + P*V) / (R*T) * (1 - (stress/sigp0)**p)**q
-    print('exponential: ', exponential) # debug
     expo = np.exp(exponential)
     strain_rate = A * expo * stress ** n
     return strain_rate

@@ -179,6 +179,7 @@ class PLATE_MODEL():
                 np.exp(expo)
         return B_n_t
 
+
     def heating_thickness(self, t):
         '''
         this is the heating thickness defined as
@@ -200,7 +201,24 @@ class PLATE_MODEL():
         Get the temperature from the plate model
         todo
         '''
-        pass
+        if self.lateral_variation is True:
+            raise NotImplementedError
+        else:
+            # T&S chapter 4.17
+            # T0
+            if type(y) == np.ndarray:
+                T = np.zeros(y.size)
+            else:
+                T = 0.0
+            T += self.Ttop
+            # (T1 - T0) * y / yL0
+            T += (self.Tbot - self.Ttop) * y / self.L
+            for n in range(1, self.sommation):
+                expo = - self.kappa * n**2.0 * np.pi**2.0 * t / self.L**2.0
+                sino = n * np.pi * y / self.L
+                T += (self.Tbot - self.Ttop) * 2 / np.pi / n * np.exp(expo) * np.sin(sino)
+            return T
+
 
 
 def PlotResidueHeatRatio(max_depth_plate_model, kappa, u):

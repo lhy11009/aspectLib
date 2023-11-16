@@ -697,10 +697,18 @@ def test_MK10_peierls():
     eta = PeierlsCreepRheology(creep, strain_rate, P, T)
     assert(abs(np.log(eta_std/eta)) < 0.05)  # a bigger tolerance, check the log value
     # assert 3.2: viscosity, a realistic scenario
+    # 1e-13
     strain_rate = 1e-13
     T = 800.0 + 273.15 # K
     P = 0 # not dependent on P (V = 0)
     eta_std = 2.125142090914006e+21
+    eta = PeierlsCreepRheology(creep, strain_rate, P, T)
+    assert(abs(np.log(eta_std/eta)) < 0.05)  # a bigger tolerance, check the log value
+    # 1e-15
+    strain_rate = 1e-15
+    T = 800.0 + 273.15 # K
+    P = 0 # not dependent on P (V = 0)
+    eta_std = 9.893654111645399e+22
     eta = PeierlsCreepRheology(creep, strain_rate, P, T)
     assert(abs(np.log(eta_std/eta)) < 0.05)  # a bigger tolerance, check the log value
     
