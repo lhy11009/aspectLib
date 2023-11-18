@@ -58,7 +58,7 @@ def test_read_perplex():
     filein = os.path.join(source_dir, 'perplex_lookup_table.txt')
     assert(os.path.isfile(filein))
     LookupTable = LOOKUP_TABLE()
-    LookupTable.ReadPerplex(filein, n_col_header=4)
+    LookupTable.ReadPerplex(filein, header_rows=4)
     LookupTable.Update()
 
     # output file

@@ -160,7 +160,7 @@ class LOOKUP_TABLE():
                                 "VP": {"col": 6, "unit": 'km/s'}, "VS modified by attenuation": {"col": 7, "unit": 'km/s'},\
                                 "VP modified by attenuation": {"col": 8, "unit": 'km/s'}, "Enthalpy":{"col": 9, "unit": 'kJ/g'},\
                                 "Entropy": {"col": 10, "unit": "J/g/K"}, "Thermal_expansivity": {"col": 11, "unit": "10-5 K-1"},\
-                                "Isobaric_heat_capacity": {"col": 12, "unit": "J/g/K)"}, "isothermal bulk modulus": {"col": 13, "unit": "GPa"},\
+                                "Isobaric_heat_capacity": {"col": 12, "unit": "J/g/K"}, "isothermal bulk modulus": {"col": 13, "unit": "GPa"},\
                                 "Shear attenuation": {"col": 14, "unit": "1"}, "Longitudinal attenuation":{"col": 15, "unit": "1"},\
                                 "Quenched density": {"col": 16, "unit": "g/cm^3"}, "most abundant phase": {"col": 17, "unit": None}}
         self.oheader = { 'Temperature': 'T(K)',  'Pressure': 'P(bar)' ,  'Density': 'rho,kg/m3',\
@@ -169,7 +169,8 @@ class LOOKUP_TABLE():
         # header for perplex table
         self.perplex_header = { 'T': "Temperature", "P": 'Pressure', "rho": 'Density',\
                                "alpha": 'Thermal_expansivity', 'cp': "Isobaric_heat_capacity",\
-                                'vp': "VP", 'vs': "VS", 'h': "Enthalpy", "s": "Entropy"}
+                                'vp': "VP", 'vs': "VS", 'h': "Enthalpy", "s": "Entropy", "H2O": "H2O",\
+                                "cAmph(G)": "cAmph_G", "Ep(HP11)": "Ep_HP11", "law": "law", "Omph(GHP)": "Omph_GHP", "Gt(HGP)": "Gt_HGP"}
         # unit to output
         self.ounit = {'Temperature': 'K', 'Pressure': 'bar', 'Thermal_expansivity': '1/K',\
         'Isobaric_heat_capacity': 'J/K/kg', 'Density': 'kg/m3', 'VP':'km/s', 'VS':'km/s', 'Enthalpy': 'J/kg', "Entropy": "J/K/kg"}
@@ -202,12 +203,12 @@ class LOOKUP_TABLE():
             path(str):
                 file path of the table
             kwargs:
-                n_col_header : number of header columns
+                header_rows : number of header raws
         '''
-        n_col_header = kwargs.get('n_col_header', 0)
+        header_rows = kwargs.get('header_rows', 0)
         line = ""
         with open(path, 'r') as fin:
-            for i in range(n_col_header):
+            for i in range(header_rows):
                 line = fin.readline()
                 assert(line != "")
         header, unit = ParsePerplexHeader(line)
@@ -220,7 +221,7 @@ class LOOKUP_TABLE():
             self.header[header_to]['unit'] = unit[i]
         
         # read data
-        self.data = np.loadtxt(path, skiprows=n_col_header) 
+        self.data = np.loadtxt(path, skiprows=header_rows) 
 
     def ReadRawFort56(self, _path):
         '''
@@ -233,6 +234,15 @@ class LOOKUP_TABLE():
         self.header = self.fort_56_header
         self.data = np.genfromtxt(_path)
         print("%s: data dimension: " % Utilities.func_name(), self.data.shape)
+
+    def AllFields(self):
+        '''
+        return all fields options
+        '''
+        fields = []
+        for key, _ in self.header.items():
+            fields.append(key)
+        return fields
     
     def export_fort56_vss(self):
         '''
@@ -295,6 +305,55 @@ class LOOKUP_TABLE():
         depths = self.data[:, col_depth]
         _data = self.data[:, col_field]
         return depths, _data
+
+    def export_field(self, field):
+        '''
+        export field
+        Inputs:
+            field (str): the field to output
+        '''
+        col_field = self.header[field]["col"]
+        _data = self.data[:, col_field]
+        return _data
+    
+    def export_field_mesh(self, field):
+        '''
+        export field in a 2-d mesh
+        '''
+        col_field = self.header[field]["col"]
+
+        # call update and process with information of the mesh
+        self.Update()
+        col_first = self.header[self.first_dimension_name]['col']
+        col_second = self.header[self.second_dimension_name]['col']
+
+        # initiate 2-d arrays 
+        D1 = np.zeros((self.number1, self.number2))
+        D2 = np.zeros((self.number1, self.number2))
+        F = np.zeros((self.number1, self.number2))
+
+        # process data
+        for i in range(self.number1):
+            for j in range(self.number2):
+                D1[i, j] = self.data[i, col_first]
+                D2[i, j] = self.data[j*self.number1, col_second]
+                F[i, j] = self.data[j*self.number1 + i, col_field]
+        
+        return D1, D2, F
+    
+    def fix_field_nan_value(self, field, value):
+        '''
+        fix nan value of field
+        Inputs:
+            field (str): name of field
+            value (float): value to fix with
+        '''
+        col_field = self.header[field]["col"]
+        for i in range(self.data.shape[0]):
+            # if self.data[i, col_field] == float('nan'):
+            if np.isnan(self.data[i, col_field]):
+                self.data[i, col_field] = value
+
 
     def Update(self, **kwargs):
         '''
@@ -943,7 +1002,7 @@ def ConvertPS_Table(filein, fileout):
     # input file
     assert(os.path.isfile(filein))
     LookupTable = LOOKUP_TABLE()
-    LookupTable.ReadPerplex(filein, n_col_header=4)
+    LookupTable.ReadPerplex(filein, header_rows=4)
     LookupTable.Update()
 
     # output pressure entropy lookup table
