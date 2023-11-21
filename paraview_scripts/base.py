@@ -54,7 +54,7 @@ class PARAVIEW_PLOT():
                 self.all_variables.append('plate_edge')
         elif project == "TwoDSubduction":
             self.all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'spcrust', 'spharz',\
-            'dislocation_viscosity', 'diffusion_viscosity', 'peierls_viscosity']
+            'dislocation_viscosity', 'diffusion_viscosity', 'peierls_viscosity', 'strain_rate']
         # open data base
         self.filein = filein
         # assign initial values 

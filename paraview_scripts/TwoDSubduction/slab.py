@@ -36,6 +36,7 @@ class SLAB(PARAVIEW_PLOT):
         add_plot("Transform1", "viscosity", use_log=True, lim=[self.eta_min, self.eta_max], color="roma")
         add_plot("Transform1", "T", lim=[self.T_min, self.T_max], color="vik")
         add_glyph1("Transform1", "velocity", 1e6, registrationName="Glyph1")
+        add_deformation_mechanism("Transform1", registrationName="pFilter_DM")
 
 
     def plot_step(self): 
@@ -295,6 +296,42 @@ def add_glyph1(_source, field, scale_factor, **kwargs):
     
     # update the view to ensure updated data information
     renderView1.Update()
+
+
+def add_deformation_mechanism(_source, **kwargs):
+    '''
+    add programable filter to deal with the deformation mechanism
+    Inputs:
+        _source to extract the data
+    kwargs:
+        registrationName : the name of registration
+    '''
+    registrationName = kwargs.get("registrationName", 'Glyph1')
+    
+    # get active source and renderview
+    pvd = FindSource(_source)
+    renderView1 = GetActiveViewOrCreate('RenderView')
+
+    # create a new 'Programmable Filter'
+    programmableFilter1 = ProgrammableFilter(registrationName=registrationName, Input=pvd)
+    programmableFilter1.Script = \
+"""
+import numpy as np
+pressure = inputs[0].PointData["p"].GetArrays()[0]
+strain_rate = inputs[0].PointData["strain_rate"].GetArrays()[0]
+diff_visc = inputs[0].PointData["diffusion_viscosity"].GetArrays()[0]
+disl_visc= inputs[0].PointData["dislocation_viscosity"].GetArrays()[0]
+p_visc= inputs[0].PointData["peierls_viscosity"].GetArrays()[0]
+y_visc1 = (pressure * np.sin(25.0/180.0 * np.pi) + 50e6) / 2.0 / strain_rate
+y_visc2 = 500e6 / 2.0 / strain_rate
+y_visc = np.minimum(y_visc1, y_visc2)
+d_mech = np.argmin(np.array([diff_visc, disl_visc, y_visc, p_visc]), axis=0)
+# output.PointData.append(d_mech, "deformation_mechanism")
+"""
+    programmableFilter1.RequestInformationScript = ''
+    programmableFilter1.RequestUpdateExtentScript = ''
+    programmableFilter1.PythonPath = ''
+
 
 
 def main():
