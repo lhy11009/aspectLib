@@ -2421,7 +2421,6 @@ def DeriveMantleRheology(file_path, **kwargs):
     # strain rate vs 10^4/T
     ax = fig.add_subplot(gs[1, 0])
     # plot reference point, from figure 3
-    PlotHK03DataFig3(ax, "wet") 
     P = 100e6 # Pa
     stress = 50.0 # Mpa
     d = 15 # um
@@ -2446,87 +2445,68 @@ def PlotHK03DataFig2(ax, _type, **kwargs):
         _type - "dry" or "wet"
         kwargs:
             color - color of plotting
+            plot_title: whether to plot a title for the subfigure
     '''
+    plot_title = kwargs.get('plot_title', True)
+    _color = kwargs.get("color", 'b')
+    
     if _type == 'dry':
         raise NotImplementedError()
-    if _type == 'wet':
-        file_path = os.path.join(ASPECT_LAB_DIR, "files", "ref_data", "HK03_fig2b_comp")
-        file_path_disl = os.path.join(ASPECT_LAB_DIR, "files", "ref_data", "HK03_fig2b_disl")
-    assert(os.path.isfile(file_path))
-    assert(os.path.isfile(file_path_disl))
-    _color = kwargs.get("color", 'b')
-
-    # composite strain rate
-    data = np.loadtxt(file_path)
-    stress = 10**data[:, 0]  # MPa
-    strain_rate = 10**data[:, 1] # s^-1
-    ax.loglog(stress, strain_rate, '*', color=_color, label="constitute, T 1250 C, P 300 MPa, d 15 mu m")
-    # dislocation strain rate
-    data = np.loadtxt(file_path_disl)
-    stress = 10**data[:, 0]  # MPa
-    strain_rate = 10**data[:, 1] # s^-1
-    ax.loglog(stress, strain_rate, 's', color=_color, label="dislocation")
-    ax.set_title("Hirth and Kohlstedt 2003, figure 2")
-    ax.set_xlabel("stress (MPa)")
-    ax.set_ylabel("strain rate (s^-1)")
-
-
-def PlotHK03DataFig3(ax, _type, **kwargs):
-    '''
-    Inputs:
-        ax - an axis to plot
-        _type - "dry" or "wet"
-        kwargs:
-            color - color of plotting
-    '''
-    if _type == 'dry':
-        raise NotImplementedError()
-    if _type == 'wet':
-        file_path_diff = os.path.join(ASPECT_LAB_DIR, "files", "ref_data", "HK03_fig3b_diff_100")
-        file_path_disl = os.path.join(ASPECT_LAB_DIR, "files", "ref_data", "HK03_fig3b_disl_100")
-    assert(os.path.isfile(file_path_diff))
-    assert(os.path.isfile(file_path_disl))
-    _color = kwargs.get("color", 'b')
-
-    # diffusion strain rate
-    data = np.loadtxt(file_path_diff)
-    Ts = 1e4 / data[:, 0]  # K
-    strain_rate = 10**data[:, 1] # s^-1
-    ax.semilogy(1e4 / Ts, strain_rate, 's', color=_color, label="diffusion, P = 100 MPa")
-    # dislocation strain rate
-    data = np.loadtxt(file_path_disl)
-    Ts = 1e4 / data[:, 0]  # K
-    strain_rate = 10**data[:, 1] # s^-1
-    ax.semilogy(1e4 / Ts, strain_rate, 'o', color=_color, label="dislocation, P = 100 MPa")
-
+    elif _type == 'wet':
+        raw_data_total = [[1.132841328413284, -5.778790063762706], [1.494464944649447, -5.24839179426277], [1.801968019680197, -4.957322814607457],\
+[1.9200492004920053, -4.653331636764643], [2.1119311193111936, -4.468541375068924], [2.247232472324724, -4.215045736664263],\
+[2.321033210332103, -3.971028262006758]]
+        data_total = np.array(raw_data_total)
+        stress_total = 10**data_total[:, 0]  # MPa
+        strain_rate_total = 10**data_total[:, 1] # s^-1
+        ax.loglog(stress_total, strain_rate_total, '*', color=_color, label="constitute, T 1250 C, P 300 MPa, d 15 mu m")
+        # dislocation strain rate
+        # data = np.loadtxt(file_path_disl)
+        raw_data_disl = [[1.806888068880689, -5.830863412082397], [1.9249692496924973, -5.103883728492457],\
+[2.1168511685116855, -4.854725650704783],[2.2496924969249696, -4.458712587125872],[2.318573185731858, -4.150349917292276]]
+        data_disl = np.array(raw_data_disl)
+        stress_disl = 10**data_disl[:, 0]  # MPa
+        strain_rate_disl = 10**data_disl[:, 1] # s^-1
+        ax.loglog(stress_disl, strain_rate_disl, 's', color=_color, label="dislocation")
+        if plot_title:
+            ax.set_title("Hirth and Kohlstedt 2003, figure 2")
+        ax.set_xlabel("stress (MPa)")
+        ax.set_ylabel("strain rate (s^-1)")
 
 
 ###
 # fit result from the Mei & Kohlstedt rheology
 ###
-def PlotMK00_disl_fig5(ax):
+def PlotMK00_disl_fig5(ax, **kwargs):
     '''
     plot the data from Mei_Kohlstedt_2000 dislocation creep figure 5
+        kwargs:
+            plot_title: whether to plot a title for the subfigure
     '''
+    plot_title = kwargs.get('plot_title', True)
     # 100 MPa
     x_raw_p100 = np.array([0.6433692324841583, 0.6561591624293664, 0.6562504823233839, 0.685525153700385, 0.6854779931917374])
     y_raw_p100 = np.array([-4.411245351831686, -4.8023860359162995, -4.995578345037713, -5.372216458160053, -5.494668004310184])
     Ts_p100 = 1000.0 / x_raw_p100
     etas_p100 = 10**(y_raw_p100)
     ax.semilogy(x_raw_p100, etas_p100, "rs", label="stress 155 MPa, P 100 MPa, d 16.1 mu m")
-    ax.set_title("Dislocation Creep, Mei Kohstedt 2000 (dislocation), fig 5")
+    if plot_title:
+        ax.set_title("Dislocation Creep, Mei Kohstedt 2000 (dislocation), fig 5")
     ax.set_xlabel("1000/T (K)")
     ax.set_ylabel("strain rate (s^-1)")
     ax.legend()
     ax.grid()
 
 
-def PlotMK00_diff_fig8(ax):
+def PlotMK00_diff_fig8(ax, **kwargs):
     '''
     plot the dat from Mei_Kohlstedt_2000 diffusion creep figure 8
     Inputs:
         ax: an matplotlib axis
+        kwargs:
+            plot_title: whether to plot a title for the subfigure
     '''
+    plot_title = kwargs.get('plot_title', True)
     # 100 MPa data
     x_raw_p100 = np.array([0.6339044385123972, 0.6440210207161812, 0.6567288267374941, 0.669971186314001])
     y_raw_p100 = np.array([-4.733618978882234, -4.969853276650428,  -5.1129735210815115, -5.334779781114151])
@@ -2540,34 +2520,60 @@ def PlotMK00_diff_fig8(ax):
     # plot options
     ax.semilogy(x_raw_p100, etas_p100, "ro", label="stress 60 MPa, P 100 MPa, d 15 mu m")
     ax.semilogy(x_raw_p400, etas_p400, "bo", label="stress 27 MPa, P 400 MPa, d 15 mu m")
-    ax.set_title("Diffusion Creep, Mei Kohstedt 2000 (diffusion), fig 8")
+    if plot_title:
+        ax.set_title("Diffusion Creep, Mei Kohstedt 2000 (diffusion), fig 8")
     ax.set_xlabel("1000/T (K)")
     ax.set_ylabel("strain rate (s^-1)")
     ax.legend()
     ax.grid()
 
-def PlotHK03DataFig3WetDiff(ax):
+
+def PlotHK03DataFig3(ax, _type, **kwargs):
     '''
     plot the data from Hirth Kohlsted 2003, fig 3, diffusion creep
+    kwargs:
+            plot_title: whether to plot a title for the subfigure
     '''
+    plot_title = kwargs.get('plot_title', True)
     # P = 100
-    file_path_diff = os.path.join(ASPECT_LAB_DIR, "files", "ref_data", "HK03_fig3b_diff_100")
-    data = np.loadtxt(file_path_diff)
-    Ts = 1e4 / data[:, 0]  # K
-    strain_rate = 10**data[:, 1] # s^-1
-    ax.semilogy(1e4 / Ts, strain_rate, 'ro', label="stress 50 MPa, P 100 MPa, d 15 mu m")
-    # P = 300
-    Ts = 1e4 / np.array([6.521801441486481, 6.695571386909969, 6.787018289380494])
-    strain_rate = 10**np.array([-4.648148148148149, -4.992063492063493, -5.060846560846562])
-    ax.semilogy(1e4 / Ts, strain_rate, 'bo', label="stress 50 MPa, P 400 MPa, d 15 mu m")
-    ax.set_title("Diffusion Creep, Hirth Kohlsted 2003, fig 3")
-    ax.set_xlabel("10000/T (K)")
-    ax.set_ylabel("strain rate (s^-1)")
+    if _type == "wet_diff":
+        raw_data = [[6.355193482688391, -4.845890410958905], [6.436659877800408, -5.095890410958904],\
+[6.5670061099796335, -5.212328767123288], [6.693279022403259, -5.554794520547945],\
+[6.860285132382892, -5.883561643835616]]
+        data = np.array(raw_data)
+        Ts = 1e4 / data[:, 0]   # K
+        strain_rate = 10**data[:, 1] # s^-1
+        ax.semilogy(1e4 / Ts, strain_rate, 'ro', label="stress 50 MPa, P 100 MPa, d 15 mu m")
+        # P = 300
+        Ts = 1e4 / np.array([6.521801441486481, 6.695571386909969, 6.787018289380494])
+        strain_rate = 10**np.array([-4.648148148148149, -4.992063492063493, -5.060846560846562])
+        ax.semilogy(1e4 / Ts, strain_rate, 'bo', label="stress 50 MPa, P 400 MPa, d 15 mu m")
+        if plot_title:
+            ax.set_title("Diffusion Creep (wet), Hirth Kohlsted 2003, fig 3")
+        ax.set_xlabel("10000/T (K)")
+        ax.set_ylabel("strain rate (s^-1)")
+    elif _type == "wet_disl":
+        raw_data = [[6.4470056344681, -4.87733729208138], [6.572407975977598, -5.233395188771551],\
+[6.857282634366882, -5.945281554708325], [6.8556361550659615, -6.15067984749823]]
+        data = np.array(raw_data)
+        Ts = 1e4 / data[:, 0]   # K
+        strain_rate = 10**data[:, 1] # s^-1
+        ax.semilogy(1e4 / Ts, strain_rate, 'ro', label="stress 50 MPa, P 100 MPa, d 15 mu m")
+        if plot_title:
+            ax.set_title("Dislocation Creep (wet), Hirth Kohlsted 2003, fig 3")
+        ax.set_xlabel("10000/T (K)")
+        ax.set_ylabel("strain rate (s^-1)")
+    else:
+        raise NotImplementedError()
 
-def PlotHK03DataFig3WetDisl(ax):
+
+def PlotHK03DataFig3WetDisl(ax, **kwargs):
     '''
     plot the data from Hirth Kohlsted 2003, fig 3, dislocation creep
+    kwargs:
+            plot_title: whether to plot a title for the subfigure
     '''
+    plot_title = kwargs.get('plot_title', True)
     # P = 100 MPa
     file_path_disl = os.path.join(ASPECT_LAB_DIR, "files", "ref_data", "HK03_fig3b_disl_100")
     data = np.loadtxt(file_path_disl)
@@ -2578,15 +2584,19 @@ def PlotHK03DataFig3WetDisl(ax):
     Ts = 1e4 / np.array([6.5671970624235])
     strain_rate = 10**np.array([-4.846898595957965])
     ax.semilogy(1e4 / Ts, strain_rate, 'bo', label="stress 50MPa?, P 300 MPa, d 15 mu m?")
-    ax.set_title("Dislocasion Creep, Hirth Kohlsted 2003, fig 3")
+    if plot_title:
+        ax.set_title("Dislocasion Creep, Hirth Kohlsted 2003, fig 3")
     ax.set_xlabel("10000/T (K)")
     ax.set_ylabel("strain rate (s^-1)")
 
 
-def PlotHK03DataFig5DislocationFugacity(ax):
+def PlotHK03DataFig5DislocationFugacity(ax, **kwargs):
     '''
     Plot data from Hirth Kohlstedt 2003, figure 5a
+    kwargs:
+            plot_title: whether to plot a title for the subfigure
     '''
+    plot_title = kwargs.get('plot_title', True)
     # only data from J&K, M&K are included
     fh2o_s = 10**np.array([1.9137642041953218, 1.9106953585249822, 1.896398728092879, 1.9246160861741723, 1.9327010771771551,\
     2.477556755157879, 2.4768604106583845, 2.4804900293327417, 2.4816978481106267, 2.7108876235549313,\
@@ -2597,15 +2607,18 @@ def PlotHK03DataFig5DislocationFugacity(ax):
     -4.11053390519855, -4.208884862826295, -2.8513520175503464, -3.269343587468263, -1.8756686139663283,\
     -2.0477827898148826,  -2.178948211688727, -2.3674542138085726, -2.629723434149227, -2.9739825975498526])
     ax.loglog(fh2o_s, strain_rate, "bs", label="stress 150 MPa, T 1250 C, P 300 MPa")
-    ax.set_title("Dislocation Creep Water Fugacity, Hirth Kohlstedt 2003, fig 5")
+    if plot_title:
+        ax.set_title("Dislocation Creep Water Fugacity, Hirth Kohlstedt 2003, fig 5")
     ax.set_xlabel("Water Fugacity (MPa)")
     ax.set_ylabel("strain rate (s^-1)")
 
 
-def RefitHK03(rheology_dict, _name, o_path):
+def RefitHK03(rheology_dict, _name, o_path, **kwargs):
     '''
     Refit the rheology from HK03
     '''
+    plot_title = kwargs.get("plot_title", True)
+
     fig = plt.figure(tight_layout=True, figsize=(12, 24))
     gs = gridspec.GridSpec(4, 2)
     diffusion_creep = rheology_dict['diffusion']
@@ -2639,8 +2652,8 @@ def RefitHK03(rheology_dict, _name, o_path):
         T = Ts_diff_400[i]
         etas_diff_400[i] = CreepStrainRate(diffusion_creep, stress, P, T, d, fh2o)
     # plot the figure 8 from the diffusion creep data
-    ax = fig.add_subplot(gs[1, 0])
-    PlotMK00_diff_fig8(ax)
+    ax = fig.add_subplot(gs[0, 0])
+    PlotMK00_diff_fig8(ax, plot_title=plot_title)
     ax.semilogy(1000.0 / Ts_diff_100, etas_diff_100, 'r')
     ax.semilogy(1000.0 / Ts_diff_400, etas_diff_400, 'b')
     ax.set_xlim([0.6, 0.7])
@@ -2660,8 +2673,8 @@ def RefitHK03(rheology_dict, _name, o_path):
     for i in range(n_point):
         T = Ts_disl_100[i]
         etas_disl_100[i] = CreepStrainRate(dislocation_creep, stress, P, T, d, fh2o)
-    ax = fig.add_subplot(gs[2, 0])
-    PlotMK00_disl_fig5(ax)
+    ax = fig.add_subplot(gs[0, 1])
+    PlotMK00_disl_fig5(ax, plot_title=plot_title)
     ax.semilogy(1000.0 / Ts_disl_100, etas_disl_100, 'r')
     ax.set_xlim([0.6, 0.7])
     ax.set_ylim([10**(-6), 10**(-4)])
@@ -2680,8 +2693,8 @@ def RefitHK03(rheology_dict, _name, o_path):
         strain_rate_diffusion[i] = CreepStrainRate(diffusion_creep, stress, P, T, d, fh2o)
         strain_rate_dislocation[i] = CreepStrainRate(dislocation_creep, stress, P, T, d, fh2o)
     strain_rate = strain_rate_diffusion + strain_rate_dislocation
-    ax = fig.add_subplot(gs[0, 1])
-    # PlotHK03DataFig2(ax, "wet", color="r")
+    ax = fig.add_subplot(gs[1, 0])
+    PlotHK03DataFig2(ax, "wet", color="r", plot_title=plot_title)
     ax.loglog(stresses, strain_rate_dislocation, '--r')
     ax.loglog(stresses, strain_rate, 'r')
     ax.set_xlim([10, 1000])
@@ -2708,10 +2721,10 @@ def RefitHK03(rheology_dict, _name, o_path):
     for i in range(n_point):
         T = Ts_diff_400_50MPa[i]
         etas_diff_400_50MPa[i] = CreepStrainRate(diffusion_creep, stress, P, T, d, fh2o)
-    ax = fig.add_subplot(gs[1, 1])
+    ax = fig.add_subplot(gs[2, 0])
     ax.semilogy(1e4 / Ts_diff_100_50MPa, etas_diff_100_50MPa, 'r')
     ax.semilogy(1e4 / Ts_diff_400_50MPa, etas_diff_400_50MPa, 'b')
-    # PlotHK03DataFig3WetDiff(ax)
+    PlotHK03DataFig3(ax, "wet_diff", plot_title=plot_title)
     ax.legend()
     ax.set_xlim([6.3, 6.9])
     ax.set_ylim([10**(-6), 3*10**(-5)])
@@ -2739,7 +2752,7 @@ def RefitHK03(rheology_dict, _name, o_path):
         etas_disl_300_50MPa[i] = CreepStrainRate(dislocation_creep, stress, P, T, d, fh2o)
     # plot
     ax = fig.add_subplot(gs[2, 1])
-    # PlotHK03DataFig3WetDisl(ax)
+    PlotHK03DataFig3(ax, 'wet_disl', plot_title=plot_title)
     ax.semilogy(10000.0/Ts_disl_100_50MPa, etas_disl_100_50MPa, 'r')
     ax.semilogy(10000.0/Ts_disl_300_50MPa, etas_disl_300_50MPa, 'b')
     ax.legend()
@@ -2758,18 +2771,18 @@ def RefitHK03(rheology_dict, _name, o_path):
         fh2o = fh2o_s[i]
         etas_disl_fugacity[i] = CreepStrainRate(dislocation_creep, stress, P, T, d, fh2o)
     # plot
-    ax = fig.add_subplot(gs[3, 1])
-    PlotHK03DataFig5DislocationFugacity(ax)
+    ax = fig.add_subplot(gs[3, 0])
+    PlotHK03DataFig5DislocationFugacity(ax, plot_title=plot_title)
     ax.loglog(fh2o_s, etas_disl_fugacity, 'b')
     ax.set_xlim([90, 2e4])
     ax.set_ylim([1e-6, 1e-1])
     ax.legend()
 
     # save figure
-    fig_path = os.path.join(o_path, "%s.png" % _name)
-    fig.savefig(fig_path)
-    print("%s: save figure %s" % (Utilities.func_name(), fig_path))
-    pass
+    if o_path is not None:
+        fig_path = os.path.join(o_path, "%s.pdf" % _name)
+        fig.savefig(fig_path)
+        print("%s: save figure %s" % (Utilities.func_name(), fig_path))
 
 
 def RheologyTableFormating(creep, _name, **kwargs):
