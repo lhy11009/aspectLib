@@ -656,7 +656,9 @@ class RHEOLOGY_PRM():
             'sigp0': 5.9e3,    				# MPa (+/- 0.2e3 Pa)
             'A': 1.4e-7,      # s^-1 MPa^-2
             'E': 320e3,      				# J/mol (+/-50e3 J/mol)
-            'V' : 0.0  # not dependent on the pressure
+            'V' : 0.0,  # not dependent on the pressure
+            "Tref" : 873.0, # reference temperature from the experiment
+            "Pref" : 4.5e9 # Pa, reference pressure
         }
         
         self.Idrissi16_peierls = \
@@ -2019,7 +2021,7 @@ def ComputeComposite(*Args):
 #### functions for the peierls rheology
 
 # todo_peierls
-def PeierlsCreepStrainRate(creep, stress, P, T):
+def PeierlsCreepStrainRate(creep, stress, P, T, **kwargs):
     """
     Calculate strain rate by flow law in form of 
         Ap * sigma^n * exp( - (E) / (R * T) * (1 - (sigma / sigmap)^p)^q)
@@ -2037,9 +2039,19 @@ def PeierlsCreepStrainRate(creep, stress, P, T):
     E = creep['E']
     V = creep['V']
     sigp0 = creep['sigp0']
+
+    dV = kwargs.get("dV", 0.0)  # apply a different in dV
+
+    Pref = 1e9 # default value, not used because dV = 0.0
+    Tref = 873.0
+    if abs(dV) > 1e-6:
+        # get reference P and T if dV is not 0.0
+        Pref = creep['Pref']
+        Tref = creep['Tref']
+
     # calculate B
     # compute F
-    exponential = -(E + P*V) / (R*T) * (1 - (stress/sigp0)**p)**q
+    exponential = -((E + P*(V +  dV)) / (R*T) - Pref*dV / (R*Tref)) * (1 - (stress/sigp0)**p)**q
     expo = np.exp(exponential)
     strain_rate = A * expo * stress ** n
     return strain_rate
@@ -2090,7 +2102,7 @@ def PeierlsCreepStress(creep, strain_rate, P, T, **kwargs):
                 stress_l = stress
         exponential = (np.log(stress_u) + np.log(stress_l)) / 2.0
         stress = np.exp(exponential)
-        strain_rate_1 = PeierlsCreepStrainRate(creep, stress, P, T)
+        strain_rate_1 = PeierlsCreepStrainRate(creep, stress, P, T, **kwargs)
         difference = np.log(strain_rate_1 / strain_rate)
         n += 1
     if n == maximum_iteration:
@@ -2118,7 +2130,7 @@ def PeierlsCreepRheology(creep, strain_rate, P, T, **kwargs):
     """
     tolerance = kwargs.get('tolerance', 0.05)
     maximum_iteration = kwargs.get('iteration', 1000)
-    stress = PeierlsCreepStress(creep, strain_rate, P, T, iteration=maximum_iteration, tolerance=tolerance)
+    stress = PeierlsCreepStress(creep, strain_rate, P, T, iteration=maximum_iteration, tolerance=tolerance, **kwargs)
     eta = 1e6 * stress / 2.0 / strain_rate
     return eta
 

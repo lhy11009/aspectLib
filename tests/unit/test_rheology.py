@@ -675,6 +675,27 @@ def test_MK10_peierls():
     P = 0 # not dependent on P (V = 0)
     strain_rate = PeierlsCreepStrainRate(creep, stress, P, T)
     assert(abs(strain_rate_std - strain_rate)/strain_rate_std < 1e-6)
+    # assert 1.3: use a variation with activation volume
+    strain_rate_std = 2.9979043137974457e-05
+    T = 873.0
+    P = 4.5e9
+    stress = 3.35e3 # MPa
+    strain_rate = PeierlsCreepStrainRate(creep, stress, P, T) 
+    assert(abs(strain_rate_std - strain_rate)/strain_rate_std < 1e-6)
+    strain_rate_std = 2.9979043137974457e-05
+    T = 873.0
+    P = 4.5e9
+    dV = 30e-6
+    stress = 3.35e3 # MPa
+    strain_rate = PeierlsCreepStrainRate(creep, stress, P, T, dV=dV) 
+    assert(abs(strain_rate_std - strain_rate)/strain_rate_std < 1e-6)
+    strain_rate_std = 1.0823657173643094e-05
+    T = 873.0
+    P = 5.5e9
+    dV = 30e-6
+    stress = 3.35e3 # MPa
+    strain_rate = PeierlsCreepStrainRate(creep, stress, P, T, dV=dV) 
+    assert(abs(strain_rate_std - strain_rate)/strain_rate_std < 1e-6)
     # assert 2.1
     strain_rate = 2.7778604629458894e-05
     T = 671.0 # K
