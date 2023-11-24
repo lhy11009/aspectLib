@@ -2613,6 +2613,10 @@ def PlotHK03DataFig5DislocationFugacity(ax, **kwargs):
     ax.set_ylabel("strain rate (s^-1)")
 
 
+def Plot_Silber22_fig7b(ax, **kwargs):
+    pass
+
+
 def RefitHK03(rheology_dict, _name, o_path, **kwargs):
     '''
     Refit the rheology from HK03
