@@ -243,8 +243,9 @@ def add_glyph1(_source, field, scale_factor, **kwargs):
     pointSource1 = PointSource(registrationName=pointName)
     if "GEOMETRY" == "chunk":
         pointSource1.Center = [0, 6.4e6, 0]
-    else:
-        raise NotImplementedError
+    elif "GEOMETRY" == "box":
+        pointSource1.Center = [4.65e6, 2.95e6, 0]
+        
     # pointSource1.Center 
     pointSource1Display = Show(pointSource1, renderView1, 'GeometryRepresentation')
     print(dir(pointSource1))

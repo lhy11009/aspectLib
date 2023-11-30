@@ -3084,6 +3084,7 @@ class PLOT_COMBINE_SLAB_MORPH(PLOT_COMBINE):
         _title = "Comparing slab morphology results"
         color_method = kwargs.get('color_method', 'list')
         dump_color_to_json = kwargs.get('dump_color_to_json', None)
+        save_pdf = kwargs.get('save_pdf', False)
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
         # initiate
@@ -3143,6 +3144,10 @@ class PLOT_COMBINE_SLAB_MORPH(PLOT_COMBINE):
         fig_path = os.path.join(output_dir, '%s.png' % _name)
         print("%s: save figure: %s" % (Utilities.func_name(), fig_path))
         plt.savefig(fig_path)
+        if save_pdf == True:
+            pdf_path = os.path.join(output_dir, '%s.pdf' % _name)
+            print("%s: save figure: %s" % (Utilities.func_name(), pdf_path))
+            plt.savefig(pdf_path)
         return fig_path
 
 def PlotSlabMaterialTime(case_dir, _time):

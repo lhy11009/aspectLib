@@ -410,7 +410,7 @@ class PLOT_COMBINE():
         n_color_max = 5
         ni = shape[0]
         nj = shape[1]
-        fig = plt.figure(tight_layout=True, figsize=[5*nj, 5*ni])
+        fig = plt.figure(tight_layout=True, figsize=[7*nj, 5*ni])
         gs = gridspec.GridSpec(ni, nj)
         colors_dict = {}
         if color_method == 'generated':
@@ -464,7 +464,7 @@ class PLOT_COMBINE():
             print("%s: dump color options: %s" % (Utilities.func_name(), dump_color_to_json))
         return fig, gs, colors
     
-    def __call__(self, width, anchor, output_dir, _title, if_include_case_names, _name):
+    def __call__(self, width, anchor, output_dir, _title, if_include_case_names, _name, **kwargs):
         '''
         perform combination
         Inputs:
@@ -474,6 +474,7 @@ class PLOT_COMBINE():
             if_include_case_names (0 or 1) - If we include case names
             _name (str) - name of the plot
         '''
+        save_pdf = kwargs.get("save_pdf", False)
         assert(os.path.isdir(output_dir))
         locations, width = self.get_total_size(width, _title, anchor=anchor)  # width is the width of a subplot
         image_size = [locations[0][-1], locations[1][-1]]
@@ -492,6 +493,9 @@ class PLOT_COMBINE():
                 new_image.paste(image, (locations[0][i], locations[1][j])) # paste image in place
         new_image_path = os.path.join(output_dir, '%s.png' % _name)
         print("%s: save figure: %s" % (Utilities.func_name(), new_image_path))
+        if save_pdf:
+            new_pdf_path = os.path.join(output_dir, '%s.pdf' % _name)
+            print("%s: save figure: %s" % (Utilities.func_name(), new_pdf_path))
         new_image.save(new_image_path)
         return new_image_path
 
@@ -776,8 +780,16 @@ def PlotCombineExecute(PLOT_COMBINE_CLASS, PLOT_COMBINE_OPT, _name, json_option,
     Pc_opt.read_json(json_option)  # read options
     # plot the combined figure
     PlotCombiner = PLOT_COMBINE_CLASS(Pc_opt.to_init())
-    PlotCombiner(*Pc_opt.to_call(), dump_color_to_json=Pc_opt.get_color_json_output_path(),\
-    color_method='list')
+    kwargs['dump_color_to_json'] = Pc_opt.get_color_json_output_path()
+    kwargs['color_method'] = 'list'
+
+    # call the executer
+    # older syntax
+    # PlotCombiner(*Pc_opt.to_call(), dump_color_to_json=Pc_opt.get_color_json_output_path(),\
+    # color_method='list')
+    # newer syntax
+    PlotCombiner(*Pc_opt.to_call(), **kwargs)
+    
     # save the configuration file
     json_copy_path = os.path.join(Pc_opt.get_output_dir(), '%s.json' % _name)
     if type(json_option) == str:
