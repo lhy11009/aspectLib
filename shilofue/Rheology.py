@@ -1702,8 +1702,11 @@ def CreepStrainRate(creep, stress, P, T, d, Coh, **kwargs):
     # calculate B
     # compute F
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
+    f_by_factor = kwargs.get('f_by_factor', False)
     if use_effective_strain_rate:
         F = 3**((n+1)/2) / 2.0
+    elif f_by_factor:
+        F = kwargs['F']
     else:
         F = 1.0
     B = A * d**(-p) * Coh**r
@@ -1730,8 +1733,11 @@ def CreepRheology(creep, strain_rate, P, T, d=1e4, Coh=1e3, **kwargs):
     V = creep['V']
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
+    f_by_factor = kwargs.get('f_by_factor', False)
     if use_effective_strain_rate:
         F = 1 / (2**((n-1)/n)*3**((n+1)/2/n))
+    elif f_by_factor:
+        F = kwargs['F']
     else:
         F = 1.0
     # calculate B
