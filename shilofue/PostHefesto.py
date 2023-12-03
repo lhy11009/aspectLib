@@ -1361,6 +1361,9 @@ def AssembleParallelFiles(case_dir):
     Inputs:
         case_dir: path to the case directory
     '''
+    # screen outputs
+    print("start AssembleParallelFiles")
+
     # load options
     json_file = os.path.join(case_dir, "case.json")
     assert(os.path.isfile(json_file))
@@ -1368,6 +1371,8 @@ def AssembleParallelFiles(case_dir):
         case_opt = json.load(fin)
     nproc = case_opt['nproc']
     nP = case_opt['P']['nP']
+    # screen outputs
+    print("nproc: ", nproc)
 
     # read file contents 
     # read first file
