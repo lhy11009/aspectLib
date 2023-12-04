@@ -128,7 +128,18 @@ def test_CreepStress_CreepRheology_CreepStrainRate_ComputeComposite():
     assert(abs(check6_i - check2)/check2 < 1e-6) 
     check6_ii_std = 5.99315e16
     check6_ii = ComputeComposite(check2, check3)  # returns the composite value
-    assert(abs(check6_ii - check6_ii_std)/check6_ii_std < 1e-6) 
+    assert(abs(check6_ii - check6_ii_std)/check6_ii_std < 1e-6)
+
+    # fit new rheology: correction from variable differences
+    stress_ref = 50.0 # MPa
+    P_ref = 100.0e6 # Pa
+    T_ref = 1250.0 + 273.15 # K
+    Coh_ref = 1000.0 # H / 10^6 Si
+    d_ref = 15.0 # mu m
+    # test 1: trivial case: no correction 
+    creep_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': 0.0}
+    strain_rate_correction = CreepStrainRate(creep_correction, stress_ref, P_ref, T_ref, d_ref, Coh_ref)
+    assert(abs(strain_rate_correction - 1.0)/1.0 < 1e-6)
 
 
 def test_CreepComputeA():
