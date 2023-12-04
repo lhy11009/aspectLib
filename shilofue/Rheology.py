@@ -417,6 +417,27 @@ class RHEOLOGY_PRM():
                 "wet" : 1.0
             }
         
+        self.WarrenHansen23_disl =\
+            {
+                "A": 20,
+                "p": 0.0,
+                "r": 1.2,
+                "n": 3.5,
+                "E": 480e3,
+                "V": 11e-6,
+            }
+
+        # diffusion creep in Hirth & Kohlstedt 2003
+        self.WarrenHansen23_diff = \
+            {
+                "A" : 2.9e5,
+                "p" : 3.0,
+                "r" : 1.0,
+                "n" : 1.0,
+                "E" : 335e3,
+                "V" : 4e-6,
+            }
+        
         
         self.water = \
             {
@@ -1060,6 +1081,11 @@ class RHEOLOGY_OPR():
         self.diff = diffusion_creep  # record these with the class variables
         self.disl = dislocation_creep
 
+        strain_rate_diff_correction = kwargs.get("strain_rate_diff_correction", 1.0)
+        strain_rate_disl_correction = kwargs.get("strain_rate_disl_correction", 1.0)
+        eta_diff_correction = strain_rate_diff_correction ** (1 / diffusion_creep['n'])
+        eta_disl_correction = strain_rate_disl_correction ** (1 / dislocation_creep['n'])
+
         # Then, convert T, P as function. The T_func and P_func are used
         # in the following code to get the values
         T_func = interp1d(self.depths, self.temperatures, assume_sorted=True)
@@ -1070,9 +1096,18 @@ class RHEOLOGY_OPR():
         depth_up = 410e3
         depth_low = 660e3
         mask_up = (self.depths < depth_up)
-        eta_diff[mask_up] = CreepRheology(diffusion_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up], d=1e4, Coh=Coh, use_effective_strain_rate=use_effective_strain_rate)
-        eta_disl[mask_up] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_up], self.temperatures[mask_up], d=1e4, Coh=Coh, use_effective_strain_rate=use_effective_strain_rate)
-        eta_disl13[mask_up] = CreepRheology(dislocation_creep, 1e-13, self.pressures[mask_up], self.temperatures[mask_up], d=1e4, Coh=Coh, use_effective_strain_rate=use_effective_strain_rate)
+        eta_diff[mask_up] = CreepRheology(diffusion_creep, strain_rate, self.pressures[mask_up],\
+                                          self.temperatures[mask_up], d=1e4, Coh=Coh,\
+                                            use_effective_strain_rate=use_effective_strain_rate)\
+                                        * eta_diff_correction
+        eta_disl[mask_up] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_up],\
+                                           self.temperatures[mask_up], d=1e4, Coh=Coh,\
+                                              use_effective_strain_rate=use_effective_strain_rate)\
+                                        * eta_disl_correction
+        eta_disl13[mask_up] = CreepRheology(dislocation_creep, 1e-13, self.pressures[mask_up],\
+                                            self.temperatures[mask_up], d=1e4, Coh=Coh,\
+                                                use_effective_strain_rate=use_effective_strain_rate)\
+                                        * eta_disl_correction
         eta[mask_up] = ComputeComposite(eta_diff[mask_up], eta_disl[mask_up])
         eta13[mask_up] = ComputeComposite(eta_diff[mask_up], eta_disl13[mask_up])
 
@@ -1083,9 +1118,18 @@ class RHEOLOGY_OPR():
         mask_mtz = (self.depths > depth_up) & (self.depths < depth_low)
         if True:
             # MTZ from olivine rheology
-            eta_diff[mask_mtz] = CreepRheology(diffusion_creep, strain_rate, self.pressures[mask_mtz], self.temperatures[mask_mtz], d=1e4, Coh=Coh, use_effective_strain_rate=use_effective_strain_rate)
-            eta_disl[mask_mtz] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_mtz], self.temperatures[mask_mtz], d=1e4, Coh=Coh, use_effective_strain_rate=use_effective_strain_rate)
-            eta_disl13[mask_mtz] = CreepRheology(dislocation_creep, 1e-13, self.pressures[mask_mtz], self.temperatures[mask_mtz], d=1e4, Coh=Coh, use_effective_strain_rate=use_effective_strain_rate)
+            eta_diff[mask_mtz] = CreepRheology(diffusion_creep, strain_rate, self.pressures[mask_mtz],\
+                                               self.temperatures[mask_mtz], d=1e4, Coh=Coh,\
+                                                use_effective_strain_rate=use_effective_strain_rate)\
+                                            * eta_diff_correction
+            eta_disl[mask_mtz] = CreepRheology(dislocation_creep, strain_rate, self.pressures[mask_mtz],\
+                                                self.temperatures[mask_mtz], d=1e4, Coh=Coh,\
+                                                    use_effective_strain_rate=use_effective_strain_rate)\
+                                            * eta_disl_correction
+            eta_disl13[mask_mtz] = CreepRheology(dislocation_creep, 1e-13, self.pressures[mask_mtz],\
+                                                 self.temperatures[mask_mtz], d=1e4, Coh=Coh,\
+                                                    use_effective_strain_rate=use_effective_strain_rate)\
+                                            * eta_disl_correction
             eta[mask_mtz] = ComputeComposite(eta_diff[mask_mtz], eta_disl[mask_mtz])
             eta13[mask_mtz] = ComputeComposite(eta_diff[mask_mtz], eta_disl13[mask_mtz])
         
@@ -1099,9 +1143,13 @@ class RHEOLOGY_OPR():
         depth_max = self.depths[-1] - 10e3
         T660 = T_func(depth_lm)
         P660 = P_func(depth_lm)
-        eta_diff660 = CreepRheology(diffusion_creep, strain_rate, P660, T660, d=1e4, Coh=Coh,use_effective_strain_rate=use_effective_strain_rate)
+        eta_diff660 = CreepRheology(diffusion_creep, strain_rate, P660, T660, d=1e4, Coh=Coh,\
+                                    use_effective_strain_rate=use_effective_strain_rate)\
+                                * eta_diff_correction
         # dislocation creep
-        eta_disl660 = CreepRheology(dislocation_creep, strain_rate, P660, T660, d=1e4, Coh=Coh,use_effective_strain_rate=use_effective_strain_rate)
+        eta_disl660 = CreepRheology(dislocation_creep, strain_rate, P660, T660, d=1e4, Coh=Coh,\
+                                    use_effective_strain_rate=use_effective_strain_rate)\
+                                * eta_disl_correction
         eta660 = ComputeComposite(eta_diff660, eta_disl660)
         if debug:
             print("eta_diff660 = ", eta_diff660)
