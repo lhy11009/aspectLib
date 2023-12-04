@@ -1229,7 +1229,8 @@ class RHEOLOGY_OPR():
             color = 'tab:blue'
             axs[0].plot(self.pressures/1e9, self.depths/1e3, color=color, label='pressure')
             axs[0].set_ylabel('Depth [km]') 
-            axs[0].set_xlabel('Pressure [GPa] P660: %.4e' % (P660), color=color)
+            axs[0].set_xlabel('Pressure [GPa]', color=color)
+            # axs[0].set_xlabel('Pressure [GPa] P660: %.4e' % (P660), color=color)
             Pmax = np.ceil(np.max(self.pressures[masky]/1e9) / 10.0) *10.0
             axs[0].set_xlim([0.0, Pmax])
             # axs[0].invert_yaxis()
@@ -1241,7 +1242,8 @@ class RHEOLOGY_OPR():
             ax2.plot(self.temperatures, self.depths/1e3, color=color, label='temperature')
             Tmax = np.ceil(np.max(self.temperatures[masky]) / 100.0) *100.0
             ax2.set_xlim([0.0, Tmax])
-            ax2.set_xlabel('Temperature [K] T660: %.4e' % (T660), color=color) 
+            ax2.set_xlabel('Temperature [K]', color=color) 
+            # ax2.set_xlabel('Temperature [K] T660: %.4e' % (T660), color=color) 
             # second: viscosity
             #   upper mantle
             axs[1].semilogx(eta_diff, self.depths/1e3, 'c', label='diffusion creep')
@@ -1252,7 +1254,7 @@ class RHEOLOGY_OPR():
             axs[1].grid()
             axs[1].set_ylabel('Depth [km]')
             axs[1].legend()
-            axs[1].set_title('%s_lowerV_%.4e_haskell%.2f' % (rheology, diffusion_lm_aspect['V'], average_log_eta))
+            # axs[1].set_title('%s_lowerV_%.4e_haskell%.2f' % (rheology, diffusion_lm_aspect['V'], average_log_eta))
             # third, viscosity at 1e-13 /s strain rate
             axs[2].semilogx(eta_diff, self.depths/1e3, 'c', label='diffusion creep')
             axs[2].semilogx(eta_disl13, self.depths/1e3, 'g', label='dislocation creep(%.2e)' % 1e-13)
@@ -1262,12 +1264,13 @@ class RHEOLOGY_OPR():
             axs[2].grid()
             axs[2].set_ylabel('Depth [km]')
             axs[2].legend()
-            axs[2].set_title('strain_rate1.0e-13')
+            # axs[2].set_title('strain_rate1.0e-13')
             # save figure
             if fig_path == None:
                 fig_path = os.path.join(RESULT_DIR,\
                     "mantle_profile_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e_dAdiff%.4e_dAdisl%.4e.png"\
                     % (rheology, dEdiff, dEdisl, dVdiff, dVdisl, dAdiff_ratio, dAdisl_ratio))
+            fig.tight_layout()
             fig.savefig(fig_path)
             print("New figure: %s" % fig_path)
             plt.close()
