@@ -428,6 +428,9 @@ class RHEOLOGY_PRM():
             }
 
         # diffusion creep in Hirth & Kohlstedt 2003
+        # Note I use the value of 4e-6 from the original experimental result
+        # and apply a -2.1e-6 differences later to get the values 
+        # in the Warren and Hansen 2023 paper
         self.WarrenHansen23_diff = \
             {
                 "A" : 2.9e5,
@@ -1051,6 +1054,7 @@ class RHEOLOGY_OPR():
         dAdisl_ratio = float(kwargs.get("dAdisl_ratio", 1.0))
         dEdisl = float(kwargs.get('dEdisl', 0.0))
         dVdisl = float(kwargs.get('dVdisl', 0.0))
+        save_pdf = kwargs.get("save_pdf", False)
         rheology = kwargs.get('rheology', 'HK03_wet_mod')
         save_profile = kwargs.get('save_profile', 0)
         save_json = kwargs.get('save_json', 0)
@@ -1265,14 +1269,20 @@ class RHEOLOGY_OPR():
             axs[2].set_ylabel('Depth [km]')
             axs[2].legend()
             # axs[2].set_title('strain_rate1.0e-13')
+            fig.tight_layout()
             # save figure
             if fig_path == None:
                 fig_path = os.path.join(RESULT_DIR,\
                     "mantle_profile_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e_dAdiff%.4e_dAdisl%.4e.png"\
                     % (rheology, dEdiff, dEdisl, dVdiff, dVdisl, dAdiff_ratio, dAdisl_ratio))
-            fig.tight_layout()
             fig.savefig(fig_path)
             print("New figure: %s" % fig_path)
+            if save_pdf:
+                fig_path = os.path.join(RESULT_DIR,\
+                    "mantle_profile_v1_%s_dEdiff%.4e_dEdisl%.4e_dVdiff%4e_dVdisl%.4e_dAdiff%.4e_dAdisl%.4e.pdf"\
+                    % (rheology, dEdiff, dEdisl, dVdiff, dVdisl, dAdiff_ratio, dAdisl_ratio))
+                fig.savefig(fig_path)
+                print("New figure: %s" % fig_path)
             plt.close()
             self.output_profile = fig_path
             pass
