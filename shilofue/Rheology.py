@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+
 r"""(one line description)
 
 This exports: 
@@ -424,7 +424,7 @@ class RHEOLOGY_PRM():
                 "r": 1.2,
                 "n": 3.5,
                 "E": 480e3,
-                "V": 11e-6,
+                "V": 11e-6
             }
 
         # diffusion creep in Hirth & Kohlstedt 2003
@@ -438,7 +438,7 @@ class RHEOLOGY_PRM():
                 "r" : 1.0,
                 "n" : 1.0,
                 "E" : 335e3,
-                "V" : 4e-6,
+                "V" : 4e-6
             }
         
         
@@ -1796,7 +1796,7 @@ def CreepRheology(creep, strain_rate, P, T, d=1e4, Coh=1e3, **kwargs):
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     f_by_factor = kwargs.get('f_by_factor', False)
     if use_effective_strain_rate:
-        F = 1 / (2**((n-1)/n)*3**((n+1)/2/n))
+        F = 1 / (2**((n-1)/n)*3**((n+1)/2/n)) * 2.0
     elif f_by_factor:
         F = kwargs['F']
     else:
@@ -1827,7 +1827,7 @@ def CreepComputeV(creep, strain_rate, P, T, eta, d=1e4, Coh=1e3, **kwargs):
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     if use_effective_strain_rate:
-        F = 1 / (2**((n-1)/n)*3**((n+1)/2/n))
+        F = 1 / (2**((n-1)/n)*3**((n+1)/2/n)) * 2.0
     else:
         F = 1.0
     # calculate B
@@ -1954,7 +1954,7 @@ def Convert2AspectInput(creep, **kwargs):
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     if use_effective_strain_rate:
-        F = 1 / (2**((n-1)/n)*3**((n+1)/2/n))
+        F = 1 / (2**((n-1)/n)*3**((n+1)/2/n)) * 2.0
     else:
         F = 1.0
     # prepare values for aspect
@@ -1994,7 +1994,7 @@ def ConvertFromAspectInput(aspect_creep, **kwargs):
     # compute value of F(pre factor)
     use_effective_strain_rate = kwargs.get('use_effective_strain_rate', False)
     if use_effective_strain_rate:
-        F = 1 / (2**((n-1)/n)*3**((n+1)/2/n))
+        F = 1 / (2**((n-1)/n)*3**((n+1)/2/n)) * 2.0
     else:
         F = 1.0
     # prepare values for aspect

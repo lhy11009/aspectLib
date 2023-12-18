@@ -139,21 +139,21 @@ def test_HK03_mod_whole_mantle_apsect():
     diffusion_A = diffusion_creep['A']
     diffusion_E = diffusion_creep['E']
     diffusion_V = diffusion_creep['V']
-    assert(abs(diffusion_A - 2.4536131282051287e-16)/2.4536131282051287e-16 < 1e-6)
+    assert(abs(diffusion_A - 1.2268065641025644e-16)/1.2268065641025644e-16 < 1e-6)
     assert(abs(diffusion_E - 285000.0) / 285000.0 < 1e-6)
     assert(abs(diffusion_V - 6.9e-6)/6.9e-6 < 1e-6)
     dislocation_creep = rheology_aspect['dislocation_creep']
     dislocation_A = dislocation_creep['A']
     dislocation_E = dislocation_creep['E']
     dislocation_V = dislocation_creep['V']
-    assert(abs(dislocation_A - 5.678755891919797e-16)/5.678755891919797e-16 < 1e-6)
+    assert(abs(dislocation_A - 5.019358499849437e-17)/5.019358499849437e-17 < 1e-6)
     assert(abs(dislocation_E - 480000.0)/480000.0 < 1e-6)
     assert(abs(dislocation_V - 1.008e-05)/1.008e-05 < 1e-6)
     diffusion_creep_lm = rheology_aspect['diffusion_lm']
     diffusion_lm_A = diffusion_creep_lm['A']
     diffusion_lm_V = diffusion_creep_lm['V']
     print("diffusion_creep_lm: ", diffusion_creep_lm) 
-    assert(abs(diffusion_lm_A - 5.370961197093647e-19)/5.370961197093647e-19 < 1e-6)
+    assert(abs(diffusion_lm_A - 1.3427402992734117e-19)/1.3427402992734117e-19 < 1e-6)
     assert(abs(diffusion_lm_V - 3e-6)/3e-6 < 1e-6)
 
 def test_HK03_mod_whole_mantle_apsect_TwoDSubdution():
@@ -178,20 +178,20 @@ def test_HK03_mod_whole_mantle_apsect_TwoDSubdution():
     diffusion_A = diffusion_creep['A']
     diffusion_E = diffusion_creep['E']
     diffusion_V = diffusion_creep['V']
-    assert(abs(diffusion_A - 8.17868945868946e-17)/8.17868945868946e-17 < 1e-6)
+    assert(abs(diffusion_A - 4.089344729345424e-17)/4.089344729345424e-17 < 1e-6)
     assert(abs(diffusion_E - 285000.0) / 285000.0 < 1e-6)
     assert(abs(diffusion_V - 6.9e-6)/6.9e-6 < 1e-6)
     dislocation_creep = rheology_aspect['dislocation_creep']
     dislocation_A = dislocation_creep['A']
     dislocation_E = dislocation_creep['E']
     dislocation_V = dislocation_creep['V']
-    assert(abs(dislocation_A - 5.907596233246386e-16)/5.907596233246386e-16 < 1e-6)
+    assert(abs(dislocation_A - 5.2216266963007814e-17)/5.2216266963007814e-17 < 1e-6)
     assert(abs(dislocation_E - 490000.0)/490000.0 < 1e-6)
     assert(abs(dislocation_V - 1.34e-5)/1.34e-5 < 1e-6)
     diffusion_creep_lm = rheology_aspect['diffusion_lm']
     diffusion_lm_A = diffusion_creep_lm['A']
     diffusion_lm_V = diffusion_creep_lm['V']
-    assert(abs(diffusion_lm_A - 2.5003579819454594e-19)/2.5003579819454594e-19 < 1e-6)
+    assert(abs(diffusion_lm_A - 6.250893063953478e-20)/6.250893063953478e-20 < 1e-6)
     assert(abs(diffusion_lm_V - 3e-6)/3e-6 < 1e-6)
 
 
