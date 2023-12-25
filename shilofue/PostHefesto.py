@@ -165,7 +165,8 @@ class LOOKUP_TABLE():
                                 "Quenched density": {"col": 16, "unit": "g/cm^3"}, "most abundant phase": {"col": 17, "unit": None}}
         self.oheader = { 'Temperature': 'T(K)',  'Pressure': 'P(bar)' ,  'Density': 'rho,kg/m3',\
         'Thermal_expansivity': 'alpha,1/K', 'Isobaric_heat_capacity': 'cp,J/K/kg',\
-        'VP': 'vp,km/s', 'VS': 'vs,km/s', 'Enthalpy': 'h,J/kg', "Entropy": 's,J/K/kg'}
+        'VP': 'vp,km/s', 'VS': 'vs,km/s', 'Enthalpy': 'h,J/kg', "Entropy": 's,J/K/kg',\
+        'Omph_GHP': 'Omph', "Gt_HGP": "Gt"}
         # header for perplex table
         self.perplex_header = { 'T': "Temperature", "P": 'Pressure', "rho": 'Density',\
                                "alpha": 'Thermal_expansivity', 'cp': "Isobaric_heat_capacity",\
@@ -401,6 +402,13 @@ class LOOKUP_TABLE():
         self.min2 = min2
         self.delta2 = delta2
         self.number2 = number2
+
+    def CreateNew(self, new_data, _name, oheader):
+        # todo_new
+        self.header[_name] = {'col': self.data.shape[1]}
+        self.oheader[_name] = oheader
+        self.ounit[_name] = oheader
+        self.data = np.concatenate((self.data, new_data), axis=1)
     
     def Process(self, field_names, o_path, **kwargs):
         '''
@@ -437,7 +445,12 @@ class LOOKUP_TABLE():
         # output
         interval1 = kwargs.get('interval1', 1)
         interval2 = kwargs.get('interval2', 1)
-        self.indexes = self.IndexesByInterval(interval1, interval2)  # work out indexes
+        if interval1 == 1 and interval2 == 1:
+            self.indexes = range(self.number1*self.number2)
+        else:
+            print("%s begin indexing" % Utilities.func_name())  # debug
+            self.indexes = self.IndexesByInterval(interval1, interval2)  # work out indexes
+            print("%s finish indexing" % Utilities.func_name())  # debug
         self.number_out1 = int(np.ceil(self.number1 / interval1)) # number of output
         self.number_out2 = int(np.ceil(self.number2 / interval2))
         # output intervals
@@ -595,9 +608,16 @@ class LOOKUP_TABLE():
         indexes_2 = range(0, self.number2, interval2)
         # work out the overall indexes
         indexes = []
+        i2 = 0 # used for printing the percentage of completeness
+        last_ratio = 0.0
         for index_2 in indexes_2:
+            ratio = i2 / len(indexes_2)
+            if ratio > last_ratio + 0.01:
+                last_ratio = ratio
+                print("percent = %.2f" % (ratio*100), end='\r')
             for index_1 in indexes_1: 
                 indexes.append(index_1 + self.number1 * index_2)
+            i2 += 1
         return indexes
 
     def InterpolatePressureEntropyByIndex(self, index_p, entropies, field_names, PS_rows, **kwargs):
