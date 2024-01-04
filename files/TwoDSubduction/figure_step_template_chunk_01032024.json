@@ -1,0 +1,24 @@
+{
+    "figures": [
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/T_tNUMERICAL_TIME_4E.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/viscosity_tNUMERICAL_TIME_4E.png",
+            "operation": "paste",
+            "mask": 0,
+            "resize": 1.0,
+            "position": [0, 705],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP.png",
+            "operation": "text",
+            "text": "STEP_TIME_STAMP",
+            "font size": 30,
+            "position": [800, 10],
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/step_sNUMERICAL_STEP.png"
+        }
+    ]
+}

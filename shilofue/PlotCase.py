@@ -284,10 +284,12 @@ def AnimateCaseResults(PrepareS, case_path, pr_script, **kwargs):
         kwargs(dict):
             step_range(list of 2): a list of steps to animate
             name(str): name of the animation
+            duration: time for each frame
     '''
     # initiation, note that we use the interfaces in VISIT_OPTIONS
     # class to figure out the steps to plot
     name = kwargs.get('name', 'ani')  # name of the animation
+    duration = kwargs.get('duration', 0.2)  # time for each frame
     time_interval = kwargs.get('time_interval', None)
     VisitOptions = PlotVisit.VISIT_OPTIONS(case_path)
     VisitOptions.Interpret(time_interval=time_interval)
@@ -302,11 +304,10 @@ def AnimateCaseResults(PrepareS, case_path, pr_script, **kwargs):
     o_dir = os.path.dirname(filenames[-1])  # just use this directory as output
     o_path = os.path.join(o_dir, "%s.gif" % name)
     print("%s: saving file %s" % (Utilities.func_name(), o_path))
-    with imageio.get_writer(o_path, mode='I') as writer:
-        for filename in filenames:
-            image = imageio.imread(filename)
-            writer.append_data(image)
-    pass
+    frames = []
+    for filename in filenames:
+        frames.append(imageio.imread(filename))
+    imageio.mimsave(o_path, frames, 'GIF', duration=duration)
 
 
 def AnimateCombinedDir(PrepareS, dir, pr_script, **kwargs):
