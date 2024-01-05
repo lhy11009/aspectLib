@@ -202,6 +202,42 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
                 ptimes.append(time)
         return psnaps
 
+    def get_times_for_slab_morphology(self, **kwargs):
+        '''
+        get the snaps for processing slab morphology
+        kwargs (dict):
+            time_interval (float)
+        '''
+        ptime_start = kwargs.get('time_start', None)
+        ptime_interval = kwargs.get('time_interval', None)
+        ptime_end = kwargs.get('time_end', None)
+        assert(ptime_interval is None or type(ptime_interval) == float)      
+        # steps for processing slab morphology
+        snaps, times, _ = PlotVisit.GetSnapsSteps(self._case_dir, 'graphical')
+        psnaps = []
+        ptimes = []
+        last_time = -1e8  # initiate as a small value, so first step is included
+        # loop within all the available steps, find steps satisfying the time interval requirement.
+        for i in range(len(times)):
+            time = times[i]
+            snap = snaps[i]
+            if ptime_start is not None and time < ptime_start:
+                # check on the start
+                continue
+            if ptime_end is not None and time > ptime_end:
+                # check on the end
+                break
+            if type(ptime_interval) == float:
+                if (time - last_time) < ptime_interval:
+                    continue  # continue if interval is not reached
+            pvtu_file_path = os.path.join(self.options["DATA_OUTPUT_DIR"], "solution", "solution-%05d.pvtu" % snap)
+            if os.path.isfile(pvtu_file_path):
+                # append if the file is found
+                last_time = time
+                psnaps.append(snap)
+                ptimes.append(time)
+        return ptimes
+
 
 class PREPARE_RESULT_OPTIONS(PlotVisit.PREPARE_RESULT_OPTIONS):
     """
