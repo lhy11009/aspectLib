@@ -30,6 +30,8 @@ import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 from shilofue.Rheology import RHEOLOGY_OPR
 from shilofue.TwoDSubduction0.Cases import re_write_geometry_while_assigning_plate_age, change_field_to_particle
+import shilofue.Rheology_old_Dec_2023 as Rheology_old_Dec_2023
+
 import json, re
 
 # directory to the aspect Lab
@@ -222,6 +224,7 @@ different age will be adjusted.",\
         fix_boudnary_temperature_auto = self.values[self.start+51]
         coarsen_side_level = self.values[self.start+52]
         coarsen_minimum_refinement_level = self.values[self.start+53]
+        use_new_rheology_module = self.values[28]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
@@ -231,7 +234,7 @@ different age will be adjusted.",\
             branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init,\
             comp_method, reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method,\
             slab_core_viscosity, global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto,\
-            coarsen_side_level, coarsen_minimum_refinement_level
+            coarsen_side_level, coarsen_minimum_refinement_level, use_new_rheology_module
         
     def to_configure_wb(self):
         '''
@@ -306,7 +309,7 @@ class CASE(CasesP.CASE):
     sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init, comp_method,\
     reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method, slab_core_viscosity,\
     global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto, coarsen_side_level,\
-    coarsen_minimum_refinement_level):
+    coarsen_minimum_refinement_level, use_new_rheology_module):
         '''
         Configure prm file
         '''
@@ -448,7 +451,10 @@ class CASE(CasesP.CASE):
             #   else: something else 
             da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'ThDSubduction', "depth_average.txt")
             assert(os.path.isfile(da_file))
-            Operator = RHEOLOGY_OPR()
+            if use_new_rheology_module == 1:
+                Operator = RHEOLOGY_OPR()
+            else:
+                Operator = Rheology_old_Dec_2023.RHEOLOGY_OPR()
             # read profile
             Operator.ReadProfile(da_file)
             if mantle_rheology_scheme == "HK03":

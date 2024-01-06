@@ -101,6 +101,7 @@ it only takes effect if the input is positiveh",\
          ["composition method", "scheme"], "field", nick="comp_method")
         self.add_key("Depth average inputs", str, ["depth average file"], "", nick='da_inputs')
         self.add_key("mantle rheology scenario (previous composed)", str, ['mantle rheology', 'known scenario'], "", nick='mantle_rheology_known_scenario')
+        self.add_key("Use the new rheology module, default is 0 to keep backward consistency", int, ['use new rheology module'], 0, nick='use_new_rheology_module')
     
     def check(self):
         '''
@@ -125,7 +126,8 @@ it only takes effect if the input is positiveh",\
         da_inputs = Utilities.var_subs(self.values[26])
         if da_inputs != "":
             assert(os.path.isfile(da_inputs))
-
+        use_new_rheology_module = self.values[28]
+        assert(use_new_rheology_module in [0, 1])
 
     def to_init(self):
         '''
