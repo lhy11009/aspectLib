@@ -37,6 +37,7 @@ import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 import shilofue.FlowLaws as flf
 from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput, STRENGTH_PROFILE, GetRheology, Convert2AspectInput, AssignAspectViscoPlasticPhaseRheology
+import shilofue.Rheology_old_Dec_2023 as Rheology_old_Dec_2023
 from shilofue.WorldBuilder import slab_surface_profile
 
 # directory to the aspect Lab
@@ -597,12 +598,14 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             CDPT_set_parameters(o_dict, CDPT_type)
 
         Operator = RHEOLOGY_OPR()
+        Operator_old_Dec_2023 = Rheology_old_Dec_2023.RHEOLOGY_OPR() # an old version to be backward consistent
         # mantle rheology
         Operator.ReadProfile(da_file)
+        Operator_old_Dec_2023.ReadProfile(da_file)
         if mantle_rheology_scheme == "HK03_wet_mod_twod":  # get the type of rheology
             # note that the jump on 660 is about 15.0 in magnitude
             # deprecated
-            rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
+            rheology, _ = Operator_old_Dec_2023.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
     dVdiff=-5.5e-6, dVdisl=2.12e-6, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.040297619, save_json=1,\
     jump_lower_mantle=15.0, Coh=mantle_coh)
             if sz_viscous_scheme == "constant" and\
@@ -617,7 +620,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         elif mantle_rheology_scheme == "HK03_wet_mod_twod1":  # get the type of rheology
             # note that the jump on 660 is about 15.0 in magnitude
             # fix the issue that in the previous scheme, the rheolog is not assigned to the prm.
-            rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
+            rheology, _ = Operator_old_Dec_2023.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
     dVdiff=-5.5e-6, dVdisl=2.12e-6, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.040297619, save_json=1,\
     jump_lower_mantle=15.0, Coh=mantle_coh)
             if sz_viscous_scheme == "constant" and\
@@ -630,26 +633,26 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         elif mantle_rheology_scheme == "HK03_wet_mod_weakest_diffusion":
             # in this rheology, I maintained the prefactors from the derivation of the "HK03_wet_mod" rheology
-            rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
+            rheology, _ = Operator_old_Dec_2023.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
     dVdiff=-5.5e-6, dVdisl=-1.2e-6, save_profile=1, save_json=1, jump_lower_mantle=15.0, Coh=mantle_coh)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         elif mantle_rheology_scheme == "HK03":
             # in this one, I don't include F because of the issue related to pressure calibration
-            rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, use_effective_strain_rate=False, save_profile=1, save_json=1,\
+            rheology, _ = Operator_old_Dec_2023.MantleRheology(rheology=mantle_rheology_scheme, use_effective_strain_rate=False, save_profile=1, save_json=1,\
     jump_lower_mantle=15.0)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         else:
             # default is to fix F
-            rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, save_profile=1, save_json=1)
+            rheology, _ = Operator_old_Dec_2023.MantleRheology(rheology=mantle_rheology_scheme, save_profile=1, save_json=1)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
 
         # these files are generated with the rheology variables
-        self.output_files.append(Operator.output_json)
-        self.output_files.append(Operator.output_json_aspect)
-        self.output_imgs.append(Operator.output_profile) # append plot of initial conition to figures
+        self.output_files.append(Operator_old_Dec_2023.output_json)
+        self.output_files.append(Operator_old_Dec_2023.output_json_aspect)
+        self.output_imgs.append(Operator_old_Dec_2023.output_profile) # append plot of initial conition to figures
         # yielding criteria
         if sz_viscous_scheme == "stress dependent":
             CDPT_assign_yielding(o_dict, cohesion, friction, crust_cohesion=crust_cohesion, crust_friction=crust_friction\
@@ -827,10 +830,10 @@ opcrust: 1e+31, opharz: 1e+31", \
             o_dict = expand_multi_composition(o_dict, 'opcrust', ['opcrust_up', 'opcrust_low'])
             # assign the rheology
             visco_plastic_dict = o_dict['Material model']['Visco Plastic TwoD']
-            diffusion_creep, dislocation_creep = GetRheology(upper_crust_rheology_scheme)
-            visco_plastic_dict = AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, 'spcrust_up', 0, diffusion_creep, dislocation_creep)
-            diffusion_creep, dislocation_creep = GetRheology(lower_crust_rheology_scheme)
-            visco_plastic_dict = AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, 'spcrust_low', 0, diffusion_creep, dislocation_creep)
+            diffusion_creep, dislocation_creep = Rheology_old_Dec_2023.GetRheology(upper_crust_rheology_scheme)
+            visco_plastic_dict = Rheology_old_Dec_2023.AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, 'spcrust_up', 0, diffusion_creep, dislocation_creep)
+            diffusion_creep, dislocation_creep = Rheology_old_Dec_2023.GetRheology(lower_crust_rheology_scheme)
+            visco_plastic_dict = Rheology_old_Dec_2023.AssignAspectViscoPlasticPhaseRheology(visco_plastic_dict, 'spcrust_low', 0, diffusion_creep, dislocation_creep)
             o_dict['Material model']['Visco Plastic TwoD'] = visco_plastic_dict
         else:
             raise NotImplementedError()
