@@ -168,6 +168,8 @@ intiation stage causes the slab to break in the middle",\
          ['peierls creep', "fix peierls V as"], '', nick="fix_peierls_V_as")
         self.add_key("Width for prescribing temperature", float,\
          ["prescribe temperature width"], 2.75e5, nick="prescribe_T_width")
+        self.add_key("Prescribing temperature with trailing edge present", int,\
+         ["prescribe temperature with trailing edge"], 0, nick="prescribe_T_with_trailing_edge")
     
     def check(self):
         '''
@@ -323,6 +325,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         use_new_rheology_module = self.values[28]
         fix_peierls_V_as = self.values[self.start + 56]
         prescribe_T_width = self.values[self.start + 57]
+        prescribe_T_with_trailing_edge = self.values[self.start + 58]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -334,7 +337,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
         rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as,\
-        prescribe_T_width
+        prescribe_T_width, prescribe_T_with_trailing_edge
 
     def to_configure_wb(self):
         '''
@@ -427,7 +430,8 @@ class CASE(CasesP.CASE):
     version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length,\
     slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice,\
     global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density,\
-    maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width):
+    maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width,\
+    prescribe_T_with_trailing_edge):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -591,15 +595,21 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             elif prescribe_T_method == 'plate model':
                 o_dict['Prescribed temperatures'] =\
                     prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate, ov_age)
+            elif prescribe_T_method == 'plate model 1':
+                o_dict['Prescribed temperatures'] =\
+                    prm_prescribed_temperature_cart_plate_model_1(box_width, potential_T, sp_rate, ov_age, area_width=prescribe_T_width)
             if type_of_bd == "all free slip":
-                o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
+                if prescribe_T_method in ['function', 'plate model']:
+                    o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
+
         if type_of_bd in ["top prescribed with bottom right open", "top prescribed with bottom left open", "top prescribed"]:
             # in this case, I want to keep the options for prescribing temperature but to turn it off at the start
             o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
-        if sp_trailing_length > 1e-6 or ov_trailing_length > 1e-6:
-            # in case the trailing edge doesn't touch the box, reset this
-            # this doesn't work for now
-            o_dict["Prescribe internal temperatures"] = "false"
+        if prescribe_T_with_trailing_edge == 0:
+            if sp_trailing_length > 1e-6 or ov_trailing_length > 1e-6:
+                # in case the trailing edge doesn't touch the box, reset this
+                # this doesn't work for now
+                o_dict["Prescribe internal temperatures"] = "false"
         
         # Material model
         da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
@@ -2065,7 +2075,7 @@ def prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age, **kwar
                 "Subducting plate velocity": "%.4e" % (sp_rate / year),
                 "Overiding plate age": "%.4e" % (ov_age * year),
                 "Overiding area width": "%.4e" % area_width,
-                "Top temperature": "273.0",
+                "Top temperature": "273.0"
             }
         }
         pass
@@ -2113,6 +2123,33 @@ def prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate,
         }
     }
     return odict
+
+
+def prm_prescribed_temperature_cart_plate_model_1(box_width, potential_T, sp_rate, ov_age, **kwargs):
+    '''
+    Default setting for Prescribed temperatures in cartesian geometry using the plate model
+    Inputs:
+        area_width: width of the reseting area
+    '''
+    area_width = kwargs.get('area_width', 2.75e5)
+    odict = {
+        "Model name": "plate model 1",
+        "Indicator function": {
+          "Coordinate system": "cartesian",
+          "Variable names": "x, y",
+          "Function constants": "Depth=1.45e5, Width=%.4e, Do=2.890e6, xm=%.4e" % (area_width, box_width),
+          "Function expression": "(((y>Do-Depth)&&((x<Width)||(xm-x<Width))) ? 1:0)"
+        },
+        "Plate model 1": {
+            "Area width": "%.4e" % area_width,
+            "Subducting plate velocity": "%.4e" % (sp_rate / year),
+            "Overiding plate age": "%.4e" % (ov_age * year),
+            "Overiding area width": "%.4e" % area_width,
+            "Top temperature": "273.0"
+        }
+    }
+    return odict
+
 
 ###
 # velocity boundary conditions

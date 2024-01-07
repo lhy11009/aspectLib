@@ -266,7 +266,7 @@ subsection Prescribed temperatures
         set Coordinate system = spherical
         set Variable names = r, phi
         set Function constants = Depth=1.45e5, Width=4.0000e+05, Ro=6.371e6, PHIM=2.4439e+00
-        set Function expression = (((r>Ro-Depth)&&((r*phi<Width)||(r*(PHIM-phi)<Width))) ? 1:0)
+        set Function expression = (((r>Ro-Depth)&&((Ro*phi<Width)||(Ro*(PHIM-phi)<Width))) ? 1:0)
     end
     subsection Plate model 1
         set Area width = 4.0000e+05
