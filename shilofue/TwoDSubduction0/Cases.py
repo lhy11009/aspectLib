@@ -2058,7 +2058,7 @@ def prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age, **kwar
               "Coordinate system": "spherical",
               "Variable names": "r, phi",
               "Function constants": "Depth=1.45e5, Width=%.4e, Ro=6.371e6, PHIM=%.4e" % (area_width, max_phi_in_rad),
-              "Function expression": "(((r>Ro-Depth)&&((r*phi<Width)||(r*(PHIM-phi)<Width))) ? 1:0)"
+              "Function expression": "(((r>Ro-Depth)&&((Ro*phi<Width)||(Ro*(PHIM-phi)<Width))) ? 1:0)"
             },
             "Plate model 1": {
                 "Area width": "%.4e" % area_width,
