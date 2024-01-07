@@ -3042,6 +3042,71 @@ def RefitHK03Combined(rheology_dict, **kwargs):
     return rheology_new_dict
 
 
+def RefitRheology(rheology, diff_correction, disl_correction, ref_state):
+    '''
+    Inputs:
+        rheology (str or dict): rheology to start with
+        diff_correction (dict): variation to the diffusion creep
+            e.g. {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': -2.1e-6}
+        disl_correction (dict): variation to the dislocation creep
+            e.g. {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': 3e-6}
+        ref_state (dict): reference state
+    Return:
+        rheology_dict (dict): refit rheology
+    '''
+    # read the parameters from HK 03.
+    # water is in the water fugacity
+
+    if type(rheology) == str: 
+        rheology_prm_dict = RHEOLOGY_PRM()
+        diffusion_creep_ori = getattr(rheology_prm_dict, rheology + "_diff")
+        dislocation_creep_ori = getattr(rheology_prm_dict, rheology + "_disl")
+        rheology_dict = {'diffusion': diffusion_creep_ori, 'dislocation': dislocation_creep_ori}
+    elif type(rheology) == dict:
+        assert('diffusion' in rheology and 'dislocation' in rheology)
+        rheology_dict = rheology
+        diffusion_creep_ori = rheology['diffusion']
+        dislocation_creep_ori = rheology['dislocation']
+    else:
+        raise ValueError('rheology must be either str or dict')
+    
+    # apply variations to the original rheology
+    assert('A' in diff_correction and 'p' in diff_correction and 'r' in diff_correction\
+           and 'n' in diff_correction and 'E' in diff_correction and 'V' in diff_correction)
+    assert('A' in disl_correction and 'p' in disl_correction and 'r' in disl_correction\
+           and 'n' in disl_correction and 'E' in disl_correction and 'V' in disl_correction)
+
+    # reference state
+    assert('Coh' in ref_state and 'stress' in ref_state and 'P' in ref_state\
+           and 'T' in ref_state and 'd' in ref_state) 
+    Coh_ref = ref_state['Coh'] # H / 10^6 Si
+    stress_ref = ref_state['stress'] # MPa
+    P_ref = ref_state['P'] # Pa
+    T_ref = ref_state['T'] # K
+    d_ref = ref_state['d'] # mu m
+
+    # reference pseudo "strain rate" for correction 
+    strain_rate_diff_correction = CreepStrainRate(diff_correction, stress_ref, P_ref, T_ref, d_ref, Coh_ref)
+    strain_rate_disl_correction = CreepStrainRate(disl_correction, stress_ref, P_ref, T_ref, d_ref, Coh_ref)
+
+    # make a copy of the original rheology 
+    diffusion_creep = diffusion_creep_ori.copy()
+    dislocation_creep = dislocation_creep_ori.copy()
+    
+    # apply the correction
+    # the only task to do is to devide the prefactor by the strain_rate correction
+    diffusion_creep['E'] += diff_correction['E']
+    diffusion_creep['V'] += diff_correction['V']
+    dislocation_creep['E'] += disl_correction['E']
+    dislocation_creep['V'] += disl_correction['V']
+    diffusion_creep['A'] /= strain_rate_diff_correction
+    dislocation_creep['A'] /= strain_rate_disl_correction
+    
+    # return values
+    rheology_dict = {'diffusion': diffusion_creep, 'dislocation': dislocation_creep}
+    return rheology_dict
+
+
 def RheologyUpdateEV(creep, stress, P, T, d, Coh, **kwargs):
     '''
     Update the value of E, V on an existing creep flow law

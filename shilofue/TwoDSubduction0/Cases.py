@@ -36,7 +36,9 @@ from matplotlib import gridspec
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
 import shilofue.FlowLaws as flf
-from shilofue.Rheology import RHEOLOGY_OPR, ConvertFromAspectInput, STRENGTH_PROFILE, GetRheology, Convert2AspectInput, AssignAspectViscoPlasticPhaseRheology
+from shilofue.Rheology import RHEOLOGY_OPR, RHEOLOGY_PRM, ConvertFromAspectInput,\
+                        STRENGTH_PROFILE, GetRheology, Convert2AspectInput,\
+                        AssignAspectViscoPlasticPhaseRheology, RefitRheology
 import shilofue.Rheology_old_Dec_2023 as Rheology_old_Dec_2023
 from shilofue.WorldBuilder import slab_surface_profile
 
@@ -162,6 +164,10 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("Maximum Peierls strain rate iterations", int, ['peierls creep', "maximum peierls iterations"], 40, nick='maximum_peierls_iterations')
         self.add_key("Type of CDPT Model to use for mantle phase transitions", str,\
          ["phase transition model CDPT type"], 'Billen2018_old', nick="CDPT_type")
+        self.add_key("Fix the activation volume of the Peierls creep", str,\
+         ['peierls creep', "fix peierls V as"], '', nick="fix_peierls_V_as")
+        self.add_key("Width for prescribing temperature", float,\
+         ["prescribe temperature width"], 2.75e5, nick="prescribe_T_width")
     
     def check(self):
         '''
@@ -242,7 +248,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             assert(comp_method == "field")
         # CDPT model type 
         CDPT_type = self.values[self.start + 55]
+        fix_peierls_V_as = self.values[self.start + 56]
         assert(CDPT_type in ["Billen2018_old", "HeFESTo_consistent", "Billen2018"])
+        assert(fix_peierls_V_as in ["", "diffusion", "dislocation"])
 
     def to_configure_prm(self):
         if_wb = self.values[8]
@@ -313,6 +321,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         maximum_peierls_iterations = self.values[self.start + 54]
         CDPT_type = self.values[self.start + 55]
         use_new_rheology_module = self.values[28]
+        fix_peierls_V_as = self.values[self.start + 56]
+        prescribe_T_width = self.values[self.start + 57]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -323,7 +333,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         ef_particle_interval, delta_trench, eclogite_max_P, eclogite_match, version, n_crust_layer,\
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
-        rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module
+        rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as,\
+        prescribe_T_width
 
     def to_configure_wb(self):
         '''
@@ -416,7 +427,7 @@ class CASE(CasesP.CASE):
     version, n_crust_layer, upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length,\
     slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice,\
     global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density,\
-    maximum_peierls_iterations, CDPT_type, use_new_rheology_module):
+    maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -567,10 +578,10 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
        
         # set up subsection Prescribed temperatures
         if geometry == 'chunk':
-            if prescribe_T_method == 'plate model':
-                warnings.warn("plate model only works for cartesian model right now, reset to using function")
+            if prescribe_T_method not in ['plate model 1', 'default']:
+                prescribe_T_method = "default" # reset to default
             o_dict['Prescribed temperatures'] =\
-                prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age)
+                prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age, model_name=prescribe_T_method, area_width=prescribe_T_width)
             if type_of_bd == "all free slip":
                 o_dict["Prescribe internal temperatures"] = "true"
         elif geometry == 'box':
@@ -646,6 +657,33 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
     jump_lower_mantle=15.0)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
+        elif mantle_rheology_scheme == "HK03_WarrenHansen23":
+            # read in the original rheology
+            rheology = "WarrenHansen23"
+            rheology_prm_dict = RHEOLOGY_PRM()
+            diffusion_creep_ori = getattr(rheology_prm_dict, rheology + "_diff")
+            dislocation_creep_ori = getattr(rheology_prm_dict, rheology + "_disl")
+            rheology_dict = {'diffusion': diffusion_creep_ori, 'dislocation': dislocation_creep_ori}
+            # prescribe the correction
+            diff_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': -2.1e-6}
+            disl_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': 3e-6}
+            # prescribe the reference state
+            ref_state = {}
+            ref_state["Coh"] = mantle_coh # H / 10^6 Si
+            ref_state["stress"] = 50.0 # MPa
+            ref_state["P"] = 100.0e6 # Pa
+            ref_state["T"] = 1250.0 + 273.15 # K
+            ref_state["d"] = 15.0 # mu m
+            # refit rheology
+            rheology_dict_refit = RefitRheology(rheology_dict, diff_correction, disl_correction, ref_state)
+            # derive mantle rheology
+            rheology, _ = Operator.MantleRheology(assign_rheology=True, diffusion_creep=rheology_dict_refit['diffusion'],\
+                                                        dislocation_creep=rheology_dict_refit['dislocation'], save_profile=1,\
+                                                        use_effective_strain_rate=True, save_json=1, Coh=mantle_coh,\
+                                                        jump_lower_mantle=100.0)
+            # assign to the prm file
+            CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
+            sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         else:
             # default is to fix F
             rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, save_profile=1, save_json=1)
@@ -685,12 +723,16 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             o_dict['Material model']['Visco Plastic TwoD']['Include Peierls creep'] = 'true'
             if peierls_scheme in ["MK10", "MK10p"]: 
                 Peierls = flf.GetPeierlsApproxVist('MK10')
+                # fix peierls activation volume as mantle rheology
                 o_dict['Material model']['Visco Plastic TwoD']['Peierls glide parameters p'] = str(Peierls['p'])
                 o_dict['Material model']['Visco Plastic TwoD']['Peierls glide parameters q'] = str(Peierls['q'])
                 o_dict['Material model']['Visco Plastic TwoD']['Stress exponents for Peierls creep'] = str(Peierls['n'])
                 o_dict['Material model']['Visco Plastic TwoD']['Peierls stresses'] = '%.4e' % Peierls['sigp0']
                 o_dict['Material model']['Visco Plastic TwoD']['Activation energies for Peierls creep'] = '%.4e' % Peierls['E']
                 o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for Peierls creep'] = '0.0'
+                if fix_peierls_V_as is not "":
+                    o_dict['Material model']['Visco Plastic TwoD']['Activation volume differences for Peierls creep'] =\
+                        '%.4e' % rheology[fix_peierls_V_as + '_creep']['V']
                 A = Peierls['A']
                 if phase_model == "CDPT":
                     # note that this part contains the different choices of phases
@@ -1982,26 +2024,53 @@ def prm_reaction_density_function_cart(box_width, sp_trailing_length, ov_trailin
     }
     return odict
 
-def prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age):
+def prm_prescribed_temperature_sph(max_phi, potential_T, sp_rate, ov_age, **kwargs):
     '''
     Default setting for Prescribed temperatures in spherical geometry
+    Inputs:
+        kwargs:
+            model_name: name of model to use
+            area_width: width of resetting
     '''
+    model_name = kwargs.get('model_name', 'default')
     max_phi_in_rad = max_phi * np.pi / 180.0
-    odict = {
-        "Indicator function": {
-          "Coordinate system": "spherical",\
-          "Variable names": "r, phi",\
-          "Function constants": "Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=%.4e" % max_phi_in_rad,\
-          "Function expression": "(((r>Ro-Depth)&&((r*phi<Width)||(r*(PHIM-phi)<Width))) ? 1:0)"\
-        },\
-        "Temperature function": {
-          "Coordinate system": "spherical",\
-          "Variable names": "r, phi",\
-          "Function constants": "Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=%.4e,\\\n                             AGEOP=%.4e, TS=2.730e+02, TM=%.4e, K=1.000e-06, VSUB=%.4e, PHILIM=1e-6" %\
-              (max_phi_in_rad, ov_age * year, potential_T, sp_rate / year),\
-          "Function expression": "((r*(PHIM-phi)<Width) ? TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt(K*AGEOP)))):\\\n\t(phi > PHILIM)? (TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt((K*Ro*phi)/VSUB))))): TM)"
+    area_width = kwargs.get('area_width', 2.75e5) 
+    if model_name == 'default':
+        odict = {
+            "Indicator function": {
+              "Coordinate system": "spherical",\
+              "Variable names": "r, phi",\
+              "Function constants": "Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=%.4e" % max_phi_in_rad,\
+              "Function expression": "(((r>Ro-Depth)&&((r*phi<Width)||(r*(PHIM-phi)<Width))) ? 1:0)"\
+            },\
+            "Temperature function": {
+              "Coordinate system": "spherical",\
+              "Variable names": "r, phi",\
+              "Function constants": "Depth=1.45e5, Width=2.75e5, Ro=6.371e6, PHIM=%.4e,\\\n                             AGEOP=%.4e, TS=2.730e+02, TM=%.4e, K=1.000e-06, VSUB=%.4e, PHILIM=1e-6" %\
+                  (max_phi_in_rad, ov_age * year, potential_T, sp_rate / year),\
+              "Function expression": "((r*(PHIM-phi)<Width) ? TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt(K*AGEOP)))):\\\n\t(phi > PHILIM)? (TS+(TM-TS)*(1-erfc(abs(Ro-r)/(2*sqrt((K*Ro*phi)/VSUB))))): TM)"
+            }
         }
-    }
+    elif model_name == 'plate model 1':
+        odict = {
+            "Model name": "plate model 1",
+            "Indicator function": {
+              "Coordinate system": "spherical",
+              "Variable names": "r, phi",
+              "Function constants": "Depth=1.45e5, Width=%.4e, Ro=6.371e6, PHIM=%.4e" % (area_width, max_phi_in_rad),
+              "Function expression": "(((r>Ro-Depth)&&((r*phi<Width)||(r*(PHIM-phi)<Width))) ? 1:0)"
+            },
+            "Plate model 1": {
+                "Area width": "%.4e" % area_width,
+                "Subducting plate velocity": "%.4e" % (sp_rate / year),
+                "Overiding plate age": "%.4e" % (ov_age * year),
+                "Overiding area width": "%.4e" % area_width,
+                "Top temperature": "273.0",
+            }
+        }
+        pass
+    else:
+        raise ValueError('model name is either \"default\" or \"plate model 1\"')
     return odict
 
 

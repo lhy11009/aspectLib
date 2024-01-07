@@ -37,6 +37,45 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
+def test_RefitRheology():
+    '''
+    test the RefitRheology function
+    '''
+    # get the original rheology
+    rheology = "WarrenHansen23"
+    rheology_prm_dict = RHEOLOGY_PRM()
+    diffusion_creep_ori = getattr(rheology_prm_dict, rheology + "_diff")
+    dislocation_creep_ori = getattr(rheology_prm_dict, rheology + "_disl")
+    rheology_dict = {'diffusion': diffusion_creep_ori, 'dislocation': dislocation_creep_ori}
+
+    # prescribe the correction
+    diff_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': -2.1e-6}
+    disl_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': 3e-6}
+
+    # prescribe the reference state
+    ref_state = {}
+    ref_state["Coh"] = 500.0 # H / 10^6 Si
+    ref_state["stress"] = 50.0 # MPa
+    ref_state["P"] = 100.0e6 # Pa
+    ref_state["T"] = 1250.0 + 273.15 # K
+    ref_state["d"] = 15.0 # mu m
+
+    # refit rheology
+    rheology_dict_refit = RefitRheology(rheology_dict, diff_correction, disl_correction, ref_state)
+
+    # check
+    diffusion_creep = rheology_dict_refit['diffusion']
+    dislocation_creep = rheology_dict_refit['dislocation']
+    diff_A_std = 285230.546793
+    assert(abs(diffusion_creep['A'] - diff_A_std)/diff_A_std < 1e-6)
+    diff_V_std = 1.9e-06
+    assert(abs(diffusion_creep['V'] - diff_V_std)/diff_V_std < 1e-6)
+    disl_A_std = 20.479460
+    assert(abs(dislocation_creep['A'] - disl_A_std)/disl_A_std < 1e-6)
+    disl_V_std = 1.4e-05
+    assert(abs(dislocation_creep['V'] - disl_V_std)/disl_V_std < 1e-6)
+
+
 def test_debug_Idrissy_convergence_large_P():
     '''
     test used to debug the Idrissy flow law with a very big pressure
