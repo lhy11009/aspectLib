@@ -28,7 +28,9 @@ from matplotlib import pyplot as plt
 from copy import deepcopy
 import shilofue.Cases as CasesP
 import shilofue.ParsePrm as ParsePrm
-from shilofue.Rheology import RHEOLOGY_OPR
+from shilofue.Rheology import RHEOLOGY_OPR, RHEOLOGY_PRM, ConvertFromAspectInput,\
+                        STRENGTH_PROFILE, GetRheology, Convert2AspectInput,\
+                        AssignAspectViscoPlasticPhaseRheology, RefitRheology
 from shilofue.TwoDSubduction0.Cases import re_write_geometry_while_assigning_plate_age, change_field_to_particle
 import shilofue.Rheology_old_Dec_2023 as Rheology_old_Dec_2023
 
@@ -138,6 +140,9 @@ different age will be adjusted.",\
             ["refinement", "coarsen side level"], -1, nick='coarsen_side_level')
         self.add_key("The difference between the highest level used in the MR function and the total refinement level",\
          int, ["refinement", "coarsen minimum refinement level"], 1, nick='coarsen_minimum_refinement_level')
+        self.add_key("Include peierls creep", int, ['include peierls creep'], 0, nick='if_peierls')
+        self.add_key("Fix the activation volume of the Peierls creep", str,\
+         ['peierls creep', "fix peierls V as"], '', nick="fix_peierls_V_as")
 
     
     def check(self):
@@ -225,6 +230,8 @@ different age will be adjusted.",\
         coarsen_side_level = self.values[self.start+52]
         coarsen_minimum_refinement_level = self.values[self.start+53]
         use_new_rheology_module = self.values[28]
+        if_peierls = self.values[self.start+54]
+        fix_peierls_V_as = self.values[self.start+55]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
@@ -234,7 +241,7 @@ different age will be adjusted.",\
             branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init,\
             comp_method, reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method,\
             slab_core_viscosity, global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto,\
-            coarsen_side_level, coarsen_minimum_refinement_level, use_new_rheology_module
+            coarsen_side_level, coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as
         
     def to_configure_wb(self):
         '''
@@ -309,7 +316,7 @@ class CASE(CasesP.CASE):
     sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init, comp_method,\
     reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method, slab_core_viscosity,\
     global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto, coarsen_side_level,\
-    coarsen_minimum_refinement_level, use_new_rheology_module):
+    coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as):
         '''
         Configure prm file
         '''
@@ -448,7 +455,9 @@ class CASE(CasesP.CASE):
             # Here I inherit the older rheology from my 2-d models:
             #   HK03: the original rheology from the Hirth and Kolstedt model
             #   HK03_wet_mod: the wet modified rheology I used in my 2-d models
-            #   else: something else 
+            #   else: something else
+            # use_new_rheology_module = 0 uses the old module. It's wrong.
+            #   this option is left open to maintain backward compatibility
             da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'ThDSubduction', "depth_average.txt")
             assert(os.path.isfile(da_file))
             if use_new_rheology_module == 1:
@@ -466,6 +475,31 @@ class CASE(CasesP.CASE):
                             dEdiff=-40e3, dEdisl=30e3, dVdiff=-5.5e-6, dVdisl=2.12e-6,\
                             dAdiff_ratio=0.33333333333, dAdisl_ratio=1.040297619,\
                             jump_lower_mantle=15.0)
+            elif mantle_rheology_scheme == "HK03_WarrenHansen23":
+                # read in the original rheology
+                mantle_coh = 500 # be default, use a value of 500
+                rheology_name = "WarrenHansen23"
+                rheology_prm_dict = RHEOLOGY_PRM()
+                diffusion_creep_ori = getattr(rheology_prm_dict, rheology_name + "_diff")
+                dislocation_creep_ori = getattr(rheology_prm_dict, rheology_name + "_disl")
+                rheology_dict = {'diffusion': diffusion_creep_ori, 'dislocation': dislocation_creep_ori}
+                # prescribe the correction
+                diff_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': -2.1e-6}
+                disl_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': 3e-6}
+                # prescribe the reference state
+                ref_state = {}
+                ref_state["Coh"] = mantle_coh # H / 10^6 Si
+                ref_state["stress"] = 50.0 # MPa
+                ref_state["P"] = 100.0e6 # Pa
+                ref_state["T"] = 1250.0 + 273.15 # K
+                ref_state["d"] = 15.0 # mu m
+                # refit rheology
+                rheology_dict_refit = RefitRheology(rheology_dict, diff_correction, disl_correction, ref_state)
+                # derive mantle rheology
+                rheology, _ = Operator.MantleRheology(assign_rheology=True, diffusion_creep=rheology_dict_refit['diffusion'],\
+                                                            dislocation_creep=rheology_dict_refit['dislocation'], save_profile=1,\
+                                                            use_effective_strain_rate=True, save_json=1, Coh=mantle_coh,\
+                                                            jump_lower_mantle=100.0)
             else:
                 rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme,\
                             save_profile=1, save_json=1, use_effective_strain_rate=True)
@@ -477,6 +511,46 @@ class CASE(CasesP.CASE):
             if mantle_rheology_flow_law == "composite":
                 o_dict['Material model'][material_model_subsection]["Viscous flow law"] = "composite"
                 o_dict = CasesP.SetNewtonSolver(o_dict)
+        if _type == '2d_consistent':
+            # for the 2d_consistent type
+            # The adjustment of rheology is done after I implement the "HK03_WarrenHansen23" type
+            da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'ThDSubduction', "depth_average.txt")
+            assert(os.path.isfile(da_file))
+            Operator = RHEOLOGY_OPR()
+            # read profile
+            Operator.ReadProfile(da_file)
+            if mantle_rheology_scheme == "HK03_WarrenHansen23":
+                # read in the original rheology
+                mantle_coh = 500 # be default, use a value of 500
+                rheology_name = "WarrenHansen23"
+                rheology_prm_dict = RHEOLOGY_PRM()
+                diffusion_creep_ori = getattr(rheology_prm_dict, rheology_name + "_diff")
+                dislocation_creep_ori = getattr(rheology_prm_dict, rheology_name + "_disl")
+                rheology_dict = {'diffusion': diffusion_creep_ori, 'dislocation': dislocation_creep_ori}
+                # prescribe the correction
+                diff_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': -2.1e-6}
+                disl_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': 3e-6}
+                # prescribe the reference state
+                ref_state = {}
+                ref_state["Coh"] = mantle_coh # H / 10^6 Si
+                ref_state["stress"] = 50.0 # MPa
+                ref_state["P"] = 100.0e6 # Pa
+                ref_state["T"] = 1250.0 + 273.15 # K
+                ref_state["d"] = 15.0 # mu m
+                # refit rheology
+                rheology_dict_refit = RefitRheology(rheology_dict, diff_correction, disl_correction, ref_state)
+                # derive mantle rheology
+                rheology, _ = Operator.MantleRheology(assign_rheology=True, diffusion_creep=rheology_dict_refit['diffusion'],\
+                                                            dislocation_creep=rheology_dict_refit['dislocation'], save_profile=1,\
+                                                            use_effective_strain_rate=True, save_json=1, Coh=mantle_coh,\
+                                                            jump_lower_mantle=100.0)
+            if mantle_rheology_scheme in ["HK03_WarrenHansen23"]: 
+                consistent_2d_assign_mantle_rheology(o_dict, rheology)    
+                self.output_files.append(Operator.output_json)
+                self.output_files.append(Operator.output_json_aspect)
+                self.output_imgs.append(Operator.output_profile) # append plot of initial conition to figures
+            
+
         # 2. Yielding criteria
         if _type == 's07':
             prefactor_ref = 1.0 / 2.0 / ref_visc  # prefactors for diffusion creep
@@ -496,7 +570,12 @@ class CASE(CasesP.CASE):
             o_dict['Material model'][material_model_subsection]['Minimum viscosity'] =\
                 "background: %.4e, sp_upper: %.4e, sp_lower: %.4e, plate_edge: %.4e" %\
                     (global_minimum_viscosity, global_minimum_viscosity, slab_core_viscosity, global_minimum_viscosity)
-
+        # 4. The peierls rheology
+        if  if_peierls:
+            o_dict['Material model'][material_model_subsection]['Include Peierls creep'] = 'true'
+            if fix_peierls_V_as is not "":
+                o_dict['Material model']['Visco Plastic TwoD']['Activation volume differences for Peierls creep'] =\
+                    '%.4e' % rheology[fix_peierls_V_as + '_creep']['V']
         # rewrite the reset viscosity part
         if _type == 's07':
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
@@ -1034,6 +1113,126 @@ sp_upper: %.4e|%.4e|%.4e,\
 sp_lower: %.4e|%.4e,\
 plate_edge: %.4e|%.4e|%.4e"\
         % (disl_V, disl_V_lm, disl_crust_V, disl_V, disl_V_lm, disl_V, disl_V_lm, disl_crust_V, disl_V, disl_V_lm)
+
+
+def consistent_2d_assign_mantle_rheology(o_dict, rheology):
+    '''
+    Assign mantle rheology in the s07T model
+    Note this model has 2 compositions:
+        sp_upper and sp_lower
+    ''' 
+    diff_crust_A = 5e-21
+    diff_crust_m = 0.0
+    diff_crust_E = 0.0
+    diff_crust_V = 0.0
+    disl_crust_A = 5e-32
+    disl_crust_n = 1.0
+    disl_crust_E = 0.0
+    disl_crust_V = 0.0
+    diffusion_creep = rheology['diffusion_creep']
+    dislocation_creep = rheology['dislocation_creep']
+    diffusion_creep_lm = rheology['diffusion_lm']
+    diff_A = diffusion_creep['A']
+    diff_m = diffusion_creep['m']
+    diff_n = diffusion_creep['n']
+    diff_E = diffusion_creep['E']
+    diff_V = diffusion_creep['V']
+    diff_d = diffusion_creep['d']
+    disl_A = dislocation_creep['A']
+    disl_m = dislocation_creep['m']
+    disl_n = dislocation_creep['n']
+    disl_E = dislocation_creep['E']
+    disl_V = dislocation_creep['V']
+    disl_d = dislocation_creep['d']
+    diff_A_lm = diffusion_creep_lm['A']
+    diff_m_lm = diffusion_creep_lm['m']
+    diff_n_lm = diffusion_creep_lm['n']
+    diff_E_lm = diffusion_creep_lm['E']
+    diff_V_lm = diffusion_creep_lm['V']
+    diff_d_lm = diffusion_creep_lm['d']
+    disl_A_lm = 5.0000e-32
+    disl_n_lm = 1.0
+    disl_E_lm = 0.0
+    disl_V_lm = 0.0
+    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+plate_edge: %.4e|%.4e|%.4e"\
+        % (diff_A,diff_A,diff_A,diff_A,diff_A_lm,diff_A_lm,diff_A_lm,diff_A_lm,\
+           diff_crust_A, diff_A, diff_A_lm, diff_A_lm,\
+            diff_A,diff_A,diff_A,diff_A,diff_A_lm,diff_A_lm,diff_A_lm,diff_A_lm,\
+                diff_crust_A, diff_A, diff_A_lm)
+
+    o_dict['Material model']['Visco Plastic TwoD']['Grain size exponents for diffusion creep'] = \
+        "background:  %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+plate_edge: %.4e|%.4e|%.4e"\
+        % (diff_m,diff_m,diff_m,diff_m,diff_m_lm,diff_m_lm,diff_m_lm,diff_m_lm,\
+           diff_crust_m, diff_m, diff_m_lm,diff_m_lm,\
+            diff_m,diff_m,diff_m,diff_m,diff_m_lm,diff_m_lm,diff_m_lm,diff_m_lm,\
+                diff_crust_m, diff_m, diff_m_lm)
+    
+    o_dict['Material model']['Visco Plastic TwoD']['Activation energies for diffusion creep'] = \
+        "background:  %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+plate_edge: %.4e|%.4e|%.4e"\
+        % (diff_E,diff_E,diff_E,diff_E,diff_E_lm,diff_E_lm,diff_E_lm,diff_E_lm,\
+            diff_crust_E, diff_E, diff_E_lm,diff_E_lm,\
+                diff_E,diff_E,diff_E,diff_E,diff_E_lm,diff_E_lm,diff_E_lm,diff_E_lm,\
+                    diff_crust_E, diff_E, diff_E_lm)
+
+    o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for diffusion creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+plate_edge: %.4e|%.4e|%.4e"\
+        % (diff_V,diff_V,diff_V,diff_V,diff_V_lm,diff_V_lm,diff_V_lm,diff_V_lm,\
+            diff_crust_V, diff_V, diff_V_lm,diff_V_lm,\
+                  diff_V,diff_V,diff_V,diff_V,diff_V_lm,diff_V_lm,diff_V_lm,diff_V_lm,\
+                      diff_crust_V, diff_V, diff_V_lm)
+    
+    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for dislocation creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+plate_edge: %.4e|%.4e|%.4e"\
+        %(disl_A,disl_A,disl_A,disl_A,disl_A_lm,disl_A_lm,disl_A_lm,disl_A_lm,\
+           disl_crust_A, disl_A, disl_A_lm, disl_A_lm,\
+            disl_A,disl_A,disl_A,disl_A,disl_A_lm,disl_A_lm,disl_A_lm,disl_A_lm,\
+                disl_crust_A, disl_A, disl_A_lm)
+
+    o_dict['Material model']['Visco Plastic TwoD']['Stress exponents for dislocation creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+plate_edge: %.4e|%.4e|%.4e"\
+        % (disl_n,disl_n,disl_n,disl_n,disl_n_lm,disl_n_lm,disl_n_lm,disl_n_lm,\
+            disl_crust_n, disl_n, disl_n_lm, disl_n_lm,\
+                  disl_n,disl_n,disl_n,disl_n,disl_n_lm,disl_n_lm,disl_n_lm,disl_n_lm,\
+                      disl_crust_n, disl_n, disl_n_lm)
+    
+    o_dict['Material model']['Visco Plastic TwoD']['Activation energies for dislocation creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+plate_edge: %.4e|%.4e|%.4e"\
+        % (disl_E,disl_E,disl_E,disl_E,disl_E_lm,disl_E_lm,disl_E_lm,disl_E_lm,\
+            disl_crust_E, disl_E, disl_E_lm, disl_E_lm,\
+                disl_E,disl_E,disl_E,disl_E,disl_E_lm,disl_E_lm,disl_E_lm,disl_E_lm,\
+                    disl_crust_E, disl_E, disl_E_lm)
+
+    o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for dislocation creep'] = \
+        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+sp_upper: %.4e|%.4e|%.4e|%.4e,\
+sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+plate_edge: %.4e|%.4e|%.4e"\
+        % (disl_V,disl_V,disl_V,disl_V,disl_V_lm,disl_V_lm,disl_V_lm,disl_V_lm,\
+            disl_crust_V, disl_V, disl_V_lm, disl_V_lm,\
+                disl_V,disl_V,disl_V,disl_V,disl_V_lm,disl_V_lm,disl_V_lm,disl_V_lm,\
+                    disl_crust_V, disl_V, disl_V_lm)
 
 
 def wb_configure_transit_ov_plates(i_feature, trench, ov_age,\

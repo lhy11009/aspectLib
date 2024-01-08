@@ -669,10 +669,10 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         elif mantle_rheology_scheme == "HK03_WarrenHansen23":
             # read in the original rheology
-            rheology = "WarrenHansen23"
+            rheology_name = "WarrenHansen23"
             rheology_prm_dict = RHEOLOGY_PRM()
-            diffusion_creep_ori = getattr(rheology_prm_dict, rheology + "_diff")
-            dislocation_creep_ori = getattr(rheology_prm_dict, rheology + "_disl")
+            diffusion_creep_ori = getattr(rheology_prm_dict, rheology_name + "_diff")
+            dislocation_creep_ori = getattr(rheology_prm_dict, rheology_name + "_disl")
             rheology_dict = {'diffusion': diffusion_creep_ori, 'dislocation': dislocation_creep_ori}
             # prescribe the correction
             diff_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': -2.1e-6}
