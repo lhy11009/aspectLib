@@ -6,7 +6,7 @@
   "name": "test_fix_CDPT",
   "type": "2d_consistent",
   "use world builder": 1,
-  "branch": "master_TwoD_knl",
+  "branch": "master_TwoD",
   "post process": {
     "visualization software": "paraview"
   },
@@ -39,9 +39,14 @@
     "ov side dist": 600000.0,
     "prescribe mantle ov end": 1
   },
+  "use new rheology module": 1,
   "mantle rheology": {
-    "scheme": "HK03_wet_mod_twod",
+    "scheme": "HK03_WarrenHansen23",
     "flow law": "composite"
+  },
+  "include peierls creep": 1,
+  "peierls creep": {
+    "fix peierls V as": "dislocation"
   },
   "shear zone": {
     "thickness": 15000.0,
@@ -66,7 +71,7 @@
   "slurm": [
     {
       "slurm file": "./files/slurm_files/221018/job_p-billen.sh",
-      "build directory": "master_TwoD_p-billen",
+      "build directory": "master_TwoD",
       "tasks per node": 128,
       "cpus": 512
     },
