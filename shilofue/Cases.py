@@ -827,6 +827,11 @@ def GROUP():
         self.iCASE = iCASE
 
 
+####
+# Generate case diagram
+####
+
+
 def main():
     '''
     main function of this module

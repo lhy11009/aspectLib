@@ -42,24 +42,56 @@ if os.path.isdir(test_local_dir):
     rmtree(test_local_dir)
 os.mkdir(test_local_dir)
 
+def test_case_summary():
+    '''
+    Test the CASE_SUMMARY class
+    '''
+    # initiate
+    Case_Summary = CASE_SUMMARY()
+
+    # import a group 
+    group_dir = os.path.join(source_dir, "test_documentation_group_in_dir", "EBA_2d_consistent_1")
+    assert(os.path.isdir(group_dir))
+    Case_Summary.import_directory(group_dir)
+
+    # write outputs
+    o_file = os.path.join(test_local_dir, "case_summary.txt")
+    Case_Summary.outputs(o_file)
+
 def test_documentation_group_in_dir():
     '''
     test the implementation of documentation
     Asserts:
     '''
-    group_dir = os.path.join(source_dir, "test_documentation_group_in_dir")
-    assert(os.path.isdir(group_dir))
+    project_dir = os.path.join(source_dir, "test_documentation_group_in_dir")
+    assert(os.path.isdir(project_dir))
     GDoc = GDOC()
-    GDoc.execute(group_dir, o_dir=test_local_dir)
+    GDoc.execute(project_dir, o_dir=test_local_dir)
     # assert something 
     mkd_file = os.path.join(test_local_dir, "documentation", "group_doc.mkd")
-    mkd_file_std = os.path.join(group_dir, "group_doc_std.mkd")
+    mkd_file_std = os.path.join(project_dir, "group_doc_std.mkd")
     assert(os.path.isfile(mkd_file)) # assert file generation
     assert(filecmp.cmp(mkd_file, mkd_file_std)) # assert file contents
     latex_file = os.path.join(test_local_dir, "documentation", "group_doc.tex")
-    latex_file_std = os.path.join(group_dir, "group_doc_std.tex")
+    latex_file_std = os.path.join(project_dir, "group_doc_std.tex")
     assert(os.path.isfile(latex_file)) # assert file generation
     assert(filecmp.cmp(latex_file, latex_file_std)) # assert file contents
+
+
+def test_ReadBasicInfoGroup():
+    '''
+    test the function ReadBasicInfoGroup
+    assert outputs
+    '''
+    group_dir = os.path.join(source_dir, "test_documentation_group_in_dir", "EBA_2d_consistent_1")
+    assert(os.path.isdir(group_dir))
+    case_list, step_list, time_list, wallclock_list = ReadBasicInfoGroup(group_dir)
+    # assert outputs
+    assert(case_list==['eba3d_SA80.0_OA40.0_width61_GR4_AR4', 'eba3d_SA80.0_OA40.0_width61_GR3_AR3_sc_1e23'])
+    assert(step_list == [1, 130])
+    assert(time_list ==  [100000.0, 3724260.0])
+    assert(wallclock_list == [221.0, 85100.0])
+
 
 # notes
     

@@ -43,6 +43,17 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
+def test_GetTimeDepthTip():
+    '''
+    test GetTimeDepthTip
+    '''
+    case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp', "test_TwoD_vtk_case1")
+    SlabPlot = SLABPLOT('test')
+    t_660_std = 2419872.042534338  # yr
+    t_660 = SlabPlot.GetTimeDepthTip(case_dir, 660e3)
+    assert(abs(t_660 - t_660_std) / t_660_std < 1e-6)
+
+
 def test_wedge_T():
     '''
     Test wedge temperature

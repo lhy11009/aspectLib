@@ -23,6 +23,7 @@ import json, re
 from shilofue.Cases import create_case_with_json
 from shilofue.PlotRunTime import RunTimeInfo
 import shilofue.ParsePrm as ParsePrm
+from shilofue.Plot import LINEARPLOT
 # import pathlib
 # import subprocess
 import numpy as np
@@ -454,11 +455,16 @@ class GDOC():
     generate documentation
     '''
     def __init__(self):
+        '''
+        Initiation
+        '''
         self.groups = []
         self.group_names = []
         self.cases = []
         self.case_names = []
-        pass
+        self.steps = []
+        self.times = []
+        self.wallclocks = []
 
     def execute(self, base_dir, **kwargs):
         '''
@@ -501,7 +507,7 @@ class GDOC():
             group = self.groups[i]
             group_name = self.group_names[i]
             outputs += "### %s\n\n" % group_name
-            outputs += self.create_case_table(group) + "\n"
+            outputs += self.output_case_table_tex(group) + "\n"
         return outputs
         
     def create_latex(self):
@@ -513,14 +519,22 @@ class GDOC():
             group = self.groups[i]
             group_name = self.group_names[i]
             # outputs += "### %s\n\n" % group_name
-            outputs += self.create_case_table(group, format='latex') + "\n"
+            outputs += self.output_case_table_tex(group, format='latex') + "\n"
         return outputs
 
 
     class CreateCaseTableError(Exception):
-        pass 
-    
-    def create_case_table(self, group_dir, **kwargs):
+        pass
+
+
+    def output_case_table(self):
+        '''
+        case table output
+        '''
+        pass
+
+
+    def output_case_table_tex(self, group_dir, **kwargs):
         '''
         create a table for case documentation
         Inputs:
@@ -545,24 +559,7 @@ class GDOC():
         # colors =  
         # construct data
         data = []
-        case_list = [] 
-        step_list = []
-        time_list = []
-        wallclock_list = []
-        for case in cases:
-            # pull out information
-            log_file = os.path.join(case, 'output', 'log.txt')
-            assert(log_file)
-            try:
-                last_step, last_time, last_wallclock = RunTimeInfo(log_file, quiet=True)
-            except TypeError:
-                last_step = -1
-                last_time = -1.0
-                last_wallclock = -1.0
-            case_list.append(os.path.basename(case))
-            step_list.append(int(last_step))
-            time_list.append(float(last_time))
-            wallclock_list.append(float(last_wallclock))
+        case_list, step_list, time_list, wallclock_list = ReadBasicInfoGroup(group_dir)
         data.append(case_list)
         data.append(step_list)
         data.append(time_list)
@@ -571,6 +568,37 @@ class GDOC():
                                         header=header, data=data, colors=colors) # class initiation
         table_contents = TexTable(format=_format)
         return table_contents
+
+
+def ReadBasicInfoGroup(group_dir):
+    '''
+    Read basic information from a group
+    Inputs:
+        group_dir(str): directory contains a few cases
+    Return:
+        case_list, step_list, time_list, wallclock_list (list): list of outputs
+    '''
+    cases = FindCasesInDir(group_dir)
+    Utilities.my_assert(len(cases)>0, FileExistsError, "%s doesn't have cases in it." % group_dir)
+    case_list = [] 
+    step_list = []
+    time_list = []
+    wallclock_list = []
+    for case in cases:
+        # pull out information
+        log_file = os.path.join(case, 'output', 'log.txt')
+        assert(os.path.isfile(log_file))
+        try:
+            last_step, last_time, last_wallclock = RunTimeInfo(log_file, quiet=True)
+        except TypeError:
+            last_step = -1
+            last_time = -1.0
+            last_wallclock = -1.0
+        case_list.append(os.path.basename(case))
+        step_list.append(int(last_step))
+        time_list.append(float(last_time))
+        wallclock_list.append(float(last_wallclock))
+    return case_list, step_list, time_list, wallclock_list
         
 
 def DocumentGroupsInDir(_dir):
@@ -582,6 +610,66 @@ def DocumentGroupsInDir(_dir):
     GDoc.execute(_dir)
     pass
 
+
+class CASE_SUMMARY():
+    '''
+    Attributes:
+        cases: name of cases
+        steps: end steps of cases
+        times: end times of cases
+        wallclocks: running time of cases on the wall clock
+        ab_paths: absolution_paths of cases
+    '''
+
+    def __init__(self):
+        '''
+        Initiation
+        '''
+        self.cases = []
+        self.steps = []
+        self.times = []
+        self.wallclocks = []
+        self.ab_paths = []
+
+    def import_directory(self, _dir):
+        '''
+        Import from a directory, look for groups and cases
+        Inputs:
+            _dir (str): directory to import
+        '''
+        assert(os.path.isdir(_dir))
+        case_list, step_list, time_list, wallclock_list = ReadBasicInfoGroup(_dir)
+        self.cases += case_list
+        self.steps += step_list
+        self.times += time_list
+        self.wallclocks += wallclock_list
+        for _case in case_list:
+            self.ab_paths.append(os.path.join(_dir, _case))
+
+    def outputs(self, o_path):
+        '''
+        Write an output file
+        Inputs:
+            o_path (str): path of output
+        '''
+        # header and data to write
+        attrs_to_output = ['cases', 'steps', 'times', 'wallclocks']
+        headers = ['cases', 'steps', 'times (yr)', 'wallclocks (s)']
+        data_raw = []
+        for _attr in attrs_to_output:
+            data_raw.append(np.array(getattr(self, _attr)))
+        data = np.column_stack(data_raw)
+        
+        # output
+        with open(o_path, 'w') as fout:
+            # write header
+            i = 0
+            for header in headers:
+                fout.write("# %d: %s\n" % (i, header))
+                i += 1
+            np.savetxt(fout, data, delimiter=" ", fmt="%s")
+        print("%s: Write file %s" % (Utilities.func_name(), o_path))
+         
 
 ####
 # Utility fucntions

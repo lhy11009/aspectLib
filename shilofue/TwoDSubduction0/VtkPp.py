@@ -2966,7 +2966,6 @@ class SLABPLOT(LINEARPLOT):
         ax.set_xlabel("Time (Ma)")
         ax.set_ylabel("Trench Age (Ma)")
     
-    
     def PlotThermalParameter(self, case_dir, **kwargs):
         '''
         plot the age of the trench
@@ -3036,6 +3035,35 @@ class SLABPLOT(LINEARPLOT):
                     ax2.set_ylim([ymin2, ymax2])
                 except ValueError:
                     pass
+
+    def GetTimeDepthTip(self, case_dir, query_depth):
+        '''
+        todo_t660
+        Get the time the slab tip is at a certain depth
+        Inputs:
+            case_dir (str): case directory
+        '''
+        assert(os.path.isdir(case_dir))
+        morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+        assert(os.path.isfile(morph_file))
+        self.ReadHeader(morph_file)
+        self.ReadData(morph_file)
+        
+        col_time = self.header['time']['col']
+        times = self.data[:, col_time]
+        col_slab_depth = self.header['slab_depth']['col']
+        slab_depths = self.data[:, col_slab_depth]
+
+        for i in range(len(times)-1):
+            _time = times[i]
+            depth = slab_depths[i]
+            next_depth = slab_depths[i+1]
+            if depth < query_depth and next_depth > query_depth:
+                next_time = times[i+1]
+                query_time = (query_depth - depth) / (next_depth - depth) * next_time +\
+                    (query_depth - next_depth) / (depth - next_depth) * _time
+                
+        return query_time
 
         
 

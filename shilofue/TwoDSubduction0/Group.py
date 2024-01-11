@@ -25,6 +25,7 @@ import sys, os, argparse
 import shilofue.Group as GroupP
 from shilofue.Group import CreateGroup
 from shilofue.TwoDSubduction0.Cases import CASE, CASE_OPT
+from shilofue.TwoDSubduction0.VtkPp import SLABPLOT
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
@@ -63,15 +64,34 @@ class GROUP_OPT(GroupP.GROUP_OPT):
 class GROUP(GroupP.GROUP):
     pass
 
-def SomeFunction(foo):
+
+class CASE_SUMMARY(GroupP.CASE_SUMMARY):
     '''
-    descriptions
-    Inputs:
-        -
-    Returns:
-        -
+    Attributes:
+        cases: name of cases
+        steps: end steps of cases
+        times: end times of cases
+        wallclocks: running time of cases on the wall clock
+        ab_paths: absolution_paths of cases
     '''
-    pass
+    def __init__(self):
+        '''
+        initiation
+        '''
+        GroupP.CASE_SUMMARY.__init__(self)
+
+    def import_directory(self, _dir):
+        '''
+        Import from a directory, look for groups and cases
+        Inputs:
+            _dir (str): directory to import
+        '''
+        assert(os.path.isdir(_dir))
+        GroupP.CASE_SUMMARY.import_directory(_dir)
+
+        # todo_t660
+        SlabPlot = SLABPLOT()
+
 
 
 def main():

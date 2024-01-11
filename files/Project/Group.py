@@ -63,6 +63,9 @@ class GROUP_OPT(GroupP.GROUP_OPT):
 class GROUP(GroupP.GROUP):
     pass
 
+class CASE_SUMMARY(GroupP.CASE_SUMMARY):
+    pass
+
 def SomeFunction(foo):
     '''
     descriptions
