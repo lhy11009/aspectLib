@@ -630,6 +630,7 @@ class CASE_SUMMARY():
         self.times = []
         self.wallclocks = []
         self.ab_paths = []
+        self.attrs = ['cases', 'steps', 'times', 'wallclocks']
 
     def import_directory(self, _dir):
         '''
@@ -645,30 +646,77 @@ class CASE_SUMMARY():
         self.wallclocks += wallclock_list
         for _case in case_list:
             self.ab_paths.append(os.path.join(_dir, _case))
+    
+    def import_txt(self, i_path):
+        '''
+        import an existing txt file
+        Inputs:
+            i_path: path to a txt file
+        '''
+        reader = LINEARPLOT('case_summary')
 
-    def outputs(self, o_path):
+        Utilities.my_assert(os.path.isfile(i_path), self.SummaryFileNotExistError, "%s is not a file." % i_path)
+        reader.ReadHeader(i_path)
+        reader.ReadData(i_path, dtype=str)
+
+        odata = reader.export("", self.attrs, data_only=True)
+        case_list = odata[:, 0]
+
+        for i in range(len(case_list)):
+            case = case_list[i]
+            if case not in self.cases:
+                self.import_data(odata[i, :])
+
+    def import_data(self, o_data_1d):
+        '''
+        import data from 1d array
+        o_data_1d (1d array)
+        '''
+        self.cases.append(o_data_1d[0])
+        self.times.append(o_data_1d[1])
+        self.steps.append(o_data_1d[2])
+        self.wallclocks.append(o_data_1d[3])
+        self.ab_paths.append('')
+
+    def write(self, fout, attrs_to_output, headers):
         '''
         Write an output file
         Inputs:
-            o_path (str): path of output
+            fout (object): object of output
+            attrs_to_output: attribute to output
+            headers: headers of the file
         '''
         # header and data to write
-        attrs_to_output = ['cases', 'steps', 'times', 'wallclocks']
-        headers = ['cases', 'steps', 'times (yr)', 'wallclocks (s)']
         data_raw = []
         for _attr in attrs_to_output:
             data_raw.append(np.array(getattr(self, _attr)))
         data = np.column_stack(data_raw)
         
         # output
-        with open(o_path, 'w') as fout:
-            # write header
-            i = 0
-            for header in headers:
-                fout.write("# %d: %s\n" % (i, header))
-                i += 1
-            np.savetxt(fout, data, delimiter=" ", fmt="%s")
+        # write header
+        i = 0
+        for header in headers:
+            fout.write("# %d: %s\n" % (i+1, header))
+            i += 1
+        np.savetxt(fout, data, delimiter=" ", fmt="%s")
+        
+    def write_file(self, o_path):
+        '''
+        write file
+        Inputs:
+            o_path (str): path of output
+        '''
+        attrs_to_output = ['cases', 'steps', 'times', 'wallclocks']
+        headers = ['cases', 'steps', 'times (yr)', 'wallclocks (s)']
+
+        with open(o_path, 'w') as fout: 
+            self.write(fout, attrs_to_output, headers) 
+        
         print("%s: Write file %s" % (Utilities.func_name(), o_path))
+
+    # error types
+    class SummaryFileNotExistError(Exception):
+        pass
          
 
 ####

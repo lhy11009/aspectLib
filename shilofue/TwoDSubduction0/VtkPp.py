@@ -1764,11 +1764,13 @@ def SlabMorphologyCase(case_dir, **kwargs):
         kwargs:
             rewrite: if rewrite previous results
             project_velocity - whether the velocity is projected to the tangential direction
+            file_tag - apply a tag to file name, default is false
     '''
     findmdd = kwargs.get('findmdd', False)
     project_velocity = kwargs.get('project_velocity', False)
     # todo_parallel
     use_parallel = kwargs.get('use_parallel', False)
+    file_tag = kwargs.get('file_tag', False)
     # get all available snapshots
     # the interval is choosen so there is no high frequency noises
     time_interval_for_slab_morphology = kwargs.get("time_interval", 0.5e6)
@@ -1782,7 +1784,12 @@ def SlabMorphologyCase(case_dir, **kwargs):
     vtk_output_dir = os.path.join(case_dir, 'vtk_outputs')
     if not os.path.isdir(vtk_output_dir):
         os.mkdir(vtk_output_dir)
-    slab_morph_file = os.path.join(vtk_output_dir, 'slab_morph.txt')
+    # file name
+    if file_tag == 'interval':
+        slab_morph_file_name = 'slab_morph_%.2e' % time_interval_for_slab_morphology
+    else:
+        slab_morph_file_name = 'slab_morph.txt'
+    slab_morph_file = os.path.join(vtk_output_dir, slab_morph_file_name)
     # Initiation Wrapper class for parallel computation
     ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology, if_rewrite=True, findmdd=findmdd, project_velocity=project_velocity)
     ParallelWrapper.configure(case_dir)  # assign case directory
@@ -1791,12 +1798,15 @@ def SlabMorphologyCase(case_dir, **kwargs):
         print("%s: Delete old slab_morph.txt file." % Utilities.func_name())
         os.remove(slab_morph_file)  # delete slab morph file
     ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
+    ParallelWrapper.set_pvtu_steps(available_pvtu_snapshots)
     num_cores = multiprocessing.cpu_count()
     # loop for all the steps to plot, the parallel version doesn't work for now
     if use_parallel:
-        raise NotImplementedError("Parallel for the function %s is not properly implemented yet" % Utilities.func_name())
+        # raise NotImplementedError("Parallel for the function %s is not properly implemented yet" % Utilities.func_name())
         Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_snapshot)\
         for pvtu_snapshot in available_pvtu_snapshots)  # first run in parallel and get stepwise output
+        print("call assemble_parallel")  # debug
+        pvtu_steps_o, outputs = ParallelWrapper.assemble_parallel()
     else:
         for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
             ParallelWrapper(pvtu_snapshot)
@@ -3045,7 +3055,7 @@ class SLABPLOT(LINEARPLOT):
         '''
         assert(os.path.isdir(case_dir))
         morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
-        assert(os.path.isfile(morph_file))
+        Utilities.my_assert(os.path.isfile(morph_file), self.SlabMorphFileNotExistError, "%s is not a file." % morph_file)
         self.ReadHeader(morph_file)
         self.ReadData(morph_file)
         
@@ -3064,6 +3074,9 @@ class SLABPLOT(LINEARPLOT):
                     (query_depth - next_depth) / (depth - next_depth) * _time
                 
         return query_time
+    
+    class SlabMorphFileNotExistError(Exception):
+        pass
 
         
 
@@ -3510,6 +3523,9 @@ def main():
     elif _commend == 'morph_case':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True)
+    elif _commend == 'morph_case_parallel':
+        # slab morphology for a case
+        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True, use_parallel=True)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')

@@ -56,7 +56,18 @@ def test_case_summary():
 
     # write outputs
     o_file = os.path.join(test_local_dir, "case_summary.txt")
-    Case_Summary.outputs(o_file)
+    o_file_std =  os.path.join(source_dir, "test_documentation_group_in_dir", "EBA_2d_consistent_1", "ofile_std")
+    Case_Summary.write_file(o_file)
+    assert(os.path.isfile(o_file))
+    assert(filecmp.cmp(o_file, o_file_std))
+
+    # read file
+    # file is generated in the last test
+    Case_Summary1 = CASE_SUMMARY()
+    Case_Summary1.import_txt(o_file)
+    assert(Case_Summary1.cases == ["eba3d_SA80.0_OA40.0_width61_GR4_AR4", "eba3d_SA80.0_OA40.0_width61_GR3_AR3_sc_1e23"])
+    assert(Case_Summary1.wallclocks == ["221.0", "85100.0"])
+
 
 def test_documentation_group_in_dir():
     '''

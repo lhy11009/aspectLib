@@ -26,6 +26,7 @@ import shilofue.Group as GroupP
 from shilofue.Group import CreateGroup
 from shilofue.TwoDSubduction0.Cases import CASE, CASE_OPT
 from shilofue.TwoDSubduction0.VtkPp import SLABPLOT
+from shilofue.Plot import LINEARPLOT
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
@@ -73,12 +74,16 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         times: end times of cases
         wallclocks: running time of cases on the wall clock
         ab_paths: absolution_paths of cases
+        t660s: time the slab tip reaches 660 km
     '''
     def __init__(self):
         '''
         initiation
         '''
         GroupP.CASE_SUMMARY.__init__(self)
+        self.t660s = []
+        self.attrs.append("t660s")
+
 
     def import_directory(self, _dir):
         '''
@@ -87,11 +92,30 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             _dir (str): directory to import
         '''
         assert(os.path.isdir(_dir))
-        GroupP.CASE_SUMMARY.import_directory(_dir)
+        GroupP.CASE_SUMMARY.import_directory(self, _dir)
 
         # todo_t660
-        SlabPlot = SLABPLOT()
+        SlabPlot = SLABPLOT('foo')
+        for case_dir in self.ab_paths:
+            try:
+                t660 = SlabPlot.GetTimeDepthTip(case_dir, 660e3)
+            except SLABPLOT.SlabMorphFileNotExistError:
+                t660 = -1.0
+            self.t660s.append(t660)
 
+    def write_file(self, o_path):
+        '''
+        write file
+        Inputs:
+            o_path (str): path of output
+        '''
+        attrs_to_output = ['cases', 'steps', 'times', 'wallclocks', 't660s']
+        headers = ['cases', 'steps', 'times (yr)', 'wallclocks (s)', 't660s (yr)']
+
+        with open(o_path, 'w') as fout: 
+            self.write(fout, attrs_to_output, headers) 
+        
+        print("%s: Write file %s" % (Utilities.func_name(), o_path))
 
 
 def main():

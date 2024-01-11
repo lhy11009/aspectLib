@@ -333,7 +333,7 @@ class PARALLEL_WRAPPER_FOR_VTK():
                     fout.write('%d\n' % pvtu_step)
                     fout.write(output)
                 print("%s: pvtu_step - %d, output - %s" % (Utilities.func_name(), pvtu_step, output))
-                self.pvtu_steps.append(pvtu_step) # append to data
+                # self.pvtu_steps.append(pvtu_step) # append to data
                 self.outputs.append(output)
             else: 
                 # otherwise, just call the module for each steps
@@ -363,6 +363,29 @@ class PARALLEL_WRAPPER_FOR_VTK():
                     self.outputs[i] = self.outputs[j]
                     self.outputs[j] = temp
         return self.pvtu_steps, self.outputs
+    
+    def assemble_parallel(self):
+        '''
+        Returns:
+            pvtu_steps
+            outputs
+        '''
+        for pvtu_step in self.pvtu_steps:
+            expect_result_file = os.path.join(self.case_dir, 'vtk_outputs', '%s_s%06d' % (self.name, pvtu_step))
+            assert(os.path.isfile(expect_result_file))
+            with open(expect_result_file, 'r') as fin:
+                fin.readline()
+                output = fin.readline()
+                self.outputs.append(output)
+        return self.pvtu_steps, self.outputs
+    
+    def set_pvtu_steps(self, pvtu_steps):
+        '''
+        set_pvtu_steps
+        Inputs:
+            pvtu_steps(list of int): step to look for
+        '''
+        self.pvtu_steps = pvtu_steps
     
     def delete_temp_files(self, pvtu_steps):
         '''

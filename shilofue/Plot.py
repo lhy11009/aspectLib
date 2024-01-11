@@ -123,13 +123,17 @@ class LINEARPLOT():
         units = units[sort_indexes]
         return cols, names, units  ## debug
 
-    def ReadData(self, _filename):
+    def ReadData(self, _filename, **kwargs):
         '''
         Read Data
         Attributes:
             _filename(string):
                 filename for data file
+            kwargs(dict):
+                dtype: data type, default is float
         '''
+        dtype = kwargs.get('dtype', float)
+
         if not os.access(_filename, os.R_OK):  # read in data
             raise FileExistsError("%s cannot be read." % _filename)
         # self.data = np.genfromtxt(_filename, comments='#')
@@ -137,7 +141,12 @@ class LINEARPLOT():
         # import data via numpy buid in method
         # catch warning of empty file and return 1
         with warnings.catch_warnings(record=True) as w:
-            self.data = np.genfromtxt(_filename, comments='#', filling_values=0.0)
+            if dtype == float:
+                self.data = np.genfromtxt(_filename, comments='#', filling_values=0.0)
+            elif dtype == str:
+                self.data = np.loadtxt(_filename, comments='#', dtype=str)
+            else:
+                raise ValueError("dtype must be float or str")
             if (len(w) > 0):
                 assert(issubclass(w[-1].category, UserWarning))
                 assert('Empty input file' in str(w[-1].message))
