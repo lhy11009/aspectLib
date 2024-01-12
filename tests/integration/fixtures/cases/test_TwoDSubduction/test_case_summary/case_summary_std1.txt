@@ -1,0 +1,6 @@
+# 1: cases
+# 2: steps
+# 3: times (yr)
+# 4: wallclocks (s)
+eba_cdpt_coh500_SA80.0_OA40.0_cd100.0_cd7.5_gr9 1460 27981400.0 308000.0
+eba_cdpt_coh500_SA80.0_OA40.0_cd200.0_cd20.0_gr9 2250 41636200.0 307000.0

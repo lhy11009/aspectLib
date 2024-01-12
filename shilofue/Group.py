@@ -614,13 +614,14 @@ def DocumentGroupsInDir(_dir):
 class CASE_SUMMARY():
     '''
     Attributes:
+        n_case (int): number of cases
         cases: name of cases
         steps: end steps of cases
         times: end times of cases
         wallclocks: running time of cases on the wall clock
         ab_paths: absolution_paths of cases
+        has_update: has update to perform
     '''
-
     def __init__(self):
         '''
         Initiation
@@ -631,6 +632,8 @@ class CASE_SUMMARY():
         self.wallclocks = []
         self.ab_paths = []
         self.attrs = ['cases', 'steps', 'times', 'wallclocks']
+        self.n_case = 0
+        self.has_update = True
 
     def import_directory(self, _dir):
         '''
@@ -640,6 +643,7 @@ class CASE_SUMMARY():
         '''
         assert(os.path.isdir(_dir))
         case_list, step_list, time_list, wallclock_list = ReadBasicInfoGroup(_dir)
+        self.n_case += len(case_list)
         self.cases += case_list
         self.steps += step_list
         self.times += time_list
@@ -661,11 +665,15 @@ class CASE_SUMMARY():
 
         odata = reader.export("", self.attrs, data_only=True)
         case_list = odata[:, 0]
+        self.n_case = odata.shape[0]
 
         for i in range(len(case_list)):
             case = case_list[i]
             if case not in self.cases:
                 self.import_data(odata[i, :])
+        
+        # set has_update to False
+        self.has_update = False
 
     def import_data(self, o_data_1d):
         '''
@@ -688,14 +696,20 @@ class CASE_SUMMARY():
         '''
         # header and data to write
         data_raw = []
-        for _attr in attrs_to_output:
-            data_raw.append(np.array(getattr(self, _attr)))
+        oheaders = []
+        for i in range(len(attrs_to_output)):
+            _attr = attrs_to_output[i]
+            header = headers[i]
+            temp = np.array(getattr(self, _attr))
+            if len(temp) > 0:
+                # len(temp) == 0 marks an void field
+                data_raw.append(temp)
+                oheaders.append(header)
         data = np.column_stack(data_raw)
-        
         # output
         # write header
         i = 0
-        for header in headers:
+        for header in oheaders:
             fout.write("# %d: %s\n" % (i+1, header))
             i += 1
         np.savetxt(fout, data, delimiter=" ", fmt="%s")
@@ -713,6 +727,17 @@ class CASE_SUMMARY():
             self.write(fout, attrs_to_output, headers) 
         
         print("%s: Write file %s" % (Utilities.func_name(), o_path))
+
+    def write_file_if_update(self, o_path):
+        '''
+        write file if there are updates
+        Inputs:
+            o_path (str): path of output
+        '''
+        if self.has_update:
+            self.write_file(o_path)
+        else:
+            print("%s: File already exists %s" % (Utilities.func_name(), o_path))
 
     # error types
     class SummaryFileNotExistError(Exception):

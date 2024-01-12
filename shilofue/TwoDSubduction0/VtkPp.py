@@ -3063,7 +3063,7 @@ class SLABPLOT(LINEARPLOT):
         times = self.data[:, col_time]
         col_slab_depth = self.header['slab_depth']['col']
         slab_depths = self.data[:, col_slab_depth]
-
+        query_time = -1.0
         for i in range(len(times)-1):
             _time = times[i]
             depth = slab_depths[i]
@@ -3525,7 +3525,7 @@ def main():
         SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True)
     elif _commend == 'morph_case_parallel':
         # slab morphology for a case
-        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True, use_parallel=True)
+        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True, use_parallel=True, file_tag='interval')
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')

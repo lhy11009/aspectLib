@@ -84,24 +84,37 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.t660s = []
         self.attrs.append("t660s")
 
-
-    def import_directory(self, _dir):
+    def import_directory(self, _dir, **kwargs):
         '''
         Import from a directory, look for groups and cases
         Inputs:
             _dir (str): directory to import
         '''
+        actions = kwargs.get('actions', [])
+
         assert(os.path.isdir(_dir))
         GroupP.CASE_SUMMARY.import_directory(self, _dir)
 
-        # todo_t660
+        if "t660" in actions:
+            # initiate these field
+            self.t660s = [-1 for i in range(self.n_case)]
+            # update on specific properties
+            for i in range(self.n_case):
+                self.update_t660(i)
+
+    def update_t660(self, i):
+        '''
+        update t660
+        '''
+        case_dir = self.ab_paths[i]
+        # use the SLABPLOT class to read the slab_morph.txt file
+        # and get the t660
         SlabPlot = SLABPLOT('foo')
-        for case_dir in self.ab_paths:
-            try:
-                t660 = SlabPlot.GetTimeDepthTip(case_dir, 660e3)
-            except SLABPLOT.SlabMorphFileNotExistError:
-                t660 = -1.0
-            self.t660s.append(t660)
+        try:
+            t660 = SlabPlot.GetTimeDepthTip(case_dir, 660e3)
+        except SLABPLOT.SlabMorphFileNotExistError:
+            t660 = -1.0
+        self.t660s[i] = t660
 
     def write_file(self, o_path):
         '''
