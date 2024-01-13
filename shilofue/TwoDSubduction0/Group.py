@@ -94,7 +94,6 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.if_subducts = []
         self.attrs.append("if_subducts")
     
-    # todo_diagram
     def Update(self, **kwargs):
         '''
         Update on properties

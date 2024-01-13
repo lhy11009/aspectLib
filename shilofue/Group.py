@@ -641,7 +641,6 @@ class CASE_SUMMARY():
         self.has_update = True
         self.VISIT_OPTIONS = kwargs.get("VISIT_OPTIONS", None)
 
-    # todo_diagram
     def __call__(self, _dir, **kwargs):
         '''
         Inputs:
@@ -656,7 +655,6 @@ class CASE_SUMMARY():
         else:
             import_directory(self, _dir, **kwargs)
 
-    # todo_diagram
     def Update(self, **kwargs):
         '''
         Update on properties
@@ -683,7 +681,6 @@ class CASE_SUMMARY():
         for _case in case_list:
             self.ab_paths.append(os.path.join(_dir, _case))
         
-        # todo_diagram
         # then call update for properties
         self.Update(**kwargs)
     
@@ -699,7 +696,6 @@ class CASE_SUMMARY():
         reader.ReadHeader(i_path)
         reader.ReadData(i_path, dtype=str)
 
-        # todo_diagram
         # import data and append to fields
         for attr in self.attrs:
             temp = getattr(self, attr)
