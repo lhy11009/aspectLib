@@ -85,25 +85,27 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         GroupP.CASE_SUMMARY.__init__(self, **kwargs)
         self.t660s = []
         self.attrs.append("t660s")
-        # todo_diagram
         self.sz_thicks = []
         self.attrs.append("sz_thicks")
         self.sz_depths = []
         self.attrs.append("sz_depths")
         self.sz_viscs = []
         self.attrs.append("sz_viscs")
-
-    def import_directory(self, _dir, **kwargs):
+        self.if_subducts = []
+        self.attrs.append("if_subducts")
+    
+    # todo_diagram
+    def Update(self, **kwargs):
         '''
-        Import from a directory, look for groups and cases
+        Update on properties
         Inputs:
-            _dir (str): directory to import
+            kwargs:
+                actions (list): actions to take
         '''
         actions = kwargs.get('actions', [])
 
-        assert(os.path.isdir(_dir))
-        GroupP.CASE_SUMMARY.import_directory(self, _dir)
-
+        GroupP.CASE_SUMMARY.Update(self, **kwargs)
+        
         if "t660" in actions:
             # initiate these field
             self.t660s = [-1 for i in range(self.n_case)]
@@ -111,7 +113,6 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             for i in range(self.n_case):
                 self.update_t660(i)
 
-        # todo_diagram 
         if "shear_zone" in actions:
             # initiate these field
             self.sz_thicks = [-1 for i in range(self.n_case)]
@@ -120,6 +121,16 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             # update on specific properties
             for i in range(self.n_case):
                 self.update_shear_zone(i)
+
+    def import_directory(self, _dir, **kwargs):
+        '''
+        Import from a directory, look for groups and cases
+        Inputs:
+            _dir (str): directory to import
+            kwargs
+        '''
+        assert(os.path.isdir(_dir))
+        GroupP.CASE_SUMMARY.import_directory(self, _dir)
 
     def update_t660(self, i):
         '''
@@ -139,7 +150,6 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         '''
         Update shear zone properties
         ''' 
-        # todo_diagram
         case_dir = self.ab_paths[i]
         Visit_Options = self.VISIT_OPTIONS(case_dir)
         Visit_Options.Interpret()

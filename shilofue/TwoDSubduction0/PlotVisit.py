@@ -124,7 +124,6 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         #   the initial thickness is parsed from the wb file
         #   parse the cutoff depth if the viscosity is decoupled from the eclogite transition
         self.options["INITIAL_SHEAR_ZONE_THICKNESS"] = feature_sp["composition models"][0]["max depth"]
-        # todo_diagram
         decoupling_eclogite_viscosity = self.idict['Material model']['Visco Plastic TwoD'].get('Decoupling eclogite viscosity', 'false')
         if decoupling_eclogite_viscosity == 'true':
             self.options["SHEAR_ZONE_CUTOFF_DEPTH"] = float(self.idict['Material model']['Visco Plastic TwoD']["Eclogite decoupled viscosity"]["Decoupled depth"])

@@ -639,16 +639,41 @@ class CASE_SUMMARY():
         self.attrs = ['cases', 'steps', 'times', 'wallclocks']
         self.n_case = 0
         self.has_update = True
-        # todo_diagram
         self.VISIT_OPTIONS = kwargs.get("VISIT_OPTIONS", None)
 
-    def import_directory(self, _dir):
+    # todo_diagram
+    def __call__(self, _dir, **kwargs):
+        '''
+        Inputs:
+            _dir (str): directory to import
+        '''
+        # try to import a previous summary first
+        # if not found, import the cases in the directory
+        i_path = os.path.join(_dir, 'case_summary.txt')
+        if os.path.isfile(i_path):
+            self.import_txt(i_path)
+            self.Update(**kwargs)
+        else:
+            import_directory(self, _dir, **kwargs)
+
+    # todo_diagram
+    def Update(self, **kwargs):
+        '''
+        Update on properties
+        Inputs:
+            kwargs
+        '''
+        self.had_update = True
+        pass
+
+    def import_directory(self, _dir, **kwargs):
         '''
         Import from a directory, look for groups and cases
         Inputs:
             _dir (str): directory to import
         '''
         assert(os.path.isdir(_dir))
+        # first parse in run time information
         case_list, step_list, time_list, wallclock_list = ReadBasicInfoGroup(_dir)
         self.n_case += len(case_list)
         self.cases += case_list
@@ -657,6 +682,10 @@ class CASE_SUMMARY():
         self.wallclocks += wallclock_list
         for _case in case_list:
             self.ab_paths.append(os.path.join(_dir, _case))
+        
+        # todo_diagram
+        # then call update for properties
+        self.Update(**kwargs)
     
     def import_txt(self, i_path):
         '''
@@ -670,28 +699,14 @@ class CASE_SUMMARY():
         reader.ReadHeader(i_path)
         reader.ReadData(i_path, dtype=str)
 
-        odata = reader.export("", self.attrs, data_only=True)
-        case_list = odata[:, 0]
-        self.n_case = odata.shape[0]
-
-        for i in range(len(case_list)):
-            case = case_list[i]
-            if case not in self.cases:
-                self.import_data(odata[i, :])
+        # todo_diagram
+        # import data and append to fields
+        for attr in self.attrs:
+            temp = getattr(self, attr)
+            setattr(self, attr, temp + reader.export_field_as_array(attr))
         
         # set has_update to False
         self.has_update = False
-
-    def import_data(self, o_data_1d):
-        '''
-        import data from 1d array
-        o_data_1d (1d array)
-        '''
-        self.cases.append(o_data_1d[0])
-        self.times.append(o_data_1d[1])
-        self.steps.append(o_data_1d[2])
-        self.wallclocks.append(o_data_1d[3])
-        self.ab_paths.append('')
 
     def write(self, fout, attrs_to_output, headers):
         '''

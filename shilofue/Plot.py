@@ -385,6 +385,21 @@ but you will get a blank one for this field name' % _yname,
             print('\tData layout: ', odata.shape)
         return odata
 
+    def export_field_as_array(self, _name):
+        '''
+        Export field as array (list)
+        Inputs:
+            _name (str): name of the field
+        '''
+        try:
+            col = int(self.header[_name]['col'])
+        except KeyError:
+            o_array = []
+        else:
+            temp = self.data[:, col]
+            o_array = temp.tolist()
+        return o_array 
+
 
 class STATISTICS_PLOT_OLD(LINEARPLOT):
     '''
