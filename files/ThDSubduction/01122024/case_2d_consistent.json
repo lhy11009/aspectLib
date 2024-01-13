@@ -35,9 +35,9 @@
     "assign side plate": 1,
     "ov transit age": 20000000.0,
     "ov transit length": 700000.0,
-    "sp ridge x": 600000.0,
+    "sp ridge x": 0.0,
     "prescribe mantle sp start": 0,
-    "ov side dist": 600000.0,
+    "ov side dist": 0.0,
     "prescribe mantle ov end": 1
   },
   "use new rheology module": 1,
