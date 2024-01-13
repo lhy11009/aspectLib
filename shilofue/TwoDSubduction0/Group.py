@@ -76,13 +76,22 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         ab_paths: absolution_paths of cases
         t660s: time the slab tip reaches 660 km
     '''
-    def __init__(self):
+    def __init__(self, **kwargs):
         '''
         initiation
+        Inputs:
+            kwargs
         '''
-        GroupP.CASE_SUMMARY.__init__(self)
+        GroupP.CASE_SUMMARY.__init__(self, **kwargs)
         self.t660s = []
         self.attrs.append("t660s")
+        # todo_diagram
+        self.sz_thicks = []
+        self.attrs.append("sz_thicks")
+        self.sz_depths = []
+        self.attrs.append("sz_depths")
+        self.sz_viscs = []
+        self.attrs.append("sz_viscs")
 
     def import_directory(self, _dir, **kwargs):
         '''
@@ -102,6 +111,16 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             for i in range(self.n_case):
                 self.update_t660(i)
 
+        # todo_diagram 
+        if "shear_zone" in actions:
+            # initiate these field
+            self.sz_thicks = [-1 for i in range(self.n_case)]
+            self.sz_depths = [-1 for i in range(self.n_case)]
+            self.sz_viscs = [-1 for i in range(self.n_case)]
+            # update on specific properties
+            for i in range(self.n_case):
+                self.update_shear_zone(i)
+
     def update_t660(self, i):
         '''
         update t660
@@ -115,6 +134,18 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         except SLABPLOT.SlabMorphFileNotExistError:
             t660 = -1.0
         self.t660s[i] = t660
+        
+    def update_shear_zone(self, i):
+        '''
+        Update shear zone properties
+        ''' 
+        # todo_diagram
+        case_dir = self.ab_paths[i]
+        Visit_Options = self.VISIT_OPTIONS(case_dir)
+        Visit_Options.Interpret()
+        self.sz_viscs[i] = Visit_Options.options["SHEAR_ZONE_CONSTANT_VISCOSITY"]
+        self.sz_depths[i] = Visit_Options.options["SHEAR_ZONE_CUTOFF_DEPTH"]
+        self.sz_thicks[i] = Visit_Options.options["INITIAL_SHEAR_ZONE_THICKNESS"]
 
     def write_file(self, o_path):
         '''
@@ -122,8 +153,8 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         Inputs:
             o_path (str): path of output
         '''
-        attrs_to_output = ['cases', 'steps', 'times', 'wallclocks', 't660s']
-        headers = ['cases', 'steps', 'times (yr)', 'wallclocks (s)', 't660s (yr)']
+        attrs_to_output = ['cases', 'steps', 'times', 'wallclocks', 't660s', "sz_thicks", "sz_depths"]
+        headers = ['cases', 'steps', 'times (yr)', 'wallclocks (s)', 't660s (yr)', "sz_thicks (m)", "sz_depths (m)"]
 
         with open(o_path, 'w') as fout: 
             self.write(fout, attrs_to_output, headers) 

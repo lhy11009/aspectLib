@@ -621,10 +621,15 @@ class CASE_SUMMARY():
         wallclocks: running time of cases on the wall clock
         ab_paths: absolution_paths of cases
         has_update: has update to perform
+        VISIT_OPTIONS: the VISIT_OPTIONS class. This could be initiated later in the
+            scope to parse case informations.
     '''
-    def __init__(self):
+    def __init__(self, **kwargs):
         '''
         Initiation
+        Inputs:
+            kwargs:
+                VISIT_OPTIONS - the VISIT_OPTIONS class
         '''
         self.cases = []
         self.steps = []
@@ -634,6 +639,8 @@ class CASE_SUMMARY():
         self.attrs = ['cases', 'steps', 'times', 'wallclocks']
         self.n_case = 0
         self.has_update = True
+        # todo_diagram
+        self.VISIT_OPTIONS = kwargs.get("VISIT_OPTIONS", None)
 
     def import_directory(self, _dir):
         '''

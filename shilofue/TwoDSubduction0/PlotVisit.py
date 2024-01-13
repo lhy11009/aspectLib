@@ -120,7 +120,17 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         # Slab configuration
         index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
         feature_sp = self.wb_dict['features'][index]
+        # shear zone:
+        #   the initial thickness is parsed from the wb file
+        #   parse the cutoff depth if the viscosity is decoupled from the eclogite transition
         self.options["INITIAL_SHEAR_ZONE_THICKNESS"] = feature_sp["composition models"][0]["max depth"]
+        # todo_diagram
+        decoupling_eclogite_viscosity = self.idict['Material model']['Visco Plastic TwoD'].get('Decoupling eclogite viscosity', 'false')
+        if decoupling_eclogite_viscosity == 'true':
+            self.options["SHEAR_ZONE_CUTOFF_DEPTH"] = float(self.idict['Material model']['Visco Plastic TwoD']["Eclogite decoupled viscosity"]["Decoupled depth"])
+        else:
+            self.options["SHEAR_ZONE_CUTOFF_DEPTH"] = -1.0
+        self.options["SHEAR_ZONE_CONSTANT_VISCOSITY"] = -1.0
 
         # peierls rheology
         try:
