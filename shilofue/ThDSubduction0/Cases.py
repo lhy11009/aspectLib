@@ -235,7 +235,6 @@ different age will be adjusted.",\
         use_new_rheology_module = self.values[28]
         if_peierls = self.values[self.start+54]
         fix_peierls_V_as = self.values[self.start+55]
-        # todo_trail
         trailing_length_1 = self.values[self.start+56]
         sp_rate = self.values[self.start+27] # method of seting up slabs
         ov_age = self.values[self.start+25]
@@ -341,7 +340,6 @@ class CASE(CasesP.CASE):
                 # append the library to prescribe temperature if needed
                 o_dict["Additional shared libraries"] += ", "
                 o_dict["Additional shared libraries"] +=  "$ASPECT_SOURCE_DIR/build%s/prescribe_field_T_adiabat/libprescribe_field_T_adiabat.so" % branch_str
-            # todo_trail
             # another implementation, set trailing_length = 0.0 to turn off the older implementation
             # here we set this option to false and remove the corresponding section
             if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
@@ -599,7 +597,6 @@ class CASE(CasesP.CASE):
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
             "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
         elif _type == '2d_consistent':
-            # todo_trail
             if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
                 # another implementation, set trailing_length = 0.0 to turn off the older implementation
                 o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
@@ -610,7 +607,6 @@ class CASE(CasesP.CASE):
         # rewrite the reset density part
         if _type == '2d_consistent':
             if "Reset density function" in o_dict['Material model'][material_model_subsection]:
-                # todo_trail
                 if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
                     # another implementation, set trailing_length = 0.0 to turn off the older implementation
                     o_dict['Material model'][material_model_subsection]["Reset density function"]['Function constants'] =\
