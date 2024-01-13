@@ -143,6 +143,9 @@ different age will be adjusted.",\
         self.add_key("Include peierls creep", int, ['include peierls creep'], 0, nick='if_peierls')
         self.add_key("Fix the activation volume of the Peierls creep", str,\
          ['peierls creep', "fix peierls V as"], '', nick="fix_peierls_V_as")
+        # todo_trail
+        self.add_key("Length of the trailing tail of the plate, another implementation", float, ['plate setup', 'trailing length 1'],\
+                     0.0, nick='trailing_length_1')
 
     
     def check(self):
@@ -232,6 +235,10 @@ different age will be adjusted.",\
         use_new_rheology_module = self.values[28]
         if_peierls = self.values[self.start+54]
         fix_peierls_V_as = self.values[self.start+55]
+        # todo_trail
+        trailing_length_1 = self.values[self.start+56]
+        sp_rate = self.values[self.start+27] # method of seting up slabs
+        ov_age = self.values[self.start+25]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
@@ -241,7 +248,8 @@ different age will be adjusted.",\
             branch, sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init,\
             comp_method, reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method,\
             slab_core_viscosity, global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto,\
-            coarsen_side_level, coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as
+            coarsen_side_level, coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as,\
+            trailing_length_1, sp_rate, ov_age
         
     def to_configure_wb(self):
         '''
@@ -316,7 +324,8 @@ class CASE(CasesP.CASE):
     sp_ridge_x, ov_side_dist, prescribe_mantle_sp, prescribe_mantle_ov, mantle_minimum_init, comp_method,\
     reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method, slab_core_viscosity,\
     global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto, coarsen_side_level,\
-    coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as):
+    coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as, trailing_length_1, sp_rate,\
+    ov_age):
         '''
         Configure prm file
         '''
@@ -332,6 +341,12 @@ class CASE(CasesP.CASE):
                 # append the library to prescribe temperature if needed
                 o_dict["Additional shared libraries"] += ", "
                 o_dict["Additional shared libraries"] +=  "$ASPECT_SOURCE_DIR/build%s/prescribe_field_T_adiabat/libprescribe_field_T_adiabat.so" % branch_str
+            # todo_trail
+            # another implementation, set trailing_length = 0.0 to turn off the older implementation
+            # here we set this option to false and remove the corresponding section
+            if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
+                o_dict["Additional shared libraries"] += ", "
+                o_dict["Additional shared libraries"] +=  "$ASPECT_SOURCE_DIR/build%s/prescribe_field/libprescribed_temperature.so" % branch_str
         # geometry options
         # Box size: assigned 
         # repitition: figure this out by deviding the dimensions with a unit value of repitition_slice
@@ -584,13 +599,25 @@ class CASE(CasesP.CASE):
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
             "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
         elif _type == '2d_consistent':
-            o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
+            # todo_trail
+            if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
+                # another implementation, set trailing_length = 0.0 to turn off the older implementation
+                o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
+            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length_1, box_depth, box_length, sp_width)
+            else:
+                o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
             "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
         # rewrite the reset density part
         if _type == '2d_consistent':
             if "Reset density function" in o_dict['Material model'][material_model_subsection]:
-                o_dict['Material model'][material_model_subsection]["Reset density function"]['Function constants'] =\
-                "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CD=3300.0, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
+                # todo_trail
+                if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
+                    # another implementation, set trailing_length = 0.0 to turn off the older implementation
+                    o_dict['Material model'][material_model_subsection]["Reset density function"]['Function constants'] =\
+                    "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CD=3300.0, Wp=%.4e" % (trailing_length_1, box_depth, box_length, sp_width)
+                else:
+                    o_dict['Material model'][material_model_subsection]["Reset density function"]['Function constants'] =\
+                    "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CD=3300.0, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
 
         # rewrite the reaction morb part
         if _type in ['s07', 's07_newton', '2d_consistent']:
@@ -654,6 +681,24 @@ class CASE(CasesP.CASE):
             else:
                 # the default in the file should be false if there is any
                 pass
+            if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
+                # todo_trail
+                # another implementation, set trailing_length = 0.0 to turn off the older implementation
+                # here we set this option to false and remove the corresponding section
+                prescribe_T_area_width = trailing_length_1 + 300e3
+                o_dict["Prescribe internal mantle adiabat temperatures"] = 'false'
+                if "Prescribed mantle adiabat temperatures" in o_dict:
+                    o_dict.pop("Prescribed mantle adiabat temperatures")
+                o_dict["Prescribe internal temperatures"] = 'true'
+                o_dict["Prescribed temperatures"]["Indicator function"]["Function constants"] = \
+                    "Depth=1.45e5, Width=%.4e, Do=2.890e6, xm=%.4e, Wp=1.0000e+06" % (prescribe_T_area_width, box_length)
+                o_dict["Prescribed temperatures"]["Plate model 1"] = {
+                    'Area width': "%.4e" % prescribe_T_area_width,
+                    'Subducting plate velocity': "%.4e" % (sp_rate / year),
+                    'Overiding plate age': "%.4e" % (ov_age * year),
+                    "Overiding area width": "%.4e" % prescribe_T_area_width,
+                    "Top temperature": "273.0"
+                }
         # reset composition viscosity
         # usage is to prescribe a strong core with the plate
         if reset_composition_viscosity:

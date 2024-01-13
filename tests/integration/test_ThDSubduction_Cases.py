@@ -38,7 +38,7 @@ if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
 
-
+# todo_trail
 def test_reference_gamma():
     '''
     test for the reference case after iteration gamma
