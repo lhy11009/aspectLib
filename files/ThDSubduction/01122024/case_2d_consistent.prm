@@ -173,6 +173,8 @@ subsection Material model
         set Reference strain rate = 1e-15
         set Minimum viscosity = background: 1.0000e+19, sp_upper: 1.0000e+19, sp_lower: 1.0000e+23, plate_edge: 1.0000e+19
         set Maximum viscosity = 1e24
+        set Minimum temperature for viscosity = 273.0
+        set Use adiabatic pressure in creep viscosity = true
         set Phase transition depths = background:410e3|520e3|560e3|660e3|660e3|660e3|660e3, sp_upper: 80e3|665e3|720e3, sp_lower: 410e3|520e3|560e3|660e3|660e3|660e3|660e3, plate_edge: 250e3|660e3
         set Phase transition widths = background:13e3|25e3|60e3|5e3|5e3|5e3|5e3, sp_upper:5e3, sp_lower: 13e3|25e3|60e3|5e3|5e3|5e3|5e3, plate_edge: 5e3
         set Phase transition temperatures = background:1780.0|1850.0|1870.0|1910.0|2000.0|2000.0|2000.0, sp_upper: 1173.0|1870.0|2000.0, sp_lower: 1780.0|1850.0|1870.0|1910.0|2000.0|2000.0|2000.0, plate_edge: 1662.0|1910.0
