@@ -170,6 +170,29 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         
         print("%s: Write file %s" % (Utilities.func_name(), o_path))
 
+    # todo_diagram
+    def plot_diagram_t660(self, **kwargs):
+        '''
+        plot a diagram of t660
+        '''
+        fig_path = kwargs.get('fig_path', None)
+
+        fig, ax = plt.subplots()
+        x_name = "sz_thicks"
+        y_name = "sz_depths"
+        z_name = "t660s"
+
+        # mesh data
+        SZTT, SZDD, tt660 = self.mesh_data(x_name, y_name, z_name)
+        
+        # generate the plot
+        ax.pcolormesh(SZTT, SZDD, tt660)
+
+        # save figure
+        if fig_path is not None:
+            fig.savefig(fig_path)
+
+
 
 def main():
     '''

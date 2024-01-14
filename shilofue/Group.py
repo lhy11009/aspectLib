@@ -651,9 +651,9 @@ class CASE_SUMMARY():
         i_path = os.path.join(_dir, 'case_summary.txt')
         if os.path.isfile(i_path):
             self.import_txt(i_path)
-            self.Update(**kwargs)
+            self.Update(**kwargs) # debug
         else:
-            import_directory(self, _dir, **kwargs)
+            self.import_directory(_dir, **kwargs)
 
     def Update(self, **kwargs):
         '''
@@ -700,6 +700,14 @@ class CASE_SUMMARY():
         for attr in self.attrs:
             temp = getattr(self, attr)
             setattr(self, attr, temp + reader.export_field_as_array(attr))
+
+        # todo_diagram
+        # number of cases
+        cases = getattr(self, "cases")
+        self.n_case = len(cases)
+        for _case in cases:
+            temp = os.path.join(os.path.dirname(i_path), _case)
+            self.ab_paths.append(os.path.abspath(temp))
         
         # set has_update to False
         self.has_update = False
@@ -760,6 +768,64 @@ class CASE_SUMMARY():
     # error types
     class SummaryFileNotExistError(Exception):
         pass
+
+    # todo_diagram
+    def mesh_data(self, x_name, y_name, z_name, **kwargs):
+        '''
+        plot diagram
+        Inputs:
+            x_name, y_name, z_name - name of fields
+            kwargs:
+                nx: number of point along x
+                ny: number of point along y
+        Returns:
+            XX, YY, ZZ - meshed data
+        '''
+        nx = kwargs.get("nx", 20)
+        ny = kwargs.get("ny", 30)
+        
+        # get the properties
+        Xs = getattr(self, x_name)
+        Ys = getattr(self, y_name)
+        Zs = getattr(self, z_name)
+        x_min = np.min(np.array(Xs))
+        x_max = np.max(np.array(Xs))
+        y_min = np.min(np.array(Ys))
+        y_max = np.max(np.array(Ys))
+
+        # map to a 2d mesh
+        x_temp = np.linspace(x_min, x_max, nx) 
+        y_temp = np.linspace(y_min, y_max, ny)
+        XX, YY = np.meshgrid(x_temp, y_temp)
+        ZZ = WeightedByDistance(Xs, Ys, Zs, XX, YY)
+
+        return XX, YY, ZZ
+
+
+# todo_diagram
+def WeightedByDistance(Xs, Ys, Zs, XX, YY):
+    '''
+    Inputs:
+        Xs, Ys - coordinates arrays
+        Zs - data array
+        XX, YY - meshed coordinates
+    Return:
+        zz - meshed data
+    '''
+    # initiate
+    data_size = len(Xs)
+    assert(data_size == len(Ys) and data_size == len(Zs))
+    assert(XX.shape == YY.shape)
+    ZZ = np.zeros(XX.shape)
+    weight = np.zeros(XX.shape)
+
+    # distance weight the data
+    for i in range(data_size):
+        dist = ((XX - Xs[i])**2.0 + (YY - Ys[i])**2.0)**0.5
+        weight += 1.0 / dist
+        ZZ += Zs[i] / dist
+    ZZ /= weight
+    return ZZ
          
 
 ####
