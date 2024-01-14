@@ -701,7 +701,6 @@ class CASE_SUMMARY():
             temp = getattr(self, attr)
             setattr(self, attr, temp + reader.export_field_as_array(attr))
 
-        # todo_diagram
         # number of cases
         cases = getattr(self, "cases")
         self.n_case = len(cases)
