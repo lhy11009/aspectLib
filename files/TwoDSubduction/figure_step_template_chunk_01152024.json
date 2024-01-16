@@ -1,0 +1,64 @@
+{
+    "figures": [
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/T_tNUMERICAL_TIME_4E.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/viscosity_tNUMERICAL_TIME_4E.png",
+            "operation": "paste",
+            "mask": 0,
+            "resize": 1.0,
+            "position": [0, 705],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_0.png",
+            "temp": 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_0.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/T_whole_tNUMERICAL_TIME_4E.png",
+            "operation": "paste",
+            "mask": 0,
+            "resize": 1.0,
+            "position": [1400, 0],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_1.png",
+            "temp": 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_1.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/viscosity_whole_tNUMERICAL_TIME_4E.png",
+            "operation": "paste",
+            "mask": 0,
+            "resize": 1.0,
+            "position": [1400, 705],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_2.png",
+            "temp": 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_2.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/morphology/temp/trench_tNUMERICAL_TIME_4E.png",
+            "operation": "paste",
+            "mask": 0,
+            "resize": 1.0,
+            "position": [2800, 400],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_3.png",
+            "temp": 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_3.png",
+            "operation": "text",
+            "text": "STEP_TIME_STAMP",
+            "font size": 30,
+            "position": [1600, 10],
+            "save path": "IMG_OUTPUT_DIR/animation/step_sNUMERICAL_STEP.png"
+        }
+    ]
+}
