@@ -1,6 +1,6 @@
 {
   "_comments": "This case is modified from the Schellart 2007 paper, but include newtonian T-dependent rheology",
-  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/01122024",
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/01172024",
   "output directory": "${ASPECT_LAB_DIR}/.test/",
   "depth average file": "${ASPECT_LAB_DIR}/files/ThDSubduction/reference/depth_average_1573.txt",
   "name": "test_fix_CDPT",
