@@ -146,6 +146,13 @@ different age will be adjusted.",\
         # todo_trail
         self.add_key("Length of the trailing tail of the plate, another implementation", float, ['plate setup', 'trailing length 1'],\
                      0.0, nick='trailing_length_1')
+        # todo_mrheo
+        self.add_key("Value of Coh to use in the rheology", float,\
+            ['mantle rheology', "Coh"], 500.0, nick='mantle_coh')
+        self.add_key("Value of lower/upper mantle ratio to use in the rheology", float,\
+            ['mantle rheology', "jump lower mantle"], 100.0, nick='jump_lower_mantle')
+        self.add_key("Adjust detail of mantle rheology", int,\
+            ['mantle rheology', "adjust detail"], 0, nick='adjust_mantle_rheology_detail')
 
     
     def check(self):
@@ -238,6 +245,10 @@ different age will be adjusted.",\
         trailing_length_1 = self.values[self.start+56]
         sp_rate = self.values[self.start+27] # method of seting up slabs
         ov_age = self.values[self.start+25]
+        # todo_mrheo
+        detail_mantle_coh = self.values[self.start+57]
+        detail_jump_lower_mantle = self.values[self.start+58]
+        adjust_mantle_rheology_detail = self.values[self.start+59]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
@@ -248,7 +259,7 @@ different age will be adjusted.",\
             comp_method, reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method,\
             slab_core_viscosity, global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto,\
             coarsen_side_level, coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as,\
-            trailing_length_1, sp_rate, ov_age
+            trailing_length_1, sp_rate, ov_age, detail_mantle_coh, detail_jump_lower_mantle, adjust_mantle_rheology_detail
         
     def to_configure_wb(self):
         '''
@@ -324,7 +335,7 @@ class CASE(CasesP.CASE):
     reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method, slab_core_viscosity,\
     global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto, coarsen_side_level,\
     coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as, trailing_length_1, sp_rate,\
-    ov_age):
+    ov_age, detail_mantle_coh, detail_jump_lower_mantle, adjust_mantle_rheology_detail):
         '''
         Configure prm file
         '''
@@ -490,7 +501,6 @@ class CASE(CasesP.CASE):
                             jump_lower_mantle=15.0)
             elif mantle_rheology_scheme == "HK03_WarrenHansen23":
                 # read in the original rheology
-                mantle_coh = 500 # be default, use a value of 500
                 rheology_name = "WarrenHansen23"
                 rheology_prm_dict = RHEOLOGY_PRM()
                 diffusion_creep_ori = getattr(rheology_prm_dict, rheology_name + "_diff")
@@ -501,6 +511,12 @@ class CASE(CasesP.CASE):
                 disl_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': 3e-6}
                 # prescribe the reference state
                 ref_state = {}
+                if adjust_mantle_rheology_detail:
+                    mantle_coh = detail_mantle_coh
+                    jump_lower_mantle = detail_jump_lower_mantle
+                else:
+                    mantle_coh = 500.0
+                    jump_lower_mantle = 100.0
                 ref_state["Coh"] = mantle_coh # H / 10^6 Si
                 ref_state["stress"] = 50.0 # MPa
                 ref_state["P"] = 100.0e6 # Pa
@@ -512,7 +528,7 @@ class CASE(CasesP.CASE):
                 rheology, _ = Operator.MantleRheology(assign_rheology=True, diffusion_creep=rheology_dict_refit['diffusion'],\
                                                             dislocation_creep=rheology_dict_refit['dislocation'], save_profile=1,\
                                                             use_effective_strain_rate=True, save_json=1, Coh=mantle_coh,\
-                                                            jump_lower_mantle=100.0)
+                                                            jump_lower_mantle=jump_lower_mantle)
             else:
                 rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme,\
                             save_profile=1, save_json=1, use_effective_strain_rate=True)
@@ -544,6 +560,12 @@ class CASE(CasesP.CASE):
                 diff_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': -2.1e-6}
                 disl_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': 3e-6}
                 # prescribe the reference state
+                if adjust_mantle_rheology_detail:
+                    mantle_coh = detail_mantle_coh
+                    jump_lower_mantle = detail_jump_lower_mantle
+                else:
+                    mantle_coh = 500.0
+                    jump_lower_mantle = 100.0
                 ref_state = {}
                 ref_state["Coh"] = mantle_coh # H / 10^6 Si
                 ref_state["stress"] = 50.0 # MPa
@@ -556,7 +578,7 @@ class CASE(CasesP.CASE):
                 rheology, _ = Operator.MantleRheology(assign_rheology=True, diffusion_creep=rheology_dict_refit['diffusion'],\
                                                             dislocation_creep=rheology_dict_refit['dislocation'], save_profile=1,\
                                                             use_effective_strain_rate=True, save_json=1, Coh=mantle_coh,\
-                                                            jump_lower_mantle=100.0)
+                                                            jump_lower_mantle=jump_lower_mantle)
             if mantle_rheology_scheme in ["HK03_WarrenHansen23"]: 
                 consistent_2d_assign_mantle_rheology(o_dict, rheology)    
                 self.output_files.append(Operator.output_json)
