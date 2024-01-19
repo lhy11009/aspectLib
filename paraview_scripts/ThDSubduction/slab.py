@@ -23,7 +23,7 @@ class SLAB(PARAVIEW_PLOT):
         at 10 km in depth.
         Here I first set the plots up. This is equivalent to add filters to a paraview window in the gui.
         '''
-        slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, 2000000.0, 990000.0],\
+        slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, 2000000.0, 2880000.0],\
         [0.0, 0.0, 1.0], renderView=self.renderView1, name="surface_z")
         # 0: renderView.CameraPosition
         # 1: renderView.CameraFocalPoint 
@@ -289,21 +289,20 @@ class SLAB(PARAVIEW_PLOT):
         print("Figure saved: %s" % file_out)
         if hide_plot:
             Hide(isoVolume1, renderView1)  # hide data in view
-
-    def plot_slice(self, _source): 
+    
+    def plot_slab_slice(self, source_name, source_streamline): 
         '''
         plot a slice
         '''
         # get active view and source
         renderView1 = GetActiveViewOrCreate('RenderView')
-        
+
         field1 = "T"
         field2 = "viscosity"
 
         # part 1: plot the center slice 
         # part 1a: temperature
-        source1 = FindSource(_source)
-        
+        source1 = FindSource(source_name)
         source1Display = Show(source1, renderView1, 'GeometryRepresentation')
         
         # get the original plot field, in order to hide
@@ -331,6 +330,43 @@ class SLAB(PARAVIEW_PLOT):
         field1LUTColorBar.WindowLocation = 'Any Location'
         field1LUTColorBar.Position = [0.041, 0.908]
         field1LUTColorBar.ScalarBarLength = 0.33
+        # part 1a: end
+
+        # part 1b: stream line
+        sourceSl = FindSource(source_streamline)
+        sourceSlDisplay = Show(sourceSl, renderView1, 'GeometryRepresentation')
+
+        # redundant color 
+        field0 = sourceSlDisplay.ColorArrayName[1]
+        field0LUT = GetColorTransferFunction(field0)
+
+
+        # set scalar coloring
+        ColorBy(sourceSlDisplay, ('POINTS', 'velocity', 'Magnitude'))
+        HideScalarBarIfNotNeeded(field0LUT, renderView1)
+        sourceSlDisplay.SetScalarBarVisibility(renderView1, True)
+
+        # get color transformation
+        fieldVLUT = GetColorTransferFunction("velocity")
+        fieldVPWF = GetOpacityTransferFunction("velocity")
+
+        # reset color 
+        fieldVLUT.ApplyPreset('Viridis (matplotlib)', True)
+
+        # set opacity 
+        sourceSlDisplay.Opacity = 0.5
+        
+        # rescale 
+        fieldVLUT.RescaleTransferFunction(0.0, 0.1) # Rescale transfer function
+        fieldVPWF.RescaleTransferFunction(0.0, 0.1) # Rescale transfer function
+        
+        # colorbar position
+        fieldVLUTColorBar = GetScalarBar(fieldVLUT, renderView1)
+        fieldVLUTColorBar.Orientation = 'Horizontal'
+        fieldVLUTColorBar.WindowLocation = 'Any Location'
+        fieldVLUTColorBar.Position = [0.541, 0.908]
+        fieldVLUTColorBar.ScalarBarLength = 0.33
+        # part 1b: end
         
         # Properties modified on renderView1.AxesGrid
         renderView1.AxesGrid.Visibility = 1
@@ -341,13 +377,13 @@ class SLAB(PARAVIEW_PLOT):
         layout1 = GetLayout()
         layout1.SetSize(1350, 704)
         renderView1.InteractionMode = '2D'
-        renderView1.CameraPosition = [4688116.467077909, -15316645.446003344, 2608614.9857629854]
-        renderView1.CameraFocalPoint = [4688116.467077909, 1.0, 2608614.9857629854]
+        renderView1.CameraPosition = [4e6, -15e6, 25e5]
+        renderView1.CameraFocalPoint = [4e6, 1.0, 25e5]
         renderView1.CameraViewUp = [0.0, 0.0, 1.0]
-        renderView1.CameraParallelScale = 486990.898610654
+        renderView1.CameraParallelScale = 6e5
 
         # save figure
-        fig_path = os.path.join(self.pv_output_dir, "%s_slice_center_t%.4e.pdf" % (field1, self.time))
+        fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.pdf" % (source_name, field2, self.time))
         ExportView(fig_path, view=renderView1)
 
         # part 1b: viscosity
@@ -380,25 +416,27 @@ class SLAB(PARAVIEW_PLOT):
         renderView1.OrientationAxesVisibility = 0
 
         # save figure
-        fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.pdf" % (_source, field2, self.time))
+        fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.pdf" % (source_name, field2, self.time))
         ExportView(fig_path, view=renderView1)
 
         # hide plots 
         Hide(source1, renderView1)
         HideScalarBarIfNotNeeded(field2LUT, renderView1)
-    
+        Hide(sourceSl, renderView1)
+        HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+
     def plot_iso_volume(self):
         # get active view and source
         renderView1 = GetActiveViewOrCreate('RenderView')
 
-        _source = "isoVolume_slab_lower"
-        _source_stream1 = "StreamTracer1"
-        _source_stream2 = "StreamTracer2"
+        source_name = "isoVolume_slab_lower"
+        field1 = "T"
+        source_streamline1 = "StreamTracer1"
+        source_streamline2 = "StreamTracer2"
+        source_slice1 = "slice_surface_z"
 
-        # part 1: plot the center slice 
-        # part 1a: temperature
-        source1 = FindSource(_source)
-        
+        # part 1a: plot the lower slab 
+        source1 = FindSource(source_name)
         source1Display = Show(source1, renderView1, 'GeometryRepresentation')
 
         # get the original plot field, in order to hide
@@ -407,47 +445,124 @@ class SLAB(PARAVIEW_PLOT):
         field0LUT = GetColorTransferFunction(field0)
 
         # set scalar coloring
-        ColorBy(source1Display, None)
+        ColorBy(source1Display, ('POINTS', field1, 'Magnitude'))
         HideScalarBarIfNotNeeded(field0LUT, renderView1)
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        
+        # get color transformation
+        field1LUT = GetColorTransferFunction(field1)
+        field1PWF = GetOpacityTransferFunction(field1)
+        
+        # colorbar position
+        field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
+        field1LUTColorBar.Orientation = 'Horizontal'
+        field1LUTColorBar.WindowLocation = 'Any Location'
+        field1LUTColorBar.Position = [0.041, 0.908]
+        field1LUTColorBar.ScalarBarLength = 0.33
+        # part 1a end
+
+        # part 1b: stream line 1
+        sourceSl1 = FindSource(source_streamline1)
+        sourceSl1Display = Show(sourceSl1, renderView1, 'GeometryRepresentation')
+
+        # redundant color 
+        field0 = sourceSl1Display.ColorArrayName[1]
+        field0LUT = GetColorTransferFunction(field0)
+
+        # set scalar coloring
+        ColorBy(sourceSl1Display, ('POINTS', 'velocity', 'Magnitude'))
+        HideScalarBarIfNotNeeded(field0LUT, renderView1)
+
+        # get color transformation
+        fieldVLUT = GetColorTransferFunction("velocity")
+        fieldVPWF = GetOpacityTransferFunction("velocity")
+
+        # reset color 
+        fieldVLUT.ApplyPreset('Viridis (matplotlib)', True)
+
+        # set opacity 
+        sourceSl1Display.Opacity = 0.3
+        
+        # rescale 
+        fieldVLUT.RescaleTransferFunction(0.0, 0.1) # Rescale transfer function
+        fieldVPWF.RescaleTransferFunction(0.0, 0.1) # Rescale transfer function
+        # part 1b end
+        
+        # part 1c: stream line 2
+        sourceSl2 = FindSource(source_streamline2)
+        sourceSl2Display = Show(sourceSl2, renderView1, 'GeometryRepresentation')
+
+        # redundant color 
+        field0 = sourceSl2Display.ColorArrayName[1]
+        field0LUT = GetColorTransferFunction(field0)
+
+        # set scalar coloring
+        ColorBy(sourceSl2Display, ('POINTS', 'velocity', 'Magnitude'))
+        HideScalarBarIfNotNeeded(field0LUT, renderView1)
+        sourceSl2Display.SetScalarBarVisibility(renderView1, True)
+
+        # get color transformation
+        fieldVLUT = GetColorTransferFunction("velocity")
+        fieldVPWF = GetOpacityTransferFunction("velocity")
+
+        # reset color 
+        fieldVLUT.ApplyPreset('Viridis (matplotlib)', True)
+
+        # set opacity 
+        # sourceSl2Display.Opacity = 0.5
+        
+        # rescale 
+        fieldVLUT.RescaleTransferFunction(0.0, 0.1) # Rescale transfer function
+        fieldVPWF.RescaleTransferFunction(0.0, 0.1) # Rescale transfer function
+        
+        # colorbar position
+        fieldVLUTColorBar = GetScalarBar(fieldVLUT, renderView1)
+        fieldVLUTColorBar.Orientation = 'Horizontal'
+        fieldVLUTColorBar.WindowLocation = 'Any Location'
+        fieldVLUTColorBar.Position = [0.541, 0.908]
+        fieldVLUTColorBar.ScalarBarLength = 0.33
+        # part 1c end
+        
+        # part 1d slices
+        sourceSlice1 = FindSource(source_slice1)
+        sourceSlice1Display = Show(sourceSlice1, renderView1, 'GeometryRepresentation')
+        
+        # redundant color 
+        field0 = sourceSlice1Display.ColorArrayName[1]
+        field0LUT = GetColorTransferFunction(field0)
+        
+        # set scalar coloring
+        ColorBy(sourceSlice1Display, ('POINTS', 'T', 'Magnitude'))
+        HideScalarBarIfNotNeeded(field0LUT, renderView1)
+        # part 1d end
 
         # adjust layout and camera & get layout & set layout/tab size in pixels
         layout1 = GetLayout()
         layout1.SetSize(1350, 704)
         renderView1.InteractionMode = '2D'
-        renderView1.CameraPosition = [-2840438.6751601123, -6329726.657407373, 4570510.036975652]
-        renderView1.CameraFocalPoint = [2864614.8331994326, 1817934.1389134214, 950295.6586639492]
-        renderView1.CameraViewUp = [0.19617469496901074, 0.2801664995932357, 0.9396926207859084]
+        renderView1.CameraPosition = [-2e6, -6e6, 5.5e6]
+        renderView1.CameraFocalPoint = [3.7e6, 1.65e6, 1.9e6]
+        renderView1.CameraViewUp = [0.1961746949690106, 0.2801664995932358, 0.9396926207859084]
         renderView1.CameraParallelScale = 3e6
+
+        # save figure 
+        fig_path = os.path.join(self.pv_output_dir, "%s_t%.4e.pdf" % (source_name, self.time))
+        ExportView(fig_path, view=renderView1)
         
-        # set the first tracer
-        source_stream1 = FindSource(_source_stream1)
-        streamTracer1Display = Show(source_stream1, renderView1, 'GeometryRepresentation')
-        ColorBy(streamTracer1Display, ('POINTS', 'velocity', 'Magnitude'))
-
-        # set the second tracer 
-        source_stream2 = FindSource(_source_stream2)
-        streamTracer2Display = Show(source_stream2, renderView1, 'GeometryRepresentation')
-        ColorBy(streamTracer2Display, ('POINTS', 'velocity', 'Magnitude'))
-
-        # adjust the color 
-        streamTracer1Display.RescaleTransferFunctionToDataRange(True, False)
-        streamTracer1Display.SetScalarBarVisibility(renderView1, True)
-        velocityLUT = GetColorTransferFunction('velocity')
-        velocityPWF = GetOpacityTransferFunction('velocity')
-        velocityLUT.ApplyPreset('hawaii', True)
-        velocityLUT.InvertTransferFunction()
-        # Rescale transfer function
-        velocityLUT.RescaleTransferFunction(0.0, 0.07)
-        # Rescale transfer function
-        velocityPWF.RescaleTransferFunction(0.0, 0.07)
-        streamTracer1Display.Opacity = 0.2
+        # hide plots 
+        Hide(source1, renderView1)
+        HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        Hide(sourceSl1, renderView1)
+        Hide(sourceSl2, renderView1)
+        HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+        Hide(sourceSlice1, renderView1)
     
     def plot_step(self): 
         '''
         plot a step
         '''
-        self.plot_slice("slice_trench_center_y")
-        self.plot_slice("slice_trench_edge_y")
+        self.plot_slab_slice("slice_trench_center_y", "StreamTracer1")
+        # self.plot_slice("slice_trench_edge_y")
         self.plot_iso_volume()
         pass
 
