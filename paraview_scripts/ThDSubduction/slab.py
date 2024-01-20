@@ -53,16 +53,16 @@ class SLAB(PARAVIEW_PLOT):
         adjust_camera(self.renderView1, _camera[0],_camera[1], _camera[2], _camera[3])
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
         Hide(slice1, self.renderView1) # hide data in view
-
-    def setup_trench_slice_edge(self):
+    
+    def setup_slice_back_y(self):
         '''
-        Generate a visualization of a slice perpendicular to y direction, and locates at trench center (y=0)
+        Generate a visualization of a slice perpendicular to y direction, and locates at the back of the model (y = YMAX)
         Here I first set the plots up. This is equivalent to add filters to a paraview window in the gui.
         '''
-        slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, TRENCH_EDGE_Y, 500000.0],\
-        [0.0, 1.0, 0.0], renderView=self.renderView1, name="trench_edge_y")
+        slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, 4000000.0, 500000.0],\
+        [0.0, 1.0, 0.0], renderView=self.renderView1, name="back_y")
         _camera = [[2000000.0, -14540803.753676033, 400000.0],\
-        [TRENCH_INITIAL, TRENCH_EDGE_Y, 400000.0],  746067.2208702065, [0.0, 0.0, 1.0]]
+        [4600000.0, 750000.0, 400000.0],  746067.2208702065, [0.0, 0.0, 1.0]]
         _color_bar = [[0.3376097408112943, 0.03], 0.36285420944558516]
         self.camera_dict['slice_trench_edge_y'] = _camera
         self.colorbar_dict['slice_trench_edge_y'] = _color_bar
@@ -383,8 +383,10 @@ class SLAB(PARAVIEW_PLOT):
         renderView1.CameraParallelScale = 6e5
 
         # save figure
-        fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.pdf" % (source_name, field2, self.time))
-        ExportView(fig_path, view=renderView1)
+        # fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.pdf" % (source_name, field2, self.time))
+        # ExportView(fig_path, view=renderView1)
+        fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.png" % (source_name, field2, self.time))
+        SaveScreenshot(fig_path, view=renderView1)
 
         # part 1b: viscosity
         # get color transfer function/color map for 'field'
@@ -416,8 +418,10 @@ class SLAB(PARAVIEW_PLOT):
         renderView1.OrientationAxesVisibility = 0
 
         # save figure
-        fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.pdf" % (source_name, field2, self.time))
-        ExportView(fig_path, view=renderView1)
+        # fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.pdf" % (source_name, field2, self.time))
+        # ExportView(fig_path, view=renderView1)
+        fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.png" % (source_name, field2, self.time))
+        SaveScreenshot(fig_path, view=renderView1)
 
         # hide plots 
         Hide(source1, renderView1)
@@ -429,11 +433,11 @@ class SLAB(PARAVIEW_PLOT):
         # get active view and source
         renderView1 = GetActiveViewOrCreate('RenderView')
 
+        # set the sources and fields to plot
         source_name = "isoVolume_slab_lower"
-        field1 = "T"
+        field1 = "strain_rate"
         source_streamline1 = "StreamTracer1"
         source_streamline2 = "StreamTracer2"
-        source_slice1 = "slice_surface_z"
 
         # part 1a: plot the lower slab 
         source1 = FindSource(source_name)
@@ -452,6 +456,14 @@ class SLAB(PARAVIEW_PLOT):
         # get color transformation
         field1LUT = GetColorTransferFunction(field1)
         field1PWF = GetOpacityTransferFunction(field1)
+        
+        # reset log scale and color 
+        field1LUT.UseLogScale = 1
+        field1LUT.ApplyPreset('Inferno (matplotlib)', True)
+        
+        # reset limit
+        field1LUT.RescaleTransferFunction(1e-16, 1e-13) # Rescale transfer function
+        field1PWF.RescaleTransferFunction(1e-16, 1e-13) # Rescale transfer function
         
         # colorbar position
         field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
@@ -522,40 +534,59 @@ class SLAB(PARAVIEW_PLOT):
         fieldVLUTColorBar.Position = [0.541, 0.908]
         fieldVLUTColorBar.ScalarBarLength = 0.33
         # part 1c end
-        
-        # part 1d slices
-        sourceSlice1 = FindSource(source_slice1)
-        sourceSlice1Display = Show(sourceSlice1, renderView1, 'GeometryRepresentation')
-        
-        # redundant color 
-        field0 = sourceSlice1Display.ColorArrayName[1]
-        field0LUT = GetColorTransferFunction(field0)
-        
-        # set scalar coloring
-        ColorBy(sourceSlice1Display, ('POINTS', 'T', 'Magnitude'))
-        HideScalarBarIfNotNeeded(field0LUT, renderView1)
-        # part 1d end
+
+        # First figure: front view 
+        # show axis
+        renderView1.AxesGrid.Visibility = 1
 
         # adjust layout and camera & get layout & set layout/tab size in pixels
         layout1 = GetLayout()
         layout1.SetSize(1350, 704)
         renderView1.InteractionMode = '2D'
-        renderView1.CameraPosition = [-2e6, -6e6, 5.5e6]
-        renderView1.CameraFocalPoint = [3.7e6, 1.65e6, 1.9e6]
-        renderView1.CameraViewUp = [0.1961746949690106, 0.2801664995932358, 0.9396926207859084]
+        renderView1.CameraPosition = [-1969594.4237669427, -7648832.313371979, 4517567.004331156]
+        renderView1.CameraFocalPoint = [3257251.3468961315, -170121.39162456727, 1625169.2839424186]
+        renderView1.CameraViewUp = [0.1739929700643561, 0.24706690121391958, 0.9532493864108885]
         renderView1.CameraParallelScale = 3e6
-
+        
         # save figure 
-        fig_path = os.path.join(self.pv_output_dir, "%s_t%.4e.pdf" % (source_name, self.time))
-        ExportView(fig_path, view=renderView1)
+        # fig_path = os.path.join(self.pv_output_dir, "%s_top_t%.4e.pdf" % (source_name, self.time))
+        # ExportView(fig_path, view=renderView1)
+        fig_path = os.path.join(self.pv_output_dir, "%s_front_t%.4e.png" % (source_name, self.time))
+        SaveScreenshot(fig_path, view=renderView1)
+        # First figure: end
+        
+        # second figure: top view of the trench
+        # hide streamline 1 
+        Hide(sourceSl1, renderView1)
+        
+        # hide colorbars 
+        source1Display.SetScalarBarVisibility(renderView1, False)
+        sourceSl2Display.SetScalarBarVisibility(renderView1, False)
+        
+        # show axis
+        renderView1.AxesGrid.Visibility = 1
+        
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(625, 704)
+        renderView1.InteractionMode = '2D'
+        renderView1.CameraPosition = [4336366.02643443, 1260194.743797557, 6771244.231812002]
+        renderView1.CameraFocalPoint = [4336366.02643443, 1260194.743797557, 2229142.0625]
+        renderView1.CameraViewUp = [-1.0, 2.220446049250313e-16, 0.0]
+        renderView1.CameraParallelScale = 2519965.5913072587
+        
+        # save figure 
+        # fig_path = os.path.join(self.pv_output_dir, "%s_top_t%.4e.pdf" % (source_name, self.time))
+        # ExportView(fig_path, view=renderView1)
+        fig_path = os.path.join(self.pv_output_dir, "%s_top_t%.4e.png" % (source_name, self.time))
+        SaveScreenshot(fig_path, view=renderView1)
+        # Second figure: end
         
         # hide plots 
         Hide(source1, renderView1)
         HideScalarBarIfNotNeeded(field1LUT, renderView1)
-        Hide(sourceSl1, renderView1)
         Hide(sourceSl2, renderView1)
         HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
-        Hide(sourceSlice1, renderView1)
     
     def plot_step(self): 
         '''
@@ -596,7 +627,7 @@ def main():
     Slab = SLAB("PARAVIEW_FILE", output_dir="IMG_OUTPUT_DIR")
     Slab.setup_surface_slice()
     Slab.setup_trench_slice_center()
-    Slab.setup_trench_slice_edge()
+    Slab.setup_slice_back_y()
     Slab.setup_slab_iso_volume_upper()
     Slab.setup_active_clip()
     Slab.setup_stream_tracer('clip_active_1')
