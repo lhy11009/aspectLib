@@ -1,0 +1,38 @@
+{
+    "figures": [
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/isoVolume_slab_lower_front_tNUMERICAL_TIME_4E.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/isoVolume_slab_lower_top_tNUMERICAL_TIME_4E.png",
+            "operation": "paste",
+            "mask": 0,
+            "resize": 1.0,
+            "position": [1350, 0],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_0.png",
+            "temp": 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_0.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/slice_trench_center_y_viscosity_tNUMERICAL_TIME_4E.png",
+            "operation": "paste",
+            "mask": 0,
+            "resize": 1.0,
+            "position": [0, 704],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_1.png",
+            "temp": 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_1.png",
+            "operation": "text",
+            "text": "STEP_TIME_STAMP",
+            "font size": 30,
+            "position": [1100, 600],
+            "save path": "IMG_OUTPUT_DIR/animation/step_sNUMERICAL_STEP.png"
+        }
+    ]
+}
