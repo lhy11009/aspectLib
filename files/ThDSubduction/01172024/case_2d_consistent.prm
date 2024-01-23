@@ -186,7 +186,7 @@ subsection Material model
         set Compute latent heat = 0.0
         set Thermal diffusivities = 1.0e-6
         set Heat capacities = 1250.0
-        set Densities = background: 3300.0|3394.4|3442.1|3453.2|3617.6|3691.5|3774.7|3929.1, sp_lower: 3300.0|3372.3|3441.7|3441.7|3680.8|3717.8|3759.4|3836.6, sp_upper: 3300.0|3540.0|3613.0|3871.7, plate_edge: 3300.0
+        set Densities = background: 3300.0|3394.4|3442.1|3453.2|3617.6|3691.5|3774.7|3929.1, sp_lower: 3235.0|3372.3|3441.7|3441.7|3680.8|3717.8|3759.4|3836.6, sp_upper: 3000.0|3540.0|3613.0|3871.7, plate_edge: 3300.0
         set Thermal expansivities = background:3.1e-5, sp_upper:3.1e-5, sp_lower:3.1e-5, plate_edge: 0.0
         set Viscosity averaging scheme = harmonic
         set Viscous flow law = composite
