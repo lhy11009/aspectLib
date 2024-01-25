@@ -1,12 +1,12 @@
 {
-  "_comments": "This is the reference case after iteration gamma",
-  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/01252024",
+  "_comments": "This case is modified from the Schellart 2007 paper, but include newtonian T-dependent rheology",
+  "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/ThDSubduction/01172024",
   "output directory": "${ASPECT_LAB_DIR}/.test/",
   "depth average file": "${ASPECT_LAB_DIR}/files/ThDSubduction/reference/depth_average_1573.txt",
-  "name": "test_reference_gamma",
+  "name": "test_fix_CDPT",
   "type": "2d_consistent",
   "use world builder": 1,
-  "branch": "master_TwoD_knl",
+  "branch": "master_TwoD",
   "post process": {
     "visualization software": "paraview"
   },
@@ -26,7 +26,8 @@
   "plate setup": {
     "sp width": 1000000.0,
     "sp length": 3000000.0,
-    "trailing length": 600000.0,
+    "trailing length": 0.0,
+    "trailing length 1": 600000.0,
     "reset trailing morb": 1,
     "sp depth refining": 300000.0,
     "ov age": 40000000.0,
@@ -34,12 +35,13 @@
     "assign side plate": 1,
     "ov transit age": 20000000.0,
     "ov transit length": 700000.0,
-    "sp ridge x": 600000.0,
+    "sp ridge x": 0.0,
     "prescribe mantle sp start": 0,
-    "ov side dist": 600000.0,
+    "ov side dist": 0.0,
     "prescribe mantle ov end": 1,
     "include ov upper plate": 1
   },
+  "use new rheology module": 1,
   "mantle rheology": {
     "scheme": "HK03_WarrenHansen23",
     "flow law": "composite"
@@ -61,7 +63,6 @@
     "adaptive refinement": 4,
     "coarsen minimum refinement level": 2
   },
-  "use new rheology module": 1,
   "rheology": {
     "reset trailing ov viscosity": 0
   },
@@ -72,7 +73,7 @@
   "slurm": [
     {
       "slurm file": "./files/slurm_files/221018/job_p-billen.sh",
-      "build directory": "master_TwoD_p-billen",
+      "build directory": "master_TwoD",
       "tasks per node": 128,
       "cpus": 512
     },

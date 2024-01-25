@@ -38,7 +38,6 @@ if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
 
-# todo_trail
 def test_reference_gamma():
     '''
     test for the reference case after iteration gamma
@@ -53,6 +52,9 @@ def test_reference_gamma():
     prm_std_path = os.path.join(source_case_dir, 'case_std.prm')
     prm_path = os.path.join(output_dir, 'case.prm')
     assert(filecmp.cmp(prm_path, prm_std_path))
+    wb_std_path = os.path.join(source_case_dir, 'case_std.wb')
+    wb_path = os.path.join(output_dir, 'case.wb')
+    assert(filecmp.cmp(wb_path, wb_std_path))
 
 
 def test_fix_CDPT():

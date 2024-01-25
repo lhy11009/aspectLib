@@ -153,6 +153,10 @@ different age will be adjusted.",\
             ['mantle rheology', "jump lower mantle"], 100.0, nick='jump_lower_mantle')
         self.add_key("Adjust detail of mantle rheology", int,\
             ['mantle rheology', "adjust detail"], 0, nick='adjust_mantle_rheology_detail')
+        
+        # todo_ov_up
+        self.add_key("Include upper plate composition for the overriding plate",\
+        int, ['plate setup', 'include ov upper plate'], 0, nick='include_ov_upper_plate')
 
     
     def check(self):
@@ -249,6 +253,8 @@ different age will be adjusted.",\
         detail_mantle_coh = self.values[self.start+57]
         detail_jump_lower_mantle = self.values[self.start+58]
         adjust_mantle_rheology_detail = self.values[self.start+59]
+        # todo_ov_up
+        include_ov_upper_plate = self.values[self.start+60]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
@@ -259,7 +265,8 @@ different age will be adjusted.",\
             comp_method, reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method,\
             slab_core_viscosity, global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto,\
             coarsen_side_level, coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as,\
-            trailing_length_1, sp_rate, ov_age, detail_mantle_coh, detail_jump_lower_mantle, adjust_mantle_rheology_detail
+            trailing_length_1, sp_rate, ov_age, detail_mantle_coh, detail_jump_lower_mantle, adjust_mantle_rheology_detail,\
+            include_ov_upper_plate
         
     def to_configure_wb(self):
         '''
@@ -335,7 +342,7 @@ class CASE(CasesP.CASE):
     reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method, slab_core_viscosity,\
     global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto, coarsen_side_level,\
     coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as, trailing_length_1, sp_rate,\
-    ov_age, detail_mantle_coh, detail_jump_lower_mantle, adjust_mantle_rheology_detail):
+    ov_age, detail_mantle_coh, detail_jump_lower_mantle, adjust_mantle_rheology_detail, include_ov_upper_plate):
         '''
         Configure prm file
         '''
@@ -580,7 +587,7 @@ class CASE(CasesP.CASE):
                                                             use_effective_strain_rate=True, save_json=1, Coh=mantle_coh,\
                                                             jump_lower_mantle=jump_lower_mantle)
             if mantle_rheology_scheme in ["HK03_WarrenHansen23"]: 
-                consistent_2d_assign_mantle_rheology(o_dict, rheology)    
+                consistent_2d_assign_mantle_rheology(o_dict, rheology, include_ov_upper_plate=include_ov_upper_plate)    
                 self.output_files.append(Operator.output_json)
                 self.output_files.append(Operator.output_json_aspect)
                 self.output_imgs.append(Operator.output_profile) # append plot of initial conition to figures
@@ -605,6 +612,11 @@ class CASE(CasesP.CASE):
             o_dict['Material model'][material_model_subsection]['Minimum viscosity'] =\
                 "background: %.4e, sp_upper: %.4e, sp_lower: %.4e, plate_edge: %.4e" %\
                     (global_minimum_viscosity, global_minimum_viscosity, slab_core_viscosity, global_minimum_viscosity)
+            if include_ov_upper_plate:
+                o_dict['Material model'][material_model_subsection]['Minimum viscosity'] =\
+                    "background: %.4e, sp_upper: %.4e, sp_lower: %.4e, plate_edge: %.4e, ov_upper: %.4e" %\
+                        (global_minimum_viscosity, global_minimum_viscosity, slab_core_viscosity, global_minimum_viscosity, global_minimum_viscosity)
+            # todo_ov_up
         # 4. The peierls rheology
         if  if_peierls:
             o_dict['Material model'][material_model_subsection]['Include Peierls creep'] = 'true'
@@ -1089,6 +1101,7 @@ def wb_configure_plate_2d_consistent_1(wb_dict, sp_width, sp_rate, Dsz, slab_len
     sdict["temperature models"][0]["plate velocity"] = sp_rate
     return o_dict
 
+# todo_ov_up
 def wb_configure_plate_2d_consistent_2(wb_dict, sp_width, sp_rate, Dsz, slab_length,\
     dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate, if_ov_trans, ov_trans_age,\
     ov_trans_length, sp_ridge_x, ov_side_dist, box_length, **kwargs):
@@ -1164,9 +1177,6 @@ def wb_configure_plate_2d_consistent_2(wb_dict, sp_width, sp_rate, Dsz, slab_len
     # side plate
     if assign_side_plate == 1:
         sdp_dict = deepcopy(ov_dict)
-        if "composition models" in sdp_dict:
-            # remove composition
-            sdp_dict.pop("composition models")
         sdp_dict["name"] = "side plate"
         sdp_dict["coordinates"] = [[0.0, sp_width+pe_width], [0.0, Ymax], [Xmax, Ymax] ,[Xmax, sp_width+pe_width]]
         try:
@@ -1409,12 +1419,16 @@ plate_edge: %.4e|%.4e|%.4e"\
         % (disl_V, disl_V_lm, disl_crust_V, disl_V, disl_V_lm, disl_V, disl_V_lm, disl_crust_V, disl_V, disl_V_lm)
 
 
-def consistent_2d_assign_mantle_rheology(o_dict, rheology):
+def consistent_2d_assign_mantle_rheology(o_dict, rheology, **kwargs):
     '''
     Assign mantle rheology in the s07T model
     Note this model has 2 compositions:
         sp_upper and sp_lower
+    Inputs:
+        kwargs:
+            include_ov_upper_plate
     ''' 
+    include_ov_upper_plate = kwargs.get("include_ov_upper_plate", 0)
     diff_crust_A = 5e-21
     diff_crust_m = 0.0
     diff_crust_E = 0.0
@@ -1448,85 +1462,183 @@ def consistent_2d_assign_mantle_rheology(o_dict, rheology):
     disl_n_lm = 1.0
     disl_E_lm = 0.0
     disl_V_lm = 0.0
-    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep'] = \
-        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-sp_upper: %.4e|%.4e|%.4e|%.4e,\
-sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-plate_edge: %.4e|%.4e|%.4e"\
-        % (diff_A,diff_A,diff_A,diff_A,diff_A_lm,diff_A_lm,diff_A_lm,diff_A_lm,\
-           diff_crust_A, diff_A, diff_A_lm, diff_A_lm,\
-            diff_A,diff_A,diff_A,diff_A,diff_A_lm,diff_A_lm,diff_A_lm,diff_A_lm,\
-                diff_crust_A, diff_A, diff_A_lm)
-
-    o_dict['Material model']['Visco Plastic TwoD']['Grain size exponents for diffusion creep'] = \
-        "background:  %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-sp_upper: %.4e|%.4e|%.4e|%.4e,\
-sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-plate_edge: %.4e|%.4e|%.4e"\
-        % (diff_m,diff_m,diff_m,diff_m,diff_m_lm,diff_m_lm,diff_m_lm,diff_m_lm,\
-           diff_crust_m, diff_m, diff_m_lm,diff_m_lm,\
-            diff_m,diff_m,diff_m,diff_m,diff_m_lm,diff_m_lm,diff_m_lm,diff_m_lm,\
-                diff_crust_m, diff_m, diff_m_lm)
+    # todo_ov_up
+    if include_ov_upper_plate:
+        o_dict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e,\
+    ov_upper: %.4e|%.4e|%.4e|%.4e"\
+            % (diff_A,diff_A,diff_A,diff_A,diff_A_lm,diff_A_lm,diff_A_lm,diff_A_lm,\
+               diff_crust_A, diff_A, diff_A_lm, diff_A_lm,\
+                diff_A,diff_A,diff_A,diff_A,diff_A_lm,diff_A_lm,diff_A_lm,diff_A_lm,\
+                    diff_crust_A, diff_A, diff_A_lm,\
+                    diff_A, diff_A, diff_A_lm, diff_A_lm)
     
-    o_dict['Material model']['Visco Plastic TwoD']['Activation energies for diffusion creep'] = \
-        "background:  %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-sp_upper: %.4e|%.4e|%.4e|%.4e,\
-sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-plate_edge: %.4e|%.4e|%.4e"\
-        % (diff_E,diff_E,diff_E,diff_E,diff_E_lm,diff_E_lm,diff_E_lm,diff_E_lm,\
-            diff_crust_E, diff_E, diff_E_lm,diff_E_lm,\
-                diff_E,diff_E,diff_E,diff_E,diff_E_lm,diff_E_lm,diff_E_lm,diff_E_lm,\
-                    diff_crust_E, diff_E, diff_E_lm)
-
-    o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for diffusion creep'] = \
-        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-sp_upper: %.4e|%.4e|%.4e|%.4e,\
-sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-plate_edge: %.4e|%.4e|%.4e"\
-        % (diff_V,diff_V,diff_V,diff_V,diff_V_lm,diff_V_lm,diff_V_lm,diff_V_lm,\
-            diff_crust_V, diff_V, diff_V_lm,diff_V_lm,\
-                  diff_V,diff_V,diff_V,diff_V,diff_V_lm,diff_V_lm,diff_V_lm,diff_V_lm,\
-                      diff_crust_V, diff_V, diff_V_lm)
+        o_dict['Material model']['Visco Plastic TwoD']['Grain size exponents for diffusion creep'] = \
+            "background:  %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e,\
+    ov_upper: %.4e|%.4e|%.4e|%.4e"\
+            % (diff_m,diff_m,diff_m,diff_m,diff_m_lm,diff_m_lm,diff_m_lm,diff_m_lm,\
+               diff_crust_m, diff_m, diff_m_lm,diff_m_lm,\
+                diff_m,diff_m,diff_m,diff_m,diff_m_lm,diff_m_lm,diff_m_lm,diff_m_lm,\
+                    diff_crust_m, diff_m, diff_m_lm,\
+                    diff_m, diff_m, diff_m_lm,diff_m_lm)
+        
+        o_dict['Material model']['Visco Plastic TwoD']['Activation energies for diffusion creep'] = \
+            "background:  %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e,\
+    ov_upper: %.4e|%.4e|%.4e|%.4e"\
+            % (diff_E,diff_E,diff_E,diff_E,diff_E_lm,diff_E_lm,diff_E_lm,diff_E_lm,\
+                diff_crust_E, diff_E, diff_E_lm,diff_E_lm,\
+                    diff_E,diff_E,diff_E,diff_E,diff_E_lm,diff_E_lm,diff_E_lm,diff_E_lm,\
+                        diff_crust_E, diff_E, diff_E_lm,\
+                        diff_E, diff_E, diff_E_lm,diff_E_lm)
     
-    o_dict['Material model']['Visco Plastic TwoD']['Prefactors for dislocation creep'] = \
-        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-sp_upper: %.4e|%.4e|%.4e|%.4e,\
-sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-plate_edge: %.4e|%.4e|%.4e"\
-        %(disl_A,disl_A,disl_A,disl_A,disl_A_lm,disl_A_lm,disl_A_lm,disl_A_lm,\
-           disl_crust_A, disl_A, disl_A_lm, disl_A_lm,\
-            disl_A,disl_A,disl_A,disl_A,disl_A_lm,disl_A_lm,disl_A_lm,disl_A_lm,\
-                disl_crust_A, disl_A, disl_A_lm)
-
-    o_dict['Material model']['Visco Plastic TwoD']['Stress exponents for dislocation creep'] = \
-        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-sp_upper: %.4e|%.4e|%.4e|%.4e,\
-sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-plate_edge: %.4e|%.4e|%.4e"\
-        % (disl_n,disl_n,disl_n,disl_n,disl_n_lm,disl_n_lm,disl_n_lm,disl_n_lm,\
-            disl_crust_n, disl_n, disl_n_lm, disl_n_lm,\
-                  disl_n,disl_n,disl_n,disl_n,disl_n_lm,disl_n_lm,disl_n_lm,disl_n_lm,\
-                      disl_crust_n, disl_n, disl_n_lm)
+        o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for diffusion creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e,\
+    ov_upper: %.4e|%.4e|%.4e|%.4e"\
+            % (diff_V,diff_V,diff_V,diff_V,diff_V_lm,diff_V_lm,diff_V_lm,diff_V_lm,\
+                diff_crust_V, diff_V, diff_V_lm,diff_V_lm,\
+                      diff_V,diff_V,diff_V,diff_V,diff_V_lm,diff_V_lm,diff_V_lm,diff_V_lm,\
+                          diff_crust_V, diff_V, diff_V_lm,\
+                          diff_V, diff_V, diff_V_lm,diff_V_lm)
+        
+        o_dict['Material model']['Visco Plastic TwoD']['Prefactors for dislocation creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e,\
+    ov_upper: %.4e|%.4e|%.4e|%.4e"\
+            %(disl_A,disl_A,disl_A,disl_A,disl_A_lm,disl_A_lm,disl_A_lm,disl_A_lm,\
+               disl_crust_A, disl_A, disl_A_lm, disl_A_lm,\
+                disl_A,disl_A,disl_A,disl_A,disl_A_lm,disl_A_lm,disl_A_lm,disl_A_lm,\
+                    disl_crust_A, disl_A, disl_A_lm,\
+                    disl_A, disl_A, disl_A_lm, disl_A_lm)
     
-    o_dict['Material model']['Visco Plastic TwoD']['Activation energies for dislocation creep'] = \
-        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-sp_upper: %.4e|%.4e|%.4e|%.4e,\
-sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-plate_edge: %.4e|%.4e|%.4e"\
-        % (disl_E,disl_E,disl_E,disl_E,disl_E_lm,disl_E_lm,disl_E_lm,disl_E_lm,\
-            disl_crust_E, disl_E, disl_E_lm, disl_E_lm,\
-                disl_E,disl_E,disl_E,disl_E,disl_E_lm,disl_E_lm,disl_E_lm,disl_E_lm,\
-                    disl_crust_E, disl_E, disl_E_lm)
-
-    o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for dislocation creep'] = \
-        "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-sp_upper: %.4e|%.4e|%.4e|%.4e,\
-sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
-plate_edge: %.4e|%.4e|%.4e"\
-        % (disl_V,disl_V,disl_V,disl_V,disl_V_lm,disl_V_lm,disl_V_lm,disl_V_lm,\
-            disl_crust_V, disl_V, disl_V_lm, disl_V_lm,\
-                disl_V,disl_V,disl_V,disl_V,disl_V_lm,disl_V_lm,disl_V_lm,disl_V_lm,\
-                    disl_crust_V, disl_V, disl_V_lm)
+        o_dict['Material model']['Visco Plastic TwoD']['Stress exponents for dislocation creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e,\
+    ov_upper: %.4e|%.4e|%.4e|%.4e"\
+            % (disl_n,disl_n,disl_n,disl_n,disl_n_lm,disl_n_lm,disl_n_lm,disl_n_lm,\
+                disl_crust_n, disl_n, disl_n_lm, disl_n_lm,\
+                      disl_n,disl_n,disl_n,disl_n,disl_n_lm,disl_n_lm,disl_n_lm,disl_n_lm,\
+                          disl_crust_n, disl_n, disl_n_lm,\
+                          disl_n, disl_n, disl_n_lm, disl_n_lm)
+        
+        o_dict['Material model']['Visco Plastic TwoD']['Activation energies for dislocation creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e,\
+    ov_upper: %.4e|%.4e|%.4e|%.4e"\
+            % (disl_E,disl_E,disl_E,disl_E,disl_E_lm,disl_E_lm,disl_E_lm,disl_E_lm,\
+                disl_crust_E, disl_E, disl_E_lm, disl_E_lm,\
+                    disl_E,disl_E,disl_E,disl_E,disl_E_lm,disl_E_lm,disl_E_lm,disl_E_lm,\
+                        disl_crust_E, disl_E, disl_E_lm,\
+                        disl_E, disl_E, disl_E_lm, disl_E_lm)
+    
+        o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for dislocation creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e,\
+    ov_upper: %.4e|%.4e|%.4e|%.4e"\
+            % (disl_V,disl_V,disl_V,disl_V,disl_V_lm,disl_V_lm,disl_V_lm,disl_V_lm,\
+                disl_crust_V, disl_V, disl_V_lm, disl_V_lm,\
+                    disl_V,disl_V,disl_V,disl_V,disl_V_lm,disl_V_lm,disl_V_lm,disl_V_lm,\
+                        disl_crust_V, disl_V, disl_V_lm,\
+                        disl_V, disl_V, disl_V_lm, disl_V_lm)
+    else:
+        o_dict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e"\
+            % (diff_A,diff_A,diff_A,diff_A,diff_A_lm,diff_A_lm,diff_A_lm,diff_A_lm,\
+               diff_crust_A, diff_A, diff_A_lm, diff_A_lm,\
+                diff_A,diff_A,diff_A,diff_A,diff_A_lm,diff_A_lm,diff_A_lm,diff_A_lm,\
+                    diff_crust_A, diff_A, diff_A_lm)
+    
+        o_dict['Material model']['Visco Plastic TwoD']['Grain size exponents for diffusion creep'] = \
+            "background:  %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e"\
+            % (diff_m,diff_m,diff_m,diff_m,diff_m_lm,diff_m_lm,diff_m_lm,diff_m_lm,\
+               diff_crust_m, diff_m, diff_m_lm,diff_m_lm,\
+                diff_m,diff_m,diff_m,diff_m,diff_m_lm,diff_m_lm,diff_m_lm,diff_m_lm,\
+                    diff_crust_m, diff_m, diff_m_lm)
+        
+        o_dict['Material model']['Visco Plastic TwoD']['Activation energies for diffusion creep'] = \
+            "background:  %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e"\
+            % (diff_E,diff_E,diff_E,diff_E,diff_E_lm,diff_E_lm,diff_E_lm,diff_E_lm,\
+                diff_crust_E, diff_E, diff_E_lm,diff_E_lm,\
+                    diff_E,diff_E,diff_E,diff_E,diff_E_lm,diff_E_lm,diff_E_lm,diff_E_lm,\
+                        diff_crust_E, diff_E, diff_E_lm)
+    
+        o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for diffusion creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e"\
+            % (diff_V,diff_V,diff_V,diff_V,diff_V_lm,diff_V_lm,diff_V_lm,diff_V_lm,\
+                diff_crust_V, diff_V, diff_V_lm,diff_V_lm,\
+                      diff_V,diff_V,diff_V,diff_V,diff_V_lm,diff_V_lm,diff_V_lm,diff_V_lm,\
+                          diff_crust_V, diff_V, diff_V_lm)
+        
+        o_dict['Material model']['Visco Plastic TwoD']['Prefactors for dislocation creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e"\
+            %(disl_A,disl_A,disl_A,disl_A,disl_A_lm,disl_A_lm,disl_A_lm,disl_A_lm,\
+               disl_crust_A, disl_A, disl_A_lm, disl_A_lm,\
+                disl_A,disl_A,disl_A,disl_A,disl_A_lm,disl_A_lm,disl_A_lm,disl_A_lm,\
+                    disl_crust_A, disl_A, disl_A_lm)
+    
+        o_dict['Material model']['Visco Plastic TwoD']['Stress exponents for dislocation creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e"\
+            % (disl_n,disl_n,disl_n,disl_n,disl_n_lm,disl_n_lm,disl_n_lm,disl_n_lm,\
+                disl_crust_n, disl_n, disl_n_lm, disl_n_lm,\
+                      disl_n,disl_n,disl_n,disl_n,disl_n_lm,disl_n_lm,disl_n_lm,disl_n_lm,\
+                          disl_crust_n, disl_n, disl_n_lm)
+        
+        o_dict['Material model']['Visco Plastic TwoD']['Activation energies for dislocation creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e"\
+            % (disl_E,disl_E,disl_E,disl_E,disl_E_lm,disl_E_lm,disl_E_lm,disl_E_lm,\
+                disl_crust_E, disl_E, disl_E_lm, disl_E_lm,\
+                    disl_E,disl_E,disl_E,disl_E,disl_E_lm,disl_E_lm,disl_E_lm,disl_E_lm,\
+                        disl_crust_E, disl_E, disl_E_lm)
+    
+        o_dict['Material model']['Visco Plastic TwoD']['Activation volumes for dislocation creep'] = \
+            "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    sp_upper: %.4e|%.4e|%.4e|%.4e,\
+    sp_lower: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
+    plate_edge: %.4e|%.4e|%.4e"\
+            % (disl_V,disl_V,disl_V,disl_V,disl_V_lm,disl_V_lm,disl_V_lm,disl_V_lm,\
+                disl_crust_V, disl_V, disl_V_lm, disl_V_lm,\
+                    disl_V,disl_V,disl_V,disl_V,disl_V_lm,disl_V_lm,disl_V_lm,disl_V_lm,\
+                        disl_crust_V, disl_V, disl_V_lm)
 
 
 def wb_configure_transit_ov_plates(i_feature, trench, ov_age,\

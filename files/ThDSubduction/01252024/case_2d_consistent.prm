@@ -4,7 +4,7 @@ set Start time = 0
 set End time = 20e6
 set Output directory = output
 set Timing output frequency = 10
-set Additional shared libraries = $ASPECT_SOURCE_DIR/build_master_TwoD_knl/visco_plastic_TwoD/libvisco_plastic_TwoD.so, $ASPECT_SOURCE_DIR/build_master_TwoD_knl/prescribe_field_T_adiabat/libprescribe_field_T_adiabat.so
+set Additional shared libraries = $ASPECT_SOURCE_DIR/build_master_TwoD_p-billen/visco_plastic_TwoD/libvisco_plastic_TwoD.so, $ASPECT_SOURCE_DIR/build_master_TwoD_p-billen/prescribe_field_T_adiabat/libprescribe_field_T_adiabat.so, $ASPECT_SOURCE_DIR/build_master_TwoD/prescribe_field/libprescribed_temperature.so
 set Pressure normalization = surface
 set Surface pressure = 0
 set Adiabatic surface temperature = 1573.0
@@ -152,7 +152,6 @@ subsection Initial composition model
     set List of model names = world builder
 end
 
-
 subsection Boundary composition model
     set Fixed composition boundary indicators = 0, 1
     set List of model names = initial composition
@@ -162,7 +161,6 @@ subsection Boundary composition model
     end
 end
 
-
 subsection Material model
     set Model name = visco plastic twod
     set Material averaging = harmonic average
@@ -171,7 +169,7 @@ subsection Material model
         set Reference viscosity = 1e20
         set Minimum strain rate = 1.e-20
         set Reference strain rate = 1e-15
-        set Minimum viscosity = background: 1.0000e+19, sp_upper: 1.0000e+19, sp_lower: 1.0000e+23, plate_edge: 1.0000e+19, ov_upper: 1.0000e+19
+        set Minimum viscosity = background: 1.0000e+19, sp_upper: 1.0000e+19, sp_lower: 1.0000e+22, plate_edge: 1.0000e+19, ov_upper: 1.0000e+19
         set Maximum viscosity = 1e24
         set Minimum temperature for viscosity = 273.0
         set Use adiabatic pressure in creep viscosity = true
@@ -192,14 +190,14 @@ subsection Material model
         set Viscous flow law = composite
         set Yield mechanism = drucker
         set Grain size = 1.0000e-02
-        set Prefactors for diffusion creep = background: 2.1392e-16|2.1392e-16|2.1392e-16|2.1392e-16|5.3614e-18|5.3614e-18|5.3614e-18|5.3614e-18,    sp_upper: 5.0000e-21|2.1392e-16|5.3614e-18|5.3614e-18,    sp_lower: 2.1392e-16|2.1392e-16|2.1392e-16|2.1392e-16|5.3614e-18|5.3614e-18|5.3614e-18|5.3614e-18,    plate_edge: 5.0000e-21|2.1392e-16|5.3614e-18,    ov_upper: 2.1392e-16|2.1392e-16|5.3614e-18|5.3614e-18
-        set Grain size exponents for diffusion creep = background:  3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00,    sp_upper: 0.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00,    sp_lower: 3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00,    plate_edge: 0.0000e+00|3.0000e+00|3.0000e+00,    ov_upper: 3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00
-        set Activation energies for diffusion creep = background:  3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05,    sp_upper: 0.0000e+00|3.3500e+05|3.3500e+05|3.3500e+05,    sp_lower: 3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05,    plate_edge: 0.0000e+00|3.3500e+05|3.3500e+05,    ov_upper: 3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05
-        set Activation volumes for diffusion creep = background: 1.9000e-06|1.9000e-06|1.9000e-06|1.9000e-06|3.0000e-06|3.0000e-06|3.0000e-06|3.0000e-06,    sp_upper: 0.0000e+00|1.9000e-06|3.0000e-06|3.0000e-06,    sp_lower: 1.9000e-06|1.9000e-06|1.9000e-06|1.9000e-06|3.0000e-06|3.0000e-06|3.0000e-06|3.0000e-06,    plate_edge: 0.0000e+00|1.9000e-06|3.0000e-06,    ov_upper: 1.9000e-06|1.9000e-06|3.0000e-06|3.0000e-06
-        set Prefactors for dislocation creep = background: 2.1017e-16|2.1017e-16|2.1017e-16|2.1017e-16|5.0000e-32|5.0000e-32|5.0000e-32|5.0000e-32,    sp_upper: 5.0000e-32|2.1017e-16|5.0000e-32|5.0000e-32,    sp_lower: 2.1017e-16|2.1017e-16|2.1017e-16|2.1017e-16|5.0000e-32|5.0000e-32|5.0000e-32|5.0000e-32,    plate_edge: 5.0000e-32|2.1017e-16|5.0000e-32,    ov_upper: 2.1017e-16|2.1017e-16|5.0000e-32|5.0000e-32
-        set Stress exponents for dislocation creep = background: 3.5000e+00|3.5000e+00|3.5000e+00|3.5000e+00|1.0000e+00|1.0000e+00|1.0000e+00|1.0000e+00,    sp_upper: 1.0000e+00|3.5000e+00|1.0000e+00|1.0000e+00,    sp_lower: 3.5000e+00|3.5000e+00|3.5000e+00|3.5000e+00|1.0000e+00|1.0000e+00|1.0000e+00|1.0000e+00,    plate_edge: 1.0000e+00|3.5000e+00|1.0000e+00,    ov_upper: 3.5000e+00|3.5000e+00|1.0000e+00|1.0000e+00
-        set Activation energies for dislocation creep = background: 4.8000e+05|4.8000e+05|4.8000e+05|4.8000e+05|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,    sp_upper: 0.0000e+00|4.8000e+05|0.0000e+00|0.0000e+00,    sp_lower: 4.8000e+05|4.8000e+05|4.8000e+05|4.8000e+05|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,    plate_edge: 0.0000e+00|4.8000e+05|0.0000e+00,    ov_upper: 4.8000e+05|4.8000e+05|0.0000e+00|0.0000e+00
-        set Activation volumes for dislocation creep = background: 1.4000e-05|1.4000e-05|1.4000e-05|1.4000e-05|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,    sp_upper: 0.0000e+00|1.4000e-05|0.0000e+00|0.0000e+00,    sp_lower: 1.4000e-05|1.4000e-05|1.4000e-05|1.4000e-05|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,    plate_edge: 0.0000e+00|1.4000e-05|0.0000e+00,    ov_upper: 1.4000e-05|1.4000e-05|0.0000e+00|0.0000e+00
+        set Prefactors for diffusion creep = background: 1.2835e-16|1.2835e-16|1.2835e-16|1.2835e-16|5.4807e-18|5.4807e-18|5.4807e-18|5.4807e-18,sp_upper: 5.0000e-21|1.2835e-16|5.4807e-18|5.4807e-18,sp_lower: 1.2835e-16|1.2835e-16|1.2835e-16|1.2835e-16|5.4807e-18|5.4807e-18|5.4807e-18|5.4807e-18,plate_edge: 5.0000e-21|1.2835e-16|5.4807e-18, ov_upper:1.2835e-16|1.2835e-16|5.4807e-18|5.4807e-18
+        set Grain size exponents for diffusion creep = background:  3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00,sp_upper: 0.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00,sp_lower: 3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00|3.0000e+00,plate_edge: 0.0000e+00|3.0000e+00|3.0000e+00, ov_upper: 3.0000e+00
+        set Activation energies for diffusion creep = background:  3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05,sp_upper: 0.0000e+00|3.3500e+05|3.3500e+05|3.3500e+05,sp_lower: 3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05|3.3500e+05,plate_edge: 0.0000e+00|3.3500e+05|3.3500e+05, ov_upper: 3.3500e+05
+        set Activation volumes for diffusion creep = background: 1.9000e-06|1.9000e-06|1.9000e-06|1.9000e-06|3.0000e-06|3.0000e-06|3.0000e-06|3.0000e-06,sp_upper: 0.0000e+00|1.9000e-06|3.0000e-06|3.0000e-06,sp_lower: 1.9000e-06|1.9000e-06|1.9000e-06|1.9000e-06|3.0000e-06|3.0000e-06|3.0000e-06|3.0000e-06,plate_edge: 0.0000e+00|1.9000e-06|3.0000e-06, ov_upper: 1.9000e-06|1.9000e-06|3.0000e-06|3.0000e-06
+        set Prefactors for dislocation creep = background: 1.1386e-16|1.1386e-16|1.1386e-16|1.1386e-16|5.0000e-32|5.0000e-32|5.0000e-32|5.0000e-32,sp_upper: 5.0000e-32|1.1386e-16|5.0000e-32|5.0000e-32,sp_lower: 1.1386e-16|1.1386e-16|1.1386e-16|1.1386e-16|5.0000e-32|5.0000e-32|5.0000e-32|5.0000e-32,plate_edge: 5.0000e-32|1.1386e-16|5.0000e-32, ov_upper: 1.1386e-16|1.1386e-16|5.0000e-32|5.0000e-32
+        set Stress exponents for dislocation creep = background: 3.5000e+00|3.5000e+00|3.5000e+00|3.5000e+00|1.0000e+00|1.0000e+00|1.0000e+00|1.0000e+00,sp_upper: 1.0000e+00|3.5000e+00|1.0000e+00|1.0000e+00,sp_lower: 3.5000e+00|3.5000e+00|3.5000e+00|3.5000e+00|1.0000e+00|1.0000e+00|1.0000e+00|1.0000e+00,plate_edge: 1.0000e+00|3.5000e+00|1.0000e+00, ov_upper: 3.5000e+00|3.5000e+00|1.0000e+00|1.0000e+00
+        set Activation energies for dislocation creep = background: 4.8000e+05|4.8000e+05|4.8000e+05|4.8000e+05|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,sp_upper: 0.0000e+00|4.8000e+05|0.0000e+00|0.0000e+00,sp_lower: 4.8000e+05|4.8000e+05|4.8000e+05|4.8000e+05|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,plate_edge: 0.0000e+00|4.8000e+05|0.0000e+00, ov_upper:4.8000e+05|4.8000e+05|0.0000e+00|0.0000e+00
+        set Activation volumes for dislocation creep = background: 1.4000e-05|1.4000e-05|1.4000e-05|1.4000e-05|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,sp_upper: 0.0000e+00|1.4000e-05|0.0000e+00|0.0000e+00,sp_lower: 1.4000e-05|1.4000e-05|1.4000e-05|1.4000e-05|0.0000e+00|0.0000e+00|0.0000e+00|0.0000e+00,plate_edge: 0.0000e+00|1.4000e-05|0.0000e+00, ov_upper:1.4000e-05|1.4000e-05|0.0000e+00|0.0000e+00
         set Angles of internal friction = 25.0
         set Cohesions = 50.e6
         set Include Peierls creep = true
@@ -238,14 +236,14 @@ subsection Material model
         subsection Reset viscosity function
             set Coordinate system = cartesian
             set Variable names = x, y, z
-            set Function constants = Depth=1.45e5, Width=6.0000e+05, Do=2.8900e+06, xm=7.3830e+06, CV=1e20, Wp=1.0000e+06
+            set Function constants = Depth=1.45e5, Width=6.0000e+05, Do=2.8900e+06, xm=6.7830e+06, CV=1e20, Wp=1.0000e+06
             set Function expression = (((z > Do - Depth) && ((x < Width)||(x > (xm - Width))) && (y <= Wp))? CV: -1.0)
         end
         set Reset density = true
         subsection Reset density function
             set Coordinate system = cartesian
             set Variable names = x, y, z
-            set Function constants = Depth=1.45e5, Width=6.0000e+05, Do=2.8900e+06, xm=7.3830e+06, CD=3300.0, Wp=1.0000e+06
+            set Function constants = Depth=1.45e5, Width=6.0000e+05, Do=2.8900e+06, xm=6.7830e+06, CD=3300.0, Wp=1.0000e+06
             set Function expression = (((z > Do - Depth) && ((x < Width)||(x > (xm - Width))) && (y <= Wp))? CD: -1.0)
         end
         set Reaction mor = true
@@ -264,7 +262,6 @@ end
 subsection Gravity model
     set Model name = ascii data
 end
-
 
 subsection Prescribed temperatures
     set Model name = plate model 1
@@ -303,4 +300,6 @@ end
 subsection Checkpointing
     set Steps between checkpoint = 20
 end
+
+
 
