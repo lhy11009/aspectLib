@@ -143,18 +143,14 @@ different age will be adjusted.",\
         self.add_key("Include peierls creep", int, ['include peierls creep'], 0, nick='if_peierls')
         self.add_key("Fix the activation volume of the Peierls creep", str,\
          ['peierls creep', "fix peierls V as"], '', nick="fix_peierls_V_as")
-        # todo_trail
         self.add_key("Length of the trailing tail of the plate, another implementation", float, ['plate setup', 'trailing length 1'],\
                      0.0, nick='trailing_length_1')
-        # todo_mrheo
         self.add_key("Value of Coh to use in the rheology", float,\
             ['mantle rheology', "Coh"], 500.0, nick='mantle_coh')
         self.add_key("Value of lower/upper mantle ratio to use in the rheology", float,\
             ['mantle rheology', "jump lower mantle"], 100.0, nick='jump_lower_mantle')
         self.add_key("Adjust detail of mantle rheology", int,\
             ['mantle rheology', "adjust detail"], 0, nick='adjust_mantle_rheology_detail')
-        
-        # todo_ov_up
         self.add_key("Include upper plate composition for the overriding plate",\
         int, ['plate setup', 'include ov upper plate'], 0, nick='include_ov_upper_plate')
 
@@ -249,11 +245,9 @@ different age will be adjusted.",\
         trailing_length_1 = self.values[self.start+56]
         sp_rate = self.values[self.start+27] # method of seting up slabs
         ov_age = self.values[self.start+25]
-        # todo_mrheo
         detail_mantle_coh = self.values[self.start+57]
         detail_jump_lower_mantle = self.values[self.start+58]
         adjust_mantle_rheology_detail = self.values[self.start+59]
-        # todo_ov_up
         include_ov_upper_plate = self.values[self.start+60]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
@@ -616,7 +610,6 @@ class CASE(CasesP.CASE):
                 o_dict['Material model'][material_model_subsection]['Minimum viscosity'] =\
                     "background: %.4e, sp_upper: %.4e, sp_lower: %.4e, plate_edge: %.4e, ov_upper: %.4e" %\
                         (global_minimum_viscosity, global_minimum_viscosity, slab_core_viscosity, global_minimum_viscosity, global_minimum_viscosity)
-            # todo_ov_up
         # 4. The peierls rheology
         if  if_peierls:
             o_dict['Material model'][material_model_subsection]['Include Peierls creep'] = 'true'
@@ -712,7 +705,6 @@ class CASE(CasesP.CASE):
                 # the default in the file should be false if there is any
                 pass
             if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
-                # todo_trail
                 # another implementation, set trailing_length = 0.0 to turn off the older implementation
                 # here we set this option to false and remove the corresponding section
                 prescribe_T_area_width = trailing_length_1 + 300e3
@@ -1101,7 +1093,6 @@ def wb_configure_plate_2d_consistent_1(wb_dict, sp_width, sp_rate, Dsz, slab_len
     sdict["temperature models"][0]["plate velocity"] = sp_rate
     return o_dict
 
-# todo_ov_up
 def wb_configure_plate_2d_consistent_2(wb_dict, sp_width, sp_rate, Dsz, slab_length,\
     dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate, if_ov_trans, ov_trans_age,\
     ov_trans_length, sp_ridge_x, ov_side_dist, box_length, **kwargs):
@@ -1462,7 +1453,6 @@ def consistent_2d_assign_mantle_rheology(o_dict, rheology, **kwargs):
     disl_n_lm = 1.0
     disl_E_lm = 0.0
     disl_V_lm = 0.0
-    # todo_ov_up
     if include_ov_upper_plate:
         o_dict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep'] = \
             "background: %.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e|%.4e,\
