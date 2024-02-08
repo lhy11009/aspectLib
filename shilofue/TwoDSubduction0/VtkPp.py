@@ -79,6 +79,10 @@ Examples of usage: \n\
         python -m shilofue.TwoDSubduction0.VtkPp morph_case -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT_cart2/eba_cdpt_cart_width80 -ti 0.1e6\n\
         note the -ti option would assign an interval (default is 0.5e6)\n\
 \n\
+  - Slab morphology for one case for all the time steps in parallel\n\
+        python -m shilofue.TwoDSubduction0.VtkPp morph_case_parallel -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT_cart2/eba_cdpt_cart_width80 -ti 0.1e6\n\
+        note the -ti option would assign an interval (default is 0.5e6)\n\
+\n\
   - Plot the morphology of the slab: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_morph -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 \n\
 \n\
