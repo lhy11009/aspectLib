@@ -170,6 +170,10 @@ intiation stage causes the slab to break in the middle",\
          ["prescribe temperature width"], 2.75e5, nick="prescribe_T_width")
         self.add_key("Prescribing temperature with trailing edge present", int,\
          ["prescribe temperature with trailing edge"], 0, nick="prescribe_T_with_trailing_edge")
+        self.add_key("Value of lower/upper mantle ratio to use in the rheology", float,\
+            ['mantle rheology', "jump lower mantle"], 100.0, nick='jump_lower_mantle')
+        self.add_key("use 3d depth average file", int,\
+            ['mantle rheology', "use 3d da file"], 0, nick='use_3d_da_file')
     
     def check(self):
         '''
@@ -186,6 +190,7 @@ intiation stage causes the slab to break in the middle",\
             % Utilities.func_name())  # use box geometry, wb is mandatory
         # check the setting for adjust box width
         plate_age_method = self.values[self.start + 8] 
+        assert(plate_age_method in ['by values', 'adjust box width', 'adjust box width only assigning age'])
         if plate_age_method == 'adjust box width':
             box_width = self.values[self.start + 6]
             if box_width != self.defaults[self.start + 6]:
@@ -268,6 +273,10 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             box_width = re_write_geometry_while_assigning_plate_age(
             *self.to_re_write_geometry_pa()
             ) # adjust box width
+        if plate_age_method == 'adjust box width only assigning age':
+            box_width = re_write_geometry_while_only_assigning_plate_age(
+            *self.to_re_write_geometry_pa()
+            ) # adjust box width
         if_peierls = self.values[self.start + 9]
         if_couple_eclogite_viscosity = self.values[self.start + 10]
         phase_model = self.values[self.start + 12]
@@ -326,6 +335,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         fix_peierls_V_as = self.values[self.start + 56]
         prescribe_T_width = self.values[self.start + 57]
         prescribe_T_with_trailing_edge = self.values[self.start + 58]
+        jump_lower_mantle = self.values[self.start + 59]
+        use_3d_da_file = self.values[self.start + 60]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -337,7 +348,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
         rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as,\
-        prescribe_T_width, prescribe_T_with_trailing_edge
+        prescribe_T_width, prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file
 
     def to_configure_wb(self):
         '''
@@ -375,9 +386,14 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             box_width = re_write_geometry_while_assigning_plate_age(
             *self.to_re_write_geometry_pa()
             ) # adjust box width
+        elif plate_age_method == 'adjust box width only assigning age':
+            box_width = re_write_geometry_while_only_assigning_plate_age(
+            *self.to_re_write_geometry_pa()
+            ) # adjust box width
         return if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_age,\
             if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version,\
-            n_crust_layer, Duc, n_comp, sp_trailing_length, ov_trailing_length, box_width, rm_ov_comp
+            n_crust_layer, Duc, n_comp, sp_trailing_length, ov_trailing_length, box_width, rm_ov_comp,\
+            plate_age_method
     
     def to_configure_final(self):
         '''
@@ -431,28 +447,31 @@ class CASE(CasesP.CASE):
     slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice,\
     global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density,\
     maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width,\
-    prescribe_T_with_trailing_edge):
+    prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
+
+        if plate_age_method == 'adjust box width only assigning age': 
+            trench = get_trench_position_with_age(sp_age_trench, sp_rate, geometry, Ro)
+        else:
+            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length)
+
         # velocity boundaries
         if type_of_bd == "all free slip":  # boundary conditions
             pass
         elif type_of_bd == "top prescribed":
-            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length)
             # assign a 0.0 value for the overiding plate velocity
             # the subducting plate velocity is consistent with the value used in the worldbuilder
             bd_v_dict = prm_top_prescribed(trench, sp_rate, 0.0, refinement_level, delta_trench=delta_trench)
             o_dict["Boundary velocity model"] = bd_v_dict
         elif type_of_bd == "top prescribed with bottom right open":
-            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length)
             # assign a 0.0 value for the overiding plate velocity
             # the subducting plate velocity is consistent with the value used in the worldbuilder
             bd_v_dict, bd_t_dict = prm_top_prescribed_with_bottom_right_open(trench, sp_rate, 0.0, refinement_level, delta_trench=delta_trench)
             o_dict["Boundary velocity model"] = bd_v_dict
             o_dict["Boundary traction model"] = bd_t_dict
         elif type_of_bd == "top prescribed with bottom left open":
-            trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length)
             # assign a 0.0 value for the overiding plate velocity
             # the subducting plate velocity is consistent with the value used in the worldbuilder
             bd_v_dict, bd_t_dict = prm_top_prescribed_with_bottom_left_open(trench, sp_rate, 0.0, refinement_level)
@@ -598,9 +617,6 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             elif prescribe_T_method == 'plate model 1':
                 o_dict['Prescribed temperatures'] =\
                     prm_prescribed_temperature_cart_plate_model_1(box_width, potential_T, sp_rate, ov_age, area_width=prescribe_T_width)
-            if type_of_bd == "all free slip":
-                if prescribe_T_method in ['function', 'plate model']:
-                    o_dict["Prescribe internal temperatures"] = "false" # reset this to false as it doesn't work for now
 
         if type_of_bd in ["top prescribed with bottom right open", "top prescribed with bottom left open", "top prescribed"]:
             # in this case, I want to keep the options for prescribing temperature but to turn it off at the start
@@ -612,7 +628,10 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                 o_dict["Prescribe internal temperatures"] = "false"
         
         # Material model
-        da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
+        if use_3d_da_file:
+            da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'ThDSubduction', "depth_average.txt")
+        else:
+            da_file = os.path.join(ASPECT_LAB_DIR, 'files', 'TwoDSubduction', "depth_average.txt")
         assert(os.path.isfile(da_file))
 
         # CDPT model
@@ -637,7 +656,6 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                 if abs(minimum_viscosity - 1e18) / 1e18 > 1e-6:
                     # modify the minimum viscosity if a different value is given
                     o_dict['Material model']['Visco Plastic TwoD']['Minimum viscosity'] = str(minimum_viscosity)
-                print("mantle_coh: ", mantle_coh)  # debug
             else:
                 CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
                 sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
@@ -690,7 +708,9 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             rheology, _ = Operator.MantleRheology(assign_rheology=True, diffusion_creep=rheology_dict_refit['diffusion'],\
                                                         dislocation_creep=rheology_dict_refit['dislocation'], save_profile=1,\
                                                         use_effective_strain_rate=True, save_json=1, Coh=mantle_coh,\
-                                                        jump_lower_mantle=100.0)
+                                                        jump_lower_mantle=jump_lower_mantle)
+            print("rheology_dict_refit: ", rheology_dict_refit) # debug
+            print("rheology: ", rheology) # debug
             # assign to the prm file
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
@@ -921,7 +941,8 @@ opcrust: 1e+31, opharz: 1e+31", \
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
         if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version,\
-        n_crust_layer, Duc, n_comp, sp_trailing_length, ov_trailing_length, box_width, rm_ov_comp):
+        n_crust_layer, Duc, n_comp, sp_trailing_length, ov_trailing_length, box_width, rm_ov_comp,\
+        plate_age_method):
         '''
         Configure world builder file
         Inputs:
@@ -969,7 +990,7 @@ opcrust: 1e+31, opharz: 1e+31", \
             Ro = float(self.idict['Geometry model']['Chunk']['Chunk outer radius'])
             # sz_thickness
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
-            sp_rate, ov_ag, wb_new_ridge, version, n_crust_layer, Duc, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+            sp_rate, ov_ag, wb_new_ridge, version, n_crust_layer, Duc, plate_age_method, Ro=Ro, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry, max_sph=max_sph, sz_thickness=Dsz, n_comp=n_comp,\
             sp_trailing_length=sp_trailing_length, ov_trailing_length=ov_trailing_length, box_width=box_width,\
             rm_ov_comp=rm_ov_comp)
@@ -980,7 +1001,7 @@ opcrust: 1e+31, opharz: 1e+31", \
                 Xmax = 1e7  # lateral extent of the box
             Ro = float(self.idict['Geometry model']['Box']['Y extent'])
             self.wb_dict = wb_configure_plates(self.wb_dict, sp_age_trench,\
-            sp_rate, ov_ag, wb_new_ridge, version, n_crust_layer, Duc, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
+            sp_rate, ov_ag, wb_new_ridge, version, n_crust_layer, Duc, plate_age_method, Xmax=Xmax, if_ov_trans=if_ov_trans, ov_trans_age=ov_trans_age,\
             ov_trans_length=ov_trans_length, geometry=geometry, sz_thickness=Dsz, n_comp=n_comp, sp_trailing_length=sp_trailing_length,\
             ov_trailing_length=ov_trailing_length, box_width=box_width, rm_ov_comp=rm_ov_comp) # plates
         else:
@@ -1508,7 +1529,7 @@ def remove_composition_composition_field(i_dict, comp0):
     return o_dict
     
 
-def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, version, n_crust_layer, Duc, **kwargs):
+def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, version, n_crust_layer, Duc, plate_age_method, **kwargs):
     '''
     configure plate in world builder
     '''
@@ -1533,7 +1554,10 @@ def wb_configure_plates(wb_dict, sp_age_trench, sp_rate, ov_age, wb_new_ridge, v
     elif geometry == 'box':
         _side = side_dist
         _max = max_cart
-    trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length)
+    if plate_age_method == 'adjust box width only assigning age': 
+        trench = get_trench_position_with_age(sp_age_trench, sp_rate, geometry, Ro)
+    else:
+        trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length)
     if wb_new_ridge == 1:
         sp_ridge_coords = [[[0, -_side], [0, _side]]]
     else:
@@ -2264,6 +2288,19 @@ def prm_top_prescribed_with_bottom_left_open(trench, sp_rate, ov_rate, refinemen
     return bd_v_dict, bd_t_dict
 
 
+def re_write_geometry_while_only_assigning_plate_age(box_width0, sp_age0, sp_age, sp_rate, sp_trailing_length, ov_trailing_length):
+    '''
+    adjust box width with assigned spreading rate of subducting plate and subducting plate age
+    Inputs:
+        box_width0: default box width
+        sp_age0: default plate age
+        sp_age: plate age
+        sp_rate: spreading rate of the subducting plate
+    '''
+    box_width = box_width0 + (sp_age - sp_age0) * sp_rate
+    return box_width
+
+
 def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_rate, sp_trailing_length, ov_trailing_length):
     '''
     adjust box width with assigned spreading rate of subducting plate and subducting plate age
@@ -2470,6 +2507,23 @@ def get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length
     '''
     trench_sph = (sp_age_trench * sp_rate + sp_trailing_length) / Ro * 180.0 / np.pi
     trench_cart = sp_age_trench * sp_rate + sp_trailing_length
+    if geometry == "chunk":
+        trench = trench_sph
+    elif geometry == "box":
+        trench = trench_cart
+    return trench
+
+
+def get_trench_position_with_age(sp_age_trench, sp_rate, geometry, Ro):
+    '''
+    Inputs:
+        sp_trainling_length: distance of the trailing end of the subduction plate to the
+        side wall.
+    Returns:
+        trench: coordinate of the trench
+    '''
+    trench_sph = sp_age_trench * sp_rate / Ro * 180.0 / np.pi
+    trench_cart = sp_age_trench * sp_rate
     if geometry == "chunk":
         trench = trench_sph
     elif geometry == "box":
