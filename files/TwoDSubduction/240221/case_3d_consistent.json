@@ -1,6 +1,6 @@
 {
   "base directory": "/home/lochy/ASPECT_PROJECT/aspectLib/files/TwoDSubduction/231103",
-  "branch": "master_TwoD_p-billen",
+  "branch": "master_TwoD",
   "output directory": "/mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT_3dconsistent_8",
   "name": "eba_cdpt_coh300_SA80.0_OA40.0_width61_sc22_nopc",
   "depth average file": "${ASPECT_LAB_DIR}/files/TwoDSubduction/depth_average.txt",
@@ -41,7 +41,7 @@
   "slurm": [
     {
       "slurm file": "./files/slurm_files/230924/job_p-billen.sh",
-      "build directory": "master_TwoD_p-billen",
+      "build directory": "master_TwoD",
       "tasks per node": 8,
       "cpus": 8
     },
@@ -86,5 +86,6 @@
     "slab core viscosity": 1e+22
   },
   "prescribe temperature method": "plate model 1",
-  "prescribe temperature width": 900e3
+  "prescribe temperature width": 900e3,
+  "prescribe temperature with trailing edge": 1
 }

@@ -280,6 +280,11 @@ def test_find_mdd():
     VtkP.PrepareSlab(['spcrust', 'spharz'])
     mdd = VtkP.FindMDD()
     assert(abs(mdd - 7.9729e+04) / 7.9729e+04 < 1e-3) # check the mdd value
+    # normal call
+    mdd = VtkP.FindMDD()
+    # test dx1
+    mdd1 = VtkP.FindMDD(dx1=0.0)
+    assert(abs(mdd1 - 7.4084e+04) / 7.4084e+04 < 1e-3) # check the mdd value
     pass
 
 

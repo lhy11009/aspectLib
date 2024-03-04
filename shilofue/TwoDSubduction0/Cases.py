@@ -617,6 +617,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             elif prescribe_T_method == 'plate model 1':
                 o_dict['Prescribed temperatures'] =\
                     prm_prescribed_temperature_cart_plate_model_1(box_width, potential_T, sp_rate, ov_age, area_width=prescribe_T_width)
+                o_dict["Prescribe internal temperatures"] = "true"
 
         if type_of_bd in ["top prescribed with bottom right open", "top prescribed with bottom left open", "top prescribed"]:
             # in this case, I want to keep the options for prescribing temperature but to turn it off at the start
