@@ -18,6 +18,7 @@ Examples of usage:
 descriptions
 """ 
 import numpy as np
+import pandas as pd 
 import sys, os, argparse
 # import json, re
 # import pathlib

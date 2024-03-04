@@ -19,6 +19,7 @@ descriptions
 """
 #### 3rd parties 
 import numpy as np
+import pandas as pd
 import sys, os, argparse, json
 # import json, re
 # import pathlib
@@ -3174,7 +3175,61 @@ class SLABPLOT(LINEARPLOT):
     class SlabMorphFileNotExistError(Exception):
         pass
 
-        
+    def write_csv(self, case_dir, **kwargs):
+        '''
+        using the pandas interface to convert to csv
+        Inputs:
+            case_dir (str): direction of the case
+        '''
+        # read data
+        o_csv_path = kwargs.get("o_path", None)
+        slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+        assert(os.path.isfile(slab_morph_file))
+        self.ReadHeader(slab_morph_file)
+        self.ReadData(slab_morph_file)
+        if not self.HasData():
+            print("PlotMorph: file %s doesn't contain data" % slab_morph_file)
+            return 1
+        col_pvtu_step = self.header['pvtu_step']['col']
+        col_pvtu_time = self.header['time']['col']
+        col_pvtu_trench = self.header['trench']['col']
+        col_pvtu_slab_depth = self.header['slab_depth']['col']
+        pvtu_steps = self.data[:, col_pvtu_step]
+        times = self.data[:, col_pvtu_time]
+        trenches = self.data[:, col_pvtu_trench]
+        # read the geometry & Ro
+        prm_file = os.path.join(case_dir, 'output', 'original.prm')
+        assert(os.access(prm_file, os.R_OK))
+        self.ReadPrm(prm_file)
+        # read parameters
+        geometry = self.prm['Geometry model']['Model name']
+        if geometry == 'chunk':
+            Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        elif geometry == 'box':
+            Ro =  float(self.prm['Geometry model']['box']["Y extent"])
+        # get the trench migration length 
+        if geometry == "chunk":
+            trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
+        elif geometry == 'box':
+            trenches_migration_length = trenches - trenches[0]
+        else:
+            raise ValueError('Invalid geometry')
+        # collect data 
+        slab_depthes = self.data[:, col_pvtu_slab_depth]
+        trench_velocities = np.gradient(trenches_migration_length, times)
+        sink_velocities = np.gradient(slab_depthes, times)
+        # assemble in an output
+        o_csv_array = np.zeros([self.data.shape[0], 2])
+        o_csv_array[:, 0] = times
+        o_csv_array[:, 1] = trenches
+        # uses a default path in vtk_outputs if no option is giving
+        if o_csv_path is None:
+            o_csv_path = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.csv')
+        # export
+        # TODO: add field names and write R functions to parse the result
+        df = pd.DataFrame(o_csv_array)
+        df.to_csv(o_csv_path)
+
 
 class SLABMATERIAL(LINEARPLOT): 
     '''

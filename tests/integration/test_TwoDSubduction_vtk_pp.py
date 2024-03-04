@@ -54,6 +54,26 @@ def test_GetTimeDepthTip():
     assert(abs(t_660 - t_660_std) / t_660_std < 1e-6)
 
 
+def test_WriteCSV():
+    '''
+    test WriteCSV
+    '''
+    case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp', "test_TwoD_vtk_case1")
+    SlabPlot = SLABPLOT('test')
+    
+    csv_file_path = os.path.join(ASPECT_LAB_DIR, '.test', 'test_twod_vtk_pp_slab_morph.csv')
+    # remove old file
+    if os.path.isfile(csv_file_path):
+        os.remove(csv_file_path)
+    # call write_csv
+    SlabPlot.write_csv(case_dir, o_path=csv_file_path)
+    # assert file existence 
+    assert(os.path.isfile(csv_file_path))
+    # assert file contents
+    csv_file_path_std = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp', 'vtk_outputs', 'slab_morph_std.csv')
+    assert(os.path.isfile(csv_file_path_std))
+
+
 def test_wedge_T():
     '''
     Test wedge temperature
