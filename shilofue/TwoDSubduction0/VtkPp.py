@@ -1094,6 +1094,7 @@ def PlotSlabForces(filein, fileout, **kwargs):
     # figure 8: dynamic pressure, in the upper 400 km
     mask = depths < 400e3
     ax = fig.add_subplot(gs[2, 1]) 
+    ax.plot(buoyancie_gradients[mask], depths[mask]/1e3, 'b', label='Buoyancy gradients (N/m2)')
     ax.plot(dynamic_pressure_upper[mask], depths[mask]/1e3, 'c--', label='Dynamic P (upper) (N/m2)')
     ax.plot(dynamic_pressure_lower[mask], depths[mask]/1e3, 'm--', label='Dynamic P (lower) (N/m2)')
     ax.plot(differiential_dynamic_pressure[mask], depths[mask]/1e3, 'r--', label='Dynamic P differences (N/m2)')
