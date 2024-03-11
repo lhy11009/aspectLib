@@ -69,6 +69,7 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
 
         # default settings
         self.options['IF_PLOT_SHALLOW'] = kwargs.get('if_plot_shallow', "False") # plot the shallow part of the slab.
+        self.options["PLOT_TYPES"] = str(kwargs.get('plot_types', ["upper_mantle"]))
         self.options['IF_EXPORT_SLAB_MORPH'] = 'False'
         self.options['IF_PLOT_SLAB'] = 'True'
         self.options['GLOBAL_UPPER_MANTLE_VIEW_BOX'] = 0.0
