@@ -174,6 +174,10 @@ intiation stage causes the slab to break in the middle",\
             ['mantle rheology', "jump lower mantle"], 100.0, nick='jump_lower_mantle')
         self.add_key("use 3d depth average file", int,\
             ['mantle rheology', "use 3d da file"], 0, nick='use_3d_da_file')
+        # todo_mtable
+        self.add_key("use lookup table morb", int, ["use lookup table morb"], 0, nick="use_lookup_table_morb")
+        self.add_key("lookup table morb mixing, 1: iso stress (weakest), 2: iso strain (strongest), 3: log (intermediate)",\
+                     int, ["lookup table morb", "mixing model"], 0, nick="use_lookup_table_morb")
     
     def check(self):
         '''
@@ -258,6 +262,12 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         fix_peierls_V_as = self.values[self.start + 56]
         assert(CDPT_type in ["Billen2018_old", "HeFESTo_consistent", "Billen2018"])
         assert(fix_peierls_V_as in ["", "diffusion", "dislocation"])
+        # todo_mtable
+        # lookup table morb
+        use_lookup_table_morb = self.values[self.start + 61]
+        lookup_table_morb_mixing = self.values[self.start + 62]
+        if use_lookup_table_morb:
+            assert(lookup_table_morb_mixing in [0, 1, 2, 3]) # check the mixing model used
 
     def to_configure_prm(self):
         if_wb = self.values[8]
@@ -337,6 +347,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         prescribe_T_with_trailing_edge = self.values[self.start + 58]
         jump_lower_mantle = self.values[self.start + 59]
         use_3d_da_file = self.values[self.start + 60]
+        # todo_mtable
+        use_lookup_table_morb = self.values[self.start + 61]
+        lookup_table_morb_mixing = self.values[self.start + 62]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -348,7 +361,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
         rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as,\
-        prescribe_T_width, prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file
+        prescribe_T_width, prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb, lookup_table_morb_mixing
 
     def to_configure_wb(self):
         '''
@@ -447,7 +460,8 @@ class CASE(CasesP.CASE):
     slab_core_viscosity, mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice,\
     global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density,\
     maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width,\
-    prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file):
+    prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb,\
+    lookup_table_morb_mixing):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -919,6 +933,40 @@ opcrust: 1e+31, opharz: 1e+31", \
             o_dict['Material model']['Visco Plastic TwoD'] = visco_plastic_dict
         else:
             raise NotImplementedError()
+        
+        # crustal phase transition
+        # todo_mtable
+        if use_lookup_table_morb:
+            visco_plastic_dict = o_dict['Material model']['Visco Plastic TwoD']
+            # first reset the manual method
+            visco_plastic_dict["Manually define phase method crust"] = "0.0"
+            visco_plastic_dict["Decoupling eclogite viscosity"] = "false"
+            if "Eclogite transition" in visco_plastic_dict:
+                visco_plastic_dict.pop("Eclogite transition")
+            if "Eclogite decoupled viscosity" in visco_plastic_dict:
+                visco_plastic_dict.pop("Eclogite decoupled viscosity")
+            if "Use lookup table" in visco_plastic_dict:
+                visco_plastic_dict["Use lookup table"] = "false"
+            if "Lookup table" in visco_plastic_dict:
+                visco_plastic_dict.pop("Lookup table")
+
+            visco_plastic_dict["Use lookup table morb"] = "true"
+            visco_plastic_dict["Use phase rheology mixing"] = "true"
+            visco_plastic_dict["Phase rheology mixing models"] = "0, %d, 0, 0, 0" % lookup_table_morb_mixing
+            visco_plastic_dict["Lookup table morb"] = {
+                "Data directory": "$ASPECT_SOURCE_DIR/lookup_tables/",
+                "Material file names": "perplex_morb_test.txt",
+                "Morb composition index": "1",
+                "Cutoff eclogite phase below": "0.25",
+                "Bilinear interpolation": "true",
+                "Cutoff eclogite phase above T1": "1673.0",
+                "Cutoff eclogite phase above P1": "3.6e+09",
+                "Cutoff eclogite phase above T2": "0.0",
+                "Cutoff eclogite phase above P2": "7.8e+09",
+                "Rewrite morb density": "false",
+                "Eclogite phase divisor": "0.8"
+            }
+            o_dict['Material model']['Visco Plastic TwoD'] = visco_plastic_dict
         
         # remove the overiding plate composition
         if rm_ov_comp:
