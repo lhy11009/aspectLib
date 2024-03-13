@@ -174,7 +174,6 @@ intiation stage causes the slab to break in the middle",\
             ['mantle rheology', "jump lower mantle"], 100.0, nick='jump_lower_mantle')
         self.add_key("use 3d depth average file", int,\
             ['mantle rheology', "use 3d da file"], 0, nick='use_3d_da_file')
-        # todo_mtable
         self.add_key("use lookup table morb", int, ["use lookup table morb"], 0, nick="use_lookup_table_morb")
         self.add_key("lookup table morb mixing, 1: iso stress (weakest), 2: iso strain (strongest), 3: log (intermediate)",\
                      int, ["lookup table morb", "mixing model"], 0, nick="use_lookup_table_morb")
@@ -262,7 +261,6 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         fix_peierls_V_as = self.values[self.start + 56]
         assert(CDPT_type in ["Billen2018_old", "HeFESTo_consistent", "Billen2018"])
         assert(fix_peierls_V_as in ["", "diffusion", "dislocation"])
-        # todo_mtable
         # lookup table morb
         use_lookup_table_morb = self.values[self.start + 61]
         lookup_table_morb_mixing = self.values[self.start + 62]
@@ -347,7 +345,6 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         prescribe_T_with_trailing_edge = self.values[self.start + 58]
         jump_lower_mantle = self.values[self.start + 59]
         use_3d_da_file = self.values[self.start + 60]
-        # todo_mtable
         use_lookup_table_morb = self.values[self.start + 61]
         lookup_table_morb_mixing = self.values[self.start + 62]
 
@@ -935,7 +932,6 @@ opcrust: 1e+31, opharz: 1e+31", \
             raise NotImplementedError()
         
         # crustal phase transition
-        # todo_mtable
         if use_lookup_table_morb:
             visco_plastic_dict = o_dict['Material model']['Visco Plastic TwoD']
             # first reset the manual method
