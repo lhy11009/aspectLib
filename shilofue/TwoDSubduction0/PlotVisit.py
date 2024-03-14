@@ -74,6 +74,10 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         self.options['IF_PLOT_SLAB'] = 'True'
         self.options['GLOBAL_UPPER_MANTLE_VIEW_BOX'] = 0.0
         self.options['ROTATION_ANGLE'] = 0.0
+
+        # additional inputs
+        rotation_plus = kwargs.get("rotation_plus", 0.0) # additional rotation
+
         # try using the value for the background
         try:
             self.options['ETA_MIN'] =\
@@ -97,11 +101,11 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
                 index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
             except KeyError:
                 # either there is no wb file found, or the feature 'Subducting plate' is not defined
-                rotation_angle = 52.0
+                rotation_angle = 52.0 + rotation_plus
             else:
                 # rotate to center on the slab
                 feature_sp = self.wb_dict['features'][index]
-                rotation_angle = 90.0 - feature_sp["coordinates"][2][0] - 2.0
+                rotation_angle = 90.0 - feature_sp["coordinates"][2][0] - 2.0 + rotation_plus
             self.options['ROTATION_ANGLE'] = rotation_angle
         elif self.options['GEOMETRY'] == 'box':
             try:

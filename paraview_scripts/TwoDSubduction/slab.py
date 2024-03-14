@@ -124,7 +124,7 @@ class SLAB(PARAVIEW_PLOT):
         pointName = "PointSource_" + glyphRegistrationName
         pointSource1 = FindSource(pointName)
         if "chunk" == "chunk":
-            pointSource1.Center = [0, 6.4e6, 0]
+            pointSource1.Center = [0, 6.7e6, 0]
         # show the representative point                                                                                                    
         _source_v_re = _source_v + "_representative"                                                                                       
         sourceVRE = FindSource(_source_v_re)                                                                                               
@@ -142,7 +142,7 @@ class SLAB(PARAVIEW_PLOT):
         if "GEOMETRY" == "chunk":
             renderView1.CameraPosition = [0.0, 5.6e5, 2.5e7]
             renderView1.CameraFocalPoint = [0.0, 6e6, 0.0]
-            renderView1.CameraParallelScale = 4.5e5
+            renderView1.CameraParallelScale = 8e5
         elif "GEOMETRY" == "box":
             renderView1.CameraPosition = [4700895.868280185, 2538916.5897593317, 15340954.822755022]
             renderView1.CameraFocalPoint = [4700895.868280185, 2538916.5897593317, 0.0]
@@ -174,7 +174,7 @@ class SLAB(PARAVIEW_PLOT):
         if "GEOMETRY" == "chunk":
             renderView1.CameraPosition = [0.0, 5.6e5, 2.5e7]
             renderView1.CameraFocalPoint = [0.0, 6e6, 0.0]
-            renderView1.CameraParallelScale = 4.5e5
+            renderView1.CameraParallelScale = 8e5
         elif "GEOMETRY" == "box":
             renderView1.CameraPosition = [4700895.868280185, 2538916.5897593317, 15340954.822755022]
             renderView1.CameraFocalPoint = [4700895.868280185, 2538916.5897593317, 0.0]
