@@ -1913,7 +1913,11 @@ def SlabMorphologyCase(case_dir, **kwargs):
 # 6: 100km dip (rad)\n# 7: subducting plate velocity (m/yr)\n# 8: overiding plate velocity (m/yr)\n"
     if findmdd:
         file_header += "# 9: mechanical decoupling depth1 (m)\n# 10: mechanical decoupling depth2 (m)\n"
-    output_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+    # output file name
+    appendix = ""
+    if abs(time_interval_for_slab_morphology - 0.5e6) / 0.5e6 > 1e-6:
+        appendix = "_t%.2e" % time_interval_for_slab_morphology
+    output_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph' + appendix + '.txt')
     # output data
     if not os.path.isfile(output_file):
         with open(output_file, 'w') as fout:
