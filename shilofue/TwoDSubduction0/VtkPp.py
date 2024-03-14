@@ -87,6 +87,9 @@ Examples of usage: \n\
   - Plot the morphology of the slab: \n\
         python -m shilofue.TwoDSubduction0.VtkPp plot_morph -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/EBA_CDPT3/eba_cdpt_SA80.0_OA40.0 \n\
 \n\
+  - Plot the morphology for publication: \n\
+        python -m shilofue.TwoDSubduction0.VtkPp plot_morph_publication -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT18/eba_cdpt_coh500_SA80.0_OA40.0_cd100.0_cd7.5_gr10\n\
+\n\
   - Combine the morphology of a few cases. Note for this to work, a json file needs to be presented: \n\
         python -m shilofue.TwoDSubduction0.VtkPp combine_slab_morph -j /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT_peierls1/plot_combine/slab_morph.json\n\
 \n\
@@ -2415,6 +2418,150 @@ class SLABPLOT(LINEARPLOT):
         plt.close()
 
 
+    def PlotMorphPublication(self, case_dir, **kwargs):
+        '''
+        Plot slab morphology for publication
+        Inputs:
+            case_dir (str): directory of case
+        kwargs(dict):
+            time -a time to plot
+        '''
+        time_interval = kwargs.get('time_interval', 5e6)
+        time_range = kwargs.get('time_range', None)
+        if time_range is not None:
+            assert(len(time_range) == 2)
+        time_markers = kwargs.get("time_markers", [])
+        vlim = kwargs.get("vlim", [-10, 10])
+        save_pdf = kwargs.get("save_pdf", False)
+        assert(len(vlim) == 2)
+        # path
+        img_dir = os.path.join(case_dir, 'img')
+        if not os.path.isdir(img_dir):
+            os.mkdir(img_dir)
+        morph_dir = os.path.join(img_dir, 'morphology')
+        if not os.path.isdir(morph_dir):
+            os.mkdir(morph_dir)
+        # read inputs
+        prm_file = os.path.join(case_dir, 'output', 'original.prm')
+        assert(os.access(prm_file, os.R_OK))
+        self.ReadPrm(prm_file)
+        # read parameters
+        geometry = self.prm['Geometry model']['Model name']
+        if geometry == 'chunk':
+            Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        else:
+            Ro = -1.0  # in this way, wrong is wrong
+        # read data
+        # input file name
+        appendix = ""
+        if abs(time_interval - 0.5e6) / 0.5e6 > 1e-6:
+            appendix = "_t%.2e" % time_interval
+        slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph' + appendix + '.txt')
+        assert(os.path.isfile(slab_morph_file))
+        self.ReadHeader(slab_morph_file)
+        self.ReadData(slab_morph_file)
+        if not self.HasData():
+            print("PlotMorph: file %s doesn't contain data" % slab_morph_file)
+            return 1
+        col_pvtu_step = self.header['pvtu_step']['col']
+        col_pvtu_time = self.header['time']['col']
+        col_pvtu_trench = self.header['trench']['col']
+        col_pvtu_slab_depth = self.header['slab_depth']['col']
+        col_pvtu_sp_v = self.header['subducting_plate_velocity']['col']
+        col_pvtu_ov_v = self.header['overiding_plate_velocity']['col']
+        pvtu_steps = self.data[:, col_pvtu_step]
+        times = self.data[:, col_pvtu_time]
+        trenches = self.data[:, col_pvtu_trench]
+        time_interval = times[1] - times[0]
+        if time_interval < 0.5e6:
+            warnings.warn("Time intervals smaller than 0.5e6 may cause vabriation in the velocity (get %.4e)" % time_interval)
+        if geometry == "chunk":
+            trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
+        elif geometry == 'box':
+            trenches_migration_length = trenches - trenches[0]
+        else:
+            raise ValueError('Invalid geometry')
+        slab_depthes = self.data[:, col_pvtu_slab_depth]
+        trench_velocities = np.gradient(trenches_migration_length, times)
+        sink_velocities = np.gradient(slab_depthes, times)
+        sp_velocities = self.data[:, col_pvtu_sp_v]
+        ov_velocities = self.data[:, col_pvtu_ov_v]
+
+        # 1: trench & slab movement
+        gs = gridspec.GridSpec(2, 1) 
+        fig = plt.figure(tight_layout=True, figsize=(20, 20)) 
+        ax = fig.add_subplot(gs[0, 0]) 
+        ax_tx = ax.twinx()
+        lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, '-', color='tab:orange', label='trench position (km)')
+        if time_range is None:
+            ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+        else:
+            ax.set_xlim((time_range[0]/1e6, time_range[1]/1e6))  # set x limit
+        ylim0 = np.floor(np.min(trenches_migration_length)/1e5)*1e2
+        ylim1 = np.floor(np.max(trenches_migration_length)/1e5)*1e2
+        ax.set_ylim((ylim0, ylim1))
+        ax.set_ylabel('Trench Position (km)', color="tab:orange")
+        ax.set_xlabel('Time (Ma)')
+        ax.tick_params(axis='y', labelcolor="tab:orange")
+        ax.grid()
+        for _time in time_markers:
+            temp_ts = _time * np.ones(100)
+            temp_ys = np.linspace(ylim0, ylim1, 100)
+            ax.plot(temp_ts/1e6, temp_ys, 'c--', dashes=(10, 10), alpha=0.7) # plot a vertical line
+        lns1 = ax_tx.plot(times/1e6, slab_depthes/1e3, 'k-', label='slab depth (km)')
+        if time_range is None:
+            ax_tx.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+        else:
+            ax_tx.set_xlim((time_range[0]/1e6, time_range[1]/1e6))  # set x limit
+        ax_tx.set_ylabel('Slab Depth (km)')
+        lns = lns0 + lns1
+        labs = [I.get_label() for I in lns]
+        ax.legend(lns, labs, loc='lower right')
+        # ax1: velocity
+        # ax1, part 1: velcoity
+        ax = fig.add_subplot(gs[1, 0]) 
+        ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
+        ln_v_tr = ax.plot(times/1e6, trench_velocities*1e2, '-', color="tab:orange", label='trench velocity (cm/yr)')
+        ln_v_sub = ax.plot(times/1e6, sp_velocities*1e2, '-', color='tab:blue', label='subducting plate (cm/yr)')
+        ln_v_ov = ax.plot(times/1e6, ov_velocities*1e2, '-', color='tab:purple', label='overiding plate (cm/yr)')
+        ln_v_sink = ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='sink velocity (cm/yr)')
+        for _time in time_markers:
+            temp_ts = _time * np.ones(200)
+            temp_ys = np.linspace(-100, 100, 200)
+            ax.plot(temp_ts/1e6, temp_ys, 'c--', dashes=(10, 10), alpha=0.7) # plot a vertical line
+        if time_range is None:
+            ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+        else:
+            ax.set_xlim((time_range[0]/1e6, time_range[1]/1e6))  # set x limit
+        ax.set_xlabel('Time (Ma)')
+        ax.set_ylim((vlim[0], vlim[1]))
+        ax.set_ylabel('Velocity (cm/yr)')
+        ax.grid()
+        # ax1, part 1: trench position
+        ax_tx = ax.twinx()
+        ln_tr = ax_tx.plot(times/1e6, trenches_migration_length/1e3, '*', color='tab:orange', label='trench position (km)')
+        ax_tx.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+        ylim0 = np.floor(np.min(trenches_migration_length)/1e5)*1e2
+        ylim1 = np.floor(np.max(trenches_migration_length)/1e5)*1e2
+        if time_range is None:
+            ax_tx.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+        else:
+            ax_tx.set_xlim((time_range[0]/1e6, time_range[1]/1e6))  # set x limit
+        ax_tx.set_ylim((ylim0, ylim1))
+        ax_tx.set_ylabel('Trench Position (km)', color="tab:orange")
+        ax_tx.tick_params(axis='y', labelcolor="tab:orange")
+        lns = ln_tr + ln_v_tr + ln_v_sub + ln_v_sink + ln_v_ov
+        labs = [I.get_label() for I in lns]
+        ax.legend(lns, labs, loc='upper right')
+        # save figure
+        o_path = os.path.join(morph_dir, 'trench_t%.2e' % time_interval)
+        fig.savefig(o_path + '.png')
+        print("%s: save figure %s" % (Utilities.func_name(), o_path + '.png'))
+        if save_pdf:
+            fig.savefig(o_path + '.pdf')
+            print("%s: save figure %s" % (Utilities.func_name(), o_path + '.pdf'))
+        plt.close()
+
     def PlotTWedge(self, case_dir, **kwargs):
         '''
         plot the mantle wedge temperature on top of the 100-km deep slab.
@@ -3697,6 +3844,15 @@ def main():
         SlabPlot.PlotMorph(arg.inputs, save_pdf=arg.save_pdf)
     elif _commend == 'plot_morph_animation':
         PlotMorphAnimeCombined(arg.inputs)
+    elif _commend == 'plot_morph_publication':
+        # plot slab morphology for animation
+        plt.style.use('publication_2d_morph')
+        SlabPlot = SLABPLOT('slab')
+        time_interval = 0.5e6
+        time_range = [0.0, 44.6e6]
+        time_markers = [2.7e6, 13.0e6, 20.3e6]
+        vlim = [-10.0, 20.0]
+        SlabPlot.PlotMorphPublication(arg.inputs, save_pdf=True, time_interval=time_interval, time_range=time_range, time_markers=time_markers, vlim=vlim)
     elif _commend == 'plot_wedge_T':
         PlotWedgeTCase(arg.inputs, time_interval=arg.time_interval)
     elif _commend == 'combine_slab_morph':
