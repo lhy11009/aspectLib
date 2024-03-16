@@ -108,15 +108,16 @@ class VTKP():
         self.Ro = kwargs.get('Ro', 6371e3)
         self.Xmax = kwargs.get('Xmax', 61.0 * np.pi / 180.0)
         self.time = kwargs.get('time', None)
-        try:
-            ha_file = kwargs["ha_file"]
-        except KeyError:
+        ha_file = kwargs.get("ha_file", None)
+        if ha_file is None:
             self.Tref_func = None
         else:
+            assert(os.path.isfile(ha_file))
             DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
             DepthAverage.Import(ha_file)
             Utilities.my_assert(self.time != None, ValueError, "\"time\" is a requried input if \"ha_file\" is presented")
             self.Tref_func = DepthAverage.GetInterpolateFunc(self.time, "temperature")
+            self.density_ref_func = DepthAverage.GetInterpolateFunc(self.time, "adiabatic_density")
         pass
 
     def ReadFile(self, filein):
@@ -446,7 +447,7 @@ def ExportPolyData(poly_data, fileout, **kwargs):
     indent = kwargs.get('indent', 0)
     # output
     file_extension = fileout.split('.')[-1]
-    if file_extension == 'vtp':
+    if file_extension == "vtp":
         writer = vtk.vtkXMLPolyDataWriter()
         writer.SetFileName(fileout)
         writer.SetInputData(poly_data)

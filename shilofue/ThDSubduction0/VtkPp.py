@@ -87,6 +87,7 @@ class VTKP(VtkPp.VTKP):
         self.trench_coords_x = []
         self.trench_coords_y = []
         self.trench_coords_z = []
+        self.buoyancies = None
 
     def PrepareSlabByPoints(self, slab_field_names, **kwargs):
         '''
@@ -172,6 +173,29 @@ class VTKP(VtkPp.VTKP):
         self.trench_coords_x = trench_coords_x
         self.trench_coords_y = trench_coords_y
         self.trench_coords_z = trench_coords_z
+
+    def ComputeBuoyancy(self):
+        '''
+        Compute buoyancy
+        '''
+        # initiate
+        grav_acc = 10.0
+        density_data = vtk_to_numpy(self.i_poly_data.GetPointData().GetArray('density'))
+        self.buoyancies = np.zeros(len(self.slab_points))
+        points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
+
+        # compute buoyancy
+        for i in range(len(self.slab_points)):
+            id_en = self.slab_points[i]
+            x = points[id_en][0] # first, separate cells into intervals
+            y = points[id_en][1]
+            z = points[id_en][2]
+            r = VtkPp.get_r3(x, y, z, self.geometry)
+            depth = self.Ro - r
+            density = density_data[id_en]
+            density_ref = self.density_ref_func(depth)
+            self.buoyancies[i] = - grav_acc * (density - density_ref)  # gravity
+        pass
     
     def ExportSlabInfo(self):
         '''
@@ -193,7 +217,8 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     slab_envelop_interval_y = kwargs.get("slab_envelop_interval_y", 10e3)
     slab_envelop_interval_z = kwargs.get("slab_envelop_interval_z", 10e3)
     slab_shallow_cutoff = kwargs.get("slab_shallow_cutoff", 70e3)
-    crust_only = kwargs.get("crust_only", False)
+    include_force_balance = kwargs.get("include_force_balance", False)
+    crust_only = kwargs.get("crust_only", 0)
     appendix = "_%05d" % vtu_snapshot
     # output_path
     output_path = os.path.join(case_dir, 'vtk_outputs')
@@ -209,20 +234,31 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     Ro =  Visit_Options.options['OUTER_RADIUS']
     Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
     print("geometry: %s, Ro: %f, Xmax: %f" % (geometry, Ro, Xmax))
+    
     # Initiate the working class
+    if include_force_balance:
+        ha_file = os.path.join(case_dir, "output", "depth_average.txt")
+        assert(os.path.isfile(ha_file))
+    else:
+        ha_file = None
+
     VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax, slab_shallow_cutoff=slab_shallow_cutoff,\
-        slab_envelop_interval_y=slab_envelop_interval_y, slab_envelop_interval_z=slab_envelop_interval_z)
+        slab_envelop_interval_y=slab_envelop_interval_y, slab_envelop_interval_z=slab_envelop_interval_z,\
+        ha_file=ha_file, time=_time)
     VtkP.ReadFile(filein)
+    
     # call some functions
     field_names = ['T', 'p', 'density', 'sp_upper', 'sp_lower']
     start = time.time() # record time
-    VtkP.ConstructPolyData(field_names, include_cell_center=False)
+    VtkP.ConstructPolyData(field_names, include_cell_center=False, )
     end = time.time()
     print("Construct polydata, takes %.2f s" % (end - start))
     start = end
     # Analyze slab composiiotn by points
-    if crust_only:
+    if crust_only == 1:
         slab_query_fields = ['sp_upper']
+    elif crust_only == 2:
+        slab_query_fields = ['sp_lower']
     else:
         slab_query_fields = ['sp_upper', 'sp_lower']
     VtkP.PrepareSlabByPoints(slab_query_fields)
@@ -232,13 +268,49 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     # output the slab internal points
     # export slab points
     # 1. slab intervals
-    fileout = os.path.join(output_path, 'slab.vtu')
+    # fileout = os.path.join(output_path, 'slab.vtu')
     slab_point_grid = VtkPp.ExportPointGridFromPolyData(VtkP.i_poly_data, VtkP.slab_points)
-    writer = vtk.vtkXMLUnstructuredGridWriter()
-    writer.SetInputData(slab_point_grid)
-    writer.SetFileName(fileout)
-    writer.Update()
-    writer.Write()
+    if include_force_balance:
+        fileout = os.path.join(output_path, 'slab.vtp')
+        # buoyancy array
+        VtkP.ComputeBuoyancy()
+        buoyancy_vtk_array = numpy_to_vtk(VtkP.buoyancies)
+        buoyancy_vtk_array.SetName("buoyancy")
+        o_poly_data = vtk.vtkPolyData()
+        o_poly_data.SetPoints(slab_point_grid.GetPoints())
+        o_poly_data.GetPointData().SetScalars(buoyancy_vtk_array)
+        # density array
+        densities = vtk_to_numpy(VtkP.i_poly_data.GetPointData().GetArray('density'))
+        densities_slab = np.zeros(len(VtkP.slab_points))
+        for i in range(len(VtkP.slab_points)):
+            id_en = VtkP.slab_points[i]
+            densities_slab[i] = densities[id_en]
+        density_vtk_array = numpy_to_vtk(densities_slab)
+        density_vtk_array.SetName("density")
+        o_poly_data.GetPointData().AddArray(density_vtk_array)
+        # horiz_average array, debug
+        points = vtk_to_numpy(VtkP.i_poly_data.GetPoints().GetData())
+        densities_ref = np.zeros(len(VtkP.slab_points))
+        for i in range(len(VtkP.slab_points)):
+            id_en = VtkP.slab_points[i]
+            x = points[id_en][0] # first, separate cells into intervals
+            y = points[id_en][1]
+            z = points[id_en][2]
+            r = VtkPp.get_r3(x, y, z, VtkP.geometry)
+            depth = Ro - r
+            densities_ref[i] = VtkP.density_ref_func(depth)
+        densities_ref_vtk_array = numpy_to_vtk(densities_ref)
+        densities_ref_vtk_array.SetName("density_ref")
+        o_poly_data.GetPointData().AddArray(densities_ref_vtk_array)
+        # export data
+        VtkPp.ExportPolyData(o_poly_data, fileout)
+    else:
+        fileout = os.path.join(output_path, 'slab.vtu')
+        writer = vtk.vtkXMLUnstructuredGridWriter()
+        writer.SetInputData(slab_point_grid)
+        writer.SetFileName(fileout)
+        writer.Update()
+        writer.Write()
     print("File output for slab internal points: %s" % fileout)
     # 2. slab envelops
     file_name = "slab_env0" + appendix + ".vtu"
@@ -295,6 +367,7 @@ def SlabMorphologyCase(case_dir, **kwargs):
     slab_envelop_interval_y = kwargs.get("slab_envelop_interval_y", 10e3)
     slab_envelop_interval_z = kwargs.get("slab_envelop_interval_z", 10e3)
     slab_shallow_cutoff = kwargs.get("slab_shallow_cutoff", 70e3)
+    include_force_balance = kwargs.get("include_force_balance", False)
     use_parallel = kwargs.get('use_parallel', False)
     crust_only = kwargs.get("crust_only", False)
     # get all available snapshots
@@ -312,10 +385,11 @@ def SlabMorphologyCase(case_dir, **kwargs):
         os.mkdir(vtk_output_dir)
     
     # slab_morph_file = os.path.join(vtk_output_dir, 'slab_morph.txt')
-    
+
     # Initiation Wrapper class for parallel computation
     ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology, if_rewrite=if_rewrite, slab_envelop_interval_y=slab_envelop_interval_y,\
-                                                slab_envelop_interval_z=slab_envelop_interval_z, slab_shallow_cutoff=slab_shallow_cutoff, crust_only=crust_only)
+                                                slab_envelop_interval_z=slab_envelop_interval_z, slab_shallow_cutoff=slab_shallow_cutoff, crust_only=crust_only,\
+                                                include_force_balance=include_force_balance)
     ParallelWrapper.configure(case_dir)  # assign case directory
     # Remove previous file
 
@@ -652,9 +726,11 @@ def main():
         Usage()
     elif _commend == 'analyze_slab':
         # use the wrapper
+        # include_force_balance = True
+        include_force_balance = True
         SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1,\
             slab_envelop_interval_y=arg.slab_envelop_interval_y, slab_envelop_interval_z=arg.slab_envelop_interval_z,\
-            slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only)
+            slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only, include_force_balance=include_force_balance)
     elif _commend == 'morph_case':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=0, time_interval=arg.time_interval,\
