@@ -26,6 +26,8 @@ from matplotlib import cm, gridspec
 from numpy import linalg as LA 
 import multiprocessing
 import time
+from joblib import Parallel, delayed
+import warnings
 #### self
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
 from shilofue.ThDSubduction0.PlotVisit import VISIT_OPTIONS
@@ -52,10 +54,18 @@ Examples of usage: \n\
     analyze slab morphology, by parsing a pvtu file:\n\
         python -m shilofue.ThDSubduction0.VtkPp analyze_slab -i /mnt/lochy0/ASPECT_DATA/ThDSubduction/gmg_test_stampede/test_ThD_gmg_mv1e20_picard_correction_side_plate -vs 0 \n\
 \n\
+        trench morphology\n\
+        python -m shilofue.ThDSubduction0.VtkPp morph_case -i /mnt/lochy0/ASPECT_DATA/ThDSubduction/EBA_2d_consistent_8_6/eba3d_width51_c22_AR4 -ti 1e6 \n\
+\n\
+        run morphology in parallel\n\
+        python -m shilofue.ThDSubduction0.VtkPp morph_case_parallel -i /mnt/lochy0/ASPECT_DATA/ThDSubduction/EBA_2d_consistent_8_6/eba3d_width51_c22_AR4 -ti 1e6 \n\
+\n\
     plot trench positions, assuming the trench.txt files have already been generated: \n\
         the -ti option gives a time interval\n\
-\n\
         python -m shilofue.ThDSubduction0.VtkPp plot_trench -i /mnt/lochy0/ASPECT_DATA/ThDSubduction/gmg_test_stampede/test_ThD_gmg_mv1e20_picard_correction_side_plate -ti 2e6 \n\
+\n\
+        plot trench morphology in episodes\n\
+        python -m shilofue.ThDSubduction0.VtkPp  plot_trench_by_episodes -i /mnt/lochy0/ASPECT_DATA/ThDSubduction/EBA_2d_consistent_8_6/eba3d_width51_c22_AR4\n\
 \n\
 ")
 
@@ -177,8 +187,14 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         case_dir (str): case directory
         vtu_step (int): step in vtu outputs
     '''
+    # inputs
     filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
-    assert(os.path.isfile(filein))
+    Utilities.my_assert(os.path.isfile(filein), FileNotFoundError, "%s is not found" % filein)
+    slab_envelop_interval_y = kwargs.get("slab_envelop_interval_y", 10e3)
+    slab_envelop_interval_z = kwargs.get("slab_envelop_interval_z", 10e3)
+    slab_shallow_cutoff = kwargs.get("slab_shallow_cutoff", 70e3)
+    crust_only = kwargs.get("crust_only", False)
+    appendix = "_%05d" % vtu_snapshot
     # output_path
     output_path = os.path.join(case_dir, 'vtk_outputs')
     if not os.path.isdir(output_path):
@@ -194,7 +210,8 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
     print("geometry: %s, Ro: %f, Xmax: %f" % (geometry, Ro, Xmax))
     # Initiate the working class
-    VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax, slab_shallow_cutoff=70e3)
+    VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax, slab_shallow_cutoff=slab_shallow_cutoff,\
+        slab_envelop_interval_y=slab_envelop_interval_y, slab_envelop_interval_z=slab_envelop_interval_z)
     VtkP.ReadFile(filein)
     # call some functions
     field_names = ['T', 'p', 'density', 'sp_upper', 'sp_lower']
@@ -204,7 +221,11 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     print("Construct polydata, takes %.2f s" % (end - start))
     start = end
     # Analyze slab composiiotn by points
-    VtkP.PrepareSlabByPoints(['sp_upper', 'sp_lower'])
+    if crust_only:
+        slab_query_fields = ['sp_upper']
+    else:
+        slab_query_fields = ['sp_upper', 'sp_lower']
+    VtkP.PrepareSlabByPoints(slab_query_fields)
     end = time.time()
     print("Prepare slab composition, takes %.2f s" % (end - start))
     start = end
@@ -220,7 +241,8 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     writer.Write()
     print("File output for slab internal points: %s" % fileout)
     # 2. slab envelops
-    fileout = os.path.join(output_path, 'slab_env0.vtu')
+    file_name = "slab_env0" + appendix + ".vtu"
+    fileout = os.path.join(output_path, file_name)
     slab_env0_grid = VtkPp.ExportPointGridFromPolyData(VtkP.i_poly_data,VtkP.slab_envelop_point_list0)
     writer = vtk.vtkXMLUnstructuredGridWriter()
     writer.SetInputData(slab_env0_grid)
@@ -228,7 +250,8 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     writer.Update()
     writer.Write()
     print("File output for slab envelop0 (smaller x) points: %s" % fileout)
-    fileout = os.path.join(output_path, 'slab_env1.vtu')
+    file_name = "slab_env1" + appendix + ".vtu"
+    fileout = os.path.join(output_path, file_name)
     slab_env1_grid = VtkPp.ExportPointGridFromPolyData(VtkP.i_poly_data,VtkP.slab_envelop_point_list1)
     writer = vtk.vtkXMLUnstructuredGridWriter()
     writer.SetInputData(slab_env1_grid)
@@ -269,6 +292,11 @@ def SlabMorphologyCase(case_dir, **kwargs):
     '''
     if_rewrite = kwargs.get('rewrite', 0)
     step_for_derivatives = kwargs.get('step_for_derivatives', 5)
+    slab_envelop_interval_y = kwargs.get("slab_envelop_interval_y", 10e3)
+    slab_envelop_interval_z = kwargs.get("slab_envelop_interval_z", 10e3)
+    slab_shallow_cutoff = kwargs.get("slab_shallow_cutoff", 70e3)
+    use_parallel = kwargs.get('use_parallel', False)
+    crust_only = kwargs.get("crust_only", False)
     # get all available snapshots
     # the interval is choosen so there is no high frequency noises
     time_interval_for_slab_morphology = kwargs.get("time_interval", 0.5e6)
@@ -286,7 +314,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
     # slab_morph_file = os.path.join(vtk_output_dir, 'slab_morph.txt')
     
     # Initiation Wrapper class for parallel computation
-    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology, if_rewrite=True)
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology, if_rewrite=if_rewrite, slab_envelop_interval_y=slab_envelop_interval_y,\
+                                                slab_envelop_interval_z=slab_envelop_interval_z, slab_shallow_cutoff=slab_shallow_cutoff, crust_only=crust_only)
     ParallelWrapper.configure(case_dir)  # assign case directory
     # Remove previous file
 
@@ -296,16 +325,23 @@ def SlabMorphologyCase(case_dir, **kwargs):
 #            os.remove(slab_morph_file)  # delete slab morph file
 #        ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
 
-    num_cores = multiprocessing.cpu_count()
     # loop for all the steps to plot
     # Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
     # for pvtu_step in available_pvtu_steps)  # first run in parallel and get stepwise output
     ParallelWrapper.clear()
-    for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
-        ParallelWrapper(pvtu_snapshot)
-        ParallelWrapper(pvtu_snapshot + step_for_derivatives)  # for computing the derivatives, might be bugs
-
-    pvtu_steps_o, outputs = ParallelWrapper.assemble() 
+    if use_parallel:
+        num_cores = 2 # multiprocessing.cpu_count()
+        print("run in parallel, number of cores: %d" % num_cores)
+        # raise NotImplementedError("Parallel for the function %s is not properly implemented yet" % Utilities.func_name())
+        Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_snapshot)\
+        for pvtu_snapshot in available_pvtu_snapshots)  # first run in parallel and get stepwise output
+        print("call assemble_parallel")  # debug
+        pvtu_steps_o, outputs = ParallelWrapper.assemble_parallel()
+    else:
+        for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
+            ParallelWrapper(pvtu_snapshot)
+            # ParallelWrapper(pvtu_snapshot + step_for_derivatives)  # for computing the derivatives, might be bugs
+        pvtu_steps_o, outputs = ParallelWrapper.assemble() 
  
   
  
@@ -333,36 +369,122 @@ class SLABPLOT(LINEARPLOT):
         Visit_Options = VISIT_OPTIONS(case_dir)
         Visit_Options.Interpret()
         trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
+        trench_edge_y = float(Visit_Options.options['TRENCH_EDGE_Y_FULL'])
         # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
         available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+        assert(len(available_pvtu_snapshots) > 1) # assert this is an array
         n_snapshots = len(available_pvtu_snapshots)
         print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # output the availabe pvtu snapshots
-        fig = plt.figure(tight_layout=True, figsize=(5, 10)) 
-        gs = gridspec.GridSpec(2, 1) 
-        # 1. trench position
-        ax = fig.add_subplot(gs[0, 0]) 
-        normalizer = [ float(i)/(n_snapshots-1) for i in range(n_snapshots)] 
-        colors = cm.rainbow(normalizer) 
-        i = 0
-        for vtu_snapshot in available_pvtu_snapshots:
-            # plot each snapsh
-            _time = time_interval_for_slab_morphology * i
-            _color = colors[i]
-            ax = self.PlotTrenchPositionStep(case_dir, vtu_snapshot, axis=ax, color=_color, label="Time = %.2f Myr" % (_time / 1e6))
-            i += 1
-        ax.legend()
-        ax.set_xlim([trench_initial_position/1e3 - 1000, trench_initial_position/1e3 + 1000]) # set the x axis to center around the inital trench
-        # 2. trench velocity
-        ax = fig.add_subplot(gs[1, 0]) 
-        ax = self.PlotTrenchVelocity(case_dir, time_interval_for_slab_morphology, axis=ax)
-        # save image
+        
+        # make directory to save images 
         img_dir = os.path.join(case_dir, 'img')
         if not os.path.isdir(img_dir):
             os.mkdir(img_dir)
         morph_img_dir = os.path.join(img_dir, "morphology")
         if not os.path.isdir(morph_img_dir):
             os.mkdir(morph_img_dir)
-        fileout = os.path.join(morph_img_dir, "trench.png")
+
+        # 1. trench position
+        n_in_group = 5
+        n_column = 3
+        n_group = int(np.ceil(1.0 * n_snapshots / n_in_group))
+        n_raw = int(np.ceil(1.0 * n_group / n_column))
+
+        fig = plt.figure(tight_layout=True, figsize=(5 * n_column, 5 * n_raw)) 
+        gs = gridspec.GridSpec(n_raw, n_column) 
+        for i in range(n_group):
+            col = i % n_column
+            raw = i // n_column
+            ax = fig.add_subplot(gs[raw, col]) 
+            for j in range(n_in_group+1):
+                # j value is chosen to connect the last one in the
+                # previous group and the first one in the current group
+                i_in_snapshots = i * n_in_group + j
+                if i_in_snapshots < n_snapshots:
+                    vtu_snapshot = available_pvtu_snapshots[i_in_snapshots]
+                    _time = time_interval_for_slab_morphology * i_in_snapshots
+                    normalizer = [ float(j)/(n_in_group) for i in range(n_in_group+1)] 
+                    colors = cm.rainbow(normalizer) 
+                    _color = colors[j]
+                    ax = self.PlotTrenchPositionStep(case_dir, vtu_snapshot, axis=ax, color=_color, label="Time = %.2f Myr" % (_time / 1e6))
+            ax.legend()
+            ax.set_xlim([trench_initial_position/1e3 - 1000, trench_initial_position/1e3 + 1000]) # set the x axis to center around the inital trench
+        # save figure
+        fileout = os.path.join(morph_img_dir, "trench_history.png")
+        fig.savefig(fileout)
+        print("image output: ", fileout)
+
+        # 2. trench velocity
+        fig, ax= plt.subplots(tight_layout=True, figsize=(8, 5)) 
+        # use the steps between the 0th and 1th snapshot as the interval for calculating the velocities
+        step_for_derivatives = available_pvtu_snapshots[1] - available_pvtu_snapshots[0]
+        y_queries_for_trench_velocities = np.arange(0.0, trench_edge_y - 100e3, 200e3)
+        silence = False
+        for i in range(y_queries_for_trench_velocities.size):
+            if i > 0:
+                silence = True
+            y_query = y_queries_for_trench_velocities[i]
+            ax = self.PlotTrenchVelocity(case_dir, time_interval_for_slab_morphology,\
+                                        axis=ax, step_for_derivatives=step_for_derivatives, y_query=y_query, silence=silence)
+        ax.legend()
+        # save image
+        fileout = os.path.join(morph_img_dir, "trench_velocities.png")
+        fig.savefig(fileout)
+        print("image output: ", fileout)
+
+    
+    def PlotTrenchPositionEpisodes(self, case_dir, episodes, **kwargs):
+        '''
+        a variation of the PlotMorph function: used for combining results with episodes
+        Inputs:
+            case_dir (str): directory of case
+        kwargs(dict):
+            defined but not used
+        '''
+        time_interval_for_slab_morphology = kwargs.get("time_interval", 1.0e6)
+        Visit_Options = VISIT_OPTIONS(case_dir)
+        Visit_Options.Interpret()
+        trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
+        trench_edge_y = float(Visit_Options.options['TRENCH_EDGE_Y_FULL'])
+        # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+        available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+        assert(len(available_pvtu_snapshots) > 1) # assert this is an array
+        n_snapshots = len(available_pvtu_snapshots)
+        print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # output the availabe pvtu snapshots
+        
+        # make directory to save images 
+        img_dir = os.path.join(case_dir, 'img')
+        if not os.path.isdir(img_dir):
+            os.mkdir(img_dir)
+        morph_img_dir = os.path.join(img_dir, "morphology")
+        if not os.path.isdir(morph_img_dir):
+            os.mkdir(morph_img_dir)
+
+        # 1. trench position
+        n_column = 2
+        n_episodes = len(episodes)
+        n_raw = int(np.ceil(1.0 * n_episodes / n_column))
+
+        fig = plt.figure(tight_layout=True, figsize=(5 * n_column, 5 * n_raw)) 
+        gs = gridspec.GridSpec(n_raw, n_column) 
+        for i in range(n_episodes):
+            col = i % n_column
+            raw = i // n_column
+            ax = fig.add_subplot(gs[raw, col]) 
+            episode = episodes[i]
+            assert(len(episode) == 2)
+            for i_in_snapshots in range(episode[0], episode[1]):
+                if i_in_snapshots < n_snapshots:
+                    vtu_snapshot = available_pvtu_snapshots[i_in_snapshots]
+                    _time = time_interval_for_slab_morphology * i_in_snapshots
+                    normalizer = [ float(i_in_snapshots - episode[0])/(episode[1] - episode[0] -1) for i in range(episode[1] - episode[0])] 
+                    colors = cm.rainbow(normalizer) 
+                    _color = colors[i_in_snapshots - episode[0]]
+                    ax = self.PlotTrenchPositionStep(case_dir, vtu_snapshot, axis=ax, color=_color, label="Time = %.2f Myr" % (_time / 1e6))
+            ax.legend()
+            ax.set_xlim([trench_initial_position/1e3 - 1000, trench_initial_position/1e3 + 1000]) # set the x axis to center around the inital trench
+        # save figure
+        fileout = os.path.join(morph_img_dir, "trench_history_episodes.png")
         fig.savefig(fileout)
         print("image output: ", fileout)
 
@@ -374,7 +496,7 @@ class SLABPLOT(LINEARPLOT):
         _color = kwargs.get("color", None)
         _label = kwargs.get("label", None)
         filein = os.path.join(case_dir, "vtk_outputs", "trench_%05d.txt" % vtu_snapshot)
-        assert(os.path.isfile(filein))
+        Utilities.my_assert(os.path.isfile(filein), FileNotFoundError, "%s is not found." % filein)
         # initiate
         ax = kwargs.get('axis', None)
         if ax == None:
@@ -392,11 +514,13 @@ class SLABPLOT(LINEARPLOT):
         '''
         plot trench position for a single step
         '''
-        Myr = 1e6
-        cm = 1e-2
         _color = kwargs.get("color", None)
         _label = kwargs.get("label", None)
+        silence = kwargs.get("silence", False)
         step_for_derivatives = kwargs.get('step_for_derivatives', 5)
+        y_query = kwargs.get("y_query", 0.0)
+
+        # initiation
         Visit_Options = VISIT_OPTIONS(case_dir)
         Visit_Options.Interpret()
         trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
@@ -407,6 +531,7 @@ class SLABPLOT(LINEARPLOT):
         ax = kwargs.get('axis', None)
         if ax == None:
             raise ValueError("Not implemented")
+       
         # derive the trench velocities
         V_trs = []
         ts = []
@@ -414,28 +539,36 @@ class SLABPLOT(LINEARPLOT):
             vtu_snapshot = available_pvtu_snapshots[n]
             filein0 = os.path.join(case_dir, "vtk_outputs", "trench_%05d.txt" % vtu_snapshot)
             filein1 = os.path.join(case_dir, "vtk_outputs", "trench_%05d.txt" % (vtu_snapshot+step_for_derivatives))
-            Utilities.my_assert(os.path.isfile(filein0), FileNotFoundError, "%s doens't exist" % filein0)
-            Utilities.my_assert(os.path.isfile(filein1), FileNotFoundError, "%s doens't exist" % filein1)
+            if not os.path.isfile(filein0):
+                if not silence:
+                    warnings.warn('PlotTrenchVelocity: File %s is not found' % filein0, UserWarning)
+                continue
+            elif not os.path.isfile(filein1):
+                if not silence:
+                    warnings.warn('PlotTrenchVelocity: File %s is not found' % filein1, UserWarning)
+                continue
+            # Utilities.my_assert(os.path.isfile(filein0), FileNotFoundError, "%s doens't exist" % filein0)
+            # Utilities.my_assert(os.path.isfile(filein1), FileNotFoundError, "%s doens't exist" % filein1)
             _time, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot)
-            _time1, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot+1)
+            _time1, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot+step_for_derivatives)
             dt = _time1 - _time
             data0 = np.loadtxt(filein0)
             xs0 = data0[:, 0]
             ys0 = data0[:, 1]
-            x_tr0 = xs0[0]
-            y_tr0 = ys0[0]
+            x_tr0 = np.interp(y_query, ys0, xs0)
             data1 = np.loadtxt(filein1)
             xs1 = data1[:, 0]
             ys1 = data1[:, 1]
-            x_tr1 = xs1[0]
-            y_tr1 = ys1[0]
-            assert(y_tr0 < 1e3 and y_tr1 < 1e3)  # at the center of the slab
+            x_tr1 = np.interp(y_query, ys1, xs1)
             V_tr0 = (x_tr1 - x_tr0) / dt
-            V_trs.append(V_tr0 / cm)
-            ts.append(_time / Myr)
-        ax.plot(ts, V_trs, label="trench velocity (cm/yr)")
+            V_trs.append(V_tr0)
+            ts.append((_time1 + _time) / 2.0)
+        V_trs = np.array(V_trs)
+        ts = np.array(ts)
+        ax.plot(ts / 1e6, V_trs * 100.0, label="y = %.2f km" % (y_query / 1e3))
         ax.set_xlabel('Time (Myr)')
         ax.set_ylabel('Velocity (cm/yr)')
+        ax.grid()
         return ax
 
 
@@ -494,6 +627,18 @@ def main():
     parser.add_argument('-ti', '--time_interval', type=float,
                         default=1.0e6,
                         help='Time interval, affecting the time steps to visualize')
+    parser.add_argument('-seix', '--slab_envelop_interval_y', type=float,
+                        default=20e6,
+                        help='Interval along y axis to sort out the trench locations')
+    parser.add_argument('-seiz', '--slab_envelop_interval_z', type=float,
+                        default=20e6,
+                        help='Interval along z axis to sort out the trench locations')
+    parser.add_argument('-ssc', '--slab_shallow_cutoff', type=float,
+                        default=40e6,
+                        help='Minimum depth along z axis to sort out the trench locations')
+    parser.add_argument('-co', '--crust_only', type=int,
+                        default=0,
+                        help='If we only use the crustal composition to sort out the trench locations')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -507,14 +652,28 @@ def main():
         Usage()
     elif _commend == 'analyze_slab':
         # use the wrapper
-        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1)
+        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1,\
+            slab_envelop_interval_y=arg.slab_envelop_interval_y, slab_envelop_interval_z=arg.slab_envelop_interval_z,\
+            slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only)
     elif _commend == 'morph_case':
         # slab morphology for a case
-        SlabMorphologyCase(arg.inputs, rewrite=1, time_interval=arg.time_interval)
+        SlabMorphologyCase(arg.inputs, rewrite=0, time_interval=arg.time_interval,\
+            slab_envelop_interval_y=arg.slab_envelop_interval_y, slab_envelop_interval_z=arg.slab_envelop_interval_z,\
+            slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only)
+    elif _commend == 'morph_case_parallel':
+        # slab morphology for a case
+        SlabMorphologyCase(arg.inputs, rewrite=1, time_interval=arg.time_interval,\
+            slab_envelop_interval_y=arg.slab_envelop_interval_y, slab_envelop_interval_z=arg.slab_envelop_interval_z,\
+            slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only, use_parallel=True)
     elif _commend == 'plot_trench':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
         SlabPlot.PlotTrenchPosition(arg.inputs, time_interval=arg.time_interval)
+    elif _commend == 'plot_trench_by_episodes':
+        # plot slab morphology
+        SlabPlot = SLABPLOT('slab')
+        episodes = [[0, 5], [5, 20], [20, 30]]
+        SlabPlot.PlotTrenchPositionEpisodes(arg.inputs, episodes, time_interval=arg.time_interval)
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 

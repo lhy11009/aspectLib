@@ -75,6 +75,7 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         slab_feature = self.wb_dict["features"][idx1]
         sub_plate_extends = sub_plate_feature['coordinates'][1]
         self.options['TRENCH_EDGE_Y'] = sub_plate_extends[1] * 0.75
+        self.options['TRENCH_EDGE_Y_FULL'] = sub_plate_extends[1]
         self.options['ETA_MIN'] = self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']
         self.options['ETA_MAX'] = self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity']
         self.options['TRENCH_INITIAL'] = slab_feature['coordinates'][1][0] 
