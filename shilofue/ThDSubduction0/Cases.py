@@ -158,7 +158,7 @@ different age will be adjusted.",\
     def check(self):
         _type = self.values[9] 
         reset_trailing_morb = self.values[self.start+7]
-        assert(reset_trailing_morb in [0, 1])
+        assert(reset_trailing_morb in [0, 1, 2])
         friction_angle = self.values[self.start+10] # range of friction angle, in degree
         assert(friction_angle >= 0.0 and friction_angle <= 90.0)
         dip_angle = self.values[self.start+23] # initial dipping angle of the slab
@@ -673,6 +673,11 @@ class CASE(CasesP.CASE):
                     o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
                         "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=%.4e, dOvSide=%.4e" % \
                         (box_depth, box_length, Dsz_str, Dp_str, sp_width, sp_ridge_x, ov_side_dist)
+            if reset_trailing_morb == 2:
+                # use this option to reset the morb composition when sp ridge is 0.0
+                o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
+                    "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=%.4e, dOvSide=%.4e" % \
+                    (box_depth, box_length, Dsz_str, Dp_str, sp_width, 6e5, 6e5)
         else:
             raise ValueError()
         # prescribe mantle temperature
@@ -713,7 +718,7 @@ class CASE(CasesP.CASE):
                     o_dict.pop("Prescribed mantle adiabat temperatures")
                 o_dict["Prescribe internal temperatures"] = 'true'
                 o_dict["Prescribed temperatures"]["Indicator function"]["Function constants"] = \
-                    "Depth=1.45e5, Width=%.4e, Do=2.890e6, xm=%.4e, Wp=1.0000e+06" % (prescribe_T_area_width, box_length)
+                    "Depth=1.45e5, Width=%.4e, Do=2.890e6, xm=%.4e, Wp=%.4e" % (prescribe_T_area_width, box_length, sp_width)
                 o_dict["Prescribed temperatures"]["Plate model 1"] = {
                     'Area width': "%.4e" % prescribe_T_area_width,
                     'Subducting plate velocity': "%.4e" % (sp_rate / year),
