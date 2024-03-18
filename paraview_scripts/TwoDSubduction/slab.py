@@ -155,11 +155,6 @@ class SLAB(PARAVIEW_PLOT):
 
         # second plot
         field2 = "viscosity"
-        # get color transfer function/color map for 'field'
-        field2LUT = GetColorTransferFunction(field2)
-        field2PWF = GetOpacityTransferFunction('viscosity')
-        field2LUT.RescaleTransferFunction(ETA_MIN, ETA_MAX)
-        field2PWF.RescaleTransferFunction(ETA_MIN, ETA_MAX)
         # set scalar coloring
         ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
         source1Display.SetScalarBarVisibility(renderView1, True)
@@ -189,6 +184,11 @@ class SLAB(PARAVIEW_PLOT):
         field2LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
         field2LUTColorBar.TitleFontFamily = 'Times'
         field2LUTColorBar.LabelFontFamily = 'Times'
+        # get color transfer function/color map for 'field'
+        field2LUT = GetColorTransferFunction(field2)
+        field2PWF = GetOpacityTransferFunction('viscosity')
+        field2LUT.RescaleTransferFunction(ETA_MIN, ETA_MAX)
+        field2PWF.RescaleTransferFunction(ETA_MIN, ETA_MAX)
         # save figure
         fig_path = os.path.join(self.pv_output_dir, "viscosity_t%.4e.pdf" % self.time)
         fig_png_path = os.path.join(self.pv_output_dir, "viscosity_t%.4e.png" % self.time)
@@ -315,11 +315,6 @@ class SLAB(PARAVIEW_PLOT):
 
         # second plot
         field2 = "viscosity"
-        # get color transfer function/color map for 'field'
-        field2LUT = GetColorTransferFunction(field2)
-        field2PWF = GetOpacityTransferFunction('viscosity')
-        field2LUT.RescaleTransferFunction(ETA_MIN, ETA_MAX)
-        field2PWF.RescaleTransferFunction(ETA_MIN, ETA_MAX)
         # set scalar coloring
         ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
         source1Display.SetScalarBarVisibility(renderView1, True)
@@ -347,6 +342,11 @@ class SLAB(PARAVIEW_PLOT):
         field2LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
         field2LUTColorBar.TitleFontFamily = 'Times'
         field2LUTColorBar.LabelFontFamily = 'Times'
+        # get color transfer function/color map for 'field'
+        field2LUT = GetColorTransferFunction(field2)
+        field2PWF = GetOpacityTransferFunction('viscosity')
+        field2LUT.RescaleTransferFunction(ETA_MIN, ETA_MAX)
+        field2PWF.RescaleTransferFunction(ETA_MIN, ETA_MAX)
         # save figure
         fig_path = os.path.join(self.pv_output_dir, "viscosity_whole_t%.4e.pdf" % self.time)
         fig_png_path = os.path.join(self.pv_output_dir, "viscosity_whole_t%.4e.png" % self.time)
@@ -438,11 +438,6 @@ class SLAB(PARAVIEW_PLOT):
 
         # second plot
         field2 = "viscosity"
-        # get color transfer function/color map for 'field'
-        field2LUT = GetColorTransferFunction(field2)
-        field2PWF = GetOpacityTransferFunction('viscosity')
-        field2LUT.RescaleTransferFunction(ETA_MIN, ETA_MAX)
-        field2PWF.RescaleTransferFunction(ETA_MIN, ETA_MAX)
         # set scalar coloring
         ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
         source1Display.SetScalarBarVisibility(renderView1, True)
@@ -470,6 +465,11 @@ class SLAB(PARAVIEW_PLOT):
         field2LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
         field2LUTColorBar.TitleFontFamily = 'Times'
         field2LUTColorBar.LabelFontFamily = 'Times'
+        # get color transfer function/color map for 'field'
+        field2LUT = GetColorTransferFunction(field2)
+        field2PWF = GetOpacityTransferFunction('viscosity')
+        field2LUT.RescaleTransferFunction(ETA_MIN, ETA_MAX)
+        field2PWF.RescaleTransferFunction(ETA_MIN, ETA_MAX)
         # save figure
         fig_path = os.path.join(self.pv_output_dir, "viscosity_whole_whole_t%.4e.pdf" % self.time)
         fig_png_path = os.path.join(self.pv_output_dir, "viscosity_whole_whole_t%.4e.png" % self.time)
