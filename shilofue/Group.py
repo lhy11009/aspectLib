@@ -578,6 +578,7 @@ def ReadBasicInfoGroup(group_dir):
     Return:
         case_list, step_list, time_list, wallclock_list (list): list of outputs
     '''
+    print("ReadBasicInfoGroup: reading group %s" % group_dir)
     cases = FindCasesInDir(group_dir)
     Utilities.my_assert(len(cases)>0, FileExistsError, "%s doesn't have cases in it." % group_dir)
     case_list = [] 
@@ -586,20 +587,22 @@ def ReadBasicInfoGroup(group_dir):
     wallclock_list = []
     for case in cases:
         # pull out information
+        last_step = -1
+        last_time = -1.0
+        last_wallclock = -1.0
         log_file = os.path.join(case, 'output', 'log.txt')
-        assert(os.path.isfile(log_file))
-        try:
-            last_step, last_time, last_wallclock = RunTimeInfo(log_file, quiet=True)
-        except TypeError:
-            last_step = -1
-            last_time = -1.0
-            last_wallclock = -1.0
+        if os.path.isfile(log_file):
+            try:
+                last_step, last_time, last_wallclock = RunTimeInfo(log_file, quiet=True)
+            except TypeError:
+                pass
         case_list.append(os.path.basename(case))
         step_list.append(int(last_step))
         time_list.append(float(last_time))
         wallclock_list.append(float(last_wallclock))
+        print(" Found case %s" % os.path.basename(case))
     return case_list, step_list, time_list, wallclock_list
-        
+
 
 def DocumentGroupsInDir(_dir):
     '''
@@ -636,8 +639,13 @@ class CASE_SUMMARY():
         self.times = []
         self.wallclocks = []
         self.ab_paths = []
-        self.attrs = ['cases', 'steps', 'times', 'wallclocks']
+        self.includes = []
+        self.attrs = ['includes', 'cases', 'steps', 'times', 'wallclocks']
         self.n_case = 0
+
+        self.attrs_to_output = ['includes', 'steps', 'times', 'wallclocks']
+        self.headers = ['includes', 'steps', 'times (yr)', 'wallclocks (s)']
+
         self.has_update = True
         self.VISIT_OPTIONS = kwargs.get("VISIT_OPTIONS", None)
 
@@ -651,7 +659,7 @@ class CASE_SUMMARY():
         i_path = os.path.join(_dir, 'case_summary.txt')
         if os.path.isfile(i_path):
             self.import_txt(i_path)
-            self.Update(**kwargs) # debug
+            self.Update(**kwargs)
         else:
             self.import_directory(_dir, **kwargs)
 
@@ -661,8 +669,9 @@ class CASE_SUMMARY():
         Inputs:
             kwargs
         '''
-        self.had_update = True
-        pass
+        # append the include field
+        if len(self.includes) < self.n_case:
+            self.includes += [1 for i in range(self.n_case - len(self.includes))]
 
     def import_directory(self, _dir, **kwargs):
         '''
@@ -673,17 +682,27 @@ class CASE_SUMMARY():
         assert(os.path.isdir(_dir))
         # first parse in run time information
         case_list, step_list, time_list, wallclock_list = ReadBasicInfoGroup(_dir)
-        self.n_case += len(case_list)
-        self.cases += case_list
-        self.steps += step_list
-        self.times += time_list
-        self.wallclocks += wallclock_list
-        for _case in case_list:
-            self.ab_paths.append(os.path.join(_dir, _case))
+        for i in range(len(case_list)):
+            _case = case_list[i]
+            step = step_list[i]
+            _time = time_list[i]
+            wallclock = wallclock_list[i]
+            if _case in self.cases:
+                j = self.cases.index(_case)
+                self.steps[j] = step
+                self.times[j] = _time
+                self.wallclocks[j] = wallclock
+            else:
+                self.n_case += 1
+                self.cases.append(_case)
+                self.steps.append(step)
+                self.times.append(_time)
+                self.wallclocks.append(wallclock)
+                self.ab_paths.append(os.path.join(_dir, _case))
         
         # then call update for properties
         self.Update(**kwargs)
-    
+
     def import_txt(self, i_path):
         '''
         import an existing txt file
@@ -696,17 +715,61 @@ class CASE_SUMMARY():
         reader.ReadHeader(i_path)
         reader.ReadData(i_path, dtype=str)
 
-        # import data and append to fields
-        for attr in self.attrs:
-            temp = getattr(self, attr)
-            setattr(self, attr, temp + reader.export_field_as_array(attr))
+        # Read input cases
+        # if case already exists in the record, update
+        # else: append new case into the record
+        n_case_old = self.n_case
+        in_cases = reader.export_field_as_array("cases")
+        in_ab_paths = reader.export_field_as_array("ab_paths")
+        indexes = []
+        for i in range(len(in_cases)):
+            in_case = in_cases[i]
+            if in_case in self.cases:
+                j = self.cases.index(in_case)
+                indexes.append(j)
+            else:
+                self.cases.append(in_case)
+                self.ab_paths.append(in_ab_paths[i])
+                indexes.append(-1)
+                self.n_case += 1
 
-        # number of cases
-        cases = getattr(self, "cases")
-        self.n_case = len(cases)
-        for _case in cases:
-            temp = os.path.join(os.path.dirname(i_path), _case)
-            self.ab_paths.append(os.path.abspath(temp))
+        # import data and either append or update fields
+        for attr in self.attrs:
+            # "cases" attribute is handled in the previous loop
+            if attr == "cases":
+                continue
+            temp = getattr(self, attr)
+            in_array = reader.export_field_as_array(attr)
+            if (len(in_array) == 0):
+                # no data input, continue
+                continue
+            if len(temp) > 0:
+                # field exist
+                for i in range(len(in_cases)):
+                    if indexes[i] < 0:
+                        # case doesn't preexist
+                        temp.append(in_array[i])
+                    else:
+                        # case preexist
+                        temp[indexes[i]] = in_array[i] 
+            else:
+                # field doesn't exist
+                # current: do nothing
+                # TODO: figure out updating strategy
+                for i in range(len(in_cases)):
+                    if indexes[i] < 0:
+                        # case doesn't preexist
+                        # compensate results for previous case by adding trivial values
+                        # then append the values for the new cases
+                        if i == 0:
+                            temp = [-1 for j in range(n_case_old)]
+                        temp.append(in_array[i])
+                    else:
+                        # case preexist
+                        # temp[indexes[i]] =in_array[i] 
+                        continue
+                # field doesn't exist
+            setattr(self, attr, temp)
         
         # set has_update to False
         self.has_update = False
@@ -722,12 +785,17 @@ class CASE_SUMMARY():
         # header and data to write
         data_raw = []
         oheaders = []
+        length_of_data = 0
         for i in range(len(attrs_to_output)):
             _attr = attrs_to_output[i]
             header = headers[i]
             temp = np.array(getattr(self, _attr))
+            if i == 0:
+                length_of_data = len(temp)
             if len(temp) > 0:
                 # len(temp) == 0 marks an void field
+                Utilities.my_assert(length_of_data == len(temp), ValueError,\
+                    "Data for field \'%s\'(%d) doesn't much the length of data (%d)" % (_attr, len(temp), length_of_data))
                 data_raw.append(temp)
                 oheaders.append(header)
         data = np.column_stack(data_raw)
@@ -745,9 +813,11 @@ class CASE_SUMMARY():
         Inputs:
             o_path (str): path of output
         '''
-        attrs_to_output = ['cases', 'steps', 'times', 'wallclocks']
-        headers = ['cases', 'steps', 'times (yr)', 'wallclocks (s)']
+        # append the case name first and the absolute path last
+        attrs_to_output = ["cases"] + self.attrs_to_output + ["ab_paths"]
+        headers = ["cases"] + self.attrs_to_output + ["ab_paths"]
 
+        # write file
         with open(o_path, 'w') as fout: 
             self.write(fout, attrs_to_output, headers) 
         
@@ -768,7 +838,6 @@ class CASE_SUMMARY():
     class SummaryFileNotExistError(Exception):
         pass
 
-    # todo_diagram
     def mesh_data(self, x_name, y_name, z_name, **kwargs):
         '''
         plot diagram
@@ -801,7 +870,6 @@ class CASE_SUMMARY():
         return XX, YY, ZZ
 
 
-# todo_diagram
 def WeightedByDistance(Xs, Ys, Zs, XX, YY):
     '''
     Inputs:

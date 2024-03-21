@@ -36,6 +36,7 @@ from numpy import linalg as LA
 import multiprocessing
 import warnings
 from scipy.interpolate import interp1d 
+from scipy.integrate import quad
 from scipy.optimize import minimize
 #### self
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
@@ -3295,15 +3296,17 @@ class SLABPLOT(LINEARPLOT):
                 except ValueError:
                     pass
 
-    def GetTimeDepthTip(self, case_dir, query_depth):
+    def GetTimeDepthTip(self, case_dir, query_depth, **kwargs):
         '''
         todo_t660
         Get the time the slab tip is at a certain depth
         Inputs:
             case_dir (str): case directory
         '''
+        filename = kwargs.get("filename", "slab_morph.txt")
+
         assert(os.path.isdir(case_dir))
-        morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+        morph_file = os.path.join(case_dir, 'vtk_outputs', filename)
         Utilities.my_assert(os.path.isfile(morph_file), self.SlabMorphFileNotExistError, "%s is not a file." % morph_file)
         self.ReadHeader(morph_file)
         self.ReadData(morph_file)
@@ -3323,7 +3326,79 @@ class SLABPLOT(LINEARPLOT):
                     (query_depth - next_depth) / (depth - next_depth) * _time
                 
         return query_time
+
+    def GetAverageVelocities(self, case_dir, t0, t1, **kwargs):
+        '''
+        Inputs:
+            compute the average velocities between t0 and t1
+        '''
+        assert(t1 > t0)
+        assert(os.path.isdir(case_dir))
+        filename = kwargs.get("filename", "slab_morph.txt")
+
+        # read inputs
+        prm_file = os.path.join(case_dir, 'output', 'original.prm')
+        Utilities.my_assert(os.access(prm_file, os.R_OK), FileNotFoundError,\
+        "prm file %s cannot be opened" % prm_file)
+        self.ReadPrm(prm_file)
+        # read parameters
+        geometry = self.prm['Geometry model']['Model name']
+        if geometry == 'chunk':
+            Ro = float(self.prm['Geometry model']['Chunk']['Chunk outer radius'])
+        else:
+            Ro = -1.0  # in this way, wrong is wrong
+        
+        # read morph file
+        morph_file = os.path.join(case_dir, 'vtk_outputs', filename)
+        Utilities.my_assert(os.path.isfile(morph_file), self.SlabMorphFileNotExistError, "%s is not a file." % morph_file)
+        self.ReadHeader(morph_file)
+        self.ReadData(morph_file)
+        
+        col_time = self.header['time']['col']
+        times = self.data[:, col_time]
+
+        V_sink_avg = -1.0
+        V_plate_avg = -1.0
+        V_trench_avg = -1.0
+        
+        # calculate the velocity is suitable value of t1 is provided
+        if t1 < times[times.size-1]:
+            col_trench = self.header['trench']['col']
+            trenches = self.data[:, col_trench]
+            col_slab_depth = self.header['slab_depth']['col']
+            slab_depths = self.data[:, col_slab_depth]
+            col_sp_velocity = self.header['subducting_plate_velocity']['col']
+            sp_velocities = self.data[:, col_sp_velocity]
     
+            # trench migration 
+            trench0 = np.interp(t0, times, trenches)
+            trench1 = np.interp(t1, times, trenches)
+            trenches_migration_length = 0.0
+            if geometry == "chunk":
+                trenches_migration_length = (trench1 - trench0) * Ro  # length of migration
+            elif geometry == 'box':
+                trenches_migration_length = trench1 - trench0
+            V_trench_avg = trenches_migration_length / (t1 - t0)
+    
+            # slab depth 
+            slab_depth0 = np.interp(t0, times, slab_depths)
+            slab_depth1 = np.interp(t1, times, slab_depths)
+            V_sink_avg = (slab_depth1 - slab_depth0) / (t1 - t0)
+    
+            # plate motion
+            v_temp = 0.0
+            w_temp = 0.0
+            for i in range(times.size-1):
+                time0 = times[i]
+                time1 = times[i+1]
+                if time0 > t0 and time1 < t1:
+                    v_temp += (time1 - time0) * (sp_velocities[i] + sp_velocities[i+1])/2.0
+                    w_temp += (time1 - time0)
+            V_plate_avg = v_temp / w_temp
+
+        return V_sink_avg, V_plate_avg, V_trench_avg
+
+
     class SlabMorphFileNotExistError(Exception):
         pass
 

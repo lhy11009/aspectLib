@@ -63,6 +63,28 @@ def test_case_summary():
     assert(filecmp.cmp(o_path, o_path_std))
 
 
+def test_case_summary_append():
+    '''
+    test case summary and append cases from an additional group
+    '''
+    group1_dir = os.path.join(source_dir, 'test_case_summary')
+    group2_dir = os.path.join(source_dir, 'test_case_summary_append')
+    assert(os.path.isdir(group1_dir))
+    assert(os.path.isdir(group2_dir))
+    
+    # test 2: import directory and calculate t660
+    Case_Summary = CASE_SUMMARY()
+    o_path = os.path.join(test_local_dir, 'case_summary_append.txt')
+    o_path_std = os.path.join(group2_dir, 'case_summary_std.txt')
+    # first write the summary of cases in the first directory
+    Case_Summary.import_directory(group1_dir, actions=['t660'])
+    Case_Summary.write_file(o_path)
+    Case_Summary.import_txt(o_path)
+    Case_Summary.import_directory(group2_dir, actions=['t660'])
+    Case_Summary.write_file(o_path)
+    assert(filecmp.cmp(o_path, o_path_std))
+
+
     
 # notes
     

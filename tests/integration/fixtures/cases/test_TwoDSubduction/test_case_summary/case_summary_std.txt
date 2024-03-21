@@ -1,7 +1,9 @@
 # 1: cases
-# 2: steps
-# 3: times (yr)
-# 4: wallclocks (s)
-# 5: t660s (yr)
-eba_cdpt_coh500_SA80.0_OA40.0_cd100.0_cd7.5_gr9 1460 27981400.0 308000.0 2446899.8226950355
-eba_cdpt_coh500_SA80.0_OA40.0_cd200.0_cd20.0_gr9 2250 41636200.0 307000.0 2509317.813765182
+# 2: includes
+# 3: steps
+# 4: times
+# 5: wallclocks
+# 6: t660s
+# 7: ab_paths
+eba_cdpt_coh500_SA80.0_OA40.0_cd100.0_cd7.5_gr9 1 1460 27981400.0 308000.0 2446899.8226950355 /home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/cases/test_TwoDSubduction/test_case_summary/eba_cdpt_coh500_SA80.0_OA40.0_cd100.0_cd7.5_gr9
+eba_cdpt_coh500_SA80.0_OA40.0_cd200.0_cd20.0_gr9 1 2250 41636200.0 307000.0 2509317.813765182 /home/lochy/ASPECT_PROJECT/aspectLib/tests/integration/fixtures/cases/test_TwoDSubduction/test_case_summary/eba_cdpt_coh500_SA80.0_OA40.0_cd200.0_cd20.0_gr9
