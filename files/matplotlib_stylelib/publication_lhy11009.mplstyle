@@ -378,7 +378,8 @@ font.serif: Times New Roman
                              # text.color as default value
 #axes.titley:        None    # position title (axes relative units).  None implies auto
 #axes.titlepad:      6.0     # pad between axes and title in points
-#axes.labelsize:     medium  # font size of the x and y labels
+#lhy11009
+axes.labelsize:     20.0  # font size of the x and y labels
 #axes.labelpad:      4.0     # space between label and axis
 #axes.labelweight:   normal  # weight of the x and y labels
 #axes.labelcolor:    black
@@ -495,7 +496,7 @@ xtick.minor.visible: True   # visibility of minor ticks on x-axis
 #xtick.minor.top:     True    # draw x axis top minor ticks
 #xtick.minor.bottom:  True    # draw x axis bottom minor ticks
 # lhy11009:
-xtick.minor.ndivs:   4    # number of minor ticks between the major ticks on x-axis
+# xtick.minor.ndivs:   4    # number of minor ticks between the major ticks on x-axis
 #xtick.alignment:     center  # alignment of xticks
 
 #ytick.left:          True    # draw ticks on the left side
@@ -518,7 +519,7 @@ ytick.minor.visible: True   # visibility of minor ticks on y-axis
 #ytick.major.right:   True    # draw y axis right major ticks
 #ytick.minor.left:    True    # draw y axis left minor ticks
 #ytick.minor.right:   True    # draw y axis right minor ticks
-ytick.minor.ndivs:   4   # number of minor ticks between the major ticks on y-axis
+#ytick.minor.ndivs:   4   # number of minor ticks between the major ticks on y-axis
 #ytick.alignment:     center_baseline  # alignment of yticks
 
 
@@ -545,7 +546,7 @@ ytick.minor.ndivs:   4   # number of minor ticks between the major ticks on y-ax
 #legend.numpoints:     1        # the number of marker points in the legend line
 #legend.scatterpoints: 1        # number of scatter points
 #legend.markerscale:   1.0      # the relative size of legend markers vs. original
-#legend.fontsize:      medium
+legend.fontsize:      12
 #legend.labelcolor:    None
 #legend.title_fontsize: None    # None sets to the same as the default axes.
 
