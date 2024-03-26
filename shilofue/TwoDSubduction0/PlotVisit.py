@@ -95,6 +95,42 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
             self.options['ETA_MAX'] = eta_max_inputs.data['background'][0] # use phases
         # self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
         self.options['IF_DEFORM_MECHANISM'] = 1
+        # ages
+        # currently only works for chunk geometry
+        if self.options['GEOMETRY'] == 'chunk':
+            sp_age = -1.0
+            ov_age = -1.0
+            Ro = 6371e3
+            try:
+                index = ParsePrm.FindWBFeatures(self.wb_dict, "Subducting plate")
+                index1 = ParsePrm.FindWBFeatures(self.wb_dict, "Overiding plate")
+            except KeyError:
+                # either there is no wb file found, or the feature 'Subducting plate' is not defined
+                sp_age = -1.0
+                ov_age = -1.0
+            else:
+                feature_sp = self.wb_dict['features'][index]
+                feature_ov = self.wb_dict['features'][index1]
+                trench_angle = feature_sp["coordinates"][2][0]
+                spreading_velocity = feature_sp["temperature models"][0]["spreading velocity"]
+                sp_age = trench_angle * np.pi / 180.0 * Ro/ spreading_velocity 
+                ov_age = feature_ov["temperature models"][0]["plate age"]
+            self.options['SP_AGE'] = sp_age
+            self.options['OV_AGE'] =  ov_age
+        elif self.options['GEOMETRY'] == 'box':
+            sp_age = -1.0
+            ov_age = -1.0
+            try:
+                index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
+            except KeyError:
+                # either there is no wb file found, or the feature 'Subducting plate' is not defined
+                sp_age = -1.0
+                ov_age = -1.0
+                pass
+            self.options['SP_AGE'] = sp_age
+            self.options['OV_AGE'] =  ov_age
+        else:
+            raise ValueError("Geometry should be \"chunk\" or \"box\"")
         # rotation of the domain
         if self.options['GEOMETRY'] == 'chunk':
             try:

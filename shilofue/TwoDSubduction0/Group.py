@@ -109,9 +109,13 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.attrs.append("V_plate_avgs")
         self.V_trench_avgs = []
         self.attrs.append("V_trench_avgs")
+        self.sp_ages = []
+        self.attrs.append("sp_ages")
+        self.ov_ages = []
+        self.attrs.append("ov_ages")
         
-        self.attrs_to_output += ['t660s', "sz_thicks", "sz_depths", "sd_modes", "V_sink_avgs", "V_plate_avgs", "V_trench_avgs"]
-        self.headers += ['t660s (yr)', "sz_thicks (m)", "sz_depths (m)", "sd_modes", "V_sink_avgs (m/s)", "V_plate_avgs (m/s)", "V_trench_avgs (m/s)"]
+        self.attrs_to_output += ['t660s', "sz_thicks", "sz_depths", "sd_modes", "V_sink_avgs", "V_plate_avgs", "V_trench_avgs", "sp_ages", "ov_ages"]
+        self.headers += ['t660s (yr)', "sz_thicks (m)", "sz_depths (m)", "sd_modes", "V_sink_avgs (m/s)", "V_plate_avgs (m/s)", "V_trench_avgs (m/s)", "V_sp_ages (m/s)", "V_op_ages (m/s)"]
     
     def Update(self, **kwargs):
         '''
@@ -154,7 +158,19 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             # update on specific properties
             for i in range(self.n_case):
                 self.update_Vavg(i)
+        
+        if "ages" in actions:
+            # ov and sp ages
+            self.sp_ages = [-1 for i in range(self.n_case)]
+            self.ov_ages = [-1 for i in range(self.n_case)]
+            for i in range(self.n_case):
+                self.update_plate_ages(i)
 
+    # todo_diagram
+    def generate_py_scripts(self):
+        '''
+        generate py script to generate missing slab_morph.txt files
+        '''
         py_temp_file = os.path.join(ASPECT_LAB_DIR, 'py_temp.sh')
         py_commands = []
         for i in range(self.n_case):
@@ -173,8 +189,6 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
                 for py_command in py_commands:
                     fout.write(py_command)
             print("%d cases missing slab morphology outputs, generate morph script: %s" % (len(py_commands), py_temp_file))
-
-
 
     def import_directory(self, _dir, **kwargs):
         '''
@@ -238,6 +252,20 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             self.sz_viscs[i] = -1.0
             self.sz_depths[i] = -1.0
             self.sz_thicks[i] = -1.0
+
+    def update_plate_ages(self, i):
+        '''
+        update plate ages
+        '''
+        case_dir = self.ab_paths[i]
+        try:
+            Visit_Options = self.VISIT_OPTIONS(case_dir)
+            Visit_Options.Interpret()
+            self.sp_ages[i] = Visit_Options.options["SP_AGE"]
+            self.ov_ages[i] = Visit_Options.options["OV_AGE"]
+        except FileNotFoundError:
+            self.sp_ages[i] = -1.0
+            self.ov_ages[i] = -1.0
 
     def plot_diagram_t660(self, **kwargs):
         '''
@@ -415,6 +443,64 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             
         fig.savefig(fig_path)
         print("figure generated: ", fig_path)
+
+    def plot_velocities_ages_publication(self, fig_path):
+        '''
+        plot a diagram of velocities
+        '''
+        x_name = "sp_ages"
+        y_name = "ov_ages"
+
+        # mesh data
+        includes = np.array([int(i) for i in getattr(self, "includes")])
+        SPAG = np.array(getattr(self, x_name))
+        OVAG = np.array(getattr(self, y_name))
+        VVTR = np.array(getattr(self, "V_trench_avgs"))
+        VVSP = np.array(getattr(self, "V_plate_avgs"))
+        VVSK = np.array(getattr(self, "V_sink_avgs"))
+        VV = VVSP - VVTR
+        sd_modes = np.array([int(i) for i in getattr(self, "sd_modes")])
+
+        # include only case with subducting mode 1
+        mask1 = (includes > 0) & (sd_modes == 1)
+        mask2 = (VVTR > -1.0)
+        mask = mask1&mask2
+
+        # generate axis
+        fig = plt.figure(tight_layout=True, figsize=(18, 7.5))
+        gs = gridspec.GridSpec(1, 2)
+        area_scale = 200.0 # scaling for the area of scatter points
+
+        # figure: trench and plate velocity
+        ax0 = fig.add_subplot(gs[0, 0])
+        area = (area_scale*VVTR[mask])**2.0
+        area1 = (area_scale*VV[mask])**2.0
+        ax0.scatter(SPAG[mask]/1e6, OVAG[mask]/1e6, s=area1, c='w', edgecolors='k') # plot the bigger points of total velocity
+        h = ax0.scatter(SPAG[mask]/1e6, OVAG[mask]/1e6, s=area, c=-100.0*VVTR[mask], vmin=0.0, vmax=5.0) # plot the smaller points of trench velocity
+        ax0.set_xlabel("sp age (Ma)")
+        ax0.set_ylabel("ov age (Ma)")
+        fig.colorbar(h, ax=ax0, label='V (cm/yr)')
+        
+        # figure annotation
+        n_a = 5
+        dv = 0.02
+        ax1 = fig.add_subplot(gs[0, 1])
+        velocities = np.linspace(dv, dv*n_a, n_a)
+        xs = np.ones(n_a)
+        ys = np.linspace(1.0, 1.0*n_a, n_a)
+        area = (area_scale*velocities)**2.0
+        ax1.scatter(xs, ys, s=area, c='w', edgecolors='k')
+        for i in range(n_a):
+            ax1.annotate( "%.1f cm/yr" % (100.0*dv*(i+1)), xy=(1.0, 1.0*(i+1)),
+                    xytext=(0, 12),  # 4 points vertical offset.
+                    textcoords='offset points',
+                    ha='center', va='bottom')
+        ax1.set_xlim([0.0, 6.0])
+        ax1.set_ylim([0.5, n_a + 0.5])
+        ax1.set_axis_off()
+            
+        fig.savefig(fig_path)
+        print("figure generated: ", fig_path)
     
     def plot_velocities_sink(self, **kwargs):
         '''
@@ -452,7 +538,6 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             print("figure generated: ", fig_path)
 
 
-# todo_diagram
 def PlotGroupDiagram(group_dir, **kwargs):
     '''
     pass
@@ -476,7 +561,7 @@ def PlotGroupDiagram(group_dir, **kwargs):
         Case_Summary.import_txt(o_path)
     
     # import the new directory
-    Case_Summary.import_directory(group_dir, actions=['t660', 'shear_zone', "sd_modes", "Vage"])
+    Case_Summary.import_directory(group_dir, actions=['t660', 'shear_zone', "sd_modes", "Vage", "ages"])
 
     # output file output 
     Case_Summary.write_file(o_path)

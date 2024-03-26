@@ -25,6 +25,7 @@ import pytest
 import filecmp  # for compare file contents
 import numpy as np
 from shilofue.TwoDSubduction0.Group import *
+from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 # from matplotlib import pyplot as plt
 from shutil import rmtree  # for remove directories
 
@@ -49,6 +50,8 @@ def test_case_summary():
     # test 1: import directory
     Case_Summary = CASE_SUMMARY()
     o_path = os.path.join(test_local_dir, 'case_summary1.txt')
+    if os.path.isfile(o_path):
+        os.remove(o_path)
     o_path_std = os.path.join(group_dir, 'case_summary_std1.txt')
     Case_Summary.import_directory(group_dir)
     Case_Summary.write_file_if_update(o_path)
@@ -57,6 +60,8 @@ def test_case_summary():
     # test 2: import directory and calculate t660
     Case_Summary = CASE_SUMMARY()
     o_path = os.path.join(test_local_dir, 'case_summary2.txt')
+    if os.path.isfile(o_path):
+        os.remove(o_path)
     o_path_std = os.path.join(group_dir, 'case_summary_std.txt')
     Case_Summary.import_directory(group_dir, actions=['t660'])
     Case_Summary.write_file_if_update(o_path)
@@ -75,6 +80,8 @@ def test_case_summary_append():
     # test 2: import directory and calculate t660
     Case_Summary = CASE_SUMMARY()
     o_path = os.path.join(test_local_dir, 'case_summary_append.txt')
+    if os.path.isfile(o_path):
+        os.remove(o_path)
     o_path_std = os.path.join(group2_dir, 'case_summary_std.txt')
     # first write the summary of cases in the first directory
     Case_Summary.import_directory(group1_dir, actions=['t660'])
@@ -84,6 +91,21 @@ def test_case_summary_append():
     Case_Summary.write_file(o_path)
     assert(filecmp.cmp(o_path, o_path_std))
 
+def test_case_summary_ages():
+    '''
+    test case summary, add plate ages
+    '''
+    group_dir = os.path.join(source_dir, 'test_case_summary')
+    
+    # test 1: import directory
+    Case_Summary = CASE_SUMMARY(VISIT_OPTIONS=VISIT_OPTIONS)
+    o_path = os.path.join(test_local_dir, 'case_summary_ages.txt')
+    if os.path.isfile(o_path):
+        os.remove(o_path)
+    o_path_std = os.path.join(group_dir, 'case_summary_ages_std.txt')
+    Case_Summary.import_directory(group_dir, actions=['t660', 'ages'])
+    Case_Summary.write_file_if_update(o_path)
+    assert(filecmp.cmp(o_path, o_path_std))
 
     
 # notes
