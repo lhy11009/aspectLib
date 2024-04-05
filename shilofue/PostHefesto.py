@@ -1457,6 +1457,28 @@ def PlotHeFestoBuoyancy(ifile):
     print("Figure generated: ", o_path)
 
 
+def convert_mol_fraction(comps):
+    '''
+    given a composition array of mol%, compute the mol atom %
+    Inputs:
+        comps - inputs of array of mol%
+    Returns:
+        comps_atom - inputs of array of atom mol %
+    '''
+    assert(len(comps) == 6) # SiO2, MgO, FeO, CaO, Al2O3, Na2O
+    mol_total = comps[0] + comps[1] + comps[2] + comps[3] + comps[4] + comps[5]
+    assert((100.0 - mol_total)/100.0 < 1e-3)
+    mol_atom_total = comps[0] + comps[1] + comps[2] + comps[3] + 2 * comps[4] + 2 * comps[5]
+    comps_atom = [0 for i in range(6)]
+    comps_atom[0] = comps[0] / mol_atom_total
+    comps_atom[1] = comps[1] / mol_atom_total
+    comps_atom[2] = comps[2] / mol_atom_total
+    comps_atom[3] = comps[3] / mol_atom_total
+    comps_atom[4] = 2*comps[4] / mol_atom_total
+    comps_atom[5] = 2*comps[5] / mol_atom_total
+    return comps_atom
+
+
     
 
 def main():

@@ -596,8 +596,8 @@ def ComputeBuoyancy(da_file0, da_file1, **kwargs):
     
     # plot temperature
     if axT is not None:
-        axT.plot(Ts_0, depths_0, "-", label="T0", color="tab:red")
-        axT.plot(Ts_1, depths_1, "-", label="T1", color="tab:blue")
+        axT.plot(Ts_0, depths_0/1e3, "-", label="T0", color="tab:red")
+        axT.plot(Ts_1, depths_1/1e3, "-", label="T1", color="tab:blue")
         axT.set_ylabel("Depth [km]")
         axT.set_xlabel("Temperature [K]")
         axT.legend()
@@ -660,6 +660,7 @@ def CompareHefestoBuoyancy(**kwargs):
     Compare the buoyancy from two ASPECT depth_average file
     to the buoyancy from two Hefesto files
     '''
+    TwoDSubduction_DIR = os.environ['TwoDSubduction_DIR']
     file_type = kwargs.get("file_type", "png")
     source_dir = os.path.join(ASPECT_LAB_DIR, "tests", "integration", 'fixtures', 'post_hefesto')
     fort56_file0 = os.path.join(source_dir, "fort.56.0")
@@ -667,8 +668,8 @@ def CompareHefestoBuoyancy(**kwargs):
     # fort56_file1 = "/home/lochy/Softwares/HeFESTo/HeFESToRepository/output_2.7749999983454376/fort.56"
     # fort56_file1 = "/home/lochy/Softwares/HeFESTo/HeFESToRepository/output_2.0249999999999124/fort.56"
     assert(os.path.isfile(fort56_file0) and os.path.isfile(fort56_file1))
-    da_file0 = "/home/lochy/ASPECT_PROJECT/TwoDSubduction_DIR/HeFesto_Compare/adb_T_1650.1_fix_width_refine/output/depth_average.txt"
-    da_file1 = "/home/lochy/ASPECT_PROJECT/TwoDSubduction_DIR/HeFesto_Compare/adb_T_676.23_fix_width_refine/output/depth_average.txt"
+    da_file0 = os.path.join(TwoDSubduction_DIR, "HeFesto_Compare/adb_T_1650.1_fix_width_refine/output/depth_average.txt")
+    da_file1 = os.path.join(TwoDSubduction_DIR, "HeFesto_Compare/adb_T_676.23_fix_width_refine/output/depth_average.txt")
     # da_file1 = "/home/lochy/ASPECT_PROJECT/TwoDSubduction_DIR/HeFesto_Compare/adb_T_1921.7_fix_width_refine/output/depth_average.txt"
     # da_file1 = "/home/lochy/ASPECT_PROJECT/TwoDSubduction_DIR/HeFesto_Compare/adb_T_1059.4_fixT_2/output/depth_average.txt"
     assert(os.path.isfile(da_file0) and os.path.isfile(da_file1))
