@@ -177,6 +177,12 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("use lookup table morb", int, ["use lookup table morb"], 0, nick="use_lookup_table_morb")
         self.add_key("lookup table morb mixing, 1: iso stress (weakest), 2: iso strain (strongest), 3: log (intermediate)",\
                      int, ["lookup table morb", "mixing model"], 0, nick="use_lookup_table_morb")
+        self.add_key("difference of activation volume in the diffusion creep rheology", float,\
+            ['mantle rheology', "delta Vdiff"], -2.1e-6, nick='delta_Vdiff')
+        self.add_key("Clapeyron slope of the 410 km", float,\
+         ["CDPT", "slope 410"], 2e6, nick="slope_410")
+        self.add_key("Clapeyron slope of the 660 km", float,\
+         ["CDPT", "slope 660"], -1e6, nick="slope_660")
     
     def check(self):
         '''
@@ -347,6 +353,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         use_3d_da_file = self.values[self.start + 60]
         use_lookup_table_morb = self.values[self.start + 61]
         lookup_table_morb_mixing = self.values[self.start + 62]
+        delta_Vdiff = self.values[self.start + 63]
+        slope_410 = self.values[self.start + 64]
+        slope_660 = self.values[self.start + 65]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -358,7 +367,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         upper_crust_rheology_scheme, lower_crust_rheology_scheme, sp_trailing_length, ov_trailing_length, slab_core_viscosity,\
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
         rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as,\
-        prescribe_T_width, prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb, lookup_table_morb_mixing
+        prescribe_T_width, prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb, lookup_table_morb_mixing,\
+        delta_Vdiff, slope_410, slope_660
 
     def to_configure_wb(self):
         '''
@@ -458,7 +468,7 @@ class CASE(CasesP.CASE):
     global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density,\
     maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width,\
     prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb,\
-    lookup_table_morb_mixing):
+    lookup_table_morb_mixing, delta_Vdiff, slope_410, slope_660):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -648,7 +658,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
 
         # CDPT model
         if phase_model == "CDPT":
-            CDPT_set_parameters(o_dict, CDPT_type)
+            CDPT_set_parameters(o_dict, CDPT_type, slope_410=slope_410, slope_660=slope_660)
 
         if use_new_rheology_module == 1:
             Operator = RHEOLOGY_OPR()
@@ -697,6 +707,18 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
     jump_lower_mantle=15.0)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
+        elif mantle_rheology_scheme == "HK03_const":
+            # use the const coh = 1000.0 rheology in HK03
+            rheology, _ = Operator.MantleRheology(rheology="HK03", use_effective_strain_rate=True, save_profile=1, save_json=1,\
+                        jump_lower_mantle=15.0)
+            CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
+            sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
+        elif mantle_rheology_scheme == "HK03_dry":
+            # use dry olivine rheology
+            rheology, _ = Operator.MantleRheology(rheology="HK03_dry", use_effective_strain_rate=True, save_profile=1, save_json=1,\
+                        jump_lower_mantle=15.0)
+            CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
+            sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         elif mantle_rheology_scheme == "HK03_WarrenHansen23":
             # read in the original rheology
             rheology_name = "WarrenHansen23"
@@ -705,7 +727,8 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             dislocation_creep_ori = getattr(rheology_prm_dict, rheology_name + "_disl")
             rheology_dict = {'diffusion': diffusion_creep_ori, 'dislocation': dislocation_creep_ori}
             # prescribe the correction
-            diff_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': -2.1e-6}
+            # todo_new_r
+            diff_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': delta_Vdiff}
             disl_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': 3e-6}
             # prescribe the reference state
             ref_state = {}
@@ -2360,11 +2383,13 @@ def re_write_geometry_while_assigning_plate_age(box_width0, sp_age0, sp_age, sp_
     return box_width
 
 
-def CDPT_set_parameters(o_dict, CDPT_type):
+def CDPT_set_parameters(o_dict, CDPT_type, **kwargs):
     '''
     set parameters for the CDPT model
     '''
-    print("CDPT_type: ", CDPT_type) # debug
+    slope_410 = kwargs.get("slope_410", 2e6)
+    slope_660 = kwargs.get("slope_660", -1e6)
+    print("slope_660: ", slope_660) # debug
     if CDPT_type == 'HeFESTo_consistent':
         o_dict['Material model']['Visco Plastic TwoD']['Phase transition depths'] = \
         'background:410e3|520e3|560e3|660e3|660e3|660e3|660e3, spcrust: 80e3|665e3|720e3, spharz: 410e3|520e3|560e3|660e3|660e3|660e3|660e3'
@@ -2372,8 +2397,13 @@ def CDPT_set_parameters(o_dict, CDPT_type):
         'background:13e3|25e3|60e3|5e3|5e3|5e3|5e3, spcrust: 5e3|60e3|5e3, spharz: 13e3|25e3|60e3|5e3|5e3|5e3|5e3'
         o_dict['Material model']['Visco Plastic TwoD']['Phase transition temperatures'] = \
         'background:1780.0|1850.0|1870.0|1910.0|2000.0|2000.0|2000.0, spcrust: 1173.0|1870.0|2000.0, spharz: 1780.0|1850.0|1870.0|1910.0|2000.0|2000.0|2000.0'
-        o_dict['Material model']['Visco Plastic TwoD']['Phase transition Clapeyron slopes'] = \
-        'background:2e6|4.1e6|4e6|-1e6|0|-1e6|2e6, spcrust: 0.0|4e6|2e6, spharz: 2e6|4.1e6|4e6|-1e6|0|-1e6|2e6'
+        if abs((slope_410 - 2e6) / 2e6) > 1e-6 or abs((slope_660 - (-1e6)) / 1e6) > 1e-6: 
+            o_dict['Material model']['Visco Plastic TwoD']['Phase transition Clapeyron slopes'] = \
+            'background:%.2e|4.1e6|4e6|%.2e|0|%.2e|2e6, spcrust: 0.0|4e6|2e6, spharz: %.2e|4.1e6|4e6|%.2e|0|%.2e|2e6' % \
+                (slope_410, slope_660, slope_660, slope_410, slope_660, slope_660)
+        else:
+            o_dict['Material model']['Visco Plastic TwoD']['Phase transition Clapeyron slopes'] = \
+            'background:2e6|4.1e6|4e6|-1e6|0|-1e6|2e6, spcrust: 0.0|4e6|2e6, spharz: 2e6|4.1e6|4e6|-1e6|0|-1e6|2e6'
     elif CDPT_type == 'Billen2018_old':
         o_dict['Material model']['Visco Plastic TwoD']['Phase transition depths'] = \
         'background:410e3|520e3|560e3|670e3|670e3|670e3|670e3, spcrust: 80e3|665e3|720e3, spharz: 410e3|520e3|560e3|670e3|670e3|670e3|670e3'
