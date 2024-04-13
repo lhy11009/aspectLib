@@ -35,6 +35,7 @@ class PARAVIEW_PLOT():
 
         # get variables
         project = kwargs.get("project", "ThDSubduction")
+        all_variables = kwargs.get("all_variables", None)
         assert(project in ["TwoDSubduction", "ThDSubduction"])
         self.output_dir = kwargs.get('output_dir', ".")
         if not os.path.isdir(self.output_dir):
@@ -47,14 +48,20 @@ class PARAVIEW_PLOT():
         # 'current_cohesions', 'current_friction_angles', 'plastic_yielding', 'dislocation_viscosity', 
         # 'diffusion_viscosity', 'peierls_viscosity', 'error_indicator']
         self.view_solution_pvd = True  # if the solutionpvd is included as a view
-        if project == "ThDSubduction":
-            self.all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'sp_upper', 'sp_lower', "strain_rate"]
-            HAS_PLATE_EDGE = True
-            if HAS_PLATE_EDGE:
-                self.all_variables.append('plate_edge')
-        elif project == "TwoDSubduction":
-            self.all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'spcrust', 'spharz',\
-            'dislocation_viscosity', 'diffusion_viscosity', 'peierls_viscosity', 'strain_rate', 'nonadiabatic_pressure']
+        if all_variables is None:
+            if project == "ThDSubduction":
+                self.all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'sp_upper', 'sp_lower', "strain_rate"]
+                HAS_PLATE_EDGE = True
+                if HAS_PLATE_EDGE:
+                    self.all_variables.append('plate_edge')
+            elif project == "TwoDSubduction":
+                self.all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'spcrust', 'spharz',\
+                'dislocation_viscosity', 'diffusion_viscosity', 'peierls_viscosity', 'strain_rate', 'nonadiabatic_pressure']
+        else:
+            assert(type(all_variables) == list)
+            for i in all_variables:
+                assert(type(i) == str)
+            self.all_variables = all_variables
         # open data base
         self.filein = filein
         # assign initial values 

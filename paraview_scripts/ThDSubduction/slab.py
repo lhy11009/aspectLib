@@ -617,20 +617,31 @@ def adjust_slice_colorbar_camera(renderView, colorLUT, _camera):
 
 
 def main():
+    # change this to false if I just want to load the data
+    RUN_FULL_SCRIPT=True 
     all_available_graphical_snapshots = ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS
     all_available_graphical_times = ALL_AVAILABLE_GRAPHICAL_TIMES
     assert(len(all_available_graphical_snapshots) == len(all_available_graphical_times))
     # First, make directory for images if it's not there
     if not os.path.isdir("IMG_OUTPUT_DIR"):
         os.mkdir("IMG_OUTPUT_DIR")
+    # set the list of variables to plot
+    # a. default: load everything needed
+    # b. mannually assign variables to load
+    temp_all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'sp_upper', 'sp_lower', "strain_rate"]
+    HAS_PLATE_EDGE = True
+    if HAS_PLATE_EDGE:
+        temp_all_variables.append('plate_edge')
+    # temp_all_variables = []
     # Process and generate plots
-    Slab = SLAB("PARAVIEW_FILE", output_dir="IMG_OUTPUT_DIR")
+    Slab = SLAB("PARAVIEW_FILE", output_dir="IMG_OUTPUT_DIR", all_variables=temp_all_variables)
     Slab.setup_surface_slice()
     Slab.setup_trench_slice_center()
     Slab.setup_slice_back_y()
-    Slab.setup_slab_iso_volume_upper()
-    Slab.setup_active_clip()
-    Slab.setup_stream_tracer('clip_active_1')
+    if RUN_FULL_SCRIPT:
+        Slab.setup_slab_iso_volume_upper()
+        Slab.setup_active_clip()
+        Slab.setup_stream_tracer('clip_active_1')
     # First number is the number of initial adaptive refinements
     # Second one is the snapshot to plot
     # here we prefer to use a series of snapshots.
@@ -644,8 +655,8 @@ def main():
                 idx = all_available_graphical_snapshots.index(snapshot)
                 _time =  all_available_graphical_times[idx]
                 Slab.goto_time(_time)
-                Slab.plot_step()
-               #  Slab(INITIAL_ADAPTIVE_REFINEMENT+step)
+                if RUN_FULL_SCRIPT:
+                    Slab.plot_step()
             else:
                 print ("step %s is not valid. There is no output" % step)
     else:
@@ -653,8 +664,8 @@ def main():
         idx = all_available_graphical_snapshots.index(snapshot)
         _time =  all_available_graphical_times[idx]
         Slab.goto_time(_time)
-        # Slab.plot_slice()
-        # Slab(INITIAL_ADAPTIVE_REFINEMENT+SINGLE_SNAPSHOT)
+        if RUN_FULL_SCRIPT:
+            Slab.plot_step()
 
 
 main()
