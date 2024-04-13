@@ -667,6 +667,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
 
         # mantle rheology
         Operator.ReadProfile(da_file)
+        rheology = {}
         if mantle_rheology_scheme == "HK03_wet_mod_twod":  # get the type of rheology
             # note that the jump on 660 is about 15.0 in magnitude
             # deprecated
@@ -754,6 +755,10 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, save_profile=1, save_json=1)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
+        # record the upper mantle rheology
+        um_diffusion_creep = rheology['diffusion_creep']
+        um_dislocation_creep = rheology['dislocation_creep']
+            
 
         # these files are generated with the rheology variables
         self.output_files.append(Operator.output_json)
@@ -899,6 +904,8 @@ opcrust: 1e+31, opharz: 1e+31", \
                     "Decoupled depth": str(sz_cutoff_depth),
                     "Decoupled depth width": '10e3'
                 }
+            if n_crust_layer == 2:
+                o_dict['Material model']['Visco Plastic TwoD']["Eclogite decoupled viscosity"]["Crust index"] = "3"
         # phase model
         if phase_model == "HeFESTo":
             o_dict['Material model']['Visco Plastic TwoD']["Use lookup table"] = 'true'
@@ -946,10 +953,16 @@ opcrust: 1e+31, opharz: 1e+31", \
             else:
                 GetFunc = Rheology_old_Dec_2023.GetRheology
                 AssignFunc = Rheology_old_Dec_2023.AssignAspectViscoPlasticPhaseRheology
-            diffusion_creep, dislocation_creep = GetFunc(upper_crust_rheology_scheme)
-            visco_plastic_dict = AssignFunc(visco_plastic_dict, 'spcrust_up', 0, diffusion_creep, dislocation_creep)
-            diffusion_creep, dislocation_creep = GetFunc(lower_crust_rheology_scheme)
-            visco_plastic_dict = AssignFunc(visco_plastic_dict, 'spcrust_low', 0, diffusion_creep, dislocation_creep)
+            if upper_crust_rheology_scheme != "":
+                diffusion_creep, dislocation_creep = GetFunc(upper_crust_rheology_scheme)
+                visco_plastic_dict = AssignFunc(visco_plastic_dict, 'spcrust_up', 0, diffusion_creep, dislocation_creep)
+            if lower_crust_rheology_scheme == "":
+                pass
+            elif lower_crust_rheology_scheme == "mantle":
+                visco_plastic_dict = AssignFunc(visco_plastic_dict, 'spcrust_low', 0, um_diffusion_creep, um_dislocation_creep, no_convert=True)
+            else:
+                diffusion_creep, dislocation_creep = GetFunc(lower_crust_rheology_scheme)
+                visco_plastic_dict = AssignFunc(visco_plastic_dict, 'spcrust_low', 0, diffusion_creep, dislocation_creep)
             o_dict['Material model']['Visco Plastic TwoD'] = visco_plastic_dict
         else:
             raise NotImplementedError()
@@ -2389,6 +2402,7 @@ def CDPT_set_parameters(o_dict, CDPT_type, **kwargs):
     '''
     slope_410 = kwargs.get("slope_410", 2e6)
     slope_660 = kwargs.get("slope_660", -1e6)
+    sz_different_composition = kwargs.get("sz_different_composition", 1)
     print("slope_660: ", slope_660) # debug
     if CDPT_type == 'HeFESTo_consistent':
         o_dict['Material model']['Visco Plastic TwoD']['Phase transition depths'] = \
