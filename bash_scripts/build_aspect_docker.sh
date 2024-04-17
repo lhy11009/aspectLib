@@ -1,5 +1,11 @@
 #!/bin/bash
 
+cecho() {
+    # Display messages in a specified colour
+    COL=$1; shift
+    echo -e "${COL}$@\033[0m"
+}
+
 build_aspect_plugin(){
     ###
     # build a plugin with source code in aspect
