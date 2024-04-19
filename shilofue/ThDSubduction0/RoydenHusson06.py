@@ -62,11 +62,13 @@ class HELE_SHAW():
         '''
         initiation
         Attributes:
-            Vt - 
+            Vt - trench velocity 
             Vm - 
             Vr -
-            L -
-            lbd
+            L - length of the slab 
+            lbd - thickness of the upper mantle
+            mu - viscosity
+            n - number of points along half the slab
         '''
         self.Vt = Vt
         self.Vm = Vm
@@ -75,19 +77,26 @@ class HELE_SHAW():
         self.lbd = lbd
         self.mu = mu
         self.n = n
-        # self.As = np.zeros(self.n)
-        self.As = 0.001 * np.ones(self.n) * mu / lbd**2.0 * (Vt + Vm) # for test
+        self.As = np.zeros(self.n)
+        # self.As = 0.001 * np.ones(self.n) * mu / lbd**2.0 * (Vt + Vm) # for test
         pass
 
     def AssignA(self, As):
         '''
         Assign an initial guess of As
+        Inputs:
+            As - an array of summation coefficiences
         '''
         self.As = As
 
     def Fxiyi(self, x, y, xi, yi):
         '''
         coefficients of the solution for Vx
+        Inputs:
+            x - coordinate x
+            y - coordinate y
+            xi - coordinate x of i th summation point
+            yi - coordinate y of i th summation point
         '''
         temp = ((x - xi)**2.0 - (y - yi)**2.0) / ((x - xi)**2.0 + (y - yi)**2.0)
         return temp
@@ -95,6 +104,9 @@ class HELE_SHAW():
     def Vxdz(self, x, y):
         '''
         integration of Vx over z
+        Inputs:
+            x - coordinate x
+            y - coordinate y
         '''
         sum = self.lbd * (self.Vt + self.Vm) / 2.0
         for i in range(self.n):
@@ -102,42 +114,118 @@ class HELE_SHAW():
             xi = 0.0
             yi = i / (self.n-1.0) * self.a
             yi_n = -i / (self.n-1.0) * self.a
-            sum += (self.Fxiyi(x, y, xi, yi) if (i == 0) 
-                    else self.Fxiyi(x, y, xi, yi_n) + self.Fxiyi(x, y, xi, yi))\
-                  * self.lbd**3.0 * Ai / (12.0 * self.mu)
+            # sum over the positive value yi and negative value yi_n
+            if x == np.inf:
+                sum += (1.0 if (i == 0) else 2.0)\
+                        * self.lbd**3.0 * Ai / (12.0 * self.mu)
+            else:
+                sum += (self.Fxiyi(x, y, xi, yi) if (i == 0) 
+                        else self.Fxiyi(x, y, xi, yi_n) + self.Fxiyi(x, y, xi, yi))\
+                      * self.lbd**3.0 * Ai / (12.0 * self.mu)
         return sum
     
     def Vxdz_array(self, x):
         '''
         derive an array of Vxdz over different value of yi
+        Inputs:
+            x - coordinate x
         '''
         Vxdzs = np.zeros(self.n)
         for i in range(self.n):
             y = i * self.a / (self.n - 1.0)
             Vxdzs[i] = self.Vxdz(x, y)
         return Vxdzs
-    
-    def partial_Vxdz_j_partial_Ai(self, x, i, j):
+
+    def Vxdz_array_nd(self, x):
         '''
-        partial derivative of Vxdz at the jth point to Ai
+        derive the nondimentional array of Vxdz
+        Inputs:
+            x - coordinate x
+        '''
+        return self.Vxdz_array(x) / (self.Vr * self.lbd)
+    
+    def Vxdz_array_nd_full(self, x, **kwargs):
+        '''
+        derive the nondimentional array of Vxdz, include the value at infinite x
+        Inputs:
+            x - coordinate x
+            kwargs:
+                weight_inf - weight of the infinite point
+        '''
+        weight_inf = kwargs.get("weight_inf", 0.0)
+
+        temp = np.zeros(self.n+1)
+        temp[0:self.n] = self.Vxdz_array_nd(x)
+        temp[self.n] = weight_inf * self.Vxdz(np.inf, 0.0) / (self.Vr * self.lbd)
+        return temp
+    
+    def partial_Vxdz_i_partial_Aj_nd(self, x, i, j):
+        '''
+        partial derivative of Vxdz at the ith point to Aj
+        Inputs:
+            x - coordinate x
+            i - index i
+            j - index j
         '''
         temp = (j - i) * (j - i) * self.a * self.a / (self.n-1) / (self.n-1)
         return (x * x - temp) / (x * x + temp) * self.lbd * self.lbd / (12 * self.mu * self.Vr)
     
-    def Jocobi(self, x):
+    def partial_Vxdz_i_partial_Aj_nd_xinf(self):
         '''
-        Jocobian of partial Vxdzs_j partial Ai
+        partial derivative of Vxdz at infinite x
+        '''
+        return self.lbd * self.lbd / (12 * self.mu * self.Vr)
+
+    def Jacobi_slab_ij(self, x, i, j):
+        '''
+        Jacobian of partial Vxdzs_i partial Aj, only include the points at the slab surface
+        '''
+        J = (self.partial_Vxdz_i_partial_Aj_nd(x, i, j) if (j == 0)\
+            else self.partial_Vxdz_i_partial_Aj_nd(x, i, j) + self.partial_Vxdz_i_partial_Aj_nd(x, -i, j))
+        return J
+    
+    def Jacobi_slab(self, x):
+        '''
+        Full Jacobian matrix of partial Vxdzs_i partial Aj, only include the points at the slab surface
+        Inputs:
+            x - coordinate x
         '''
         J = np.zeros([self.n, self.n])
+        # sum over the positive indexes i and negative value -i
         for i in range(self.n):
             for j in range(self.n):
-                J[i, j] = (self.partial_Vxdz_j_partial_Ai(x, i, j) if (j == 0)\
-                           else self.partial_Vxdz_j_partial_Ai(x, i, j) + self.partial_Vxdz_j_partial_Ai(x, -i, j))
+                J[i, j] = self.Jacobi_slab_ij(x, i, j)
         return J
+    
+    def Jacobi_full(self, x, **kwargs):
+        '''
+        Jocobian of partial Vxdzs_i partial Aj, include also the infinite distance along x
+        Inputs:
+            x - coordinate x
+            kwargs:
+                weight_inf - weight of the infinite point
+        '''
+        weight_inf = kwargs.get("weight_inf", 0.0)
+        
+        J = np.zeros([self.n+1, self.n])
+        # sum over the positive indexes i and negative value -i
+        for i in range(self.n):
+            for j in range(self.n):
+                J[i, j] = self.Jacobi_slab_ij(x, i, j)
+        # additional component at x = inf
+        for j in range(self.n): 
+            J[self.n, j] = weight_inf * (1.0 if (j==0) else 2.0) * self.partial_Vxdz_i_partial_Aj_nd_xinf()
+        return J
+
     
     def PlotVxdz(self, x, ym, **kwargs):
         '''
         Plot the solution
+        Inputs:
+            x - coordinate x
+            ym - maximum value of y
+            kwargs:
+                ax - plotting axis
         '''
         ax = kwargs.get("ax", None)
         N = 1000
