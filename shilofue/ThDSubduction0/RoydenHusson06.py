@@ -62,9 +62,9 @@ class HELE_SHAW():
         '''
         initiation
         Attributes:
-            Vt - trench velocity 
-            Vm - 
-            Vr -
+            Vt - upper plate velocity 
+            Vm - lower mantle velocity
+            Vr - trench velocity
             L - length of the slab 
             lbd - thickness of the upper mantle
             mu - viscosity
@@ -91,14 +91,38 @@ class HELE_SHAW():
 
     def Fxiyi(self, x, y, xi, yi):
         '''
-        coefficients of the solution for Vx
+        coefficients of the solution for Vx, (partial P, partial x)
         Inputs:
             x - coordinate x
             y - coordinate y
             xi - coordinate x of i th summation point
             yi - coordinate y of i th summation point
         '''
-        temp = ((x - xi)**2.0 - (y - yi)**2.0) / ((x - xi)**2.0 + (y - yi)**2.0)
+        temp = ((x - xi)**2.0 - (y - yi)**2.0) / ((x - xi)**2.0 + (y - yi)**2.0)**2.0
+        return temp
+    
+    def F1xiyi(self, x, y, xi, yi):
+        '''
+        coefficients of the solution for Vy, (partial P, partial y)
+        Inputs:
+            x - coordinate x
+            y - coordinate y
+            xi - coordinate x of i th summation point
+            yi - coordinate y of i th summation point
+        '''
+        temp = (2.0*(x - xi)*(y - yi)) / ((x - xi)**2.0 + (y - yi)**2.0)**2.0
+        return temp
+    
+    def Gxiyi(self, x, y, xi, yi):
+        '''
+        coefficients of the solution for P
+        Inputs:
+            x - coordinate x
+            y - coordinate y
+            xi - coordinate x of i th summation point
+            yi - coordinate y of i th summation point
+        '''
+        temp = (x - xi) / ((x - xi)**2.0 + (y - yi)**2.0)
         return temp
 
     def Vxdz(self, x, y):
@@ -122,6 +146,25 @@ class HELE_SHAW():
                 sum += (self.Fxiyi(x, y, xi, yi) if (i == 0) 
                         else self.Fxiyi(x, y, xi, yi_n) + self.Fxiyi(x, y, xi, yi))\
                       * self.lbd**3.0 * Ai / (12.0 * self.mu)
+        return sum
+    
+    def Pressure(self, x, y):
+        '''
+        integration of Vx over z
+        Inputs:
+            x - coordinate x
+            y - coordinate y
+        '''
+        sum = self.lbd * (self.Vt + self.Vm) / 2.0
+        for i in range(self.n):
+            Ai = self.As[i]
+            xi = 0.0
+            yi = i / (self.n-1.0) * self.a
+            yi_n = -i / (self.n-1.0) * self.a
+            # sum over the positive value yi and negative value yi_n
+            sum += (self.Gxiyi(x, y, xi, yi) if (i == 0) 
+                    else self.Gxiyi(x, y, xi, yi_n) + self.Gxiyi(x, y, xi, yi))\
+                      * Ai
         return sum
     
     def Vxdz_array(self, x):
@@ -168,7 +211,7 @@ class HELE_SHAW():
             j - index j
         '''
         temp = (j - i) * (j - i) * self.a * self.a / (self.n-1) / (self.n-1)
-        return (x * x - temp) / (x * x + temp) * self.lbd * self.lbd / (12 * self.mu * self.Vr)
+        return (x * x - temp) / (x * x + temp)**2.0 * self.lbd * self.lbd / (12 * self.mu * self.Vr)
     
     def partial_Vxdz_i_partial_Aj_nd_xinf(self):
         '''
@@ -216,7 +259,6 @@ class HELE_SHAW():
         for j in range(self.n): 
             J[self.n, j] = weight_inf * (1.0 if (j==0) else 2.0) * self.partial_Vxdz_i_partial_Aj_nd_xinf()
         return J
-
     
     def PlotVxdz(self, x, ym, **kwargs):
         '''
@@ -237,6 +279,37 @@ class HELE_SHAW():
             Vx_dzs_nd = Vxdzs / self.lbd / self.Vr
         if ax is not None:
             ax.plot(ys / self.a, Vxdzs / self.lbd / self.Vr)
+        ax.set_xlabel("Distance from center of trench (y / a)")
+        ax.set_ylabel("Velocity at x=0 (Vx/Vr)")
+
+    def PlotCenterPressureX(self, xm, **kwargs):
+        '''
+        Plot the solution
+        Inputs:
+            x - coordinate x
+            ym - maximum value of y
+            kwargs:
+                ax - plotting axis
+        '''
+        ax = kwargs.get("ax", None)
+        x_nd = kwargs.get('x_nd', 10e3)
+        y_nd = 0.0
+
+        # pressure value used for non-dimentionlization
+        P0 = self.Pressure(x_nd, y_nd)
+
+        N = 1000
+        xs = np.linspace(0, xm, N)
+        Ps = np.zeros(N)
+        for i in range(N):
+            x = xs[i]
+            y = 0.0
+            Ps[i] = self.Pressure(x, y)
+        if ax is not None:
+            ax.plot(xs / self.a, Ps / P0)
+        ax.set_xlabel("Distance from slab (x / a)")
+        ax.set_ylabel("Normalized Pressure at y=0")
+
 
 
 def main():
