@@ -124,6 +124,39 @@ class HELE_SHAW():
         '''
         temp = (x - xi) / ((x - xi)**2.0 + (y - yi)**2.0)
         return temp
+    
+    def Vx(self, x, y, z):
+        '''
+        Solution for Vx
+        '''
+        temp = 0.0
+        for i in range(self.n):
+            Ai = self.As[i]
+            xi = 0.0
+            yi = i / (self.n-1.0) * self.a
+            yi_n = -i / (self.n-1.0) * self.a
+            temp += (self.Fxiyi(x, y, xi, yi) if (i == 0) 
+                    else self.Fxiyi(x, y, xi, yi_n) + self.Fxiyi(x, y, xi, yi))\
+                    * Ai / (2.0 * self.mu)
+        Vx = (self.Vt * (z - self.lbd) + self.Vm*z) / self.lbd + temp * z * (self.lbd - z)
+        return Vx
+    
+    def Vy(self, x, y, z):
+        '''
+        Solution for Vx
+        '''
+        temp = 0.0
+        for i in range(self.n):
+            Ai = self.As[i]
+            xi = 0.0
+            yi = i / (self.n-1.0) * self.a
+            yi_n = -i / (self.n-1.0) * self.a
+            temp += (self.F1xiyi(x, y, xi, yi) if (i == 0) 
+                    else self.F1xiyi(x, y, xi, yi_n) + self.F1xiyi(x, y, xi, yi))\
+                    * Ai / (2.0 * self.mu)
+        Vy = temp * z * (self.lbd - z)
+        return Vy
+
 
     def Vxdz(self, x, y):
         '''
@@ -309,6 +342,79 @@ class HELE_SHAW():
             ax.plot(xs / self.a, Ps / P0)
         ax.set_xlabel("Distance from slab (x / a)")
         ax.set_ylabel("Normalized Pressure at y=0")
+    
+    def PlotVelocityOnSurface(self, z0, **kwargs):
+        '''
+        plot the velocity on the surface at depth z0
+        '''
+        yr = 365.0 * 24.0 * 3600.0
+        cm_per_yr = 1e-2 / yr
+        vector_scale = 1.0 / cm_per_yr
+
+        ax = kwargs.get("ax", None)
+        xmin = kwargs.get("xmin", 10e3)
+        xmax = kwargs.get("xmax", 2000e3)
+        nx = kwargs.get("nx", 20)
+        ymin = kwargs.get("ym", 0e3)
+        ymax = kwargs.get("ym", 3.0 * self.a)
+        ny = kwargs.get("ny", 15)
+
+        xs, ys = symmetric_grid(xmin, xmax, nx, ymin, ymax, ny)
+
+        xxs, yys = np.meshgrid(xs, ys)
+        vvxs = np.zeros(xxs.shape)
+        vvys = np.zeros(yys.shape)
+
+        for i in range(ys.size):
+            for j in range(xs.size):
+                vvxs[i, j] = self.Vx(xs[j], ys[i], z0)
+                vvys[i, j] = self.Vy(xs[j], ys[i], z0)
+
+        Q = ax.quiver(xxs/1e3, yys/1e3, vvxs * vector_scale, vvys * vector_scale, angles='xy')
+        ax.set_aspect('equal', adjustable='box')
+        ax.set_xlabel('X [km]')
+        ax.set_ylabel('Y [km]')
+        qk = ax.quiverkey(Q, 0.7, 0.92, 1.0, r'$1 \frac{cm}{yr}$', labelpos='E',
+                   coordinates='figure')
+        return xxs, yys, vvxs * vector_scale, vvys * vector_scale
+    
+    def PlotPressureOnSurface(self, **kwargs):
+        '''
+        plot the velocity on the surface at depth z0
+        '''
+        Mpa = 1e6
+
+        ax = kwargs.get("ax", None)
+        xmin = kwargs.get("xmin", 10e3)
+        xmax = kwargs.get("xmax", 2000e3)
+        nx = kwargs.get("nx", 20)
+        ymin = kwargs.get("ym", 0e3)
+        ymax = kwargs.get("ym", 3.0 * self.a)
+        ny = kwargs.get("ny", 15)
+        vmin = kwargs.get("vmin", None)
+        vmax = kwargs.get("vmax", None)
+
+        xs, ys = symmetric_grid(xmin, xmax, nx, ymin, ymax, ny)
+
+        xxs, yys = np.meshgrid(xs, ys)
+        PPs = np.zeros(xxs.shape)
+
+        for i in range(ys.size):
+            for j in range(xs.size):
+                PPs[i, j] = self.Pressure(xs[j], ys[i])
+
+        h = ax.pcolormesh(xxs/1e3, yys/1e3, PPs/Mpa, vmin=vmin, vmax=vmax)
+        return h
+
+def symmetric_grid(xmin, xmax, nx, ymin, ymax, ny):
+    '''
+    Generate symmeric grid on a plane of a contant z
+    '''
+    xs1 = np.linspace(xmin, xmax, nx)
+    xs2 = np.linspace(-xmax, xmin, nx)
+    xs = np.concatenate((xs1, xs2))
+    ys = np.linspace(-ymax, ymax, 3*ny+1)
+    return xs, ys
 
 
 
