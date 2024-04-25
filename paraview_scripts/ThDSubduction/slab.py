@@ -428,6 +428,102 @@ class SLAB(PARAVIEW_PLOT):
         HideScalarBarIfNotNeeded(field2LUT, renderView1)
         Hide(sourceSl, renderView1)
         HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+    
+    def plot_cross_section_depth(self, depth): 
+        '''
+        plot a cross section at a given depth
+        Inputs:
+            depth - depth of the cross section
+        '''
+        # get active view and source
+        renderView1 = GetActiveViewOrCreate('RenderView')
+       	
+        # name of fields 
+        source_name = "slice_surface_z"
+        glyph_name = "slice_z_glyph"
+        field1 = "strain_rate"
+        fieldV = "velocity"
+
+        # part 1: plot the center slice 
+        # part 1a: strain_rate
+        source1 = FindSource(source_name)
+        source1Display = Show(source1, renderView1, 'GeometryRepresentation')
+        
+	    # get the original plot field, in order to hide
+        # redundant color in later codes
+        field0 = source1Display.ColorArrayName[1]
+        field0LUT = GetColorTransferFunction(field0)
+
+        # get color transfer function/color map for 'field'
+        field1LUT = GetColorTransferFunction(field1)
+        field1PWF = GetOpacityTransferFunction(field1)
+
+        # set scalar coloring
+        ColorBy(source1Display, ('POINTS', field1, 'Magnitude'))
+        HideScalarBarIfNotNeeded(field0LUT, renderView1)
+        # high redundant colorbar
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        
+        # convert to log space
+        field1LUT.MapControlPointsToLogSpace()
+        # Properties modified on fieldLUT
+        field1LUT.UseLogScale = 1
+        # reset limit
+        field1LUT.RescaleTransferFunction(1e-16, 1e-13) # Rescale transfer function
+        field1PWF.RescaleTransferFunction(1e-16, 1e-13) # Rescale transfer function
+        # color scheme
+        field1LUT.ApplyPreset('Inferno (matplotlib)', True)
+        
+        # colorbar position
+        field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
+        field1LUTColorBar.Orientation = 'Horizontal'
+        field1LUTColorBar.WindowLocation = 'Any Location'
+        field1LUTColorBar.Position = [0.041, 0.908]
+        field1LUTColorBar.ScalarBarLength = 0.33
+        # part 1a: end
+        
+        # part 1b: glyph
+        glyph1 = FindSource(glyph_name)
+        glyph1Display = Show(glyph1, renderView1, 'GeometryRepresentation')
+        # set the vector line width
+        glyph1Display.LineWidth = 2.0
+        # show color bar/color legend
+        glyph1Display.SetScalarBarVisibility(renderView1, True)
+        
+        # get color transfer function/color map for 'field'
+        fieldVLUT = GetColorTransferFunction(fieldV)
+        # get opacity transfer function/opacity map for 'field'
+        fieldVPWF = GetOpacityTransferFunction(fieldV)
+    
+        # set scalar coloring
+        ColorBy(glyph1Display, ('POINTS', fieldV, 'Magnitude'))
+        # change the color scheme 
+        fieldVLUT.ApplyPreset('Viridis (matplotlib)', True)
+        # part 1b: end
+
+        # Properties modified on renderView1.AxesGrid
+        renderView1.AxesGrid.Visibility = 1
+        # hide the orientation axes
+        renderView1.OrientationAxesVisibility = 0
+
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(1350, 704)
+        renderView1.InteractionMode = '2D'
+        renderView1.CameraPosition = [4.5e6, 2e6, 2.2e7]
+        renderView1.CameraFocalPoint = [4.5e6, 2e6, 2.9e6]
+        renderView1.CameraViewUp = [0.0, 1.0, 0.0]
+        renderView1.CameraParallelScale = 4e6
+       
+        # save figure 
+        fig_path = os.path.join(self.pv_output_dir, "slice_%.1fkm_t%.4e.png" % (depth/1e3, self.time))
+        SaveScreenshot(fig_path, view=renderView1)
+
+        # hide plots
+        Hide(source1, renderView1)
+        Hide(glyph1, renderView1)
+        HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
 
     def plot_iso_volume(self):
         # get active view and source
@@ -618,7 +714,8 @@ def adjust_slice_colorbar_camera(renderView, colorLUT, _camera):
 
 def main():
     # change this to false if I just want to load the data
-    RUN_FULL_SCRIPT=True 
+    RUN_FULL_SCRIPT=True
+    CROSS_SECTION_DEPTH=False 
     all_available_graphical_snapshots = ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS
     all_available_graphical_times = ALL_AVAILABLE_GRAPHICAL_TIMES
     assert(len(all_available_graphical_snapshots) == len(all_available_graphical_times))
@@ -626,22 +723,31 @@ def main():
     if not os.path.isdir("IMG_OUTPUT_DIR"):
         os.mkdir("IMG_OUTPUT_DIR")
     # set the list of variables to plot
-    # a. default: load everything needed
-    # b. mannually assign variables to load
-    temp_all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'sp_upper', 'sp_lower', "strain_rate"]
+    # the if conditions match the priority of these options from low to high
+    if CROSS_SECTION_DEPTH:
+        temp_all_variables = ['velocity', "strain_rate"]
+    if RUN_FULL_SCRIPT:
+        temp_all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'sp_upper', 'sp_lower', "strain_rate"]
     HAS_PLATE_EDGE = True
     if HAS_PLATE_EDGE:
         temp_all_variables.append('plate_edge')
     # temp_all_variables = []
-    # Process and generate plots
+
+    # Setup
     Slab = SLAB("PARAVIEW_FILE", output_dir="IMG_OUTPUT_DIR", all_variables=temp_all_variables)
+    # These are cheap options, so we conduct them by default
     Slab.setup_surface_slice()
     Slab.setup_trench_slice_center()
     Slab.setup_slice_back_y()
     if RUN_FULL_SCRIPT:
+        # There are expensive options, so we conduct them if needed
         Slab.setup_slab_iso_volume_upper()
         Slab.setup_active_clip()
         Slab.setup_stream_tracer('clip_active_1')
+    if CROSS_SECTION_DEPTH:
+        add_glyph("slice_surface_z", "velocity", 2e5, 500, registrationName="slice_z_glyph")
+
+    # Loop over steps
     # First number is the number of initial adaptive refinements
     # Second one is the snapshot to plot
     # here we prefer to use a series of snapshots.
@@ -657,6 +763,8 @@ def main():
                 Slab.goto_time(_time)
                 if RUN_FULL_SCRIPT:
                     Slab.plot_step()
+                if CROSS_SECTION_DEPTH:
+                    Slab.plot_cross_section_depth(200e3)
             else:
                 print ("step %s is not valid. There is no output" % step)
     else:

@@ -95,12 +95,15 @@ def PlotCaseRun(case_path, **kwargs):
     # call function
     Paraview_Options.Interpret(time_interval=time_interval)
     # ofile = os.path.join('visit_scripts', 'slab_sph.py')
-    ofile = os.path.join(case_path, 'paraview_scripts', 'slab.py')
-    paraview_script = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts',"ThDSubduction", 'slab.py')
-    paraview_base_script = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts', 'base.py')  # base.py : base file
-    Paraview_Options.read_contents(paraview_base_script, paraview_script)  # this part combines two scripts
-    Paraview_Options.substitute()  # substitute keys in these combined file with values determined by Interpret() function
-    ofile_path = Paraview_Options.save(ofile, relative=False)  # save the altered script
+    ofile_list = ['slab.py']
+    for ofile_base in ofile_list:
+        ofile = os.path.join(case_path, 'paraview_scripts', ofile_base)
+        paraview_script = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts',"ThDSubduction", ofile_base)
+        paraview_base_script = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts', 'base.py')  # base.py : base file
+        Paraview_Options.read_contents(paraview_base_script, paraview_script)  # this part combines two scripts
+        Paraview_Options.substitute()  # substitute keys in these combined file with values determined by Interpret() function
+        ofile_path = Paraview_Options.save(ofile, relative=False)  # save the altered script
+        print("\t File generated: %s" % ofile_path)
 
 
 class PLOTTER(PlotCase.PLOTTER):
