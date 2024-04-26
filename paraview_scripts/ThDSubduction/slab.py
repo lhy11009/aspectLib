@@ -683,6 +683,138 @@ class SLAB(PARAVIEW_PLOT):
         HideScalarBarIfNotNeeded(field1LUT, renderView1)
         Hide(sourceSl2, renderView1)
         HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+
+    def plot_iso_volume_strain_rate_streamline(self):
+        # get active view and source
+        renderView1 = GetActiveViewOrCreate('RenderView')
+
+        # set the sources and fields to plot
+        source_name = "isoVolume_slab_lower"
+        field1 = "strain_rate"
+        source_streamline1 = "StreamTracer1"
+        source_streamline2 = "StreamTracer2"
+
+        # part 1a: plot the lower slab 
+        source1 = FindSource(source_name)
+        source1Display = Show(source1, renderView1, 'GeometryRepresentation')
+
+        # get the original plot field, in order to hide
+        # redundant color in later codes
+        field0 = source1Display.ColorArrayName[1]
+        field0LUT = GetColorTransferFunction(field0)
+
+        # set scalar coloring
+        ColorBy(source1Display, ('POINTS', field1, 'Magnitude'))
+        HideScalarBarIfNotNeeded(field0LUT, renderView1)
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        
+        # get color transformation
+        field1LUT = GetColorTransferFunction(field1)
+        field1PWF = GetOpacityTransferFunction(field1)
+        
+        # reset log scale and color 
+        field1LUT.UseLogScale = 1
+        field1LUT.ApplyPreset('Inferno (matplotlib)', True)
+        
+        # reset limit
+        field1LUT.RescaleTransferFunction(1e-16, 1e-13) # Rescale transfer function
+        field1PWF.RescaleTransferFunction(1e-16, 1e-13) # Rescale transfer function
+        
+        # colorbar position
+        field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
+        field1LUTColorBar.Orientation = 'Horizontal'
+        field1LUTColorBar.WindowLocation = 'Any Location'
+        field1LUTColorBar.Position = [0.041, 0.908]
+        field1LUTColorBar.ScalarBarLength = 0.33
+        # part 1a end
+
+        # part 1b: stream line 1
+        sourceSl1 = FindSource(source_streamline1)
+        sourceSl1Display = Show(sourceSl1, renderView1, 'GeometryRepresentation')
+
+        # redundant color 
+        field0 = sourceSl1Display.ColorArrayName[1]
+        field0LUT = GetColorTransferFunction(field0)
+
+        # set scalar coloring
+        ColorBy(sourceSl1Display, ('POINTS', 'velocity', 'Magnitude'))
+        HideScalarBarIfNotNeeded(field0LUT, renderView1)
+
+        # get color transformation
+        fieldVLUT = GetColorTransferFunction("velocity")
+        fieldVPWF = GetOpacityTransferFunction("velocity")
+
+        # reset color 
+        fieldVLUT.ApplyPreset('Viridis (matplotlib)', True)
+
+        # set opacity 
+        sourceSl1Display.Opacity = 0.3
+        
+        # rescale 
+        fieldVLUT.RescaleTransferFunction(0.0, 0.1) # Rescale transfer function
+        fieldVPWF.RescaleTransferFunction(0.0, 0.1) # Rescale transfer function
+        # part 1b end
+        
+        # part 1c: stream line 2
+        sourceSl2 = FindSource(source_streamline2)
+        sourceSl2Display = Show(sourceSl2, renderView1, 'GeometryRepresentation')
+
+        # redundant color 
+        field0 = sourceSl2Display.ColorArrayName[1]
+        field0LUT = GetColorTransferFunction(field0)
+
+        # set scalar coloring
+        ColorBy(sourceSl2Display, ('POINTS', 'velocity', 'Magnitude'))
+        HideScalarBarIfNotNeeded(field0LUT, renderView1)
+        sourceSl2Display.SetScalarBarVisibility(renderView1, True)
+
+        # get color transformation
+        fieldVLUT = GetColorTransferFunction("velocity")
+        fieldVPWF = GetOpacityTransferFunction("velocity")
+
+        # reset color 
+        fieldVLUT.ApplyPreset('Viridis (matplotlib)', True)
+
+        # set opacity 
+        # sourceSl2Display.Opacity = 0.5
+        
+        # rescale 
+        fieldVLUT.RescaleTransferFunction(0.0, 0.1) # Rescale transfer function
+        fieldVPWF.RescaleTransferFunction(0.0, 0.1) # Rescale transfer function
+        
+        # colorbar position
+        fieldVLUTColorBar = GetScalarBar(fieldVLUT, renderView1)
+        fieldVLUTColorBar.Orientation = 'Horizontal'
+        fieldVLUTColorBar.WindowLocation = 'Any Location'
+        fieldVLUTColorBar.Position = [0.541, 0.908]
+        fieldVLUTColorBar.ScalarBarLength = 0.33
+        # part 1c end
+
+        # First figure: front view 
+        # show axis
+        renderView1.AxesGrid.Visibility = 1
+
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(1350, 704)
+        renderView1.InteractionMode = '2D'
+        renderView1.CameraPosition = [8e6, -10e6, 4e6]
+        renderView1.CameraFocalPoint = [3.4e6, 1.9e6, 1.7e6]
+        renderView1.CameraViewUp = [0.0, 0.0, 1.0]
+        renderView1.CameraParallelScale = 4e6
+        
+        # save figure 
+        # fig_path = os.path.join(self.pv_output_dir, "%s_top_t%.4e.pdf" % (source_name, self.time))
+        # ExportView(fig_path, view=renderView1)
+        fig_path = os.path.join(self.pv_output_dir, "%s_front_t%.4e.png" % (source_name, self.time))
+        SaveScreenshot(fig_path, view=renderView1)
+
+        # hide plots 
+        Hide(source1, renderView1)
+        HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        Hide(sourceSl1, renderView1)
+        Hide(sourceSl2, renderView1)
+        HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
     
     def plot_step(self): 
         '''
@@ -714,8 +846,9 @@ def adjust_slice_colorbar_camera(renderView, colorLUT, _camera):
 
 def main():
     # change this to false if I just want to load the data
-    RUN_FULL_SCRIPT=True
-    CROSS_SECTION_DEPTH=False 
+    RUN_FULL_SCRIPT=False
+    CROSS_SECTION_DEPTH=False
+    PLOT_ISOVOLUME_WITH_STREAMLINE=False
     all_available_graphical_snapshots = ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS
     all_available_graphical_times = ALL_AVAILABLE_GRAPHICAL_TIMES
     assert(len(all_available_graphical_snapshots) == len(all_available_graphical_times))
@@ -726,8 +859,10 @@ def main():
     # the if conditions match the priority of these options from low to high
     if CROSS_SECTION_DEPTH:
         temp_all_variables = ['velocity', "strain_rate"]
-    if RUN_FULL_SCRIPT:
+    elif RUN_FULL_SCRIPT:
         temp_all_variables = ['velocity', 'p', 'T',  'density', 'viscosity', 'sp_upper', 'sp_lower', "strain_rate"]
+    elif PLOT_ISOVOLUME_WITH_STREAMLINE:
+         temp_all_variables = ['velocity', 'viscosity', 'strain_rate', 'sp_lower']
     HAS_PLATE_EDGE = True
     if HAS_PLATE_EDGE:
         temp_all_variables.append('plate_edge')
@@ -744,8 +879,12 @@ def main():
         Slab.setup_slab_iso_volume_upper()
         Slab.setup_active_clip()
         Slab.setup_stream_tracer('clip_active_1')
-    if CROSS_SECTION_DEPTH:
+    elif CROSS_SECTION_DEPTH:
         add_glyph("slice_surface_z", "velocity", 2e5, 500, registrationName="slice_z_glyph")
+    elif PLOT_ISOVOLUME_WITH_STREAMLINE:
+        Slab.setup_slab_iso_volume_upper()
+        Slab.setup_active_clip()
+        Slab.setup_stream_tracer('clip_active_1')
 
     # Loop over steps
     # First number is the number of initial adaptive refinements
@@ -763,8 +902,10 @@ def main():
                 Slab.goto_time(_time)
                 if RUN_FULL_SCRIPT:
                     Slab.plot_step()
-                if CROSS_SECTION_DEPTH:
+                elif CROSS_SECTION_DEPTH:
                     Slab.plot_cross_section_depth(200e3)
+                elif PLOT_ISOVOLUME_WITH_STREAMLINE:
+                    Slab.plot_iso_volume_strain_rate_streamline()
             else:
                 print ("step %s is not valid. There is no output" % step)
     else:
