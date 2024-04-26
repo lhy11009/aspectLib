@@ -1,0 +1,55 @@
+{
+    "figures": [
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/isoVolume_slab_lower_front_tNUMERICAL_TIME_4E.png"
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/slice_trench_center_y_viscosity_tNUMERICAL_TIME_4E.png",
+            "operation": "paste",
+            "mask": 0,
+            "resize": 0.5,
+            "position": [0, 704],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_0.png",
+            "temp": 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/slice_trench_edge_y_viscosity_tNUMERICAL_TIME_4E.png",
+            "operation": "paste",
+            "mask": 0,
+            "resize": 0.5,
+            "position": [675, 704],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_1.png",
+            "temp": 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_1.png",
+            "operation": "text",
+            "text": "STEP_TIME_STAMP\n(center, edge)",
+            "font size": 30,
+            "position": [500, 600],
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/step_sNUMERICAL_STEP_2.png",
+            "temp": 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/slice_100.0km_tNUMERICAL_TIME_4E.png",
+            "operation": "paste",
+            "mask": 0,
+            "resize": 0.5,
+            "position": [0, 1100],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_3.png",
+            "temp": 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/slice_200.0km_tNUMERICAL_TIME_4E.png",
+            "operation": "paste",
+            "mask": 0,
+            "resize": 0.5,
+            "position": [675, 1100],
+            "method": "use_new_one",
+            "save path": "IMG_OUTPUT_DIR/animation/temp_sNUMERICAL_STEP.png"
+        }
+    ]
+}

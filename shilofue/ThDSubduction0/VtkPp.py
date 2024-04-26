@@ -506,6 +506,54 @@ class SLABPLOT(LINEARPLOT):
         fig.savefig(fileout)
         print("image output: ", fileout)
 
+    def PlotTrenchPositionAnimation(self, case_dir, vtu_step_list, this_vtu_step, **kwargs):
+        '''
+        a variation of the PlotMorph function: used for combining results
+        Inputs:
+            case_dir (str): directory of case
+        kwargs(dict):
+            defined but not used
+        '''
+        time_interval_for_slab_morphology = kwargs.get("time_interval", 1.0e6)
+        Visit_Options = VISIT_OPTIONS(case_dir)
+        Visit_Options.Interpret()
+        trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
+        trench_edge_y = float(Visit_Options.options['TRENCH_EDGE_Y_FULL'])
+        # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+        available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+        assert(len(available_pvtu_snapshots) > 1) # assert this is an array
+        n_snapshots = len(available_pvtu_snapshots)
+        print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # output the availabe pvtu snapshots
+        
+        # make directory to save images 
+        img_dir = os.path.join(case_dir, 'img')
+        if not os.path.isdir(img_dir):
+            os.mkdir(img_dir)
+        morph_img_dir = os.path.join(img_dir, "morphology")
+        if not os.path.isdir(morph_img_dir):
+            os.mkdir(morph_img_dir)
+        
+        # 1. trench position
+        n_episode = len(vtu_step_list)
+        fig, ax = plt.subplots(tight_layout=True, figsize=(5, 5))
+        normalizer = [float(i)/(n_episode+1) for i in range(n_episode)] 
+        colors = cm.rainbow(normalizer) 
+        # 
+        for i in range(n_episode):
+            vtu_snapshot = vtu_step_list[i] + int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT'])
+            _time, _ = Visit_Options.get_time_and_step(vtu_step_list[i])
+            _color = colors[i]
+            ax = self.PlotTrenchPositionStep(case_dir, vtu_snapshot, axis=ax, color=_color, label="Time = %.2f Myr" % (_time / 1e6))
+            ax.legend()
+            ax.set_xlim([trench_initial_position/1e3 - 1000, trench_initial_position/1e3 + 1000]) # set the x axis to center around the inital trench
+        #
+        this_vtu_snapshot = this_vtu_step + int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT'])
+        this_time, _ = Visit_Options.get_time_and_step(this_vtu_step)
+        ax = self.PlotTrenchPositionStep(case_dir, this_vtu_snapshot, axis=ax, color=_color, label="Time = %.2f Myr" % (this_time / 1e6), line_type="-")
+        fileout = os.path.join(morph_img_dir, "trench_history_animation_t%.4e.png" % this_time)
+        fig.savefig(fileout)
+        print("image output: ", fileout)
+
     
     def PlotTrenchPositionEpisodes(self, case_dir, episodes, **kwargs):
         '''
@@ -569,6 +617,7 @@ class SLABPLOT(LINEARPLOT):
         '''
         _color = kwargs.get("color", None)
         _label = kwargs.get("label", None)
+        line_type = kwargs.get("line_type", '.')
         filein = os.path.join(case_dir, "vtk_outputs", "trench_%05d.txt" % vtu_snapshot)
         Utilities.my_assert(os.path.isfile(filein), FileNotFoundError, "%s is not found." % filein)
         # initiate
@@ -578,7 +627,7 @@ class SLABPLOT(LINEARPLOT):
         data = np.loadtxt(filein)
         xs = data[:, 0]
         ys = data[:, 1]
-        ax.plot(xs/1e3, ys/1e3, '.', color=_color, label=_label)
+        ax.plot(xs/1e3, ys/1e3, line_type, color=_color, label=_label)
         ax.set_xlabel('X (km)')
         ax.set_ylabel('Y (km)')
         return ax

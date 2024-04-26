@@ -6,6 +6,9 @@
 # y coordinates for trench edge
 #   TRENCH_EDGE_Y
 
+from re import A
+
+
 class SLAB(PARAVIEW_PLOT):
     '''
     Inherit frome PARAVIEW_PLOT
@@ -40,7 +43,7 @@ class SLAB(PARAVIEW_PLOT):
     
     def setup_trench_slice_center(self):
         '''
-        Generate a visualization of a slice perpendicular to y direction, and locates at trench center (y=0)
+        Generate a visualization of a slice perpendicular to y direction, and locates at trench edge (y=0)
         Here I first set the plots up. This is equivalent to add filters to a paraview window in the gui.
         '''
         slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [2000000.0, 1.0, 500000.0],\
@@ -53,6 +56,7 @@ class SLAB(PARAVIEW_PLOT):
         adjust_camera(self.renderView1, _camera[0],_camera[1], _camera[2], _camera[3])
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
         Hide(slice1, self.renderView1) # hide data in view
+    
     
     def setup_slice_back_y(self):
         '''
@@ -290,10 +294,19 @@ class SLAB(PARAVIEW_PLOT):
         if hide_plot:
             Hide(isoVolume1, renderView1)  # hide data in view
     
-    def plot_slab_slice(self, source_name, source_streamline=None): 
+    def plot_slab_slice(self, source_name, source_streamline=None, **kwargs): 
         '''
         plot a slice
+        Inputs:
+            kwargs:
+                where - center or edge
+                slice_y - y coordinate of slice
         '''
+        slice_y = kwargs.get("slice_y", 1.0)  # by default, plot the center
+        where = kwargs.get("where", "center")
+        if where == "edge":
+            slice_y = TRENCH_EDGE_Y
+
         # get active view and source
         renderView1 = GetActiveViewOrCreate('RenderView')
 
@@ -303,6 +316,7 @@ class SLAB(PARAVIEW_PLOT):
         # part 1: plot the center slice 
         # part 1a: temperature
         source1 = FindSource(source_name)
+        source1.SliceType.Origin = [2000000.0, slice_y, 500000.0] # set y value
         source1Display = Show(source1, renderView1, 'GeometryRepresentation')
         
         # get the original plot field, in order to hide
@@ -388,9 +402,9 @@ class SLAB(PARAVIEW_PLOT):
         # fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.pdf" % (source_name, field2, self.time))
         # ExportView(fig_path, view=renderView1)
         if source_streamline is not None:
-            fig_base = "%s_%s_stream_t%.4e.png" % (source_name, field1, self.time)
+            fig_base = "slice_trench_%s_y_%s_stream_t%.4e.png" % (where, field1, self.time)
         else:
-            fig_base = "%s_%s_t%.4e.png" % (source_name, field1, self.time)
+            fig_base = "slice_trench_%s_y_%s_t%.4e.png" % (where, field1, self.time)
         fig_path = os.path.join(self.pv_output_dir, fig_base)
         SaveScreenshot(fig_path, view=renderView1)
 
@@ -427,9 +441,9 @@ class SLAB(PARAVIEW_PLOT):
         # fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.pdf" % (source_name, field2, self.time))
         # ExportView(fig_path, view=renderView1)
         if source_streamline is not None:
-            fig_base = "%s_%s_stream_t%.4e.png" % (source_name, field2, self.time)
+            fig_base = "slice_trench_%s_y_%s_stream_t%.4e.png" % (where, field2, self.time)
         else:
-            fig_base = "%s_%s_t%.4e.png" % (source_name, field2, self.time)
+            fig_base = "slice_trench_%s_y_%s_t%.4e.png" % (where, field2, self.time)
         fig_path = os.path.join(self.pv_output_dir, fig_base)
         SaveScreenshot(fig_path, view=renderView1)
 
@@ -521,10 +535,10 @@ class SLAB(PARAVIEW_PLOT):
         layout1 = GetLayout()
         layout1.SetSize(1350, 704)
         renderView1.InteractionMode = '2D'
-        renderView1.CameraPosition = [4.5e6, 2e6, 2.2e7]
-        renderView1.CameraFocalPoint = [4.5e6, 2e6, 2.9e6]
+        renderView1.CameraPosition = [3.5e6, 2e6, 2.2e7]
+        renderView1.CameraFocalPoint = [3.5e6, 2e6, 2.9e6]
         renderView1.CameraViewUp = [0.0, 1.0, 0.0]
-        renderView1.CameraParallelScale = 4e6
+        renderView1.CameraParallelScale = 2.3e6
        
         # save figure 
         fig_path = os.path.join(self.pv_output_dir, "slice_%.1fkm_t%.4e.png" % (depth/1e3, self.time))
@@ -698,16 +712,35 @@ def adjust_slice_colorbar_camera(renderView, colorLUT, _camera):
 
 def main():
     # change this to false if I just want to load the data
+    try:
+        option = int(sys.argv[1])
+    except IndexError:
+        option = 0
+
+    # By default, we turn off all the options
     RUN_FULL_SCRIPT=False
     CROSS_SECTION_DEPTH=False
     PLOT_ISOVOLUME_WITH_STREAMLINE=False
     PLOT_Y_SLICES=False
+    # Set option by the additional value given in the command line
+    if option == 1:
+        CROSS_SECTION_DEPTH=True
+    elif option == 2:
+        PLOT_ISOVOLUME_WITH_STREAMLINE=True
+    elif option == 3:
+        PLOT_Y_SLICES=True
+
+    # Set the steps to plot 
+    steps = GRAPHICAL_STEPS
+
+    # First, get all the possible snapshots
     all_available_graphical_snapshots = ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS
     all_available_graphical_times = ALL_AVAILABLE_GRAPHICAL_TIMES
     assert(len(all_available_graphical_snapshots) == len(all_available_graphical_times))
-    # First, make directory for images if it's not there
+    # Then, make directory for images if it's not there
     if not os.path.isdir("IMG_OUTPUT_DIR"):
         os.mkdir("IMG_OUTPUT_DIR")
+
     # set the list of variables to plot
     # the if conditions match the priority of these options from low to high
     if CROSS_SECTION_DEPTH:
@@ -748,7 +781,6 @@ def main():
     # Second one is the snapshot to plot
     # here we prefer to use a series of snapshots.
     # If this doesn't work, we will use a single snapshot
-    steps = GRAPHICAL_STEPS
     if not steps == []:
         for step in steps:
             # check that snapshot is valid
@@ -760,11 +792,13 @@ def main():
                 if RUN_FULL_SCRIPT:
                     Slab.plot_step()
                 elif CROSS_SECTION_DEPTH:
+                    Slab.plot_cross_section_depth(100e3)
                     Slab.plot_cross_section_depth(200e3)
                 elif PLOT_ISOVOLUME_WITH_STREAMLINE:
                     Slab.plot_iso_volume_strain_rate_streamline()
                 elif PLOT_Y_SLICES:
                     Slab.plot_slab_slice("slice_trench_center_y")
+                    Slab.plot_slab_slice("slice_trench_center_y", where="edge")
             else:
                 print ("step %s is not valid. There is no output" % step)
     else:
