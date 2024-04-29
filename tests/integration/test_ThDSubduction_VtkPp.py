@@ -40,6 +40,13 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 # todo2
+
+def test_extract_horizontal_flow():
+    '''
+    Test extract horizontal flow field
+    '''
+    pass
+
 def test_prepare_slab():
     '''
     Test utilities from VtkPp.py

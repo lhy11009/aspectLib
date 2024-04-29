@@ -10,6 +10,8 @@ Output file type, png or pdf:
 
     -ft, --file_type
 
+### Some Running Examples
+
 #### shilofue/PlotDepthAverage.py
 
 Plot the buoyancy and the buoyancy ratio (buoyancy / density in the second file)
@@ -51,3 +53,16 @@ Assemble the parallel files. Do this after getting the results from the server
 Plot summary of mantle rheology from multiple rheologies:
 
     python -m shilofue.Rheology compare_mantle_rheology
+
+### Installation
+
+
+#### Big data files
+
+Their sources locate under (box folder: big_fixtures)
+
+    https://ucdavis.app.box.com/folder/261299625472
+
+And they should be downloaded to
+
+    tests/integration/big_fixtures

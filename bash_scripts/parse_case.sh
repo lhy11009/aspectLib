@@ -17,7 +17,6 @@
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}"  )" >/dev/null 2>&1 && pwd  )"
 source "${ASPECT_LAB_DIR}/utilities/bash_scripts/utilities.sh"
 
-
 usage(){
   # usage of this script
     _text="
@@ -55,7 +54,11 @@ Example Usage:
 
    Restart cases by checking run time in a directory
       Lib_parse_case check_time_restart_directory ./EBA_CDPT 60e6 high2
-    
+
+   Copy the case files to a new location, including only one step in the output
+      (the last number is the visualization step (step + initiation adaptive refinement level))
+      Lib_parse_case copy_case_output_by_vtu_snapshot ~/ASPECT_PROJECT/aspectLib/tests/integration/big_fixtures/test_bash_parse/eba_cdpt_coh500_SA80.0_OA40.0_cd100.0_cd7.5_gr9_yd100
+      .test/test_base_parse 0
 "
     printf "${_text}"
 
@@ -494,6 +497,78 @@ check_time_restart_case_in_directory(){
     done
     return 0
 }
+    
+copy_case_output_basics(){
+    ####
+    # copy case output, include only the basic entries and outputs
+    # In this function, I copy the directory, keep the basename, and put it under a new target directory
+    # Inputs:
+    #   $1 - case_directory 
+    #   $2 - target 
+    ####
+    [[ -d "$1" ]] || { cecho "${BAD}" "no such case directory $1"; exit 1; }
+    local case_dir="$1"
+    local base_name=$(basename "${case_dir}")
+    [[ -d "$2" ]] || { cecho "${BAD}" "no such directory to output $2"; exit 1; }
+    local target_dir="$2"
+
+    local target_case_dir="$2/${base_name}"
+    [[ -d "$target_case_dir" ]] || { mkdir "$target_case_dir"; }
+
+    eval "cp ${case_dir}/*.prm ${target_case_dir}/" # copy the .prm file
+    eval "cp ${case_dir}/*.wb ${target_case_dir}/" # copy the .wb file
+    eval "cp ${case_dir}/*.sh ${target_case_dir}/" # copy the bash script files
+
+    output_dir="${case_dir}/output"
+    target_output_dir="${target_case_dir}/output"
+    if [[ -d "${output_dir}" ]]; then
+        [[ -d "$target_output_dir" ]] || { mkdir "$target_output_dir"; }
+        eval "cp ${output_dir}/*.prm ${target_output_dir}/" # copy the .prm file
+        eval "cp ${output_dir}/*.txt ${target_output_dir}/" # copy the .txt file
+        eval "cp ${output_dir}/*.json ${target_output_dir}/" # copy the .json file
+        eval "cp ${output_dir}/*.pvd ${target_output_dir}/" # copy the .pvd file
+        eval "cp ${output_dir}/*.visit ${target_output_dir}/" # copy the .visit file
+        eval "cp ${output_dir}/statistics ${target_output_dir}/" # copy the statistics file
+    fi
+
+    return 0
+}
+
+copy_case_output_by_vtu_snapshot(){
+    ####
+    # copy case output at a given vtu_snapshot
+    # the vtu_snapshot here is the visualization step (step + initiation adaptive refinement level)
+    # Inputs:
+    #   $1 - case_directory 
+    #   $2 - target 
+    #   $3 - vtu_snapshot
+    ####
+    [[ -d "$1" ]] || { cecho "${BAD}" "no such case directory $1"; exit 1; }
+    local case_dir="$1"
+    [[ -d "$2" ]] || { cecho "${BAD}" "no such directory to output $3"; exit 1; }
+    local target_dir="$2"
+    local vtu_snapshot="$3"
+
+    # first, only copy the basic components (e.g. .prm, .wb, statistics)
+    copy_case_output_basics "${case_dir}" "${target_dir}"
+
+    # then, make the solution directory and proceed by copying the files
+    local output_dir="${case_dir}/output"
+    local base_name=$(basename "${case_dir}")
+    local solution_dir="${output_dir}/solution"
+    local target_case_dir="${target_dir}/${base_name}"
+    local target_output_dir="${target_case_dir}/output"
+    local target_solution_dir="${target_output_dir}/solution"
+    if [[ -d "${solution_dir}" ]]; then
+        [[ -d "$target_solution_dir" ]] || { mkdir "$target_solution_dir"; }
+        local stamp_vtu_snapshot=$(printf "%05d" ${step})
+        eval "cp ${solution_dir}/solution-${stamp_vtu_snapshot}.pvtu ${target_solution_dir}/"
+        eval "cp ${solution_dir}/solution-${stamp_vtu_snapshot}.visit ${target_solution_dir}/"
+        eval "cp ${solution_dir}/solution-${stamp_vtu_snapshot}.*.vtu ${target_solution_dir}/"
+    fi
+    
+    return 0
+} 
 
 # future remove unneeded functions and add one to parse case info(i.e. id job given, case name, wall clock, core*hrs, step
 
@@ -544,6 +619,8 @@ main(){
         check_time_restart_case "$2" "$3" "$4"
     elif [[ "$1" == "check_time_restart_directory" ]]; then
         check_time_restart_case_in_directory "$2" "$3" "$4"
+    elif [[ "$1" == "copy_case_output_by_vtu_snapshot" ]]; then
+        copy_case_output_by_vtu_snapshot "$2" "$3" "$4"
     else
     	cecho "${BAD}" "option ${1} is not valid\n"
     fi

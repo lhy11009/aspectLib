@@ -137,7 +137,7 @@ dmypy.json
 *.zip
 
 # temp files
-*temp
+*temp*
 temp.*
 dtemp/
 
@@ -185,3 +185,6 @@ $GIT_DIR/output/
 
 # utilities
 utilities
+
+# big tests files
+tests/integration/big_fixtures

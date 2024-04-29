@@ -72,6 +72,7 @@ def test_WriteCSV():
     # assert file contents
     csv_file_path_std = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp', 'vtk_outputs', 'slab_morph_std.csv')
     assert(os.path.isfile(csv_file_path_std))
+    assert(filecmp.cmp(csv_file_path, csv_file_path_std))  # compare file extent
 
 
 def test_wedge_T():
@@ -231,7 +232,7 @@ def test_analysize_sz():
     '''
     test the sz geometry
     '''
-    case_dir = os.path.join(ASPECT_LAB_DIR, "tests/integration/fixtures/big_files/test_TwoD_vtk_pp_full")
+    case_dir = os.path.join(ASPECT_LAB_DIR, "tests/integration/big_fixtures/TwoDSubduction//test_TwoD_vtk_pp_full")
     assert(os.path.isdir(case_dir))
     # fix the output directory
     output_path = os.path.join(test_dir, "twod_vtkp_sz")
@@ -276,7 +277,7 @@ def test_analysize_sz():
 
 
 def test_find_mdd():
-    case_dir = os.path.join(ASPECT_LAB_DIR, "tests/integration/fixtures/big_files/test_TwoD_vtk_pp_full")
+    case_dir = os.path.join(ASPECT_LAB_DIR, "tests/integration/big_fixtures/TwoDSubduction//test_TwoD_vtk_pp_full")
     assert(os.path.isdir(case_dir))
     vtu_snapshot = 97
     filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
