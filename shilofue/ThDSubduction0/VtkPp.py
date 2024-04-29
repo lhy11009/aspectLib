@@ -219,9 +219,10 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     slab_shallow_cutoff = kwargs.get("slab_shallow_cutoff", 70e3)
     include_force_balance = kwargs.get("include_force_balance", False)
     crust_only = kwargs.get("crust_only", 0)
+    horizontal_velocity = kwargs.get("horizontal_velocity", False)
     appendix = "_%05d" % vtu_snapshot
     # output_path
-    output_path = os.path.join(case_dir, 'vtk_outputs')
+    output_path = kwargs.get("output", os.path.join(case_dir, 'vtk_outputs'))
     if not os.path.isdir(output_path):
         os.mkdir(output_path)
     # Initiate an object for the options we use for vtk, also get time and step
@@ -350,6 +351,9 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     end = time.time()
     print("Write trench positions, takes %.2f s" % (end - start))
     start = end
+    # todo_hv
+    if horizontal_velocity:
+        pass
     return vtu_step, ""
  
 ####

@@ -561,7 +561,7 @@ copy_case_output_by_vtu_snapshot(){
     local target_solution_dir="${target_output_dir}/solution"
     if [[ -d "${solution_dir}" ]]; then
         [[ -d "$target_solution_dir" ]] || { mkdir "$target_solution_dir"; }
-        local stamp_vtu_snapshot=$(printf "%05d" ${step})
+        local stamp_vtu_snapshot=$(printf "%05d" ${vtu_snapshot})
         eval "cp ${solution_dir}/solution-${stamp_vtu_snapshot}.pvtu ${target_solution_dir}/"
         eval "cp ${solution_dir}/solution-${stamp_vtu_snapshot}.visit ${target_solution_dir}/"
         eval "cp ${solution_dir}/solution-${stamp_vtu_snapshot}.*.vtu ${target_solution_dir}/"
