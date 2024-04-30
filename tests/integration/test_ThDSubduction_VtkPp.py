@@ -42,15 +42,16 @@ if not os.path.isdir(test_dir):
 
 # todo_hv
 
-def test_extract_horizontal_flow():
+def test_extract_slab_cross_section_at_depth():
     '''
     Test extract horizontal flow field
+    Here, I test using the SlabMorphology function to get the cross section of the slab at a given depth
     '''
     case_dir = os.path.join(big_source_dir, "eba3d_width61_c23_AR4")
     assert(os.path.isdir(case_dir))
     std_vtk_outputs_dir = os.path.join(case_dir, "vtk_outputs_std") # directory contains the standard outputs
     assert(os.path.isdir(std_vtk_outputs_dir))
-    odir = os.path.join(test_dir, "test_slab_morphology")
+    odir = os.path.join(test_dir, "test_extract_slab_cross_section_at_depth")
     if os.path.isdir(odir):
         rmtree(odir)  # remove old results and make a new directory
     os.mkdir(odir)
@@ -68,7 +69,10 @@ def test_extract_horizontal_flow():
     crust_only = 1  # If we only use the crustal composition to sort out the trench locations
 
     SlabMorphology(case_dir, 144, slab_envelop_interval_y=slab_envelop_interval_y, slab_envelop_interval_z=slab_envelop_interval_z,\
-        slab_shallow_cutoff=slab_shallow_cutoff, crust_only=crust_only, output=o_vtk_dir, horizontal_velocity=True)
+        slab_shallow_cutoff=slab_shallow_cutoff, crust_only=crust_only, output=o_vtk_dir, horizontal_velocity_depths=[150e3])
+    
+    slab_surface_file = os.path.join(o_vtk_dir, "slab_surface_00144_d150.00km.txt")
+    assert(os.path.isfile(slab_surface_file))
 
 
 def test_slab_morphology():

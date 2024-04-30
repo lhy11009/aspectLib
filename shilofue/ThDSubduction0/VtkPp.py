@@ -87,6 +87,7 @@ class VTKP(VtkPp.VTKP):
         self.trench_coords_x = []
         self.trench_coords_y = []
         self.trench_coords_z = []
+        self.slab_depth = 0.0  # slab depth
         self.buoyancies = None
 
     def PrepareSlabByPoints(self, slab_field_names, **kwargs):
@@ -96,6 +97,14 @@ class VTKP(VtkPp.VTKP):
         few minutes when my case scales up.
         '''
         slab_threshold = kwargs.get('slab_threshold', 0.2)
+        field_type = kwargs.get('field_type', "composition")
+        if field_type == "composition":
+            # tranferred to to enum type to save computational cost
+            field_enum = 0
+        elif field_type == "temperature":
+            field_enum = 1
+        else:
+            raise ValueError("field_type needs to be either composition or temperature")
         points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
         point_data = self.i_poly_data.GetPointData()
         # slab composition field
@@ -109,7 +118,16 @@ class VTKP(VtkPp.VTKP):
             z = points[i][2]
             r = VtkPp.get_r3(x, y, z, self.geometry)
             slab = slab_field[i]
-            if slab > slab_threshold and ((self.Ro - r) > self.slab_shallow_cutoff):
+            if field_enum == 0:
+                # with this method, I use the total value of a few composition fields
+                # and determine slab internal points based on higher compositions.
+                condition = (slab > slab_threshold)
+            elif field_enum == 1:
+                # with this method, I use the value of the temperature field
+                # and determine slab internal points based on lower temperature.
+                condition = (slab < slab_threshold)
+            if condition and ((self.Ro - r) > self.slab_shallow_cutoff):
+                # there is also a shallow cutoff applied.
                 self.slab_points.append(i)
                 if r < min_r:
                     min_r = r
@@ -174,6 +192,35 @@ class VTKP(VtkPp.VTKP):
         self.trench_coords_y = trench_coords_y
         self.trench_coords_z = trench_coords_z
 
+    # todo_hv 
+    def SlabSurfaceAtDepth(self, depth):
+        '''
+        Get the slab surface at a given depth
+        Here I get the slab surface in a cross section at a given depth
+        Inputs:
+            depth - a given depth to get a cross section
+        '''
+        points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
+        assert(len(self.slab_envelop_point_list0) > 0)  # check the slab envelops have points and depth within the range
+        assert(depth < self.slab_depth)
+        xs = []
+        ys = []
+        zs = []
+        # here I don't proceed with the exact id depth, 
+        # because there are missing intervals in the slab_envelop_point_list0
+        # (otherwise determine a i_z -> figure out the i that way)
+        for i in range(len(self.slab_envelop_point_list0)):
+            id = self.slab_envelop_point_list0[i]
+            x = points[id][0]
+            y = points[id][1]
+            z = points[id][2]
+            if abs(self.Ro - depth - z) < 10e3:
+                xs.append(x)
+                ys.append(y)
+                zs.append(z)
+        return xs, ys, zs
+
+
     def ComputeBuoyancy(self):
         '''
         Compute buoyancy
@@ -219,7 +266,7 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     slab_shallow_cutoff = kwargs.get("slab_shallow_cutoff", 70e3)
     include_force_balance = kwargs.get("include_force_balance", False)
     crust_only = kwargs.get("crust_only", 0)
-    horizontal_velocity = kwargs.get("horizontal_velocity", False)
+    horizontal_velocity_depths = kwargs.get("horizontal_velocity_depths", []) # provide a list of depth to investigate the velocity field
     appendix = "_%05d" % vtu_snapshot
     # output_path
     output_path = kwargs.get("output", os.path.join(case_dir, 'vtk_outputs'))
@@ -352,8 +399,22 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     print("Write trench positions, takes %.2f s" % (end - start))
     start = end
     # todo_hv
-    if horizontal_velocity:
-        pass
+    for hv_depth in horizontal_velocity_depths:
+        coords_x, coords_y, coords_z = VtkP.SlabSurfaceAtDepth(hv_depth)
+        outputs = "# trench coordinates: x, y and z\n" + \
+        "# vtu step: %d\n" % vtu_step  + \
+        "# time: %.4e\n" % _time
+        for i in range(len(coords_x)):
+            if i > 0:
+                outputs += "\n"
+            outputs += str(coords_x[i]) + " " + str(coords_y[i]) + " " + str(coords_z[i])
+        fileout = os.path.join(output_path, "slab_surface_%05d_d%.2fkm.txt" % (vtu_snapshot, hv_depth/1e3))
+        with open(fileout, 'w') as fout:
+            fout.write(outputs)
+        print("File output for trench positions: %s" % fileout)
+    end = time.time()
+    print("Write slab surface at depth, takes %.2f s" % (end - start))
+
     return vtu_step, ""
  
 ####
@@ -745,6 +806,9 @@ def main():
     parser.add_argument('-s', '--step', type=int,
                         default=0,
                         help='step')
+    parser.add_argument('-d', '--depth', type=float,
+                        default=150e3,
+                        help='Depth of the cross section')
     parser.add_argument('-vs', '--vtu_step', type=int,
                         default=0,
                         help='vtu_step')
@@ -784,6 +848,10 @@ def main():
         SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1,\
             slab_envelop_interval_y=arg.slab_envelop_interval_y, slab_envelop_interval_z=arg.slab_envelop_interval_z,\
             slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only, include_force_balance=include_force_balance)
+    elif _commend == 'cross_section_at_depth':
+        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1,\
+            slab_envelop_interval_y=arg.slab_envelop_interval_y, slab_envelop_interval_z=arg.slab_envelop_interval_z,\
+            slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only, horizontal_velocity_depths=[arg.depth])
     elif _commend == 'morph_case':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=0, time_interval=arg.time_interval,\
