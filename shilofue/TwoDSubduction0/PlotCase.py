@@ -113,20 +113,21 @@ def PlotCaseRun(case_path, **kwargs):
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
 
-    # plot visit
-    Visit_Options = VISIT_OPTIONS(case_path)
-    # provide steps to plot and interpret
+    # steps to plot: here I use the keys in kwargs to allow different
+    # options: by steps, a single step, or the last step
     if type(step) == int:
-        Visit_Options.Interpret(steps=[step], time_interval=time_interval, plot_axis=plot_axis, max_velocity=max_velocity, plot_types=plot_types,\
-                                rotation_plus=rotation_plus)  # only plot a single step
+        kwargs["steps"] = [step]
     elif type(step) == list:
-        Visit_Options.Interpret(steps=step, time_interval=time_interval, plot_axis=plot_axis, max_velocity=max_velocity, plot_types=plot_types,\
-                                rotation_plus=rotation_plus)  # only plot a single step
+        kwargs["steps"] = step
     else:
-        Visit_Options.Interpret(last_step=last_step, time_interval=time_interval, plot_axis=plot_axis, max_velocity=max_velocity, plot_types=plot_types,\
-                                rotation_plus=rotation_plus)  # by default, plot the last 3 steps
+        kwargs["last_step"] = last_step
 
-    # generate scripts 
+    # Inititiate the class and intepret the options
+    # Note that all the options defined by kwargs is passed to the interpret function
+    Visit_Options = VISIT_OPTIONS(case_path)
+    Visit_Options.Interpret(**kwargs)
+
+    # generate scripts base on the method of plotting
     if visualization == 'visit':
         odir = os.path.join(case_path, 'visit_scripts')
         if not os.path.isdir(odir):

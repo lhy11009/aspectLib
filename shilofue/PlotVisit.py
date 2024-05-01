@@ -101,6 +101,8 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         else:
             if re.match('.*nonadiabatic\ pressure', visualization_output_variables):
                 self.options["HAS_DYNAMIC_PRESSURE"] = '1'
+
+        # plot options
         # plot axis
         if plot_axis:
             self.options["PLOT_AXIS"] = '1'
@@ -108,6 +110,11 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             self.options["PLOT_AXIS"] = '0'
         # maximum velocity
         self.options["MAX_VELOCITY"] = str(max_velocity)
+        self.options["PLOT_TYPES"] = str(kwargs.get('plot_types', []))
+        # additional fields to load for model
+        additional_fields = kwargs.get('additional_fields', [])
+        assert(type(additional_fields) == list)
+        self.options["ADDITIONAL_FIELDS"] = str(additional_fields)
 
         # get all the available snaps for ploting by checking on the existence of the pvtu file
         # the correspondent, time, time step are also figured out.

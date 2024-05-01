@@ -17,6 +17,8 @@
 #   PLOT_AXIS
 # types of plot (a list, e.g. upper mante / whole)
 #   PLOT_TYPES
+# additional fields to parse
+#   ADDITIONAL_FIELDS
 
 class SLAB(PARAVIEW_PLOT):
     '''
@@ -27,8 +29,15 @@ class SLAB(PARAVIEW_PLOT):
         '''
         Initiation
         '''
+        # First, call the initiation function of the base function
+        # The "project" entry does nothing other than tag the class.
+        # The 'all_variables' makes use of the all_variables entry in the base class's initiation.
         kwargs['project'] = "TwoDSubduction"
+        kwargs['all_variables'] = ['velocity', 'p', 'T',  'density', 'viscosity', 'spcrust', 'spharz',\
+                'dislocation_viscosity', 'diffusion_viscosity', 'peierls_viscosity', 'strain_rate', 'nonadiabatic_pressure']\
+                    +  ADDITIONAL_FIELDS
         PARAVIEW_PLOT.__init__(self, filein, **kwargs)
+
         self.eta_min = ETA_MIN
         self.eta_max = ETA_MAX
         self.T_min = 273.0
