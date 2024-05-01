@@ -188,3 +188,6 @@ utilities
 
 # big tests files
 tests/integration/big_fixtures
+
+# gmt files
+*.cpt
