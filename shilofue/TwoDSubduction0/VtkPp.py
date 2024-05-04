@@ -665,16 +665,22 @@ class VTKP(VtkPp.VTKP):
 
     def SlabBuoyancy(self, v_profile, depth_increment):
         '''
-        slab buoyancy
-        v_profile: vertical profile containing the reference profile
-        rs : radius segments for computing buoyancy
+        Compute the slab buoyancy
+        Inputs:
+            v_profile: vertical profile containing the reference profile
+        Outputs:
+            total_buoyancy: the total buoyancy forces in N/m
+            b_profile: the depths and buoyancies in np array, 
+                    the depths serve as the center in [depth - depth_increment/2.0, depth + depth_increment/2.0]
+                    and the buoyancies contain a correspondent value for each range
+
         '''
         grav_acc = 10.0
         assert(self.include_cell_center)
         assert(len(self.slab_cells) > 0)
         n_depth = int(np.ceil(self.slab_depth / depth_increment))
-        buoyancies = np.zeros(n_depth)
-        depths = []  # construct depth array
+        buoyancies = np.zeros(n_depth) # save the values of buoyancy with ranges of depths
+        depths = []  # construct depths, each serve as the center in [depth - depth_increment/2.0, depth + depth_increment/2.0]
         for i in range(n_depth):
             depth = (i + 0.5) * depth_increment
             depths.append(depth)
@@ -682,6 +688,7 @@ class VTKP(VtkPp.VTKP):
         centers = vtk_to_numpy(self.c_poly_data.GetPoints().GetData())  # note these are data mapped to cell center
         density_data = vtk_to_numpy(self.c_poly_data.GetPointData().GetArray('density'))
         density_ref_func = v_profile.GetFunction('density')
+        # now compute the slab buoyancy
         total_buoyancy = 0.0
         for i in self.slab_cells:
             x = centers[i][0]
@@ -1298,6 +1305,7 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
     output_path = os.path.join(case_dir, "vtk_outputs")
     if not os.path.isdir(output_path):
         os.mkdir(output_path)
+    # look for the input file named as "output/solution/solution-%05d.pvtu"
     filein = os.path.join(case_dir, "output", "solution",\
          "solution-%05d.pvtu" % (vtu_snapshot))
     assert(os.path.isfile(filein))
