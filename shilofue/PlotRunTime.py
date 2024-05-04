@@ -24,6 +24,7 @@ Examples of usage:
 
 descriptions
 """
+from re import S
 import numpy as np
 import sys, os, argparse
 import subprocess
@@ -454,10 +455,15 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
         s_mask = ((steps >= step_range[0]) & (steps <= step_range[1]))  # this is hard coded to be 0 for now
         trailer = "%d_%d" % (step_range[0], step_range[1])
 
+    # todo_newton
     # line1: residual
-    fig, ax = plt.subplots(figsize=(5, 5))
+    fig = plt.figure(tight_layout=True, figsize=(15, 5))  # plot of wallclock
+    gs = gridspec.GridSpec(1, 3)
     color = 'tab:blue'
+
+    # figure 1: plot the linear results, residual and scaling factor
     # residual of iteration, plot mask
+    ax = fig.add_subplot(gs[0, 0])
     ax.semilogy(steps[s_mask], residuals[s_mask], '-', linewidth=1.5, color=color, label='Residuals')
     # query residual of iteration 'query_iteration'
     if query_iterations is not None:
@@ -475,6 +481,28 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     ax2.set_ylabel('Numbers of Iterations', color=color)
     ax2.tick_params(axis='y', labelcolor=color)
 
+    # figure 2: plot the linear results, residual and scaling factor
+    # bin plot of the logrithm value of residuals.
+    # bin size is twiked to 0.25
+    ax = fig.add_subplot(gs[0, 1])
+    data = np.log10(residuals[s_mask])
+    plt.hist(data, bins=np.arange(int(np.floor(min(data))), int(np.floor(max(data))) + 1, 0.25), edgecolor='black')
+    # Add labels and title
+    plt.xlabel('log(relative non-linear residuals)')
+    plt.ylabel('Frequency')
+    plt.title('Bin Plot')
+
+    # figure 2: plot the linear results, residual and scaling factor
+    # bin plot of the residulas
+    # bin size is twiked to 10
+    ax = fig.add_subplot(gs[0, 2])
+    data = number_of_iterations[s_mask]
+    plt.hist(data, bins=np.arange(0, int(np.ceil(max(data)/10.0 + 1.0)*10.0), 10.0), color='red', edgecolor='black')
+    # Add labels and title
+    plt.xlabel('Numbers of Iterations')
+    plt.ylabel('Frequency')
+    plt.title('Bin Plot')
+
     # save figure
     fig.tight_layout()
     fig_path_base0 = fig_path_base.rpartition('.')[0]
@@ -484,7 +512,7 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     else:
         fig_path = "%s_%s.%s" % (fig_path_base0, trailer, fig_path_type)
     plt.savefig(fig_path)
-    print("New figure: %s" % fig_path)
+    print("New figure (new): %s" % fig_path)
     return fig_path
 
 

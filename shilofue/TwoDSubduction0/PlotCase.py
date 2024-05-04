@@ -119,6 +119,8 @@ def PlotCaseRun(case_path, **kwargs):
         kwargs["steps"] = [step]
     elif type(step) == list:
         kwargs["steps"] = step
+    elif type(step) == str:
+        kwargs["steps"] = step
     else:
         kwargs["last_step"] = last_step
 
@@ -166,6 +168,9 @@ def PlotCaseRun(case_path, **kwargs):
     if run_visual == 1:
         print("Visualizing using visit")
         RunScripts(ofile_path)  # run scripts
+
+    # return the Visit_Options for later usage
+    return Visit_Options
 
 
 class PLOTTER(PlotCase.PLOTTER):

@@ -83,6 +83,7 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         time_interval = kwargs.get('time_interval', None)
         plot_axis = kwargs.get('plot_axis', False)
         max_velocity = kwargs.get('max_velocity', -1.0)
+        slices = kwargs.get('slices', 3)
         # call function from parent
         CASE_OPTIONS.Interpret(self)
         # particle file
@@ -146,6 +147,9 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         except IndexError:
             # no snaps, stay on the safe side
             self.last_step = -1
+        # add an option of the last step
+        self.options["LAST_STEP"] = self.last_step
+
         # set steps to plot
         # Priority:
         #   1. a list of steps
@@ -167,6 +171,12 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             # by this option, plot the last few steps
             self.options['GRAPHICAL_STEPS'] = [0]  # always plot the 0 th step
             self.options['GRAPHICAL_STEPS'] += [i for i in range(max(self.last_step - last_step + 1, 0), self.last_step + 1)]
+        elif type(steps) == str and steps == "auto":
+            # 
+            # determine the options by the number of steps and slice them by the number of slices
+            assert(slices > 0)
+            self.options['GRAPHICAL_STEPS'] = [int(i) for i in np.linspace(0 , int(self.options["LAST_STEP"]), slices)]
+            # self.options['GRAPHICAL_STEPS'].append(int(self.options["LAST_STEP"]))
         else:
             # by default append the first and the computing step.
             self.options['GRAPHICAL_STEPS'] = [0]

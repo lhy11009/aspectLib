@@ -1421,7 +1421,7 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
     # resample the original envelop dataset
     n_point = slab_envelop.shape[0]
     rs_idx = range(0, n_point, rs_n)
-    slab_envelop_rs = slab_envelop[np.ix_(rs_idx, [0, 1])]
+    slab_envelop_rs = slab_envelop[np.ix_(rs_idx, [0, 1])] # use np.ix to resample, check out numpy documentation
     slab_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, slab_envelop_rs, quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
     temp_vtk_array = slab_env_polydata.GetPointData().GetArray('p')
     env_ps  = vtk_to_numpy(temp_vtk_array)
