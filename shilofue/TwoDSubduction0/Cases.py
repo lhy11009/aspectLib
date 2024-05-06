@@ -183,6 +183,7 @@ intiation stage causes the slab to break in the middle",\
          ["CDPT", "slope 410"], 2e6, nick="slope_410")
         self.add_key("Clapeyron slope of the 660 km", float,\
          ["CDPT", "slope 660"], -1e6, nick="slope_660")
+        self.add_key("Slab strengh", float, ["slab", "strength"], 500e6, nick="slab_strength")
     
     def check(self):
         '''
@@ -356,6 +357,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         delta_Vdiff = self.values[self.start + 63]
         slope_410 = self.values[self.start + 64]
         slope_660 = self.values[self.start + 65]
+        slab_strength = self.values[self.start + 66]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -368,7 +370,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
         rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as,\
         prescribe_T_width, prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb, lookup_table_morb_mixing,\
-        delta_Vdiff, slope_410, slope_660
+        delta_Vdiff, slope_410, slope_660, slab_strength
 
     def to_configure_wb(self):
         '''
@@ -468,7 +470,7 @@ class CASE(CasesP.CASE):
     global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density,\
     maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width,\
     prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb,\
-    lookup_table_morb_mixing, delta_Vdiff, slope_410, slope_660):
+    lookup_table_morb_mixing, delta_Vdiff, slope_410, slope_660, slab_strength):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -758,7 +760,6 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         # record the upper mantle rheology
         um_diffusion_creep = rheology['diffusion_creep']
         um_dislocation_creep = rheology['dislocation_creep']
-            
 
         # these files are generated with the rheology variables
         self.output_files.append(Operator.output_json)
@@ -782,6 +783,14 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             fig_path = os.path.join(ASPECT_LAB_DIR, "results", "shear_zone_strength.png")
             # PlotShearZoneStrengh(Operator_Sp, fig_path) # deprecated
             # self.output_imgs.append(fig_path)
+        # Change the slab strength by the maximum yield stress, the default value is 500 Mpa
+        if abs(slab_strength - 500e6) / 500e6 > 1e-6:
+            o_dict['Material model']['Visco Plastic TwoD']["Maximum yield stress"] = "%.4e" % slab_strength
+#        if slab_core_viscosity > 0.0:
+#            # assign a strong core inside the slab
+#            o_dict['Material model']['Visco Plastic TwoD']['Minimum viscosity'] =\
+#                "background: %.4e, spcrust: %.4e, spharz: %.4e, opcrust: %.4e, opcrust: %.4e" %\
+#                    (minimum_viscosity, minimum_viscosity, slab_core_viscosity, minimum_viscosity, minimum_viscosity)
 
         # Include peierls rheology
         if if_peierls:
