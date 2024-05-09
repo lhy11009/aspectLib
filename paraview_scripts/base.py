@@ -37,16 +37,21 @@ class PARAVIEW_PLOT():
         project = kwargs.get("project", "ThDSubduction")
         all_variables = kwargs.get("all_variables", None)
         assert(project in ["TwoDSubduction", "ThDSubduction"])
+
+        # make the directory to output to
+        # By default, we are outputing the the "img/pv_outputs" directory
         self.output_dir = kwargs.get('output_dir', ".")
         if not os.path.isdir(self.output_dir):
             os.mkdir(self.output_dir)
         self.pv_output_dir = os.path.join(self.output_dir, "pv_outputs")
         if not os.path.isdir(self.pv_output_dir):
             os.mkdir(self.pv_output_dir)
+
         # all the variables we want to plot, one in these:
         # 'velocity', 'p', 'T', 'sp_upper', 'sp_lower', 'density', 'viscosity', 
         # 'current_cohesions', 'current_friction_angles', 'plastic_yielding', 'dislocation_viscosity', 
         # 'diffusion_viscosity', 'peierls_viscosity', 'error_indicator']
+        # This option is either parsed in through the interface or assigned by the type of the project.
         self.view_solution_pvd = True  # if the solutionpvd is included as a view
         if all_variables is None:
             if project == "ThDSubduction":
@@ -62,13 +67,18 @@ class PARAVIEW_PLOT():
             for i in all_variables:
                 assert(type(i) == str)
             self.all_variables = all_variables
+
         # open data base
+        # the "solution.pvd" file is read in.
+        # This is a file linked to all the "solution_*.pvtu files for different output steps,
+        # which in turn leads to all the individual .vtu files at the step.
         self.filein = filein
         # assign initial values 
         self.idxs = {}
         self.all_idxs = 0
         self.time = 0.0
         self.solutionpvd = PVDReader(registrationName='solution.pvd', FileName=filein)
+        #  allow us to select from the fields in the pvd file (list them in the all_variables array)
         self.solutionpvd.PointArrays = self.all_variables
         self.camera_dict = {}  # a dictionary for saving camera settings
         self.colorbar_dict = {} # a dictionary for saving colorbar settings
@@ -90,6 +100,8 @@ class PARAVIEW_PLOT():
     def goto_time(self, _time):
         '''
         go to a different snapshot
+        Inputs:
+            _time: time assigned
         '''
         animationScene1 = GetAnimationScene()
         animationScene1.AnimationTime = _time
@@ -148,6 +160,9 @@ def apply_rotation(_source, origin, angles, **kwargs):
     Hide3DWidgets()
 
 
+# Note: to add a feature in script, it follows the same structure
+# by first calling the class and create an object and the twik the attribute
+# of that object.
 def add_slice(solutionpvd, field, Origin, Normal, **kwargs):
     '''
     create a new 'Slice'
@@ -251,18 +266,27 @@ def add_glyph(_source, field, scalefactor, nsample, **kwargs):
     '''
     # addtional variables
     registrationName = kwargs.get("registrationName", 'Glyph1')
+    OrientationArray = kwargs.get("OrientationArray", None)
+    ScaleArray = kwargs.get("ScaleArray", None)
+    GlyphType = kwargs.get("GlyphType", "Arrow")
     
     # get active source and renderview
     pvd = FindSource(_source)
     renderView1 = GetActiveViewOrCreate('RenderView')
     
-    glyph1 = Glyph(registrationName=registrationName, Input=pvd, GlyphType='Arrow')
-    glyph1.OrientationArray = ['POINTS', 'No orientation array']
-    glyph1.ScaleArray = ['POINTS', 'No scale array']
+    glyph1 = Glyph(registrationName=registrationName, Input=pvd, GlyphType=GlyphType)
+    if OrientationArray is not None:
+        glyph1.OrientationArray = ['POINTS', OrientationArray]
+    else:
+        glyph1.OrientationArray = ['POINTS', 'No orientation array']
+    if ScaleArray is not None:
+        glyph1.ScaleArray = ['POINTS', ScaleArray]
+    else:
+        glyph1.ScaleArray = ['POINTS', 'No scale array']
     glyph1.ScaleFactor = scalefactor
     glyph1.GlyphTransform = 'Transform2'
-    glyph1.OrientationArray = ['POINTS', field]
     glyph1.MaximumNumberOfSamplePoints = nsample
+    
 
     glyph1Display = Show(glyph1, renderView1, 'GeometryRepresentation')
     # set the vector line width
@@ -280,11 +304,11 @@ def add_glyph(_source, field, scalefactor, nsample, **kwargs):
     # set scalar coloring
     ColorBy(glyph1Display, ('POINTS', field, 'Magnitude'))
     
-    # Hide the scalar bar for this color map if no visible data is colored by it.
-    HideScalarBarIfNotNeeded(fieldLUT, renderView1)
-    
     # hide glaph in view
     Hide(glyph1, renderView1)
+    
+    # Hide the scalar bar for this color map if no visible data is colored by it.
+    HideScalarBarIfNotNeeded(fieldLUT, renderView1)
     
     # update the view to ensure updated data information
     renderView1.Update()

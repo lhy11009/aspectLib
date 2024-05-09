@@ -71,11 +71,17 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         PlotVisit.VISIT_OPTIONS.Interpret(self, **kwargs)
         idx = ParsePrm.FindWBFeatures(self.wb_dict, "Subducting plate")
         idx1 = ParsePrm.FindWBFeatures(self.wb_dict, "Slab")
+
+        # Geometry
         sub_plate_feature = self.wb_dict["features"][idx]
         slab_feature = self.wb_dict["features"][idx1]
         sub_plate_extends = sub_plate_feature['coordinates'][1]
+        box_width = self.idict["Geometry model"]["Box"]["Y extent"]
         self.options['TRENCH_EDGE_Y'] = sub_plate_extends[1] * 0.75
         self.options['TRENCH_EDGE_Y_FULL'] = sub_plate_extends[1]
+        self.options['BOX_WIDTH'] = box_width
+
+        # viscosity
         self.options['ETA_MIN'] = self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']
         self.options['ETA_MAX'] = self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity']
         self.options['TRENCH_INITIAL'] = slab_feature['coordinates'][1][0] 

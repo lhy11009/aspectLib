@@ -5,6 +5,8 @@
 #   IMG_OUTPUT_DIR
 # y coordinates for trench edge
 #   TRENCH_EDGE_Y
+# width of the box
+#   BOX_WIDTH
 
 from re import A
 
@@ -141,6 +143,29 @@ class SLAB(PARAVIEW_PLOT):
         Show(streamTracer2, renderView1, 'GeometryRepresentation')
         Hide3DWidgets()
         Hide(streamTracer2, renderView1)
+
+    def setup_cross_section_depth(self, _source, _type=0):
+        '''
+        Setup the plot of cross section at detph
+        Inputs:
+            _type: 0 - set up glyph as no orientation and scale
+            _type: 1 - set up glyph to be oriented to the direction of Vxy and scale to it's magnitude
+        '''
+        # add calculator filter to extract the horizontal velocity
+        calculator_name = 'calculator_vxy_slice_z'
+        slice1 = FindSource(_source)
+        calculator1 = Calculator(registrationName=calculator_name, Input=slice1)
+        calculator1.ResultArrayName = 'Vxy'
+        calculator1.Function = 'velocity_X*iHat + velocity_Y*jHat'
+
+        # add the glyph field
+        if _type == 0:
+            add_glyph(calculator_name, "Vxy", 2e5, 500, registrationName="slice_z_glyph")
+        elif _type == 1:
+            add_glyph(calculator_name, "Vxy", 2e6, 500, registrationName="slice_z_glyph", OrientationArray="Vxy", ScaleArray="Vxy", GlyphType='2D Glyph')
+        else:
+            raise NotImplementedError()
+        pass
 
     def plot_slice(self, _source, field_name, **kwargs):
         '''
@@ -396,7 +421,7 @@ class SLAB(PARAVIEW_PLOT):
         renderView1.CameraPosition = [3.5e6, -15e6, 1.6e6]
         renderView1.CameraFocalPoint = [3.5e6, 1.0, 1.6e6]
         renderView1.CameraViewUp = [0.0, 0.0, 1.0]
-        renderView1.CameraParallelScale = 2.3e6
+        renderView1.CameraParallelScale = 8.0e6 * BOX_WIDTH / 8e6
 
         # save figure
         # fig_path = os.path.join(self.pv_output_dir, "%s_%s_t%.4e.pdf" % (source_name, field2, self.time))
@@ -454,7 +479,7 @@ class SLAB(PARAVIEW_PLOT):
             Hide(sourceSl, renderView1)
             HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
     
-    def plot_cross_section_depth(self, depth): 
+    def plot_cross_section_depth(self, depth, _type=0): 
         '''
         plot a cross section at a given depth
         Inputs:
@@ -464,10 +489,13 @@ class SLAB(PARAVIEW_PLOT):
         renderView1 = GetActiveViewOrCreate('RenderView')
        	
         # name of fields 
-        source_name = "slice_surface_z"
+        source_name = "calculator_vxy_slice_z"
         glyph_name = "slice_z_glyph"
         field1 = "strain_rate"
-        fieldV = "velocity"
+        fieldV = "Vxy"
+
+        source0 = FindSource("slice_surface_z")
+        source0.SliceType.Origin = [2000000.0, 2000000.0, 2880000.0-depth]
 
         # part 1: plot the center slice 
         # part 1a: strain_rate
@@ -482,29 +510,63 @@ class SLAB(PARAVIEW_PLOT):
         # get color transfer function/color map for 'field'
         field1LUT = GetColorTransferFunction(field1)
         field1PWF = GetOpacityTransferFunction(field1)
+        # set the isovolume plot
+        # This will plot the location of the slab
+        source2 = None
+        if _type == 1:
+            source2 = FindSource("isoVolume_slab_lower")
+            source2Display = Show(source2, renderView1, 'GeometryRepresentation')
+            source2Display.AmbientColor = [0.0, 1.0, 0.0]
+            source2Display.DiffuseColor = [0.0, 1.0, 0.0]
 
-        # set scalar coloring
-        ColorBy(source1Display, ('POINTS', field1, 'Magnitude'))
-        HideScalarBarIfNotNeeded(field0LUT, renderView1)
-        # high redundant colorbar
-        source1Display.SetScalarBarVisibility(renderView1, True)
-        
-        # convert to log space
-        field1LUT.MapControlPointsToLogSpace()
-        # Properties modified on fieldLUT
-        field1LUT.UseLogScale = 1
-        # reset limit
-        field1LUT.RescaleTransferFunction(1e-16, 1e-13) # Rescale transfer function
-        field1PWF.RescaleTransferFunction(1e-16, 1e-13) # Rescale transfer function
-        # color scheme
-        field1LUT.ApplyPreset('Inferno (matplotlib)', True)
-        
-        # colorbar position
-        field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
-        field1LUTColorBar.Orientation = 'Horizontal'
-        field1LUTColorBar.WindowLocation = 'Any Location'
-        field1LUTColorBar.Position = [0.041, 0.908]
-        field1LUTColorBar.ScalarBarLength = 0.33
+        if _type == 0:
+            # plot by strain rate
+            # set scalar coloring
+            ColorBy(source1Display, ('POINTS', field1, 'Magnitude'))
+            HideScalarBarIfNotNeeded(field0LUT, renderView1)
+            # high redundant colorbar
+            source1Display.SetScalarBarVisibility(renderView1, True)
+            
+            # convert to log space
+            field1LUT.MapControlPointsToLogSpace()
+            # Properties modified on fieldLUT
+            field1LUT.UseLogScale = 1
+            # reset limit
+            field1LUT.RescaleTransferFunction(1e-16, 1e-13) # Rescale transfer function
+            field1PWF.RescaleTransferFunction(1e-16, 1e-13) # Rescale transfer function
+            # color scheme
+            field1LUT.ApplyPreset('Inferno (matplotlib)', True)
+            
+            # colorbar position
+            field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
+            field1LUTColorBar.Orientation = 'Horizontal'
+            field1LUTColorBar.WindowLocation = 'Any Location'
+            field1LUTColorBar.Position = [0.041, 0.908]
+            field1LUTColorBar.ScalarBarLength = 0.33
+        elif _type == 1:
+            # plot by Vxy
+            # set scalar coloring
+            ColorBy(source1Display, ('POINTS', fieldV, 'Magnitude'))
+            # source display
+            source1Display.SetScalarBarVisibility(renderView1, True)
+            # get color transfer function/color map for 'Vxy'
+            fieldVLUT = GetColorTransferFunction(fieldV)
+            # get opacity transfer function/opacity map for 'field'
+            fieldVPWF = GetOpacityTransferFunction(fieldV)
+            # change the color scheme 
+            fieldVLUT.ApplyPreset('lajolla', True)
+            # Rescale transfer function
+            fieldVLUT.RescaleTransferFunction(0.0, 0.1)
+            # Rescale transfer function
+            fieldVPWF.RescaleTransferFunction(0.0, 0.1)
+            # Properties modified on vxyLUT
+            fieldVLUT.NumberOfTableValues = 10
+            # colorbar position
+            fieldVLUTColorBar = GetScalarBar(fieldVLUT, renderView1)
+            fieldVLUTColorBar.Orientation = 'Horizontal'
+            fieldVLUTColorBar.WindowLocation = 'Any Location'
+            fieldVLUTColorBar.Position = [0.041, 0.908]
+            fieldVLUTColorBar.ScalarBarLength = 0.33
         # part 1a: end
         
         # part 1b: glyph
@@ -514,16 +576,28 @@ class SLAB(PARAVIEW_PLOT):
         glyph1Display.LineWidth = 2.0
         # show color bar/color legend
         glyph1Display.SetScalarBarVisibility(renderView1, True)
-        
-        # get color transfer function/color map for 'field'
-        fieldVLUT = GetColorTransferFunction(fieldV)
-        # get opacity transfer function/opacity map for 'field'
-        fieldVPWF = GetOpacityTransferFunction(fieldV)
-    
+
         # set scalar coloring
-        ColorBy(glyph1Display, ('POINTS', fieldV, 'Magnitude'))
-        # change the color scheme 
-        fieldVLUT.ApplyPreset('Viridis (matplotlib)', True)
+        if _type == 0:
+            ColorBy(glyph1Display, ('POINTS', fieldV, 'Magnitude'))
+        
+            # get color transfer function/color map for 'field'
+            fieldVLUT = GetColorTransferFunction(fieldV)
+            # get opacity transfer function/opacity map for 'field'
+            fieldVPWF = GetOpacityTransferFunction(fieldV)
+            # change the color scheme 
+            fieldVLUT.ApplyPreset('hawaii', True)
+    
+            # colorbar position
+            fieldVLUTColorBar = GetScalarBar(fieldVLUT, renderView1)
+            fieldVLUTColorBar.Orientation = 'Horizontal'
+            fieldVLUTColorBar.WindowLocation = 'Any Location'
+            fieldVLUTColorBar.Position = [0.541, 0.908]
+            fieldVLUTColorBar.ScalarBarLength = 0.33
+        if _type == 1:
+            ColorBy(glyph1Display, None)
+            glyph1Display.AmbientColor = [0.9215686274509803, 0.984313725490196, 1.0]
+            glyph1Display.DiffuseColor = [0.9215686274509803, 0.984313725490196, 1.0]
         # part 1b: end
 
         # Properties modified on renderView1.AxesGrid
@@ -535,10 +609,10 @@ class SLAB(PARAVIEW_PLOT):
         layout1 = GetLayout()
         layout1.SetSize(1350, 704)
         renderView1.InteractionMode = '2D'
-        renderView1.CameraPosition = [3.5e6, 2e6, 2.2e7]
-        renderView1.CameraFocalPoint = [3.5e6, 2e6, 2.9e6]
+        renderView1.CameraPosition = [4.8e6, BOX_WIDTH/2.0, 2.2e7]
+        renderView1.CameraFocalPoint = [4.8e6, BOX_WIDTH/2.0, 2.9e6]
         renderView1.CameraViewUp = [0.0, 1.0, 0.0]
-        renderView1.CameraParallelScale = 2.3e6
+        renderView1.CameraParallelScale = 8.0e6 * BOX_WIDTH / 8e6
        
         # save figure 
         fig_path = os.path.join(self.pv_output_dir, "slice_%.1fkm_t%.4e.png" % (depth/1e3, self.time))
@@ -546,6 +620,8 @@ class SLAB(PARAVIEW_PLOT):
 
         # hide plots
         Hide(source1, renderView1)
+        if _type == 1:
+            Hide(source2, renderView1)
         Hide(glyph1, renderView1)
         HideScalarBarIfNotNeeded(field1LUT, renderView1)
         HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
@@ -718,8 +794,13 @@ def main():
         option = 0
 
     # By default, we turn off all the options
+    # RUN_FULL_SCRIPT: run teh full operation and generate the plots
+    # CROSS_SECTION_DEPTH: plot the cross section at depth, velocity and the strain rate
+    # PLOT_ISOVOLUME_WITH_STREAMLINE: plot the isovolume of the slab (by composition) and the streamlines
+    # PLOT_Y_SLICES: plot a slice with a fixed y coordinate
     RUN_FULL_SCRIPT=False
     CROSS_SECTION_DEPTH=False
+    CROSS_SECTION_DEPTH_PEDRO=False
     PLOT_ISOVOLUME_WITH_STREAMLINE=False
     PLOT_Y_SLICES=False
     # Set option by the additional value given in the command line
@@ -729,6 +810,8 @@ def main():
         PLOT_ISOVOLUME_WITH_STREAMLINE=True
     elif option == 3:
         PLOT_Y_SLICES=True
+    elif option == 4:
+        CROSS_SECTION_DEPTH_PEDRO=True
 
     # Set the steps to plot 
     steps = GRAPHICAL_STEPS
@@ -743,6 +826,7 @@ def main():
 
     # set the list of variables to plot
     # the if conditions match the priority of these options from low to high
+    temp_all_variables = []
     if CROSS_SECTION_DEPTH:
         temp_all_variables = ['velocity', "strain_rate"]
     elif RUN_FULL_SCRIPT:
@@ -751,6 +835,10 @@ def main():
         temp_all_variables = ['velocity', 'viscosity', 'strain_rate', 'sp_lower']
     elif PLOT_Y_SLICES:
         temp_all_variables = ['viscosity', 'T']
+    elif CROSS_SECTION_DEPTH_PEDRO:
+        temp_all_variables = ['velocity', "strain_rate", 'sp_lower']
+
+    # HAS_PLATE_EDGE: a specific option to include the plate edge in the things to plot.
     HAS_PLATE_EDGE = True
     if HAS_PLATE_EDGE:
         temp_all_variables.append('plate_edge')
@@ -768,7 +856,9 @@ def main():
         Slab.setup_active_clip()
         Slab.setup_stream_tracer('clip_active_1')
     elif CROSS_SECTION_DEPTH:
-        add_glyph("slice_surface_z", "velocity", 2e5, 500, registrationName="slice_z_glyph")
+        Slab.setup_cross_section_depth("slice_surface_z")
+    elif CROSS_SECTION_DEPTH_PEDRO:
+        Slab.setup_cross_section_depth("slice_surface_z", 1)
     elif PLOT_ISOVOLUME_WITH_STREAMLINE:
         Slab.setup_slab_iso_volume_upper()
         Slab.setup_active_clip()
@@ -792,6 +882,7 @@ def main():
                 if RUN_FULL_SCRIPT:
                     Slab.plot_step()
                 elif CROSS_SECTION_DEPTH:
+                    # get the cross sections at both depths
                     Slab.plot_cross_section_depth(100e3)
                     Slab.plot_cross_section_depth(200e3)
                 elif PLOT_ISOVOLUME_WITH_STREAMLINE:
@@ -799,6 +890,9 @@ def main():
                 elif PLOT_Y_SLICES:
                     Slab.plot_slab_slice("slice_trench_center_y")
                     Slab.plot_slab_slice("slice_trench_center_y", where="edge")
+                elif CROSS_SECTION_DEPTH_PEDRO:
+                    Slab.plot_cross_section_depth(100e3, 1)
+                    Slab.plot_cross_section_depth(200e3, 1)
             else:
                 print ("step %s is not valid. There is no output" % step)
     else:

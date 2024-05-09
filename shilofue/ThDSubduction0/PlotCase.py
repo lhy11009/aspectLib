@@ -87,13 +87,27 @@ def PlotCaseRun(case_path, **kwargs):
     '''
     print("PlotCaseRun in ThDSubduction: operating")
     time_interval = kwargs.get('time_interval', None)
+    step = kwargs.get('step', None)
+    last_step = kwargs.get('last_step', 3)
+
+    # steps to plot: here I use the keys in kwargs to allow different
+    # options: by steps, a single step, or the last step
+    if type(step) == int:
+        kwargs["steps"] = [step]
+    elif type(step) == list:
+        kwargs["steps"] = step
+    elif type(step) == str:
+        kwargs["steps"] = step
+    else:
+        kwargs["last_step"] = last_step
+
     # get case parameters
     prm_path = os.path.join(case_path, 'output', 'original.prm')
     # plot with paraview
     # initiate class object
     Paraview_Options = VISIT_OPTIONS(case_path)
     # call function
-    Paraview_Options.Interpret(time_interval=time_interval)
+    Paraview_Options.Interpret(**kwargs)
     # ofile = os.path.join('visit_scripts', 'slab_sph.py')
     ofile_list = ['slab.py']
     for ofile_base in ofile_list:
@@ -104,6 +118,9 @@ def PlotCaseRun(case_path, **kwargs):
         Paraview_Options.substitute()  # substitute keys in these combined file with values determined by Interpret() function
         ofile_path = Paraview_Options.save(ofile, relative=False)  # save the altered script
         print("\t File generated: %s" % ofile_path)
+    
+    # return the Visit_Options for later usage
+    return Paraview_Options
 
 
 class PLOTTER(PlotCase.PLOTTER):
