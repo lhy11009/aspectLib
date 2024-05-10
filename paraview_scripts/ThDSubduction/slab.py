@@ -793,12 +793,14 @@ def main():
     except IndexError:
         option = 0
 
-    # By default, we turn off all the options
+    # By default, we do RUN_FULL_SCRIPT
     # RUN_FULL_SCRIPT: run teh full operation and generate the plots
     # CROSS_SECTION_DEPTH: plot the cross section at depth, velocity and the strain rate
     # PLOT_ISOVOLUME_WITH_STREAMLINE: plot the isovolume of the slab (by composition) and the streamlines
     # PLOT_Y_SLICES: plot a slice with a fixed y coordinate
-    RUN_FULL_SCRIPT=False
+    # TODO: RUN_FULL_SCRIPT - the cross section plot doesn't work for now: the choice to type = 1 doesn't take
+    # effects. However, this option works if we do CROSS_SECTION_DEPTH_PEDRO.
+    RUN_FULL_SCRIPT=True
     CROSS_SECTION_DEPTH=False
     CROSS_SECTION_DEPTH_PEDRO=False
     PLOT_ISOVOLUME_WITH_STREAMLINE=False
@@ -855,6 +857,7 @@ def main():
         Slab.setup_slab_iso_volume_upper()
         Slab.setup_active_clip()
         Slab.setup_stream_tracer('clip_active_1')
+        Slab.setup_cross_section_depth("slice_surface_z", 1)  # we follow the plot cross section work flow here
     elif CROSS_SECTION_DEPTH:
         Slab.setup_cross_section_depth("slice_surface_z")
     elif CROSS_SECTION_DEPTH_PEDRO:
@@ -880,7 +883,12 @@ def main():
                 _time =  all_available_graphical_times[idx]
                 Slab.goto_time(_time)
                 if RUN_FULL_SCRIPT:
-                    Slab.plot_step()
+                    # Slab.plot_step()
+                    Slab.plot_iso_volume_strain_rate_streamline()
+                    Slab.plot_slab_slice("slice_trench_center_y")
+                    Slab.plot_slab_slice("slice_trench_center_y", where="edge")
+                    Slab.plot_cross_section_depth(100e3, 1)
+                    Slab.plot_cross_section_depth(200e3, 1)
                 elif CROSS_SECTION_DEPTH:
                     # get the cross sections at both depths
                     Slab.plot_cross_section_depth(100e3)
