@@ -170,7 +170,9 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
             self.options["SHEAR_ZONE_CUTOFF_DEPTH"] = float(self.idict['Material model']['Visco Plastic TwoD']["Eclogite decoupled viscosity"]["Decoupled depth"])
         else:
             self.options["SHEAR_ZONE_CUTOFF_DEPTH"] = -1.0
-        self.options["SHEAR_ZONE_CONSTANT_VISCOSITY"] = -1.0
+        #  the shear zone constant viscosity is calculated from the prefactor of spcrust
+        A_diff_inputs = ParsePrm.COMPOSITION(self.idict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep']) 
+        self.options["SHEAR_ZONE_CONSTANT_VISCOSITY"] = 1.0 / 2.0 / A_diff_inputs.data['spcrust'][0] # use phases
 
         # peierls rheology
         try:

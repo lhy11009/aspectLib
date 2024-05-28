@@ -107,15 +107,17 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.attrs.append("V_sink_avgs")
         self.V_plate_avgs = []
         self.attrs.append("V_plate_avgs")
+        self.V_ov_plate_avgs = []
+        self.attrs.append("V_ov_plate_avgs")
         self.V_trench_avgs = []
         self.attrs.append("V_trench_avgs")
         self.sp_ages = []
         self.attrs.append("sp_ages")
         self.ov_ages = []
         self.attrs.append("ov_ages")
-        
-        self.attrs_to_output += ['t660s', "sz_thicks", "sz_depths", "sd_modes", "V_sink_avgs", "V_plate_avgs", "V_trench_avgs", "sp_ages", "ov_ages"]
-        self.headers += ['t660s (yr)', "sz_thicks (m)", "sz_depths (m)", "sd_modes", "V_sink_avgs (m/s)", "V_plate_avgs (m/s)", "V_trench_avgs (m/s)", "V_sp_ages (m/s)", "V_op_ages (m/s)"]
+
+        self.attrs_to_output += ['t660s', "sz_thicks", "sz_depths", "sz_viscs", "sd_modes", "V_sink_avgs", "V_plate_avgs", "V_ov_plate_avgs", "V_trench_avgs", "sp_ages", "ov_ages"]
+        self.headers += ['t660s (yr)', "sz_thicks (m)", "sz_depths (m)", "sz_viscs (Pa s)", "sd_modes", "V_sink_avgs (m/s)", "V_plate_avgs (m/s)", "V_ov_plate_avgs (m/s)", "V_trench_avgs (m/s)", "sp_ages (yr)", "op_ages (yr)"]
     
     def Update(self, **kwargs):
         '''
@@ -154,10 +156,11 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             # initiate these field
             self.V_sink_avgs = [-1 for i in range(self.n_case)]
             self.V_plate_avgs = [-1 for i in range(self.n_case)]
+            self.V_ov_plate_avgs = [-1 for i in range(self.n_case)]
             self.V_trench_avgs = [-1 for i in range(self.n_case)]
             # update on specific properties
             for i in range(self.n_case):
-                self.update_Vavg(i)
+                self.update_Vavg(i, **kwargs)
         
         if "ages" in actions:
             # ov and sp ages
@@ -221,20 +224,39 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         '''
         case_dir = self.ab_paths[i]
         Utilities.my_assert(os.path.isdir(case_dir), FileExistsError, "Directory doesn't exist %s" % case_dir)
-        t1 = kwargs.get("t1", 30e6)
+        t1_method = kwargs.get("t1_method", "value")
+        assert(t1_method in ["value", 't660'])
+        # t1 could either be assigned by value or by a factor * t660
+        if t1_method == "value":
+            # by default, a 30 Ma time window is used to average the velocity
+            t1 = kwargs.get("t1", 30e6)
+        elif t1_method == "t660":
+            # by default, 5.0 * t660 is the time window used to average the velocity
+            t1_factor = kwargs.get("t1_factor", 5.0)
+            t660 = self.t660s[i]
+            if t660 > 0.0:
+                t1 = 5.0 * t660
+            else:
+                # in case the t660 is not computed yet, take the -1.0 as the default
+                # this will lead to an invalid time range and trigger the value -2.0 in
+                # calculating the velocities.
+                t1 = -1.0
         # use the SLABPLOT class to read the slab_morph.txt file
         # and get the t660
         SlabPlot = SLABPLOT('foo')
         try:
             t660 = SlabPlot.GetTimeDepthTip(case_dir, 660e3, filename="slab_morph_t1.00e+05.txt")
-            V_sink_avg, V_plate_avg, V_trench_avg = SlabPlot.GetAverageVelocities(case_dir, t660, t1, filename="slab_morph_t1.00e+05.txt")
+            # sink velocity, sp plate velocity and the trench velocity averaged in a time range
+            V_sink_avg, V_plate_avg, V_ov_plate_avg, V_trench_avg = SlabPlot.GetAverageVelocities(case_dir, t660, t1, filename="slab_morph_t1.00e+05.txt")
         except SLABPLOT.SlabMorphFileNotExistError:
             print("morph file not exsit in dir: %s" % case_dir) # debug
             V_sink_avg = -1.0
             V_plate_avg = -1.0
+            V_ov_plate_avg = -1.0
             V_trench_avg = -1.0
         self.V_sink_avgs[i] = V_sink_avg
         self.V_plate_avgs[i] = V_plate_avg
+        self.V_ov_plate_avgs[i] = V_ov_plate_avg
         self.V_trench_avgs[i] = V_trench_avg
         
     def update_shear_zone(self, i):

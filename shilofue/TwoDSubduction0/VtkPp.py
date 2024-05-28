@@ -3340,7 +3340,6 @@ class SLABPLOT(LINEARPLOT):
         Inputs:
             compute the average velocities between t0 and t1
         '''
-        assert(t1 > t0)
         assert(os.path.isdir(case_dir))
         filename = kwargs.get("filename", "slab_morph.txt")
 
@@ -3366,8 +3365,18 @@ class SLABPLOT(LINEARPLOT):
         times = self.data[:, col_time]
 
         V_sink_avg = -1.0
+        # todo_ovs
         V_plate_avg = -1.0
+        V_ov_plate_avg = -1.0
         V_trench_avg = -1.0
+
+        # if the time range is invalid (t1 should be bigger), return a state of -2.0 
+        if (t1 <= t0):
+            V_sink_avg = -2.0
+            V_plate_avg = -2.0
+            V_ov_plate_avg = -2.0
+            V_trench_avg = -2.0
+            return V_sink_avg, V_plate_avg, V_ov_plate_avg, V_trench_avg
         
         # calculate the velocity is suitable value of t1 is provided
         if t1 < times[times.size-1]:
@@ -3376,7 +3385,9 @@ class SLABPLOT(LINEARPLOT):
             col_slab_depth = self.header['slab_depth']['col']
             slab_depths = self.data[:, col_slab_depth]
             col_sp_velocity = self.header['subducting_plate_velocity']['col']
+            col_op_velocity = self.header['overiding_plate_velocity']['col']
             sp_velocities = self.data[:, col_sp_velocity]
+            op_velocities = self.data[:, col_op_velocity]
     
             # trench migration 
             trench0 = np.interp(t0, times, trenches)
@@ -3394,6 +3405,7 @@ class SLABPLOT(LINEARPLOT):
             V_sink_avg = (slab_depth1 - slab_depth0) / (t1 - t0)
     
             # plate motion
+            # first compute the velocity of the subducting plate
             v_temp = 0.0
             w_temp = 0.0
             for i in range(times.size-1):
@@ -3403,8 +3415,18 @@ class SLABPLOT(LINEARPLOT):
                     v_temp += (time1 - time0) * (sp_velocities[i] + sp_velocities[i+1])/2.0
                     w_temp += (time1 - time0)
             V_plate_avg = v_temp / w_temp
+            # then compute the velocity of the overiding plate 
+            v_temp = 0.0
+            w_temp = 0.0
+            for i in range(times.size-1):
+                time0 = times[i]
+                time1 = times[i+1]
+                if time0 > t0 and time1 < t1:
+                    v_temp += (time1 - time0) * (op_velocities[i] + op_velocities[i+1])/2.0
+                    w_temp += (time1 - time0)
+            V_ov_plate_avg = v_temp / w_temp
 
-        return V_sink_avg, V_plate_avg, V_trench_avg
+        return V_sink_avg, V_plate_avg, V_ov_plate_avg, V_trench_avg
 
 
     class SlabMorphFileNotExistError(Exception):

@@ -216,9 +216,12 @@ class SLAB(PARAVIEW_PLOT):
         # layout/tab size in pixels
         layout1.SetSize(fig_resolution[0], fig_resolution[1])
         # save figure
-        file_out = os.path.join(self.output_dir, "%s_%s_%.4e.png" % (_source, field_name, self.time))
-        SaveScreenshot(file_out, self.renderView1, ImageResolution=fig_resolution)
-        print("Figure saved: %s" % file_out)
+        fig_path = os.path.join(self.output_dir, "%s_%s_%.4e.png" % (_source, field_name, self.time))
+        fig_pdf_path = os.path.join(self.output_dir, "%s_%s_%.4e.pdf" % (_source, field_name, self.time))
+        SaveScreenshot(fig_path, self.renderView1, ImageResolution=fig_resolution)
+        ExportView(fig_pdf_path, view=renderView1)
+        print("Figure saved: %s" % fig_path)
+        print("Figure saved: %s" % fig_pdf_path)
         if hide_plot:
             Hide(slice1, renderView1)  # hide data in view
         
@@ -313,9 +316,12 @@ class SLAB(PARAVIEW_PLOT):
         _camera = self.camera_dict[_source]
         adjust_camera(renderView1, _camera[0],_camera[1], _camera[2], _camera[3])
         # save figure
-        file_out = os.path.join(self.output_dir, "sp_lower_%.4e.png" % (self.time))
-        SaveScreenshot(file_out, renderView1, ImageResolution=fig_resolution)
-        print("Figure saved: %s" % file_out)
+        fig_path = os.path.join(self.output_dir, "sp_lower_%.4e.png" % (self.time))
+        fig_pdf_path = os.path.join(self.output_dir, "sp_lower_%.4e.pdf" % (self.time))
+        SaveScreenshot(fig_path, renderView1, ImageResolution=fig_resolution)
+        ExportView(fig_pdf_path, view=renderView1)
+        print("Figure saved: %s" % fig_path)
+        print("Figure saved: %s" % fig_pdf_path)
         if hide_plot:
             Hide(isoVolume1, renderView1)  # hide data in view
     
@@ -428,10 +434,16 @@ class SLAB(PARAVIEW_PLOT):
         # ExportView(fig_path, view=renderView1)
         if source_streamline is not None:
             fig_base = "slice_trench_%s_y_%s_stream_t%.4e.png" % (where, field1, self.time)
+            fig_pdf_base = "slice_trench_%s_y_%s_stream_t%.4e.pdf" % (where, field1, self.time)
         else:
             fig_base = "slice_trench_%s_y_%s_t%.4e.png" % (where, field1, self.time)
+            fig_pdf_base = "slice_trench_%s_y_%s_t%.4e.pdf" % (where, field1, self.time)
         fig_path = os.path.join(self.pv_output_dir, fig_base)
+        fig_pdf_path = os.path.join(self.pv_output_dir, fig_pdf_base)
         SaveScreenshot(fig_path, view=renderView1)
+        ExportView(fig_pdf_path, view=renderView1)
+        print("Figure saved: %s" % fig_path)
+        print("Figure saved: %s" % fig_pdf_path)
 
         # part 1b: viscosity
         # get color transfer function/color map for 'field'
@@ -467,10 +479,16 @@ class SLAB(PARAVIEW_PLOT):
         # ExportView(fig_path, view=renderView1)
         if source_streamline is not None:
             fig_base = "slice_trench_%s_y_%s_stream_t%.4e.png" % (where, field2, self.time)
+            fig_pdf_base = "slice_trench_%s_y_%s_stream_t%.4e.pdf" % (where, field2, self.time)
         else:
             fig_base = "slice_trench_%s_y_%s_t%.4e.png" % (where, field2, self.time)
+            fig_pdf_base = "slice_trench_%s_y_%s_t%.4e.pdf" % (where, field2, self.time)
         fig_path = os.path.join(self.pv_output_dir, fig_base)
+        fig_pdf_path = os.path.join(self.pv_output_dir, fig_pdf_base)
         SaveScreenshot(fig_path, view=renderView1)
+        ExportView(fig_pdf_path, view=renderView1)
+        print("Figure saved: %s" % fig_path)
+        print("Figure saved: %s" % fig_pdf_path)
 
         # hide plots 
         Hide(source1, renderView1)
@@ -616,7 +634,11 @@ class SLAB(PARAVIEW_PLOT):
        
         # save figure 
         fig_path = os.path.join(self.pv_output_dir, "slice_%.1fkm_t%.4e.png" % (depth/1e3, self.time))
+        fig_pdf_path = os.path.join(self.pv_output_dir, "slice_%.1fkm_t%.4e.pdf" % (depth/1e3, self.time))
         SaveScreenshot(fig_path, view=renderView1)
+        ExportView(fig_pdf_path, view=renderView1)
+        print("Figure saved: %s" % fig_path)
+        print("Figure saved: %s" % fig_pdf_path)
 
         # hide plots
         Hide(source1, renderView1)
@@ -749,7 +771,11 @@ class SLAB(PARAVIEW_PLOT):
         # fig_path = os.path.join(self.pv_output_dir, "%s_top_t%.4e.pdf" % (source_name, self.time))
         # ExportView(fig_path, view=renderView1)
         fig_path = os.path.join(self.pv_output_dir, "%s_front_t%.4e.png" % (source_name, self.time))
+        fig_pdf_path = os.path.join(self.pv_output_dir, "%s_front_t%.4e.pdf" % (source_name, self.time))
         SaveScreenshot(fig_path, view=renderView1)
+        ExportView(fig_pdf_path, view=renderView1)
+        print("Figure saved: %s" % fig_path)
+        print("Figure saved: %s" % fig_pdf_path)
 
         # hide plots 
         Hide(source1, renderView1)
