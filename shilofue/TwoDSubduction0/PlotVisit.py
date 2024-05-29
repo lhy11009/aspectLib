@@ -173,6 +173,8 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         #  the shear zone constant viscosity is calculated from the prefactor of spcrust
         A_diff_inputs = ParsePrm.COMPOSITION(self.idict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep']) 
         self.options["SHEAR_ZONE_CONSTANT_VISCOSITY"] = 1.0 / 2.0 / A_diff_inputs.data['spcrust'][0] # use phases
+        # yield stress
+        self.options["MAXIMUM_YIELD_STRESS"] = float(self.idict['Material model']['Visco Plastic TwoD']["Maximum yield stress"])
 
         # peierls rheology
         try:

@@ -101,6 +101,8 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.attrs.append("sz_depths")
         self.sz_viscs = []
         self.attrs.append("sz_viscs")
+        self.slab_strs = []
+        self.attrs.append("slab_strs")
         self.sd_modes = []
         self.attrs.append("sd_modes")
         self.V_sink_avgs = []
@@ -116,8 +118,8 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.ov_ages = []
         self.attrs.append("ov_ages")
 
-        self.attrs_to_output += ['t660s', "sz_thicks", "sz_depths", "sz_viscs", "sd_modes", "V_sink_avgs", "V_plate_avgs", "V_ov_plate_avgs", "V_trench_avgs", "sp_ages", "ov_ages"]
-        self.headers += ['t660s (yr)', "sz_thicks (m)", "sz_depths (m)", "sz_viscs (Pa s)", "sd_modes", "V_sink_avgs (m/s)", "V_plate_avgs (m/s)", "V_ov_plate_avgs (m/s)", "V_trench_avgs (m/s)", "sp_ages (yr)", "op_ages (yr)"]
+        self.attrs_to_output += ['t660s', "sz_thicks", "sz_depths", "sz_viscs", "slab_strs", "sd_modes", "V_sink_avgs", "V_plate_avgs", "V_ov_plate_avgs", "V_trench_avgs", "sp_ages", "ov_ages"]
+        self.headers += ['t660s (yr)', "sz_thicks (m)", "sz_depths (m)", "sz_viscs (Pa s)", "slab_strs (Pa)", "sd_modes", "V_sink_avgs (m/s)", "V_plate_avgs (m/s)", "V_ov_plate_avgs (m/s)", "V_trench_avgs (m/s)", "sp_ages (yr)", "op_ages (yr)"]
     
     def Update(self, **kwargs):
         '''
@@ -145,6 +147,12 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             # update on specific properties
             for i in range(self.n_case):
                 self.update_shear_zone(i)
+
+        if "strength" in actions:
+            self.slab_strs = [-1 for i in range(self.n_case)]
+            for i in range(self.n_case):
+                self.update_slab_strength(i)
+            
 
         if "sd_modes" in actions:
             # assign an default value of 1 to the subducting modes
@@ -274,6 +282,18 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             self.sz_viscs[i] = -1.0
             self.sz_depths[i] = -1.0
             self.sz_thicks[i] = -1.0
+
+    def update_slab_strength(self, i):
+        '''
+        Update slab strength properties
+        ''' 
+        case_dir = self.ab_paths[i]
+        try:
+            Visit_Options = self.VISIT_OPTIONS(case_dir)
+            Visit_Options.Interpret()
+            self.slab_strs[i] = Visit_Options.options["MAXIMUM_YIELD_STRESS"]
+        except FileNotFoundError:
+            self.slab_strs[i] = -1.0
 
     def update_plate_ages(self, i):
         '''
@@ -475,11 +495,11 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
 
         # mesh data
         includes = np.array([int(i) for i in getattr(self, "includes")])
-        SPAG = np.array(getattr(self, x_name))
-        OVAG = np.array(getattr(self, y_name))
-        VVTR = np.array(getattr(self, "V_trench_avgs"))
-        VVSP = np.array(getattr(self, "V_plate_avgs"))
-        VVSK = np.array(getattr(self, "V_sink_avgs"))
+        SPAG = self.export(x_name)
+        OVAG = self.export(y_name)
+        VVTR = self.export("V_trench_avgs")
+        VVSP = self.export("V_plate_avgs")
+        VVSK = self.export("V_sink_avgs")
         VV = VVSP - VVTR
         sd_modes = np.array([int(i) for i in getattr(self, "sd_modes")])
 

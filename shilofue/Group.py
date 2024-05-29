@@ -649,6 +649,9 @@ class CASE_SUMMARY():
         self.has_update = True
         self.VISIT_OPTIONS = kwargs.get("VISIT_OPTIONS", None)
 
+    def export(self, _name):
+        return np.array([float(i) for i in getattr(self, _name)])
+
     def __call__(self, _dir, **kwargs):
         '''
         Inputs:

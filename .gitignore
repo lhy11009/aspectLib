@@ -84,6 +84,11 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+jupyter_notebooks/rescripts_from_becky/*.json
+jupyter_notebooks/Slab_morphology/*.vtp
+jupyter_notebooks/Phase-transition/*.stderr
+jupyter_notebooks/Phase-transition/*.stdout
+jupyter_notebooks/Phase-transition/output
 
 # IPython
 profile_default/
