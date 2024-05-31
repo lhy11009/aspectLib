@@ -7,6 +7,10 @@
 #   TRENCH_EDGE_Y
 # width of the box
 #   BOX_WIDTH
+# In chunk geometry: coordinate for the pin point of ridge center
+#   CHUNK_RIDGE_CENTER_X, 0.0, CHUNK_RIDGE_CENTER_Z
+# In chunk geometry: coordinate for the pin point of ridge edge
+#   CHUNK_RIDGE_EDGE_X, 0.0, CHUNK_RIDGE_EDGE_Z
 
 from re import A
 
@@ -42,7 +46,8 @@ class SLAB(PARAVIEW_PLOT):
         adjust_camera(self.renderView1, _camera[0],_camera[1], _camera[2], _camera[3])
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
         Hide(slice1, self.renderView1) # hide data in view
-    
+
+
     def setup_trench_slice_center(self):
         '''
         Generate a visualization of a slice perpendicular to y direction, and locates at trench edge (y=0)
@@ -56,6 +61,28 @@ class SLAB(PARAVIEW_PLOT):
         self.camera_dict['slice_trench_center_y'] = _camera
         self.colorbar_dict['slice_trench_center_y'] = _color_bar
         adjust_camera(self.renderView1, _camera[0],_camera[1], _camera[2], _camera[3])
+        Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
+        Hide(slice1, self.renderView1) # hide data in view
+    
+    
+    def setup_trench_slice_center_chunk(self):
+        '''
+        Generate a visualization of a slice perpendicular to z direction, and locates at trench center
+        Here I first set the plots up. This is equivalent to add filters to a paraview window in the gui.
+        '''
+        slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [CHUNK_RIDGE_CENTER_X, 0.0, CHUNK_RIDGE_CENTER_Z],\
+        [0.0, 0.0, -1.0], renderView=self.renderView1, name="trench_center_lat")
+        Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
+        Hide(slice1, self.renderView1) # hide data in view
+    
+    
+    def setup_trench_slice_edge_chunk(self):
+        '''
+        Generate a visualization of a slice perpendicular to z direction, and locates at trench edge
+        Here I first set the plots up. This is equivalent to add filters to a paraview window in the gui.
+        '''
+        slice1, slice1Display, _ = add_slice(self.solutionpvd, "sp_upper", [CHUNK_RIDGE_EDGE_X, 0.0, CHUNK_RIDGE_EDGE_Z],\
+        [0.0, 0.0, -1.0], renderView=self.renderView1, name="trench_edge_lat")
         Hide3DWidgets()  # this is the same thing as unchecking the "show plane"
         Hide(slice1, self.renderView1) # hide data in view
     
@@ -875,25 +902,31 @@ def main():
     # Setup
     Slab = SLAB("PARAVIEW_FILE", output_dir="IMG_OUTPUT_DIR", all_variables=temp_all_variables)
     # These are cheap options, so we conduct them by default
-    Slab.setup_surface_slice()
-    Slab.setup_trench_slice_center()
-    Slab.setup_slice_back_y()
-    if RUN_FULL_SCRIPT:
-        # There are expensive options, so we conduct them if needed
-        Slab.setup_slab_iso_volume_upper()
-        Slab.setup_active_clip()
-        Slab.setup_stream_tracer('clip_active_1')
-        Slab.setup_cross_section_depth("slice_surface_z", 1)  # we follow the plot cross section work flow here
-    elif CROSS_SECTION_DEPTH:
-        Slab.setup_cross_section_depth("slice_surface_z")
-    elif CROSS_SECTION_DEPTH_PEDRO:
-        Slab.setup_cross_section_depth("slice_surface_z", 1)
-    elif PLOT_ISOVOLUME_WITH_STREAMLINE:
-        Slab.setup_slab_iso_volume_upper()
-        Slab.setup_active_clip()
-        Slab.setup_stream_tracer('clip_active_1')
-    elif PLOT_Y_SLICES:
-        pass
+    if "GEOMETRY" == "box":
+        Slab.setup_surface_slice()
+        Slab.setup_trench_slice_center()
+        Slab.setup_slice_back_y()
+        if RUN_FULL_SCRIPT:
+            # There are expensive options, so we conduct them if needed
+            Slab.setup_slab_iso_volume_upper()
+            Slab.setup_active_clip()
+            Slab.setup_stream_tracer('clip_active_1')
+            Slab.setup_cross_section_depth("slice_surface_z", 1)  # we follow the plot cross section work flow here
+        elif CROSS_SECTION_DEPTH:
+            Slab.setup_cross_section_depth("slice_surface_z")
+        elif CROSS_SECTION_DEPTH_PEDRO:
+            Slab.setup_cross_section_depth("slice_surface_z", 1)
+        elif PLOT_ISOVOLUME_WITH_STREAMLINE:
+            Slab.setup_slab_iso_volume_upper()
+            Slab.setup_active_clip()
+            Slab.setup_stream_tracer('clip_active_1')
+        elif PLOT_Y_SLICES:
+            pass
+    elif "GEOMETRY" == "chunk":
+        Slab.setup_trench_slice_center_chunk()
+        Slab.setup_trench_slice_edge_chunk()
+    else:
+        raise ValueError("Geometry must be either box or chunk.")
 
     # Loop over steps
     # First number is the number of initial adaptive refinements
@@ -908,25 +941,30 @@ def main():
                 idx = all_available_graphical_snapshots.index(snapshot)
                 _time =  all_available_graphical_times[idx]
                 Slab.goto_time(_time)
-                if RUN_FULL_SCRIPT:
-                    # Slab.plot_step()
-                    Slab.plot_iso_volume_strain_rate_streamline()
-                    Slab.plot_slab_slice("slice_trench_center_y")
-                    Slab.plot_slab_slice("slice_trench_center_y", where="edge")
-                    Slab.plot_cross_section_depth(100e3, 1)
-                    Slab.plot_cross_section_depth(200e3, 1)
-                elif CROSS_SECTION_DEPTH:
-                    # get the cross sections at both depths
-                    Slab.plot_cross_section_depth(100e3)
-                    Slab.plot_cross_section_depth(200e3)
-                elif PLOT_ISOVOLUME_WITH_STREAMLINE:
-                    Slab.plot_iso_volume_strain_rate_streamline()
-                elif PLOT_Y_SLICES:
-                    Slab.plot_slab_slice("slice_trench_center_y")
-                    Slab.plot_slab_slice("slice_trench_center_y", where="edge")
-                elif CROSS_SECTION_DEPTH_PEDRO:
-                    Slab.plot_cross_section_depth(100e3, 1)
-                    Slab.plot_cross_section_depth(200e3, 1)
+                if GEOMETRY == "box":
+                    if RUN_FULL_SCRIPT:
+                        # Slab.plot_step()
+                        Slab.plot_iso_volume_strain_rate_streamline()
+                        Slab.plot_slab_slice("slice_trench_center_y")
+                        Slab.plot_slab_slice("slice_trench_center_y", where="edge")
+                        Slab.plot_cross_section_depth(100e3, 1)
+                        Slab.plot_cross_section_depth(200e3, 1)
+                    elif CROSS_SECTION_DEPTH:
+                        # get the cross sections at both depths
+                        Slab.plot_cross_section_depth(100e3)
+                        Slab.plot_cross_section_depth(200e3)
+                    elif PLOT_ISOVOLUME_WITH_STREAMLINE:
+                        Slab.plot_iso_volume_strain_rate_streamline()
+                    elif PLOT_Y_SLICES:
+                        Slab.plot_slab_slice("slice_trench_center_y")
+                        Slab.plot_slab_slice("slice_trench_center_y", where="edge")
+                    elif CROSS_SECTION_DEPTH_PEDRO:
+                        Slab.plot_cross_section_depth(100e3, 1)
+                        Slab.plot_cross_section_depth(200e3, 1)
+                elif GEOMETRY == "chunk":
+                    pass
+                else:
+                    raise ValueError("Geometry must be either box or chunk.")
             else:
                 print ("step %s is not valid. There is no output" % step)
     else:
