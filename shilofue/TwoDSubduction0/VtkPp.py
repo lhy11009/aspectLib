@@ -3855,6 +3855,67 @@ def PlotMorphAnimeCombined(case_dir, **kwargs):
         SlabPlot.PlotMorphAnime(case_dir, time=_time)
 
 
+def PlotTrenchDifferences2d(SlabPlot, case_dir, **kwargs):
+    '''
+    plot the differences in the trench location since model started (trench migration)
+    overlay the curve on an existing axis.
+    This function is created for combining results with those from the 3d cases
+    '''
+    # initiate plot
+    _color = kwargs.get('color', "c")
+    ax = kwargs.get('axis', None) # for trench position
+    ax_twinx = kwargs.get("axis_twinx", None) # for slab depth
+    if ax == None:
+        raise ValueError("Not implemented")
+    # path
+    img_dir = os.path.join(case_dir, 'img')
+    if not os.path.isdir(img_dir):
+        os.mkdir(img_dir)
+    morph_dir = os.path.join(img_dir, 'morphology')
+    if not os.path.isdir(morph_dir):
+        os.mkdir(morph_dir)
+    # read inputs
+    prm_file = os.path.join(case_dir, 'output', 'original.prm')
+    assert(os.access(prm_file, os.R_OK))
+    SlabPlot.ReadPrm(prm_file)
+    # read parameters
+    geometry = SlabPlot.prm['Geometry model']['Model name']
+    if geometry == 'chunk':
+        Ro = float(SlabPlot.prm['Geometry model']['Chunk']['Chunk outer radius'])
+    else:
+        Ro = -1.0  # in this way, wrong is wrong
+    # read data
+    slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+    assert(os.path.isfile(slab_morph_file))
+    SlabPlot.ReadHeader(slab_morph_file)
+    SlabPlot.ReadData(slab_morph_file)
+    if not SlabPlot.HasData():
+        print("PlotMorph: file %s doesn't contain data" % slab_morph_file)
+        return 1
+    col_pvtu_step = SlabPlot.header['pvtu_step']['col']
+    col_pvtu_time = SlabPlot.header['time']['col']
+    col_pvtu_trench = SlabPlot.header['trench']['col']
+    col_pvtu_slab_depth = SlabPlot.header['slab_depth']['col']
+    col_pvtu_sp_v = SlabPlot.header['subducting_plate_velocity']['col']
+    col_pvtu_ov_v = SlabPlot.header['overiding_plate_velocity']['col']
+    pvtu_steps = SlabPlot.data[:, col_pvtu_step]
+    times = SlabPlot.data[:, col_pvtu_time]
+    trenches = SlabPlot.data[:, col_pvtu_trench]
+    slab_depths = SlabPlot.data[:, col_pvtu_slab_depth]
+    time_interval = times[1] - times[0]
+    if time_interval < 0.5e6:
+        warnings.warn("Time intervals smaller than 0.5e6 may cause vabriation in the velocity (get %.4e)" % time_interval)
+    if geometry == "chunk":
+        trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
+    elif geometry == 'box':
+        trenches_migration_length = trenches - trenches[0]
+    else:
+        raise ValueError('Invalid geometry')
+    ax.plot(times/1e6, (trenches - trenches[0])/1e3, color=_color, label = "2d")
+    if ax_twinx is not None:
+        ax_twinx.plot(times/1e6, slab_depths/1e3, '--', color=_color)
+
+
 def main():
     '''
     main function of this module

@@ -67,6 +67,7 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         kwargs: options
             last_step(list): plot the last few steps
         """
+        to_rad = np.pi / 180.0
         # call function from parent
         PlotVisit.VISIT_OPTIONS.Interpret(self, **kwargs)
         idx = ParsePrm.FindWBFeatures(self.wb_dict, "Subducting plate")
@@ -76,10 +77,28 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         sub_plate_feature = self.wb_dict["features"][idx]
         slab_feature = self.wb_dict["features"][idx1]
         sub_plate_extends = sub_plate_feature['coordinates'][1]
-        box_width = self.idict["Geometry model"]["Box"]["Y extent"]
-        self.options['TRENCH_EDGE_Y'] = sub_plate_extends[1] * 0.75
-        self.options['TRENCH_EDGE_Y_FULL'] = sub_plate_extends[1]
-        self.options['BOX_WIDTH'] = box_width
+        box_width = -1.0
+        Ro = -1.0
+        print("geometry: ", self.options["GEOMETRY"]) # debug
+        if self.options["GEOMETRY"] == "box":
+            box_width = self.idict["Geometry model"]["Box"]["Y extent"]
+            self.options['TRENCH_EDGE_Y'] = sub_plate_extends[1] * 0.75
+            self.options['TRENCH_EDGE_Y_FULL'] = sub_plate_extends[1]
+            self.options['BOX_WIDTH'] = box_width
+            self.options['BOX_THICKNESS'] = self.idict["Geometry model"]["Box"]["Z extent"]
+        elif self.options["GEOMETRY"] == "chunk":
+            Ro = float(self.idict["Geometry model"]["Chunk"]["Chunk outer radius"])
+            self.options['TRENCH_EDGE_Y'] = -1.0
+            self.options['TRENCH_EDGE_LAT_FULL'] = sub_plate_extends[1]
+            self.options["CHUNK_RIDGE_CENTER_X"] = Ro
+            self.options["CHUNK_RIDGE_CENTER_Z"] = 0.0
+            # convert to x, y, z with long = 0.75 * plate_extent, lat = 0.0, r = Ro
+            ridge_edge_x, ridge_edge_y, ridge_edge_z = Utilities.ggr2cart(sub_plate_extends[1]*to_rad*0.75, 0.0, Ro)
+            self.options["CHUNK_RIDGE_EDGE_X"] = ridge_edge_x
+            self.options["CHUNK_RIDGE_EDGE_Z"] = ridge_edge_z
+            self.options['BOX_WIDTH'] = -1.0
+        else:
+            raise ValueError("geometry must by either box or chunk")
 
         # viscosity
         self.options['ETA_MIN'] = self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']
