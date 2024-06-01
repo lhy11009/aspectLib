@@ -28,6 +28,7 @@ import multiprocessing
 import time
 from joblib import Parallel, delayed
 import warnings
+from scipy.interpolate import interp1d
 #### self
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
 from shilofue.ThDSubduction0.PlotVisit import VISIT_OPTIONS
@@ -87,6 +88,9 @@ class VTKP(VtkPp.VTKP):
         self.trench_coords_x = []
         self.trench_coords_y = []
         self.trench_coords_z = []
+        self.center_profile_x = []
+        self.center_profile_y = []
+        self.center_profile_z = []
         self.slab_depth = 0.0  # slab depth
         self.buoyancies = None
 
@@ -153,6 +157,9 @@ class VTKP(VtkPp.VTKP):
         trench_coords_x = []
         trench_coords_y = []
         trench_coords_z = []
+        center_profile_x = []
+        center_profile_y = []
+        center_profile_z = []
         for id_en in range(len(slab_en_point_lists)):
             theta_min = 0.0  # then, loop again by intervals to look for a
             theta_max = 0.0  # max theta and a min theta for each interval
@@ -181,6 +188,13 @@ class VTKP(VtkPp.VTKP):
                         theta_max = theta
             self.slab_envelop_point_list0.append(id_min)  # first half of the envelop
             self.slab_envelop_point_list1.append(id_max)  # second half of the envelop
+            if id_en < total_en_interval_z:
+                # record center profile
+                # todo_center
+                if id_max > 0:
+                    center_profile_x.append(points[id_max][0])
+                    center_profile_y.append(points[id_max][1])
+                    center_profile_z.append(points[id_max][2])
             if id_en % total_en_interval_z == 0:
                 # record trench coordinates
                 id_en_y = id_en // total_en_interval_z
@@ -191,6 +205,9 @@ class VTKP(VtkPp.VTKP):
         self.trench_coords_x = trench_coords_x
         self.trench_coords_y = trench_coords_y
         self.trench_coords_z = trench_coords_z
+        self.center_profile_x = center_profile_x
+        self.center_profile_y = center_profile_y
+        self.center_profile_z = center_profile_z
 
     # todo_hv 
     def SlabSurfaceAtDepth(self, depth):
@@ -249,6 +266,13 @@ class VTKP(VtkPp.VTKP):
         Output slab information
         '''
         return self.trench_coords_x, self.trench_coords_y, self.trench_coords_z
+
+    # todo_center 
+    def ExportCenterProfile(self):
+        '''
+        Output slab information
+        '''
+        return self.center_profile_x, self.center_profile_y, self.center_profile_z
 
 
 def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
@@ -383,6 +407,7 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     print("Write slab points, takes %.2f s" % (end - start))
     start = end
     # prepare outputs
+    # First write the position of the trench
     trench_coords_x, trench_coords_y, trench_coords_z = VtkP.ExportSlabInfo()
     outputs = "# trench coordinates: x, y and z\n" + \
     "# vtu step: %d\n" % vtu_step  + \
@@ -397,6 +422,23 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     print("File output for trench positions: %s" % fileout)
     end = time.time()
     print("Write trench positions, takes %.2f s" % (end - start))
+    # todo_center
+    # Then write the profile at the center of the slab
+    center_profile_x, center_profile_y, center_profile_z = VtkP.ExportCenterProfile()
+    outputs = "# center profile coordinates: x, y and z\n" + \
+    "# vtu step: %d\n" % vtu_step  + \
+    "# time: %.4e\n" % _time
+    for i in range(len(center_profile_x)):
+        if i > 0:
+            outputs += "\n"
+        outputs += str(center_profile_x[i]) + " " + str(center_profile_y[i]) + " " + str(center_profile_z[i])
+    fileout = os.path.join(output_path, "center_profile_%05d.txt" % vtu_snapshot)
+    with open(fileout, 'w') as fout:
+        fout.write(outputs)
+    print("File output for the center profile: %s" % fileout)
+    end = time.time()
+    print("Write center profile, takes %.2f s" % (end - start))
+    # Write a slice at a fixed depth
     start = end
     # todo_hv
     for hv_depth in horizontal_velocity_depths:
@@ -784,6 +826,114 @@ class PLOT_COMBINE_SLAB_MORPH(PLOT_COMBINE):
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
 
+def PlotTrenchDifferences(case_dir, time_interval_for_slab_morphology, **kwargs):
+    '''
+    plot trench position for a single stepb
+    '''
+    _color = kwargs.get("color", None)
+    _label = kwargs.get("label", None)
+    silence = kwargs.get("silence", False)
+    y_query = kwargs.get("y_query", 0.0)
+    ax_twinx = kwargs.get("axis_twinx", None)
+
+    # initiation
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
+    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+    available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+    n_snapshots = len(available_pvtu_snapshots)
+    # initiate plot
+    ax = kwargs.get('axis', None)
+    if ax == None:
+        raise ValueError("Not implemented")
+   
+    # derive the trench locations and interpolate to the query points
+    # derive the depth of the slab tip
+    dx_trs = []
+    depths = []
+    ts = []
+    for n in range(n_snapshots-1):
+        vtu_snapshot = available_pvtu_snapshots[n]
+        filein0 = os.path.join(case_dir, "vtk_outputs", "trench_%05d.txt" % vtu_snapshot)
+        filein1 = os.path.join(case_dir, "vtk_outputs", "center_profile_%05d.txt" % vtu_snapshot)
+        if not os.path.isfile(filein0):
+            if not silence:
+                warnings.warn('PlotTrenchVelocity: File %s is not found' % filein0, UserWarning)
+            continue
+        if not os.path.isfile(filein1):
+            if not silence:
+                warnings.warn('PlotTrenchVelocity: File %s is not found' % filein1, UserWarning)
+            continue
+        _time, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot)
+        # get the trench locations
+        data0 = np.loadtxt(filein0)
+        xs0 = data0[:, 0]
+        ys0 = data0[:, 1]
+        x_tr0 = np.interp(y_query, ys0, xs0)
+        dx_trs.append(x_tr0)
+        # get the slab tip depth
+        data1 = np.loadtxt(filein1)
+        zs1 = data1[:, 2]
+        depth = float(Visit_Options.options["BOX_THICKNESS"]) - np.min(zs1)
+        depths.append(depth)
+        ts.append(_time)
+    dx_trs = np.array(dx_trs)
+    depths = np.array(depths)
+    ts = np.array(ts)
+    # plot the differences by subtracting the initial value
+    ax.plot(ts / 1e6, (dx_trs - dx_trs[0]) / 1e3, label="y = %.2f km" % (y_query / 1e3), color=_color) # trench position
+    if y_query < 1e-6:
+        # only plot the depth at the center
+        ax_twinx.plot(ts / 1e6, depths / 1e3, "--", color=_color) # depth
+
+    return ax
+
+
+def CenterProfileAnalyze(case_dir, time_interval_for_slab_morphology, **kwargs):
+    '''
+    plot trench position for a single stepb
+    '''
+    # get the index in an array by a given value
+    IndexByValue = lambda array_1d, val: np.argmin(abs(array_1d - val))
+    # initiation
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
+    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+    available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+    n_snapshots = len(available_pvtu_snapshots)
+
+    # derive the depth of the slab tip
+    depths = []
+    ts = []
+    steps = []
+    for n in range(n_snapshots-1):
+        vtu_snapshot = available_pvtu_snapshots[n]
+        filein1 = os.path.join(case_dir, "vtk_outputs", "center_profile_%05d.txt" % vtu_snapshot)
+        if not os.path.isfile(filein1):
+            if not silence:
+                warnings.warn('PlotTrenchVelocity: File %s is not found' % filein1, UserWarning)
+            continue
+        _time, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot)
+        # get the slab tip depth
+        data1 = np.loadtxt(filein1)
+        zs1 = data1[:, 2]
+        depth = float(Visit_Options.options["BOX_THICKNESS"]) - np.min(zs1)
+        depths.append(depth)
+        ts.append(_time)
+        steps.append(step)
+    depths = np.array(depths)
+    ts = np.array(ts)
+
+    # time of slab tip reaching 660 km and the index in the list
+    sfunc = interp1d(depths, ts, assume_sorted=True)
+    t660 = sfunc(660e3)
+    i660 = IndexByValue(ts, t660)
+    step660 = steps[i660]
+
+    return t660, step660
+
 
 def main():
     '''
@@ -844,7 +994,7 @@ def main():
     elif _commend == 'analyze_slab':
         # use the wrapper
         # include_force_balance = True
-        include_force_balance = True
+        include_force_balance = False
         SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1,\
             slab_envelop_interval_y=arg.slab_envelop_interval_y, slab_envelop_interval_z=arg.slab_envelop_interval_z,\
             slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only, include_force_balance=include_force_balance)

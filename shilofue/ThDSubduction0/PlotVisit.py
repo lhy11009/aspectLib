@@ -85,6 +85,7 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
             self.options['TRENCH_EDGE_Y'] = sub_plate_extends[1] * 0.75
             self.options['TRENCH_EDGE_Y_FULL'] = sub_plate_extends[1]
             self.options['BOX_WIDTH'] = box_width
+            self.options['BOX_THICKNESS'] = self.idict["Geometry model"]["Box"]["Z extent"]
         elif self.options["GEOMETRY"] == "chunk":
             Ro = float(self.idict["Geometry model"]["Chunk"]["Chunk outer radius"])
             self.options['TRENCH_EDGE_Y'] = -1.0
