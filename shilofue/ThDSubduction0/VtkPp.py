@@ -894,6 +894,7 @@ def CenterProfileAnalyze(case_dir, time_interval_for_slab_morphology, **kwargs):
     '''
     plot trench position for a single stepb
     '''
+    silence = kwargs.get("silence", 0)
     # get the index in an array by a given value
     IndexByValue = lambda array_1d, val: np.argmin(abs(array_1d - val))
     # initiation

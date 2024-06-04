@@ -941,7 +941,7 @@ def main():
                 idx = all_available_graphical_snapshots.index(snapshot)
                 _time =  all_available_graphical_times[idx]
                 Slab.goto_time(_time)
-                if GEOMETRY == "box":
+                if "GEOMETRY" == "box":
                     if RUN_FULL_SCRIPT:
                         # Slab.plot_step()
                         Slab.plot_iso_volume_strain_rate_streamline()
@@ -961,7 +961,7 @@ def main():
                     elif CROSS_SECTION_DEPTH_PEDRO:
                         Slab.plot_cross_section_depth(100e3, 1)
                         Slab.plot_cross_section_depth(200e3, 1)
-                elif GEOMETRY == "chunk":
+                elif "GEOMETRY" == "chunk":
                     pass
                 else:
                     raise ValueError("Geometry must be either box or chunk.")

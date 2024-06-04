@@ -153,6 +153,8 @@ different age will be adjusted.",\
             ['mantle rheology', "adjust detail"], 0, nick='adjust_mantle_rheology_detail')
         self.add_key("Include upper plate composition for the overriding plate",\
         int, ['plate setup', 'include ov upper plate'], 0, nick='include_ov_upper_plate')
+        # todo_strength
+        self.add_key("Slab strengh", float, ['plate setup', "strength"], 500e6, nick="slab_strength")
 
     
     def check(self):
@@ -249,6 +251,7 @@ different age will be adjusted.",\
         detail_jump_lower_mantle = self.values[self.start+58]
         adjust_mantle_rheology_detail = self.values[self.start+59]
         include_ov_upper_plate = self.values[self.start+60]
+        slab_strength = self.values[self.start+61]
         return _type, if_wb, geometry, box_width, box_length, box_depth,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
@@ -260,7 +263,7 @@ different age will be adjusted.",\
             slab_core_viscosity, global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto,\
             coarsen_side_level, coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as,\
             trailing_length_1, sp_rate, ov_age, detail_mantle_coh, detail_jump_lower_mantle, adjust_mantle_rheology_detail,\
-            include_ov_upper_plate
+            include_ov_upper_plate, slab_strength
         
     def to_configure_wb(self):
         '''
@@ -336,7 +339,7 @@ class CASE(CasesP.CASE):
     reset_composition_viscosity, reset_composition_viscosity_width, repitition_slice_method, slab_core_viscosity,\
     global_minimum_viscosity, coarsen_side, coarsen_side_interval, fix_boudnary_temperature_auto, coarsen_side_level,\
     coarsen_minimum_refinement_level, use_new_rheology_module, if_peierls, fix_peierls_V_as, trailing_length_1, sp_rate,\
-    ov_age, detail_mantle_coh, detail_jump_lower_mantle, adjust_mantle_rheology_detail, include_ov_upper_plate):
+    ov_age, detail_mantle_coh, detail_jump_lower_mantle, adjust_mantle_rheology_detail, include_ov_upper_plate, slab_strength):
         '''
         Configure prm file
         '''
@@ -585,6 +588,10 @@ class CASE(CasesP.CASE):
                 self.output_files.append(Operator.output_json)
                 self.output_files.append(Operator.output_json_aspect)
                 self.output_imgs.append(Operator.output_profile) # append plot of initial conition to figures
+            # Change the slab strength by the maximum yield stress, the default value is 500 Mpa
+            # todo_strength
+            if abs(slab_strength - 500e6) / 500e6 > 1e-6:
+                o_dict['Material model']['Visco Plastic TwoD']["Maximum yield stress"] = "%.4e" % slab_strength
             
 
         # 2. Yielding criteria
