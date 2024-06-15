@@ -1892,8 +1892,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
     if not os.path.isdir(vtk_output_dir):
         os.mkdir(vtk_output_dir)
     # file name
-    if file_tag == 'interval':
-        slab_morph_file_name = 'slab_morph_%.2e' % time_interval_for_slab_morphology
+    if file_tag == 'interval' and abs(time_interval_for_slab_morphology - 5e5)/5e5 > 1e-6:
+        slab_morph_file_name = 'slab_morph_t%.2e.txt' % time_interval_for_slab_morphology
     else:
         slab_morph_file_name = 'slab_morph.txt'
     slab_morph_file = os.path.join(vtk_output_dir, slab_morph_file_name)

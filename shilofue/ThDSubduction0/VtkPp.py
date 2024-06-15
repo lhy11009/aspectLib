@@ -13,7 +13,8 @@ descriptions
 
     This script handles analysis using the vtk package for this project
 """
-#### 3rd parties 
+#### 3rd parties
+import math
 import numpy as np
 import sys, os, argparse
 # import json, re
@@ -91,6 +92,10 @@ class VTKP(VtkPp.VTKP):
         self.center_profile_x = []
         self.center_profile_y = []
         self.center_profile_z = []
+        # todo_pind
+        self.pinD_profile_x = []
+        self.pinD_profile_y = []
+        self.pinD_profile_z = []
         self.slab_depth = 0.0  # slab depth
         self.buoyancies = None
 
@@ -102,6 +107,9 @@ class VTKP(VtkPp.VTKP):
         '''
         slab_threshold = kwargs.get('slab_threshold', 0.2)
         field_type = kwargs.get('field_type', "composition")
+        # todo_pind
+        pin_depth = kwargs.get("pin_depth", 100e3)
+        get_pin_depth = kwargs.get("get_pin_depth", 0)
         if field_type == "composition":
             # tranferred to to enum type to save computational cost
             field_enum = 0
@@ -109,6 +117,9 @@ class VTKP(VtkPp.VTKP):
             field_enum = 1
         else:
             raise ValueError("field_type needs to be either composition or temperature")
+        if get_pin_depth:
+            # the pin depth must be deeper than the cutoff depth to ensure successful pinning
+            assert(pin_depth > self.slab_shallow_cutoff)
         points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
         point_data = self.i_poly_data.GetPointData()
         # slab composition field
@@ -142,6 +153,7 @@ class VTKP(VtkPp.VTKP):
         # prepare the slab internal
         total_en_interval_z = int((self.slab_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval_z + 1)
         total_en_interval_y = int((self.slab_y_max) // self.slab_envelop_interval_y + 1)
+        id_en_pin_depth = int((pin_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval_z)
         slab_en_point_lists = [ [] for i in range(total_en_interval_z * total_en_interval_y) ]
         for id in self.slab_points:
             x = points[id][0] # first, separate cells into intervals
@@ -160,6 +172,9 @@ class VTKP(VtkPp.VTKP):
         center_profile_x = []
         center_profile_y = []
         center_profile_z = []
+        pinD_coords_x = []
+        pinD_coords_y = []
+        pinD_coords_z = []
         for id_en in range(len(slab_en_point_lists)):
             theta_min = 0.0  # then, loop again by intervals to look for a
             theta_max = 0.0  # max theta and a min theta for each interval
@@ -202,12 +217,24 @@ class VTKP(VtkPp.VTKP):
                     trench_coords_x.append(points[id_max][0])
                     trench_coords_y.append(points[id_max][1])
                     trench_coords_z.append(points[id_max][2])
+            if get_pin_depth:
+                if id_en % total_en_interval_z == id_en_pin_depth:
+                    # todo_pind
+                    # get the pinned x, y and z at a pinned depth
+                    if id_max > 0:
+                        pinD_coords_x.append(points[id_max][0])
+                        pinD_coords_y.append(points[id_max][1])
+                        pinD_coords_z.append(points[id_max][2])
+        # append data to class objects
         self.trench_coords_x = trench_coords_x
         self.trench_coords_y = trench_coords_y
         self.trench_coords_z = trench_coords_z
         self.center_profile_x = center_profile_x
         self.center_profile_y = center_profile_y
         self.center_profile_z = center_profile_z
+        self.pinD_profile_x = pinD_coords_x
+        self.pinD_profile_y = pinD_coords_y
+        self.pinD_profile_z = pinD_coords_z
 
     # todo_hv 
     def SlabSurfaceAtDepth(self, depth):
@@ -266,6 +293,13 @@ class VTKP(VtkPp.VTKP):
         Output slab information
         '''
         return self.trench_coords_x, self.trench_coords_y, self.trench_coords_z
+    
+    def ExportPinDInfo(self):
+        '''
+        Output pinned depth slab curve
+        todo_pind
+        '''
+        return self.pinD_profile_x, self.pinD_profile_y, self.pinD_profile_z
 
     # todo_center 
     def ExportCenterProfile(self):
@@ -291,6 +325,7 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     include_force_balance = kwargs.get("include_force_balance", False)
     crust_only = kwargs.get("crust_only", 0)
     horizontal_velocity_depths = kwargs.get("horizontal_velocity_depths", []) # provide a list of depth to investigate the velocity field
+    pin_depth = kwargs.get("pin_depth", 100e3)
     appendix = "_%05d" % vtu_snapshot
     # output_path
     output_path = kwargs.get("output", os.path.join(case_dir, 'vtk_outputs'))
@@ -327,13 +362,15 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     print("Construct polydata, takes %.2f s" % (end - start))
     start = end
     # Analyze slab composiiotn by points
+    # by default, we turn on the functionality to export slab curve at
+    # a certain depth
     if crust_only == 1:
         slab_query_fields = ['sp_upper']
     elif crust_only == 2:
         slab_query_fields = ['sp_lower']
     else:
         slab_query_fields = ['sp_upper', 'sp_lower']
-    VtkP.PrepareSlabByPoints(slab_query_fields)
+    VtkP.PrepareSlabByPoints(slab_query_fields, get_pin_depth=1, pin_depth=pin_depth)
     end = time.time()
     print("Prepare slab composition, takes %.2f s" % (end - start))
     start = end
@@ -422,7 +459,7 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     print("File output for trench positions: %s" % fileout)
     end = time.time()
     print("Write trench positions, takes %.2f s" % (end - start))
-    # todo_center
+    start = end
     # Then write the profile at the center of the slab
     center_profile_x, center_profile_y, center_profile_z = VtkP.ExportCenterProfile()
     outputs = "# center profile coordinates: x, y and z\n" + \
@@ -438,8 +475,25 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     print("File output for the center profile: %s" % fileout)
     end = time.time()
     print("Write center profile, takes %.2f s" % (end - start))
-    # Write a slice at a fixed depth
     start = end
+    # Then write the pinned depth if required
+    # todo_pind
+    pinD_coords_x, pinD_coords_y, pinD_coords_z = VtkP.ExportPinDInfo()
+    outputs = "# pinned points at depth %.2f km coordinates: x, y and z\n" % (pin_depth/1e3) + \
+    "# vtu step: %d\n" % vtu_step  + \
+    "# time: %.4e\n" % _time
+    for i in range(len(pinD_coords_x)):
+        if i > 0:
+            outputs += "\n"
+        outputs += str(pinD_coords_x[i]) + " " + str(pinD_coords_y[i]) + " " + str(pinD_coords_z[i])
+    fileout = os.path.join(output_path, "trench_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot))
+    with open(fileout, 'w') as fout:
+        fout.write(outputs)
+    print("File output for trench positions at depth %.2f km: %s" % (pin_depth/1e3, fileout))
+    end = time.time()
+    print("Write trench positions, takes %.2f s" % (end - start))
+    start = end
+    # Write a slice at a fixed depth
     # todo_hv
     for hv_depth in horizontal_velocity_depths:
         coords_x, coords_y, coords_z = VtkP.SlabSurfaceAtDepth(hv_depth)
@@ -886,7 +940,127 @@ def PlotTrenchDifferences(case_dir, time_interval_for_slab_morphology, **kwargs)
     if y_query < 1e-6:
         # only plot the depth at the center
         ax_twinx.plot(ts / 1e6, depths / 1e3, "--", color=_color) # depth
+    return ax
 
+
+def PlotSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
+    '''
+    plot trench position for a single stepb
+    '''
+    _color = kwargs.get("color", None)
+    _label = kwargs.get("label", None)
+    silence = kwargs.get("silence", False)
+    y_query = kwargs.get("y_query", 0.0)
+    ax_twinx = kwargs.get("axis_twinx", None)
+    pin_depth = kwargs.get("pin_depth", 100e3)
+
+    # initiation
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
+    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+    available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+    n_snapshots = len(available_pvtu_snapshots)
+    # initiate plot
+    ax = kwargs.get('axis', None)
+    if ax == None:
+        raise ValueError("Not implemented")
+   
+    # derive the trench locations and interpolate to the query points
+    # derive the depth of the slab tip
+    dips = []
+    depths = []
+    ts = []
+    for n in range(n_snapshots-1):
+        vtu_snapshot = available_pvtu_snapshots[n]
+        filein0 = os.path.join(case_dir, "vtk_outputs", "trench_%05d.txt" % vtu_snapshot)
+        filein1 = os.path.join(case_dir, "vtk_outputs", "center_profile_%05d.txt" % vtu_snapshot)
+        filein2 = os.path.join(case_dir, "vtk_outputs", "trench_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot))
+        if not os.path.isfile(filein0):
+            if not silence:
+                warnings.warn('PlotTrenchVelocity: File %s is not found' % filein0, UserWarning)
+            continue
+        if not os.path.isfile(filein1):
+            if not silence:
+                warnings.warn('PlotTrenchVelocity: File %s is not found' % filein1, UserWarning)
+            continue
+        _time, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot)
+        # get the trench locations
+        data0 = np.loadtxt(filein0)
+        xs0 = data0[:, 0]
+        ys0 = data0[:, 1]
+        zs0 = data0[:, 2]
+        x_tr0 = np.interp(y_query, ys0, xs0)
+        z_tr0 = np.interp(y_query, ys0, zs0)
+        # get the slab tip depth
+        data1 = np.loadtxt(filein1)
+        zs1 = data1[:, 2]
+        depth = float(Visit_Options.options["BOX_THICKNESS"]) - np.min(zs1)
+        depths.append(depth)
+        ts.append(_time)
+        # get the curve at a certain depth
+        data2 = np.loadtxt(filein2)
+        xs2 = data2[:, 0]
+        ys2 = data2[:, 1]
+        zs2 = data2[:, 2]
+        x_tr2 = np.interp(y_query, ys2, xs2)
+        z_tr2 = np.interp(y_query, ys2, zs2)
+        dip = - math.atan((z_tr0 - z_tr2)/(x_tr0 - x_tr2))
+        print("vtu_snapshot = %d, x_tr0 = %.4e, z_tr0 = %.4e, x_tr2 = %.4e, z_tr2 = %.4e, dip = %.4e" % (vtu_snapshot, x_tr0, z_tr0, x_tr2, z_tr2, dip))  # debug
+        dips.append(dip)
+    dips = np.array(dips)
+    depths = np.array(depths)
+    ts = np.array(ts)
+    # plot the differences by subtracting the initial value
+    ax.plot(ts / 1e6, dips * 180.0 / np.pi, label="y = %.2f km" % (y_query / 1e3), color=_color) # trench position
+    if y_query < 1e-6:
+        # only plot the depth at the center
+        ax_twinx.plot(ts / 1e6, depths / 1e3, "--", color=_color) # depth
+    return ax
+
+
+def PlotSlabDepth(case_dir, time_interval_for_slab_morphology, **kwargs):
+    '''
+    plot trench position for a single stepb
+    '''
+    _color = kwargs.get("color", None)
+    _label = kwargs.get("label", None)
+    silence = kwargs.get("silence", False)
+    y_query = kwargs.get("y_query", 0.0)
+
+    # initiation
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+    available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+    n_snapshots = len(available_pvtu_snapshots)
+    # initiate plot
+    ax = kwargs.get('axis', None)
+    if ax == None:
+        raise ValueError("Not implemented")
+   
+    # derive the depth of the slab tip
+    depths = []
+    ts = []
+    for n in range(n_snapshots-1):
+        vtu_snapshot = available_pvtu_snapshots[n]
+        filein1 = os.path.join(case_dir, "vtk_outputs", "center_profile_%05d.txt" % vtu_snapshot)
+        if not os.path.isfile(filein1):
+            if not silence:
+                warnings.warn('PlotTrenchVelocity: File %s is not found' % filein1, UserWarning)
+            continue
+        _time, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot)
+        # get the slab tip depth
+        data1 = np.loadtxt(filein1)
+        zs1 = data1[:, 2]
+        depth = float(Visit_Options.options["BOX_THICKNESS"]) - np.min(zs1)
+        depths.append(depth)
+        ts.append(_time)
+    depths = np.array(depths)
+    ts = np.array(ts)
+    if y_query < 1e-6:
+        # only plot the depth at the center
+        ax.plot(ts / 1e6, depths / 1e3, "--", color=_color) # depth
     return ax
 
 
