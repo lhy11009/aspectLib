@@ -131,6 +131,12 @@ class GPLATE_CLASS():
                                 plate_reconstruction=self.model,
                                 extent=[-180, 180, -90, 90],)
     
+    def GetSubductionData(self):
+        '''
+        Return subduction data as pandas frame
+        '''
+        return pd.DataFrame(self.subduction_data, columns=self.subduction_all_columns)
+    
     def GetOneSubductionByTrenchId(self, trench_id):
         '''
         a wrapper for get_one_subduction_by_trench_id
@@ -140,6 +146,47 @@ class GPLATE_CLASS():
         assert(trench_id in self.trench_ids)
         one_subduction_data = get_one_subduction_by_trench_id(self.subduction_data, trench_id)
         return one_subduction_data
+    
+    def ResampleSubductionById(self, trench_id, arc_length_edge, arc_length_resample_section):
+        '''
+        Resample an existing subduction zone by id
+        Inputs:
+            trench_id - id of one subduction zone
+        '''
+        assert(trench_id in self.trench_ids)
+        one_subduction_data = get_one_subduction_by_trench_id(self.subduction_data, trench_id)
+        one_subduction_data_resampled, log_output_contents = resample_subduction(one_subduction_data, arc_length_edge, arc_length_resample_section, self.subduction_all_columns, indent=4)
+        return one_subduction_data_resampled, log_output_contents
+    
+    def ResampleAllSubduction(self, arc_length_edge, arc_length_resample_section):
+        '''
+        Resample an existing subduction zone by id
+        '''
+        # subduction_data_resampled = pd.DataFrame(columns=self.subduction_all_columns)
+        subduction_data_resampled = None
+        log_output_contents = ""
+        for i in range(len(self.trench_ids)):
+            trench_id = self.trench_ids[i]
+            one_subduction_data = get_one_subduction_by_trench_id(self.subduction_data, trench_id)
+            one_subduction_data_resampled, log_output_contents = resample_subduction(one_subduction_data, arc_length_edge, arc_length_resample_section, self.subduction_all_columns, indent=4)
+            log_output_contents += "%d th arc\n" % i
+            log_output_contents += "start (%.2f, %.2f)\n" % (one_subduction_data.iloc[0].lon, one_subduction_data.iloc[0].lat)
+            log_output_contents += "end (%.2f, %.2f)\n" % (one_subduction_data.iloc[-1].lon, one_subduction_data.iloc[-1].lat)
+            # log_output_contents += "length in degree: %.2f\n" % (one_subduction_data["arc_length"][len(one_subduction_data)-1])
+            if i == 0:
+                # subduction_data_resampled = pd.DataFrame([one_subduction_data_resampled])
+                subduction_data_resampled = pd.DataFrame(one_subduction_data_resampled)
+            else:
+                # subduction_data_resampled = pd.concat([subduction_data_resampled,  pd.DataFrame([one_subduction_data_resampled])], ignore_index=True)
+                subduction_data_resampled = pd.concat([subduction_data_resampled,  pd.DataFrame(one_subduction_data_resampled)], ignore_index=True)
+        return subduction_data_resampled
+
+    def InterpolateAgeGrid(self, samples):
+        '''
+        InterpolateAgeGrid at sample points
+        ''' 
+        ages = self.age_grid_raster.interpolate(samples.lon, samples.lat, method="nearest")
+        return ages
 
     def PlotCoastlines(self, ax): 
         '''
@@ -147,8 +194,15 @@ class GPLATE_CLASS():
         '''
         self.gplot.time = self.reconstruction_time
         self.gplot.plot_coastlines(ax, color='grey')
-        
 
+    def PlotSeaFloorAges(self, ax):
+        '''
+        plot the seafloor ages
+        '''
+        im_age = self.gplot.plot_grid(ax, self.age_grid_raster.data, cmap='YlGnBu', vmin=0, vmax=200, alpha=0.8)
+        return im_age
+    
+        
 def get_one_subduction_by_trench_id(subduction_data, trench_id):
     '''
     get one subduction data from the whole dataset at one reconstruction time
@@ -169,7 +223,7 @@ def get_one_subduction_by_trench_id(subduction_data, trench_id):
     return one_subduction_data
 
 
-def ResampleSubduction(one_subduction_data, arc_length_edge, arc_length_resample_section, **kwargs):
+def resample_subduction(one_subduction_data, arc_length_edge, arc_length_resample_section, all_columns, **kwargs):
     '''
     Resample data of a subduction to a couple of query points. 
     This is used to extract sample points of an otherwise dense subduction zone and make plots of subduction zone properties
@@ -236,6 +290,7 @@ def plot_one_subduction_data(ax, one_subduction_data, **kwargs):
         one_subduction_data - dataset of one subduction zone
     '''
     attribute = kwargs.get("attribute", "conv_rate") # the attribute to plot
+    ssize = kwargs.get('s', 5)
     # Latitudes and longitudes of points along trench segments
     subduction_lon = one_subduction_data.lon
     subduction_lat = one_subduction_data.lat
@@ -257,9 +312,9 @@ def plot_one_subduction_data(ax, one_subduction_data, **kwargs):
         raise NotImplementedError()
     
     # plot
-    cb=ax.scatter(subduction_lon,subduction_lat, marker=".", s=5, c=data_attr, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
+    im = ax.scatter(subduction_lon,subduction_lat, marker=".", s=ssize, c=data_attr, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
 
-    return cb
+    return im
 
 
 def main():
