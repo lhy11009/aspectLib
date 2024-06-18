@@ -1002,16 +1002,17 @@ def PlotSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
         data2 = np.loadtxt(filein2)
         xs2 = data2[:, 0]
         ys2 = data2[:, 1]
-        zs2 = data2[:, 1]
+        zs2 = data2[:, 2]
         x_tr2 = np.interp(y_query, ys2, xs2)
         z_tr2 = np.interp(y_query, ys2, zs2)
-        dip = math.atan2(x_tr0 - x_tr2, z_tr0 - z_tr2)
+        dip = - math.atan((z_tr0 - z_tr2)/(x_tr0 - x_tr2))
+        print("vtu_snapshot = %d, x_tr0 = %.4e, z_tr0 = %.4e, x_tr2 = %.4e, z_tr2 = %.4e, dip = %.4e" % (vtu_snapshot, x_tr0, z_tr0, x_tr2, z_tr2, dip))  # debug
         dips.append(dip)
     dips = np.array(dips)
     depths = np.array(depths)
     ts = np.array(ts)
     # plot the differences by subtracting the initial value
-    ax.plot(ts / 1e6, dips, label="y = %.2f km" % (y_query / 1e3), color=_color) # trench position
+    ax.plot(ts / 1e6, dips * 180.0 / np.pi, label="y = %.2f km" % (y_query / 1e3), color=_color) # trench position
     if y_query < 1e-6:
         # only plot the depth at the center
         ax_twinx.plot(ts / 1e6, depths / 1e3, "--", color=_color) # depth
