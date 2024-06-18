@@ -203,39 +203,36 @@ class GPLATE_CLASS():
         return im_age
 
     # todo_ages: include polarity of the trench
-    def FixTrenchAge(self, subduction_data):
+    def FixTrenchAge(self, subduction_data, **kwargs):
         '''
         Fix the trench ages in subduction_data
         Inputs:
             subduction_data: pandas object, subduction dataset
         '''
-        # get the invalid indexes
-        invalid_indexes = []
-        for i in range(len(subduction_data.age)):
-            if np.isnan(subduction_data.age[i]):
-                invalid_indexes.append(i)
-
-        ds = [25e3, 50e3, 100e3, 200e3, 400e3]
         # automatically fix the invalid ages 
-        for i in invalid_indexes:
-            theta = subduction_data.trench_azimuth_angle[i] + 180.0
-            # first, get some possible fixing
-            new_age = np.nan
-            for j in range(len(ds)-1):
-                new_age0, lon0, lat0 = self.FixTrenchAgeLocal(subduction_data, i, theta, ds[j])
-                new_age1, lon1, lat1 = self.FixTrenchAgeLocal(subduction_data, i, theta, ds[j+1])
-                if (not np.isnan(new_age0)) and (not np.isnan(new_age1)):
-                    # new_age = (new_age0 * (x - ds[j+1]) + new_age1 *(x - ds[j])) / (ds[j+1] - ds[j]) and x = 0.0
-                    new_age = (new_age0 * ds[j+1] - new_age1 * ds[j]) / (ds[j+1] - ds[j])
-                    print("i = %d, new_age = %.2f" % (i, new_age))
-                    break
-            # fix if some valid value is derived
-            if (not np.isnan(new_age)):
-                subduction_data.age.iloc[i] = new_age
-                subduction_data.lon_fix.iloc[i] = lon1 # note this records the further point in this case
-                subduction_data.lat_fix.iloc[i] = lat1
+        for i in range(len(subduction_data)):
+            fix_age_polarity = subduction_data.fix_age_polarity[i]
+            if not np.isnan(fix_age_polarity):
+                # fix with existing polarity
+                if (fix_age_polarity == 0): 
+                    new_age = self.FixTrenchAgeLocal(subduction_data, i, subduction_data.trench_azimuth_angle[i] + 180.0)
+                elif (fix_age_polarity == 1): 
+                    new_age = self.FixTrenchAgeLocal(subduction_data, i, subduction_data.trench_azimuth_angle[i])
+                else:
+                    raise NotImplementedError
+            else:
+                # figure out a possible polarity
+                new_age = self.FixTrenchAgeLocal(subduction_data, i, subduction_data.trench_azimuth_angle[i] + 180.0)
+                if np.isnan(new_age):
+                    # next, try the other direction
+                    new_age = self.FixTrenchAgeLocal(subduction_data, i, subduction_data.trench_azimuth_angle[i])
+                    if not np.isnan(new_age):
+                        subduction_data["fix_age_polarity"][i] = 1
+                else:
+                    subduction_data["fix_age_polarity"][i] = 0
+
     
-    def FixTrenchAgeLocal(self, subduction_data, i, theta, d):
+    def FixTrenchAgeLocal(self, subduction_data, i, theta):
         '''
         fix the invalid age in a subduction data object with the age grid in the class
         Inputs:
@@ -243,15 +240,32 @@ class GPLATE_CLASS():
             i - ith index to fix
             theta, d - direction and distance to look for new point
         '''
-        assert(d > 0.0)
-        # plot the original point
-        # get the original point and plot on the plot
-        subduction_data_local = pd.DataFrame([subduction_data.iloc[i]])
-        # migrate the point and interpolate age
-        subduction_data_local.lon, subduction_data_local.lat = \
-            Utilities.map_point_by_distance(subduction_data.iloc[i].lon, subduction_data.iloc[i].lat, theta, d)
-        new_age = self.InterpolateAgeGrid(subduction_data_local)
-        return new_age,  subduction_data_local.lon, subduction_data_local.lat
+        # todo_ages
+        ds = [12.5e3, 25e3, 50e3, 75e3, 100e3, 150e3, 200e3, 300e3, 400e3]
+        new_age = np.nan
+        for j in range(len(ds)-1):
+            # first get two points
+            subduction_data_local0 = pd.DataFrame([subduction_data.iloc[i]])
+            subduction_data_local1 = pd.DataFrame([subduction_data.iloc[i]])
+            subduction_data_local0.lon, subduction_data_local0.lat = \
+                Utilities.map_point_by_distance(subduction_data.iloc[i].lon, subduction_data.iloc[i].lat, theta, ds[j])
+            subduction_data_local1.lon, subduction_data_local1.lat = \
+                Utilities.map_point_by_distance(subduction_data.iloc[i].lon, subduction_data.iloc[i].lat, theta, ds[j+1])
+            # then interpolate ages at these two points
+            new_age0 = self.InterpolateAgeGrid(subduction_data_local0)
+            new_age1 = self.InterpolateAgeGrid(subduction_data_local1)
+            # if both points are valid, intepolate with these two points
+            if (not np.isnan(new_age0)) and (not np.isnan(new_age1)):
+                # new_age = (new_age0 * (x - ds[j+1]) + new_age1 *(x - ds[j])) / (ds[j+1] - ds[j]) and x = 0.0
+                new_age = (new_age0 * ds[j+1] - new_age1 * ds[j]) / (ds[j+1] - ds[j])
+                # print("i = %d, new_age = %.2f" % (i, new_age)) # debug
+                subduction_data.age.iloc[i] = new_age
+                subduction_data.lon_fix.iloc[i] = subduction_data_local1.lon # note this records the further point in this case
+                subduction_data.lat_fix.iloc[i] = subduction_data_local0.lat
+                break
+            else:
+                subduction_data.age.iloc[i] = np.nan
+        return new_age
     
         
 def get_one_subduction_by_trench_id(subduction_data, trench_id):
