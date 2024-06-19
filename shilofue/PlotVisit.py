@@ -473,19 +473,30 @@ def GetSnapsSteps(case_dir, type_='graphical'):
     Statistics.ReadHeader(statistic_file)
     Statistics.ReadData(statistic_file)
     col_time = Statistics.header['Time']['col']
+    col_step = Statistics.header['Time_step_number']['col']
 
-    # final time
+    # final time and step
     final_time = Statistics.data[-1, col_time]
+    final_step = int(Statistics.data[-1, col_step])
 
+    total_graphical_outputs = 0
+    graphical_times = []
+    graphical_steps = []
     # time interval
     # graphical
     try:
         time_between_graphical_output = float(idict['Postprocess']['Visualization']['Time between graphical output'])
     except KeyError:
         time_between_graphical_output = 1e8
-    total_graphical_outputs = int(final_time / time_between_graphical_output) + 1
-    graphical_times = [i*time_between_graphical_output for i in range(total_graphical_outputs)]
-    graphical_steps = [Statistics.GetStep(time) for time in graphical_times]
+    if time_between_graphical_output < 1e-6:
+        # in case of 0, results are written every step
+        total_graphical_outputs = int(final_step) + 1
+        graphical_times = Statistics.data[:, col_time]
+        graphical_steps = range(final_step + 1)
+    else:
+        total_graphical_outputs = int(final_time / time_between_graphical_output) + 1
+        graphical_times = [i*time_between_graphical_output for i in range(total_graphical_outputs)]
+        graphical_steps = [Statistics.GetStep(time) for time in graphical_times]
     # particle
     try:
         time_between_particles_output = float(idict['Postprocess']['Particles']['Time between data output'])

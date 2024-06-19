@@ -17,6 +17,7 @@ Examples of usage:
 
 descriptions
 """ 
+from multiprocessing.sharedctypes import Value
 import numpy as np
 import sys, os, argparse
 # import json, re
@@ -28,6 +29,7 @@ from matplotlib import pyplot as plt
 from plate_model_manager import PlateModelManager
 import pandas as pd
 import gplately
+import re
 import cartopy.crs as ccrs
 
 # directory to the aspect Lab
@@ -202,7 +204,6 @@ class GPLATE_CLASS():
         im_age = self.gplot.plot_grid(ax, self.age_grid_raster.data, cmap='YlGnBu', vmin=0, vmax=200, alpha=0.8)
         return im_age
 
-    # todo_ages: include polarity of the trench
     def FixTrenchAge(self, subduction_data, **kwargs):
         '''
         Fix the trench ages in subduction_data
@@ -214,10 +215,18 @@ class GPLATE_CLASS():
             fix_age_polarity = subduction_data.fix_age_polarity[i]
             if not np.isnan(fix_age_polarity):
                 # fix with existing polarity
+                # 0 and 1: on different side of the trench
+                # 2: manually assign values of longitude and latitude
                 if (fix_age_polarity == 0): 
                     new_age = self.FixTrenchAgeLocal(subduction_data, i, subduction_data.trench_azimuth_angle[i] + 180.0)
                 elif (fix_age_polarity == 1): 
                     new_age = self.FixTrenchAgeLocal(subduction_data, i, subduction_data.trench_azimuth_angle[i])
+                elif (fix_age_polarity == 2):
+                    subduction_data_local0 = pd.DataFrame([subduction_data.iloc[i]])
+                    subduction_data_local0.lon, subduction_data_local0.lat = subduction_data.iloc[i].lon_fix, subduction_data.iloc[i].lat_fix
+                    new_age = self.InterpolateAgeGrid(subduction_data_local0)
+                    subduction_data['age'][i] = new_age
+                    pass
                 else:
                     raise NotImplementedError
             else:
@@ -238,9 +247,8 @@ class GPLATE_CLASS():
         Inputs:
             subduction_data - subduction data
             i - ith index to fix
-            theta, d - direction and distance to look for new point
+            theta - direction to look for new point
         '''
-        # todo_ages
         ds = [12.5e3, 25e3, 50e3, 75e3, 100e3, 150e3, 200e3, 300e3, 400e3]
         new_age = np.nan
         for j in range(len(ds)-1):
@@ -266,6 +274,119 @@ class GPLATE_CLASS():
             else:
                 subduction_data.age.iloc[i] = np.nan
         return new_age
+
+
+class PARSERECONSTRUCTION():
+    def __init__(self):
+        '''
+        initiation
+        '''
+        self.trench_data = []  # record the trench coordinates
+        self.trench_names = []
+        self.trench_pids = []
+        self.trench_begin_times = []
+        self.trench_end_times = []
+        pass
+
+    def ReadFile(self, infile):
+        '''
+        read a file of reconstruction data
+        Inputs:
+            infile - input file path
+        '''
+        infile = os.path.join(ASPECT_LAB_DIR, "dtemp", "gplate_export_test0", "Muller_etal_2019_PlateBoundaries_no_topologies", "reconstructed_0.00Ma.xy")
+        assert(os.path.isfile(infile))
+        # Read a file of plate reconstruction.
+        # We'll look for the key word "SubductionZone" in the file
+        # and save there respectvie coordinates into a big array
+        i=0
+        temp_l = []
+        temp_d = []
+        n_trench = 0  # record the number of trenches
+        sbd_begin = False  # tags for in a section of trench data
+        sbd_end = False
+        read=True # a tag for continuing reading the file
+        with open(infile, 'r') as fin:
+            line = fin.readline()
+            i += 1
+            while line:
+                read = True # by default, we will continue to read the file in each loop
+                # First, in case we are reading a data section of trench locations,
+                # check if we already reached the end of a section
+                if sbd_begin and re.match('^>', line):
+                    sbd_end = True
+                # Then, determine what to do.
+                # 1. we are reading a data section and want to continue
+                # 2. we are reading a data section and want to end
+                # 3. we are not reading a data section and is haunting for the next
+                # section in the file.
+                if sbd_begin and (not sbd_end):
+                    # begin read in subduction zone data
+                    # To convert string inputs to data:
+                    #   first, split the string by any number of whitespace characters
+                    #   then, convert the data to floats and all the additional whitespace
+                    #   shoule be removed
+                    temp_data = line.split()
+                    temp_data = [float(x) for x in temp_data]
+                    temp_d.append(temp_data)
+                    pass
+                elif sbd_begin and sbd_end:
+                    # reach the end of a section
+                    self.trench_data.append(temp_d)
+                    sbd_begin = False  # reset the two tags
+                    sbd_end = False
+                    read = False
+                    pass
+                elif re.match('^>SubductionZone', line):
+                    # these inputs at the begining of a line
+                    # indicate the start of a subduction zone
+                    # data section.
+                    temp_l.append(i)
+                    sbd_begin = True # set the tag for the begining of the dataset
+                    temp_d = []
+                    # after finding the start of the section,
+                    # continue to read through the headers
+                    # of this section
+                    while(line and re.match('^>', line)):
+                        line=fin.readline()
+                        i += 1
+                        if re.match('^> name', line):
+                            # look for the name of the trench and append it to the list
+                            self.trench_names.append(Utilities.remove_substrings(line, ["> name ", '\n']))
+                        elif re.match('> reconstructionPlateId', line):
+                            # look for the plate id of the trench and append it to the list
+                            self.trench_pids.append(int(Utilities.remove_substrings(line, ["> reconstructionPlateId ", '\n'])))
+                        elif re.match('> validTime TimePeriod <begin> TimeInstant <timePosition>', line):
+                            # look for the begin and end time of the trench and append it to the list
+                            temp0 = Utilities.remove_substrings(line, ["> validTime TimePeriod <begin> TimeInstant <timePosition>", '</timePosition>.*\n'])
+                            self.trench_begin_times.append(float(temp0))
+                            temp1 = Utilities.remove_substrings(line, ['^.*<end> TimeInstant <timePosition>', '</timePosition>.*\n'])
+                            if type(temp1) == float:
+                                self.trench_end_times.append(temp1)
+                            else:
+                                self.trench_end_times.append(0.0)
+                    read = False
+                if read:
+                    # if the flag marks continue reading the file, proceed
+                    line = fin.readline()
+                    i += 1
+        i -= 1 # the last time reading is unsuccessful
+        n_trench = len(self.trench_data)
+
+    def LookupNameByPid(self, pid):
+        '''
+        Inputs:
+            pid - index of the plate
+        '''
+        _name = ""
+        assert(type(pid) == int)
+        try:
+            _index = self.trench_pids.index(pid)
+        except ValueError:
+            _name = ""
+        else:
+            _name = self.trench_names[_index]
+        return _name
     
         
 def get_one_subduction_by_trench_id(subduction_data, trench_id):
@@ -380,9 +501,6 @@ def plot_one_subduction_data(ax, one_subduction_data, **kwargs):
     im = ax.scatter(subduction_lon,subduction_lat, marker=".", s=ssize, c=data_attr, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
 
     return im
-
-
-
 
 
 def main():
