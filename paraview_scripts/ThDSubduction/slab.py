@@ -810,6 +810,78 @@ class SLAB(PARAVIEW_PLOT):
         Hide(sourceSl1, renderView1)
         Hide(sourceSl2, renderView1)
         HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+
+    def plot_iso_volume_visc_center(self):
+        # todo_iv
+        # get active view and source
+        renderView1 = GetActiveViewOrCreate('RenderView')
+
+        # set the sources and fields to plot
+        source_name = "isoVolume_slab_lower"
+        field1 = "viscosity"
+
+        # part 1a: plot the lower slab 
+        source1 = FindSource(source_name)
+        source1Display = Show(source1, renderView1, 'GeometryRepresentation')
+
+        # get the original plot field, in order to hide
+        # redundant color in later codes
+        field0 = source1Display.ColorArrayName[1]
+        field0LUT = GetColorTransferFunction(field0)
+
+        # set scalar coloring
+        source1Display.ColorArrayName = ['POINTS', '']
+        ColorBy(source1Display, None)
+        source1Display.AmbientColor = [0.0, 1.0, 0.0]
+        source1Display.DiffuseColor = [0.0, 1.0, 0.0]
+        HideScalarBarIfNotNeeded(field0LUT, renderView1)
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        
+        # get color transformation
+        field1LUT = GetColorTransferFunction(field1)
+        field1PWF = GetOpacityTransferFunction(field1)
+        
+        # reset log scale and color 
+        field1LUT.UseLogScale = 1
+        field1LUT.ApplyPreset('Inferno (matplotlib)', True)
+        
+        # reset limit
+        field1LUT.RescaleTransferFunction(1e19, 1e24) # Rescale transfer function
+        field1PWF.RescaleTransferFunction(1e19, 1e24) # Rescale transfer function
+        
+        # colorbar position
+        field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
+        field1LUTColorBar.Orientation = 'Horizontal'
+        field1LUTColorBar.WindowLocation = 'Any Location'
+        field1LUTColorBar.Position = [0.041, 0.908]
+        field1LUTColorBar.ScalarBarLength = 0.33
+
+        # First figure: front view 
+        # show axis
+        renderView1.AxesGrid.Visibility = 1
+
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(1350, 704)
+        renderView1.InteractionMode = '2D'
+        renderView1.CameraPosition = [8e6, -10e6, 4e6]
+        renderView1.CameraFocalPoint = [3.4e6, 1.9e6, 1.7e6]
+        renderView1.CameraViewUp = [0.0, 0.0, 1.0]
+        renderView1.CameraParallelScale = 4e6
+        
+        # save figure 
+        # fig_path = os.path.join(self.pv_output_dir, "%s_top_t%.4e.pdf" % (source_name, self.time))
+        # ExportView(fig_path, view=renderView1)
+        fig_path = os.path.join(self.pv_output_dir, "%s_front_visc_center_t%.4e.png" % (source_name, self.time))
+        fig_pdf_path = os.path.join(self.pv_output_dir, "%s_front_visc_center_t%.4e.pdf" % (source_name, self.time))
+        SaveScreenshot(fig_path, view=renderView1)
+        ExportView(fig_pdf_path, view=renderView1)
+        print("Figure saved: %s" % fig_path)
+        print("Figure saved: %s" % fig_pdf_path)
+
+        # hide plots 
+        Hide(source1, renderView1)
+        HideScalarBarIfNotNeeded(field1LUT, renderView1)
     
     def plot_step(self): 
         '''
@@ -861,12 +933,16 @@ def main():
     # Set option by the additional value given in the command line
     if option == 1:
         CROSS_SECTION_DEPTH=True
+        RUN_FULL_SCRIPT=False
     elif option == 2:
         PLOT_ISOVOLUME_WITH_STREAMLINE=True
+        RUN_FULL_SCRIPT=False
     elif option == 3:
         PLOT_Y_SLICES=True
+        RUN_FULL_SCRIPT=False
     elif option == 4:
         CROSS_SECTION_DEPTH_PEDRO=True
+        RUN_FULL_SCRIPT=False
 
     # Set the steps to plot 
     steps = GRAPHICAL_STEPS
@@ -944,10 +1020,10 @@ def main():
                 if "GEOMETRY" == "box":
                     if RUN_FULL_SCRIPT:
                         # Slab.plot_step()
-                        Slab.plot_iso_volume_strain_rate_streamline()
+                        # todo_iv
+                        Slab.plot_iso_volume_visc_center()
                         Slab.plot_slab_slice("slice_trench_center_y")
                         Slab.plot_slab_slice("slice_trench_center_y", where="edge")
-                        Slab.plot_cross_section_depth(100e3, 1)
                         Slab.plot_cross_section_depth(200e3, 1)
                     elif CROSS_SECTION_DEPTH:
                         # get the cross sections at both depths

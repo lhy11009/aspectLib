@@ -350,6 +350,89 @@ locate_workdir_with_id(){
     fi
 }
 
+parse_slurm_file_series(){
+    # parse slurm files and generate new files to run in a series
+    # Inputs:
+    #   S1 - path of the slurm file
+    #   $2 - first job's id
+    local slurm_path=$(fix_route "$1")
+    [[ -e "${slurm_path}" ]] ||  { cecho ${BAD} "${FUNCNAME[0]}: slurm file(${slurm_path}) doesn't exist"; exit 1; }
+    local job_id="$2"
+    [[ -n "${job_id}" && ${job_id} =~ "${util_re_integar}" ]] || { cecho ${BAD} "${FUNCNAME[0]}: job_id must be integar"; exit 1; }
+    local i_in_series="$3"
+    local dir=$(dirname "${slurm_path}")
+    local temp_file="${dir}/job_series_${i_in_series}.sh"
+    # insert one line into existing slurm file
+    # #SBATCH --dependency=job_id
+    local first_line="true"
+    local write_dependency="false"
+    local all_lines=$(cat ${slurm_path})
+    while IFS= read -r line; do
+        newline="${line}"
+        if ! [[ ${newline} =~ "#" || ${write_dependency} == "true" ]]; then
+            echo "#SBATCH --dependency=${job_id}" >> "${temp_file}"
+            write_dependency="true"
+        fi
+        if [[ ${newline} =~ "case.prm" ]]; then
+            newline=${newline/"case.prm"/"case_1.prm"}
+        fi
+    	if [[ ${first_line} == "true" ]]; then
+    		first_line="false" 
+    		echo "${newline}" > "${temp_file}"
+    	else
+    		echo "${newline}" >> "${temp_file}"
+    	fi
+    done <<< "${all_lines}"
+    echo "${FUNCNAME[0]}: generate file ${temp_file}"
+}
+
+submit_job_series(){
+    # submit cases in a series
+    # Inputs:
+    #   $1: case path
+    #   $2: basename of slurm file
+    #   $3: number of cases in the series
+    #   $4: 1 - only run tests and no cases are submitted
+    local case_path=$(fix_route "$1")
+    local prm_path="${case_path}/case.prm"
+    local prm_tmp_path="${case_path}/case_1.prm"
+    local slurm_file_path="${case_path}/$2"
+    local n_in_series="$3"
+    local test_only="0"
+    [[ -n $4 ]] && test_only="$4"
+
+    # submit first case and get the job id
+    # test_only: assign a value to test the function
+    if [[ ${test_only} == "0" ]]; then
+        _message=$(sbatch ${slurm_file_path})
+        job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
+    else
+        job_id="000000"
+    fi
+    [[ ${job_id} =~ ${util_re_integer} ]] || { cecho "$BAD" "${FUNCNAME[0]}: job id ${job_id} is not a vailid number"; exit 1; }
+
+    # subsequently, make new batch file, prm file and submit jobs
+    eval "cp ${prm_path} ${prm_tmp_path}"
+    util_substitute_prm_file_contents "${prm_tmp_path}" "Resume computation" "true"
+    local slurm_file_path_last="${slurm_file_path}"
+    for ((i=1 ; i<${n_in_series}+1 ; i++ )); do
+        # call parse_slurm_file_series to generate new slurm batch files
+        parse_slurm_file_series "${slurm_file_path}" "${job_id}" "$i"
+        slurm_file_path_this="${case_path}/job_series_$i.sh"
+        # submit the subsequent case and get the job id
+        if [[ ${test_only} == "0" ]]; then
+            _message=$(sbatch ${slurm_file_path_this})
+            job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
+        else
+            job_id="00000$i"
+        fi
+        slurm_file_path_last="${slurm_file_path_this}"
+        [[ ${job_id} =~ ${util_re_integer}  ]] || { cecho "$BAD" "${FUNCNAME[0]}: job id ${job_id} is not a vailid number"; exit 1; }
+    done
+
+    return 0
+}
+
 ################################################################################
 # functions to submit cases
 ################################################################################
@@ -621,6 +704,10 @@ main(){
         check_time_restart_case_in_directory "$2" "$3" "$4"
     elif [[ "$1" == "copy_case_output_by_vtu_snapshot" ]]; then
         copy_case_output_by_vtu_snapshot "$2" "$3" "$4"
+    elif [[ "$1" == "parse_slurm_file_series" ]]; then
+        parse_slurm_file_series "$2" "$3" "$4"
+    elif [[ "$1" == "submit_time_series" ]]; then
+        submit_job_series "$2" "$3" "$4" "$5"
     else
     	cecho "${BAD}" "option ${1} is not valid\n"
     fi
