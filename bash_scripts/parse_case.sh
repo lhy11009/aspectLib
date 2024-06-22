@@ -350,6 +350,69 @@ locate_workdir_with_id(){
     fi
 }
 
+# todo_series
+parse_slurm_file_series(){
+    #
+    # Inputs:
+    local slurm_path=$(fix_route "$1")
+    [[ -e "${slurm_path}" ]] ||  { cecho ${BAD} "${FUNCNAME[0]}: slurm file(${slurm_path}) doesn't exist"; exit 1; }
+    local job_id="$2"
+    [[ -n "${job_id}" && ${job_id} =~ "${util_re_integar}" ]] || { cecho ${BAD} "${FUNCNAME[0]}: job_id must be integar"; exit 1; }
+    local dir=$(dirname "${slurm_path}")
+    local temp_file="${dir}/job_series_1.sh"
+    # insert one line into existing slurm file
+    local first_line="true"
+    local write_dependency="false"
+    while IFS= read -r line; do
+        IFS='='; local inputs=(${line})
+        newline="${line}"
+        if ! [[ ${newline} =~ "#" || ${write_dependency} == "true" ]]; then
+            echo "#SBATCH --dependency=${job_id}" >> "${temp_file}"
+            write_dependency="true"
+        fi
+    	if [[ ${first_line} == "true" ]]; then
+    		first_line="false" 
+    		echo "${newline}" > "${temp_file}"
+    	else
+    		echo "${newline}" >> "${temp_file}"
+    	fi
+    done < "${slurm_path}"
+    echo "${FUNCNAME[0]}: generate file ${temp_file}"
+}
+
+# todo_series
+
+submit_job_series(){
+    # check if a case is running
+    # Inputs:
+    #   $1: case path
+    local case_path=$(fix_route "$1")
+    local prm_path="${case_path}/case.prm"
+    local prm_tmp_path="${case_path}/case1.prm"
+    local slurm_file_path=""
+    local n_in_series="$2"
+    local outputs=$(squeue -u "${USER}" -o %A)  # get all the job ids
+    IFS=$'\n'; local job_ids=(${outputs})
+
+    _message=$(sbatch ${slurm_file_path})
+    job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
+    [[ ${job_id} =~ ${util_re_integer} ]] && { cecho "$BAD" "${FUNCNAME[0]}: job id ${job_id} is not a vailid number"; exit 1; }
+
+    eval "cp ${prm_path} ${prm_tmp_path}"
+    util_substitute_prm_file_contents "${prm_tmp_file}" "Resume computation" "true"
+
+#    for  in ; do
+#        job_batch_tmp_file=""
+#        parse_slurm_file_series "${slurm_file_path}" "${job_id}"
+#        _message=$(sbatch ${slurm_file_path})
+#        job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
+#        [[ ${job_id} =~ ${util_re_integer}  ]] && { cecho "$BAD" "${FUNCNAME[0]}: job id ${job_id} is not a vailid number"; exit 1; }
+#	fi
+#    done
+
+    return 0
+}
+
 ################################################################################
 # functions to submit cases
 ################################################################################
@@ -621,6 +684,11 @@ main(){
         check_time_restart_case_in_directory "$2" "$3" "$4"
     elif [[ "$1" == "copy_case_output_by_vtu_snapshot" ]]; then
         copy_case_output_by_vtu_snapshot "$2" "$3" "$4"
+    elif [[ "$1" == "parse_slurm_file_series" ]]; then
+        parse_slurm_file_series "$2" "$3"
+    elif [[ "$1" == "submit_time_series" ]]; then
+        # todo_series
+        submit_job_series "$2" "$3" "$4"
     else
     	cecho "${BAD}" "option ${1} is not valid\n"
     fi

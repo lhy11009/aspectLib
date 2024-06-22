@@ -29,7 +29,7 @@
             "text": "STEP_TIME_STAMP\n(center, edge)",
             "font size": 30,
             "position": [500, 600],
-            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/step_sNUMERICAL_STEP_2.png",
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_2.png",
             "temp": 1
         },
         {
@@ -49,7 +49,16 @@
             "resize": 0.5,
             "position": [675, 1100],
             "method": "use_new_one",
-            "save path": "IMG_OUTPUT_DIR/animation/temp_sNUMERICAL_STEP.png"
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_4.png",
+            "temp": 1
+        },
+        {
+            "path": "IMG_OUTPUT_DIR/pv_outputs/temp/temp_sNUMERICAL_STEP_4.png",
+            "operation": "text",
+            "text": "Horizontal Flow Field\nDepth = (100 km, 200 km)",
+            "font size": 30,
+            "position": [500, 1000],
+            "save path": "IMG_OUTPUT_DIR/pv_outputs/temp/step_sNUMERICAL_STEP.png"
         }
     ]
 }
