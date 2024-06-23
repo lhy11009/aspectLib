@@ -92,7 +92,6 @@ def test_series_case_slurm():
     Here we test submitting a series of jobs to slurm.
     Each newer job would dependent on the completion of the previous job.
     '''
-    # todo_series
     executable = os.path.join(ASPECT_LAB_DIR, "bash_scripts", "parse_case.sh")
 
     file_sh =  os.path.join(big_source_dir, "eba_cdpt_coh500_SA80.0_OA40.0_cd100.0_cd7.5_gr9_yd100", "job_p-billen.sh")
