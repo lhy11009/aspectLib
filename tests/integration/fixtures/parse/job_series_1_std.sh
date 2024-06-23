@@ -11,7 +11,7 @@
 #SBATCH --mem-per-cpu=4G
 #SBATCH --switches=1
 #SBATCH --job-name=eba_cdpt_coh500_SA80.0_OA40.0_cd100.0_cd7.5_gr9
-#SBATCH --dependency=000001
+#SBATCH --dependency=000000
 
 source /group/billengrp/Software/deal.ii/deal.ii-9.5.0-Native-32bit-candi-gcc-11.3.0-openmpi4.1.5-mpi-io-rome-256-512/configuration/enable.sh
 

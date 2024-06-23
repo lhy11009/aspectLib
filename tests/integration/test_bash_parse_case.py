@@ -96,6 +96,7 @@ def test_series_case_slurm():
     executable = os.path.join(ASPECT_LAB_DIR, "bash_scripts", "parse_case.sh")
 
     file_sh =  os.path.join(big_source_dir, "eba_cdpt_coh500_SA80.0_OA40.0_cd100.0_cd7.5_gr9_yd100", "job_p-billen.sh")
+    file_prm =  os.path.join(big_source_dir, "eba_cdpt_coh500_SA80.0_OA40.0_cd100.0_cd7.5_gr9_yd100", "case.prm")
     
     # assert 1: function of parse_slurm_file_series
     #   fileout generated and compared to the standard file
@@ -104,15 +105,35 @@ def test_series_case_slurm():
         rmtree(target_dir)  # remove old outputs
     os.mkdir(target_dir)
     copy2(file_sh, target_dir)
+    copy2(file_prm, target_dir)
     arg1 = "parse_slurm_file_series"
     arg2 = os.path.join(target_dir, "job_p-billen.sh")
     arg3 = "000001"
-    completed_process = subprocess.run([executable, arg1, arg2, arg3], capture_output=False, text=True)
-    print("base command:\n%s %s %s %s" % (executable, arg1, arg2, arg3))
-    fileout = os.path.join(target_dir, "job_series_1.sh")
+    arg4 = "0"
+    completed_process = subprocess.run([executable, arg1, arg2, arg3, arg4], capture_output=False, text=True)
+    print("base command:\n%s %s %s %s %s" % (executable, arg1, arg2, arg3, arg4))
+    fileout = os.path.join(target_dir, "job_series_0.sh")
     assert(os.path.isfile(fileout))
     fileout_std = os.path.join(source_dir, "job_series_std.sh")
     assert(filecmp.cmp(fileout, fileout_std))
+
+    # assert 2: function of submit_time_series
+    arg1 = "submit_time_series"
+    arg2 = target_dir
+    arg3 = "job_p-billen.sh"
+    arg4 = "3" # number of cases in the series
+    arg5 = "1" # test_only, no case submitted to the system
+    completed_process = subprocess.run([executable, arg1, arg2, arg3, arg4, arg5], capture_output=False, text=True)
+    print("base command:\n%s %s %s %s %s %s" % (executable, arg1, arg2, arg3, arg4, arg5))
+    fileout = os.path.join(target_dir, "job_series_1.sh")
+    assert(os.path.isfile(fileout))
+    fileout_std = os.path.join(source_dir, "job_series_1_std.sh")
+    assert(filecmp.cmp(fileout, fileout_std))
+    fileout = os.path.join(target_dir, "job_series_2.sh")
+    assert(os.path.isfile(fileout))
+    fileout = os.path.join(target_dir, "job_series_3.sh")
+    assert(os.path.isfile(fileout))
+
     
 # notes
     
