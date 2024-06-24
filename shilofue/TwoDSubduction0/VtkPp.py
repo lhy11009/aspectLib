@@ -165,6 +165,9 @@ class VTKP(VtkPp.VTKP):
         self.dip_100 = None
         self.vsp = None
         self.vov = None
+        self.coord_distant_200 = None
+        self.v_distant_200 = None
+        self.visc_distant_200 = None
         self.slab_shallow_cutoff = kwargs.get("slab_shallow_cutoff", 50e3)  # depth limit to slab
         self.slab_envelop_interval = kwargs.get("slab_envelop_interval", 5e3)
         self.velocity_query_depth = 5e3  # depth to look up plate velocities
@@ -184,7 +187,10 @@ class VTKP(VtkPp.VTKP):
         '''
         assert(self.include_cell_center)
         prepare_cmb = kwargs.get('prepare_cmb', None)
+        prepare_slab_distant_properties = kwargs.get('prepare_slab_distant_properties', None)
         slab_threshold = kwargs.get('slab_threshold', 0.2)
+        depth_lookup = kwargs.get("depth_lookup", 100e3)
+        depth_distant_lookup = kwargs.get('depth_distant_lookup', 200e3)
         points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
         centers = vtk_to_numpy(self.c_poly_data.GetPoints().GetData())
         point_data = self.i_poly_data.GetPointData()
@@ -265,7 +271,6 @@ class VTKP(VtkPp.VTKP):
         y_tr = centers[id_tr][1]
         self.trench = get_theta(x_tr, y_tr, self.geometry)
         # 100 km dip angle
-        depth_lookup = 100e3
         self.coord_100 = self.SlabSurfDepthLookup(depth_lookup)
         if self.geometry == "chunk":
             x100 = (self.Ro - depth_lookup) * np.cos(self.coord_100)
@@ -276,6 +281,10 @@ class VTKP(VtkPp.VTKP):
         r100 = get_r(x100, y100, self.geometry)
         theta100 = get_theta(x100, y100, self.geometry)
         self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
+        # query a point at depth_distant_lookup that is 5 deg to the
+        # slab surface point at depth_lookup derived in the previous step
+        if prepare_slab_distant_properties:
+            self.PreparseSlabDistantProperties(depth_distant_lookup)
         if prepare_cmb is not None:
             # get the crust envelop
             crust_en_cell_lists = [ [] for i in range(total_en_interval) ]
@@ -413,6 +422,49 @@ class VTKP(VtkPp.VTKP):
         theta100 = get_theta(x100, y100, self.geometry)
         self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
         pass
+
+    def PreparseSlabDistantProperties(self, depth_distant_lookup, **kwargs):
+        '''
+        query a point at depth_distant_lookup that is 5 deg to the
+        slab surface point at depth_lookup derived in the previous step
+        Inputs:
+            depth_distant_lookup - depth to place this query point
+        '''
+        project_velocity = kwargs.get("project_velocity", True)
+
+        # get the coordinate of the query point
+        x_distant_200 = None; y_distant_200 = None
+        if self.geometry == "chunk":
+            self.coord_200 = self.coord_100 + 5.0 * np.pi / 180.0
+            x_distant_200 = (self.Ro - depth_distant_lookup) * np.cos(self.coord_200)
+            y_distant_200 = (self.Ro - depth_distant_lookup) * np.sin(self.coord_200)
+        elif self.geometry == "box":
+            self.coord_200 = self.coord_100 + 5.0 * np.pi / 180.0 * self.Ro
+            x_distant_200 = self.coord_100 + 5.0 * np.pi / 180.0 * self.Ro
+            y_distant_200 = self.Ro - depth_distant_lookup
+
+        # query the poly_data 
+        query_grid = np.zeros((1,2))
+        self.v_distant_200 = np.zeros(2)
+        query_grid[0, 0] = x_distant_200
+        query_grid[0, 1] = y_distant_200
+        query_poly_data = VtkPp.InterpolateGrid(self.i_poly_data, query_grid, quiet=True)
+        query_vs = vtk_to_numpy(query_poly_data.GetPointData().GetArray('velocity'))
+        query_viscs = vtk_to_numpy(query_poly_data.GetPointData().GetArray('viscosity'))
+
+        # project the velocity if needed and get the viscosity
+        if project_velocity:
+            # project velocity to theta direction in a spherical geometry
+            self.v_distant_200[0], self.v_distant_200[1] = VtkPp.ProjectVelocity(x_distant_200, y_distant_200, query_vs[0, :], self.geometry)
+        else:
+            self.v_distant_200[0], self.v_distant_200[1] = query_vs[0, 0], query_vs[0, 1]
+        self.visc_distant_200 = query_viscs[0]
+    
+    def ExportSlabInfoExtra(self, depth_distant_lookup, **kwargs):
+        '''
+        Export additional slab info
+        '''
+        return self.v_distant_200, self.visc_distant_200
     
     
     def ExportSlabInfo(self):
@@ -457,16 +509,8 @@ class VTKP(VtkPp.VTKP):
         query_vs = vtk_to_numpy(query_poly_data.GetPointData().GetArray('velocity'))
         if project_velocity:
             # project velocity to theta direction in a spherical geometry
-            if self.geometry == "chunk":
-                cos_sp = x_sp_query / (x_sp_query**2.0 + y_sp_query**2.0)**0.5
-                sin_sp = y_sp_query / (x_sp_query**2.0 + y_sp_query**2.0)**0.5
-                self.vsp = query_vs[0, 0] * (-sin_sp) + query_vs[0, 1] * cos_sp
-                cos_ov = x_ov_query / (x_ov_query**2.0 + y_ov_query**2.0)**0.5
-                sin_ov = y_ov_query / (x_ov_query**2.0 + y_ov_query**2.0)**0.5
-                self.vov = query_vs[1, 0] * (-sin_ov) + query_vs[1, 1] * cos_ov
-            elif self.geometry == "box":
-                self.vsp = query_vs[0, 0]
-                self.vov = query_vs[1, 0]
+            self.vsp, _ = VtkPp.ProjectVelocity(x_sp_query, y_sp_query, query_vs[0, :], self.geometry)
+            self.vov, _ = VtkPp.ProjectVelocity(x_ov_query, y_ov_query, query_vs[1, :], self.geometry)
         else:
             self.vsp = query_vs[0, :]
             self.vov = query_vs[1, :]
@@ -1215,6 +1259,8 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     mdd_dx0 = kwargs.get('mdd_dx0', 10e3)
     mdd_dx1 = kwargs.get('mdd_dx1', 10e3)
     findmdd_tolerance = kwargs.get("findmdd_tolerance", 0.05)
+    depth_distant_lookup = kwargs.get("depth_distant_lookup", 200e3)
+    export_extra_info = kwargs.get("export_extra_info", False)
     project_velocity = kwargs.get('project_velocity', False)
     mdd = -1.0 # an initial value
     print("%s%s: Start" % (indent*" ", Utilities.func_name()))
@@ -1238,9 +1284,9 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
         Xmax = Visit_Options.options['XMAX']
     VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
     VtkP.ReadFile(filein)
-    field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity']
+    field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity', 'viscosity']
     VtkP.ConstructPolyData(field_names, include_cell_center=True)
-    VtkP.PrepareSlab(['spcrust', 'spharz'])
+    VtkP.PrepareSlab(['spcrust', 'spharz'], prepare_slab_distant_properties=True, depth_distant_lookup=depth_distant_lookup)
     if findmdd:
         try:
             mdd1 = VtkP.FindMDD(tolerance=findmdd_tolerance, dx1=-Visit_Options.options["INITIAL_SHEAR_ZONE_THICKNESS"])
@@ -1278,6 +1324,9 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     % (vtu_step, step, _time, trench, slab_depth, dip_100, vsp_magnitude, vov_magnitude)
     if findmdd:
         outputs += "%-14.4e %-14.4e" % (mdd1, mdd2)
+    if export_extra_info:
+        vs_distant, visc_distant = VtkP.ExportSlabInfoExtra(depth_distant_lookup)
+        outputs += "%-14.4e %-14.4e" % (vs_distant[0], visc_distant)
     outputs += "\n"
     print("%s%s" % (indent*" ", outputs)) # debug
     return vtu_step, outputs
@@ -1878,6 +1927,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
     # todo_parallel
     use_parallel = kwargs.get('use_parallel', False)
     file_tag = kwargs.get('file_tag', False)
+    export_extra_info = kwargs.get('export_extra_info', False)
+    kwargs["if_rewrite"] = True
     # get all available snapshots
     # the interval is choosen so there is no high frequency noises
     time_interval_for_slab_morphology = kwargs.get("time_interval", 0.5e6)
@@ -1898,7 +1949,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
         slab_morph_file_name = 'slab_morph.txt'
     slab_morph_file = os.path.join(vtk_output_dir, slab_morph_file_name)
     # Initiation Wrapper class for parallel computation
-    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology_dual_mdd, if_rewrite=True, findmdd=findmdd, project_velocity=project_velocity, findmdd_tolerance=findmdd_tolerance)
+    # ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology_dual_mdd, if_rewrite=True, findmdd=findmdd, project_velocity=project_velocity, findmdd_tolerance=findmdd_tolerance)
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology_dual_mdd, **kwargs)
     ParallelWrapper.configure(case_dir)  # assign case directory
     # Remove previous file
     if os.path.isfile(slab_morph_file):
@@ -1923,8 +1975,13 @@ def SlabMorphologyCase(case_dir, **kwargs):
     # header
     file_header = "# 1: pvtu_step\n# 2: step\n# 3: time (yr)\n# 4: trench (rad)\n# 5: slab depth (m)\n\
 # 6: 100km dip (rad)\n# 7: subducting plate velocity (m/yr)\n# 8: overiding plate velocity (m/yr)\n"
+    n_col = 8
     if findmdd:
         file_header += "# 9: mechanical decoupling depth1 (m)\n# 10: mechanical decoupling depth2 (m)\n"
+        n_col += 2
+    if export_extra_info:
+        file_header += "# %d: athenosphere velocity (m/yr)\n# %d: athenosphere viscosity (pa*s)\n" % (n_col+1, n_col+2)
+        n_col += 2
     # output file name
     appendix = ""
     if abs(time_interval_for_slab_morphology - 0.5e6) / 0.5e6 > 1e-6:
@@ -3997,13 +4054,16 @@ def main():
         PlotSlabShape(arg.inputs, arg.vtu_step)
     elif _commend == 'morph_step':
         # slab_morphology, input is the case name
-        SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1, output_slab=True, findmdd=True, project_velocity=True, findmdd_tolerance=arg.findmdd_tolerance, mdd_dx0=arg.mdd_dx0, mdd_dx1=arg.mdd_dx1)
+        SlabMorphology_dual_mdd(arg.inputs, int(arg.vtu_snapshot), rewrite=1, output_slab=True, findmdd=True, project_velocity=True,\
+            findmdd_tolerance=arg.findmdd_tolerance, mdd_dx0=arg.mdd_dx0, mdd_dx1=arg.mdd_dx1, export_extra_info=True)
     elif _commend == 'morph_case':
         # slab morphology for a case
-        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True, findmdd_tolerance=arg.findmdd_tolerance)
+        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True,\
+            findmdd_tolerance=arg.findmdd_tolerance, export_extra_info=True)
     elif _commend == 'morph_case_parallel':
         # slab morphology for a case
-        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True, use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance)
+        SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True,\
+            use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance, export_extra_info=True)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
