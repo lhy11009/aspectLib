@@ -70,7 +70,7 @@ def test_WriteCSV():
     # assert file existence 
     assert(os.path.isfile(csv_file_path))
     # assert file contents
-    csv_file_path_std = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp', 'vtk_outputs', 'slab_morph_std.csv')
+    csv_file_path_std = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp', 'slab_morph_std.csv')
     assert(os.path.isfile(csv_file_path_std))
     assert(filecmp.cmp(csv_file_path, csv_file_path_std))  # compare file extent
 
@@ -165,6 +165,30 @@ def test_export_slab_info_sph():
     assert(abs(trench - 0.6466922210397674)/0.6466922210397674 < 1e-6)
     assert(abs(slab_depth - 191927.42159304488)/191927.42159304488 < 1e-6)
     assert(abs(dip_100 - 1.061791071552635)/1.061791071552635< 1e-6)
+
+
+def test_export_extra_slab_info_sph():
+    '''
+    Test slab properties from VtkPp.py
+    assert:
+        export extra slab information
+        value of velocity and viscosity at a new query point 
+    '''
+    case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_vtk_pp')
+    output_path = os.path.join(test_dir, "vtkp_readfile")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    os.mkdir(output_path)
+    filein = os.path.join(case_dir, "output", "solution", "solution-00002.pvtu")
+    assert(os.path.isfile(filein))
+    VtkP = VTKP()
+    VtkP.ReadFile(filein)
+    field_names = ['T', 'density', 'spcrust', 'spharz', "velocity", "viscosity"]
+    VtkP.ConstructPolyData(field_names, include_cell_center=True)
+    VtkP.PrepareSlab(['spcrust', 'spharz'], prepare_slab_distant_properties=True)
+    vs_distant, visc_distant = VtkP.ExportSlabInfoExtra(200e3)
+    assert(abs(vs_distant[0] - 0.0) < 1e-6)
+    assert(abs(visc_distant - 1.6446509e+20)/1.6446509e+20 < 1e-6)
 
 
 def test_export_slab_info_cart():

@@ -174,7 +174,10 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         A_diff_inputs = ParsePrm.COMPOSITION(self.idict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep']) 
         self.options["SHEAR_ZONE_CONSTANT_VISCOSITY"] = 1.0 / 2.0 / A_diff_inputs.data['spcrust'][0] # use phases
         # yield stress
-        self.options["MAXIMUM_YIELD_STRESS"] = float(self.idict['Material model']['Visco Plastic TwoD']["Maximum yield stress"])
+        try:
+            self.options["MAXIMUM_YIELD_STRESS"] = float(self.idict['Material model']['Visco Plastic TwoD']["Maximum yield stress"])
+        except KeyError:
+            self.options["MAXIMUM_YIELD_STRESS"] = 1e8
 
         # peierls rheology
         try:
