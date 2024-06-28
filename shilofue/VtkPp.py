@@ -564,16 +564,27 @@ def ProjectVelocity(x_query, y_query, vs, geometry):
         y_query - y coordinate of the point
         vs - (vx, vy)
         geometry - type of geometry
-    '''
-    
+    ''' 
     if geometry == "chunk":
         cos_sp = x_query / (x_query**2.0 + y_query**2.0)**0.5
         sin_sp = y_query / (x_query**2.0 + y_query**2.0)**0.5
-        v_h = vs[0] * (-sin_sp) + vs[1] * cos_sp
-        v_r = vs[0] * cos_sp + vs[1] * sin_sp
+        if vs.ndim == 1:
+            v_h = vs[0] * (-sin_sp) + vs[1] * cos_sp
+            v_r = vs[0] * cos_sp + vs[1] * sin_sp
+        elif vs.ndim == 2:
+            v_h = vs[:, 0] * (-sin_sp) + vs[:, 1] * cos_sp
+            v_r = vs[:, 0] * cos_sp + vs[:, 1] * sin_sp
+        else:
+            NotImplementedError()
     elif geometry == "box":
-        v_h = vs[0]
-        v_r = vs[1]
+        if vs.ndim == 1:
+            v_h = vs[0]
+            v_r = vs[1]
+        elif vs.ndim == 2:
+            v_h = vs[:, 0]
+            v_r = vs[:, 1]
+        else:
+            NotImplementedError()
     else:
         raise NotImplementedError()
     return v_h, v_r

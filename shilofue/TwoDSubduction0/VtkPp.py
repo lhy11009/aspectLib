@@ -162,6 +162,7 @@ class VTKP(VtkPp.VTKP):
         self.slab_depth = None
         self.trench = None
         self.coord_100 = None 
+        self.coord_200 = None # relate with the previous one
         self.dip_100 = None
         self.vsp = None
         self.vov = None
@@ -281,10 +282,6 @@ class VTKP(VtkPp.VTKP):
         r100 = get_r(x100, y100, self.geometry)
         theta100 = get_theta(x100, y100, self.geometry)
         self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
-        # query a point at depth_distant_lookup that is 5 deg to the
-        # slab surface point at depth_lookup derived in the previous step
-        if prepare_slab_distant_properties:
-            self.PreparseSlabDistantProperties(depth_distant_lookup)
         if prepare_cmb is not None:
             # get the crust envelop
             crust_en_cell_lists = [ [] for i in range(total_en_interval) ]
@@ -423,48 +420,87 @@ class VTKP(VtkPp.VTKP):
         self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
         pass
 
-    def PreparseSlabDistantProperties(self, depth_distant_lookup, **kwargs):
+    def ExportOvAthenProfile(self, depth_distant_lookup, **kwargs):
         '''
-        query a point at depth_distant_lookup that is 5 deg to the
-        slab surface point at depth_lookup derived in the previous step
+        query a profile ending at depth_distant_lookup that is 5 deg to the
         Inputs:
             depth_distant_lookup - depth to place this query point
         '''
         project_velocity = kwargs.get("project_velocity", True)
-
-        # get the coordinate of the query point
-        x_distant_200 = None; y_distant_200 = None
-        if self.geometry == "chunk":
-            self.coord_200 = self.coord_100 + 5.0 * np.pi / 180.0
-            x_distant_200 = (self.Ro - depth_distant_lookup) * np.cos(self.coord_200)
-            y_distant_200 = (self.Ro - depth_distant_lookup) * np.sin(self.coord_200)
-        elif self.geometry == "box":
-            self.coord_200 = self.coord_100 + 5.0 * np.pi / 180.0 * self.Ro
-            x_distant_200 = self.coord_100 + 5.0 * np.pi / 180.0 * self.Ro
-            y_distant_200 = self.Ro - depth_distant_lookup
+        n_sample = kwargs.get("n_sample", 100)
+        
+        assert((self.coord_100 is not None) and (self.coord_100 is not None))
 
         # query the poly_data 
-        query_grid = np.zeros((1,2))
-        self.v_distant_200 = np.zeros(2)
-        query_grid[0, 0] = x_distant_200
-        query_grid[0, 1] = y_distant_200
+        query_grid = np.zeros((n_sample,2))
+        v_distant_profile = np.zeros((n_sample, 2))
+        depths = np.zeros(n_sample)
+        value_fixings = np.zeros(n_sample)
+        for i in range(n_sample):
+            x_distant_200 = None; y_distant_200 = None
+            depth = depth_distant_lookup * (1.0 * i / (n_sample-1.0))
+            depths[i] = depth
+            if self.geometry == "chunk":
+                x_distant_200 = (self.Ro - depth) * np.cos(self.coord_100 + 5.0 * np.pi / 180.0)
+                y_distant_200 = (self.Ro - depth) * np.sin(self.coord_100 + 5.0 * np.pi / 180.0)
+            elif self.geometry == "box":
+                x_distant_200 = self.coord_100 + 5.0 * np.pi / 180.0 * self.Ro
+                y_distant_200 = self.Ro - depth
+            query_grid[i, 0] = x_distant_200
+            query_grid[i, 1] = y_distant_200
+        # interpolate 
         query_poly_data = VtkPp.InterpolateGrid(self.i_poly_data, query_grid, quiet=True)
         query_vs = vtk_to_numpy(query_poly_data.GetPointData().GetArray('velocity'))
         query_viscs = vtk_to_numpy(query_poly_data.GetPointData().GetArray('viscosity'))
-
+        # fix_missing_data
+        # reason: interpolation fails upon chaning resolution
+        # strategy: perturb by 0.1 degree at a time
+        for i in range(n_sample):
+            while (abs(query_viscs[i])) < 1e-6:
+                # data missin
+                value_fixings[i] += 1.0
+                if self.geometry == "chunk":
+                    # perturb by 0.1 degress
+                    x_distant_200_1 = (self.Ro - depths[i]) * np.cos(self.coord_100 + (5.0 - 0.1*value_fixings[i]) * np.pi / 180.0)
+                    y_distant_200_1 = (self.Ro - depths[i]) * np.sin(self.coord_100 + (5.0 - 0.1*value_fixings[i]) * np.pi / 180.0)
+                    x_distant_200_2 = (self.Ro - depths[i]) * np.cos(self.coord_100 + (5.0 + 0.1*value_fixings[i]) * np.pi / 180.0)
+                    y_distant_200_2 = (self.Ro - depths[i]) * np.sin(self.coord_100 + (5.0 + 0.1*value_fixings[i]) * np.pi / 180.0)
+                elif self.geometry == "box":
+                    x_distant_200_1 = self.coord_100 + (5.0 - 0.1*value_fixings[i]) * np.pi / 180.0 * self.Ro
+                    y_distant_200_1 = self.Ro - depths[i]
+                    x_distant_200_2 = self.coord_100 + (5.0 + 0.1*value_fixings[i]) * np.pi / 180.0 * self.Ro
+                    y_distant_200_2 = self.Ro - depths[i]
+                query_grid1 = np.zeros((1, 2))
+                query_grid1[0, 0] = x_distant_200_1
+                query_grid1[0, 1] = y_distant_200_1
+                query_grid2 = np.zeros((1, 2))
+                query_grid1[0, 0] = x_distant_200_2
+                query_grid1[0, 1] = y_distant_200_2
+                query_poly_data1 = VtkPp.InterpolateGrid(self.i_poly_data, query_grid1, quiet=True)
+                query_poly_data2 = VtkPp.InterpolateGrid(self.i_poly_data, query_grid2, quiet=True)
+                query_v1 = vtk_to_numpy(query_poly_data1.GetPointData().GetArray('velocity'))
+                query_visc1 = vtk_to_numpy(query_poly_data1.GetPointData().GetArray('viscosity'))
+                query_v2 = vtk_to_numpy(query_poly_data2.GetPointData().GetArray('velocity'))
+                query_visc2 = vtk_to_numpy(query_poly_data2.GetPointData().GetArray('viscosity'))
+                if (abs(query_visc1)) > 1e-6:
+                    # fixed
+                    query_vs[i, :] = query_v1
+                    query_viscs[i] = query_visc1
+                    query_grid[i, :] = query_grid1
+                    break
+                elif (abs(query_visc2)) > 1e-6:
+                    query_vs[i, :] = query_v2
+                    query_viscs[i] = query_visc2
+                    query_grid[i, :] = query_grid2
+                    break
         # project the velocity if needed and get the viscosity
         if project_velocity:
             # project velocity to theta direction in a spherical geometry
-            self.v_distant_200[0], self.v_distant_200[1] = VtkPp.ProjectVelocity(x_distant_200, y_distant_200, query_vs[0, :], self.geometry)
+            v_distant_profile[:, 0], v_distant_profile[:, 1] = VtkPp.ProjectVelocity(x_distant_200, y_distant_200, query_vs, self.geometry)
         else:
-            self.v_distant_200[0], self.v_distant_200[1] = query_vs[0, 0], query_vs[0, 1]
-        self.visc_distant_200 = query_viscs[0]
-    
-    def ExportSlabInfoExtra(self, depth_distant_lookup, **kwargs):
-        '''
-        Export additional slab info
-        '''
-        return self.v_distant_200, self.visc_distant_200
+            v_distant_profile[:, 0], v_distant_profile[:, 1] = query_vs[:, 0], query_vs[:, 1]
+        
+        return query_grid, depths, v_distant_profile, query_viscs, value_fixings
     
     
     def ExportSlabInfo(self):
@@ -1258,9 +1294,12 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     findmdd = kwargs.get("findmdd", False)
     mdd_dx0 = kwargs.get('mdd_dx0', 10e3)
     mdd_dx1 = kwargs.get('mdd_dx1', 10e3)
+    output_ov_ath_profile = kwargs.get("output_ov_ath_profile", False)
+    output_path = os.path.join(case_dir, "vtk_outputs")
+    if not os.path.isdir(output_path):
+        os.mkdir(output_path)
     findmdd_tolerance = kwargs.get("findmdd_tolerance", 0.05)
     depth_distant_lookup = kwargs.get("depth_distant_lookup", 200e3)
-    export_extra_info = kwargs.get("export_extra_info", False)
     project_velocity = kwargs.get('project_velocity', False)
     mdd = -1.0 # an initial value
     print("%s%s: Start" % (indent*" ", Utilities.func_name()))
@@ -1311,6 +1350,20 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
         print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env1))
         np.savetxt(o_slab_in, slab_internal)
         print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
+    # output a profile distant to the slab
+    n_distant_profiel_sample = 100
+    v_distant_profile = None; query_viscs = None
+    if output_ov_ath_profile:
+        header = "# 1: x (m)\n# 2: y (m)\n# 3: depth (m)\n# 4: velocity (m/s)\n# 5: viscosity (pa*s)\n# 6: fixing (by 0.1 deg)\n"
+        coords, depths, v_distant_profile, query_viscs, value_fixing = VtkP.ExportOvAthenProfile(depth_distant_lookup, n_sample=n_distant_profiel_sample)
+        outputs = np.concatenate((coords, depths.reshape((-1, 1)), v_distant_profile,\
+            query_viscs.reshape((-1, 1)), value_fixing.reshape((-1, 1))), axis=1)
+        o_file = os.path.join(output_path, "ov_ath_profile_%05d.txt" % (vtu_step))
+        with open(o_file, 'w') as fout:
+            fout.write(header)  # output header
+        with open(o_file, 'a') as fout:
+            np.savetxt(fout, outputs, fmt="%20.8e")  # output data
+        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_file))
     # process trench, slab depth, dip angle
     trench, slab_depth, dip_100 = VtkP.ExportSlabInfo()
     if project_velocity:
@@ -1324,9 +1377,8 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     % (vtu_step, step, _time, trench, slab_depth, dip_100, vsp_magnitude, vov_magnitude)
     if findmdd:
         outputs += "%-14.4e %-14.4e" % (mdd1, mdd2)
-    if export_extra_info:
-        vs_distant, visc_distant = VtkP.ExportSlabInfoExtra(depth_distant_lookup)
-        outputs += "%-14.4e %-14.4e" % (vs_distant[0], visc_distant)
+    if output_ov_ath_profile:
+        outputs += "%-14.4e %-14.4e" % (v_distant_profile[n_distant_profiel_sample-1, 0], query_viscs[n_distant_profiel_sample-1])
     outputs += "\n"
     print("%s%s" % (indent*" ", outputs)) # debug
     return vtu_step, outputs
@@ -1927,7 +1979,7 @@ def SlabMorphologyCase(case_dir, **kwargs):
     # todo_parallel
     use_parallel = kwargs.get('use_parallel', False)
     file_tag = kwargs.get('file_tag', False)
-    export_extra_info = kwargs.get('export_extra_info', False)
+    output_ov_ath_profile = kwargs.get('output_ov_ath_profile', False)
     kwargs["if_rewrite"] = True
     # get all available snapshots
     # the interval is choosen so there is no high frequency noises
@@ -1979,7 +2031,7 @@ def SlabMorphologyCase(case_dir, **kwargs):
     if findmdd:
         file_header += "# 9: mechanical decoupling depth1 (m)\n# 10: mechanical decoupling depth2 (m)\n"
         n_col += 2
-    if export_extra_info:
+    if output_ov_ath_profile:
         file_header += "# %d: athenosphere velocity (m/yr)\n# %d: athenosphere viscosity (pa*s)\n" % (n_col+1, n_col+2)
         n_col += 2
     # output file name
@@ -2535,6 +2587,8 @@ class SLABPLOT(LINEARPLOT):
         col_pvtu_slab_depth = self.header['slab_depth']['col']
         col_pvtu_sp_v = self.header['subducting_plate_velocity']['col']
         col_pvtu_ov_v = self.header['overiding_plate_velocity']['col']
+        col_athenosphere_velocity = self.header['athenosphere_velocity']['col']
+        col_athenosphere_viscosity = self.header['athenosphere_viscosity']['col']
         pvtu_steps = self.data[:, col_pvtu_step]
         times = self.data[:, col_pvtu_time]
         trenches = self.data[:, col_pvtu_trench]
@@ -2552,6 +2606,8 @@ class SLABPLOT(LINEARPLOT):
         sink_velocities = np.gradient(slab_depthes, times)
         sp_velocities = self.data[:, col_pvtu_sp_v]
         ov_velocities = self.data[:, col_pvtu_ov_v]
+        athenosphere_velocities = self.data[:, col_athenosphere_velocity]
+        athenosphere_viscosities = self.data[:, col_athenosphere_viscosity]
 
         # 1: trench & slab movement
         gs = gridspec.GridSpec(2, 1) 
@@ -2590,6 +2646,7 @@ class SLABPLOT(LINEARPLOT):
         ln_v_tr = ax.plot(times/1e6, trench_velocities*1e2, '-', color="tab:orange", label='trench velocity (cm/yr)')
         ln_v_sub = ax.plot(times/1e6, sp_velocities*1e2, '-', color='tab:blue', label='subducting plate (cm/yr)')
         ln_v_ov = ax.plot(times/1e6, ov_velocities*1e2, '-', color='tab:purple', label='overiding plate (cm/yr)')
+        ln_v_ath = ax.plot(times/1e6, athenosphere_velocities*1e2, '-', color='c', label='athenosphere (cm/yr)')
         ln_v_sink = ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='sink velocity (cm/yr)')
         for _time in time_markers:
             temp_ts = _time * np.ones(200)
@@ -2616,7 +2673,7 @@ class SLABPLOT(LINEARPLOT):
         ax_tx.set_ylim((ylim0, ylim1))
         ax_tx.set_ylabel('Trench Position (km)', color="tab:orange")
         ax_tx.tick_params(axis='y', labelcolor="tab:orange")
-        lns = ln_tr + ln_v_tr + ln_v_sub + ln_v_sink + ln_v_ov
+        lns = ln_tr + ln_v_tr + ln_v_sub + ln_v_sink + ln_v_ov + ln_v_ath
         labs = [I.get_label() for I in lns]
         ax.legend(lns, labs, loc='upper right')
         # save figure
@@ -4055,15 +4112,15 @@ def main():
     elif _commend == 'morph_step':
         # slab_morphology, input is the case name
         SlabMorphology_dual_mdd(arg.inputs, int(arg.vtu_snapshot), rewrite=1, output_slab=True, findmdd=True, project_velocity=True,\
-            findmdd_tolerance=arg.findmdd_tolerance, mdd_dx0=arg.mdd_dx0, mdd_dx1=arg.mdd_dx1, export_extra_info=True)
+            findmdd_tolerance=arg.findmdd_tolerance, mdd_dx0=arg.mdd_dx0, mdd_dx1=arg.mdd_dx1, output_ov_ath_profile=True)
     elif _commend == 'morph_case':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True,\
-            findmdd_tolerance=arg.findmdd_tolerance, export_extra_info=True)
+            findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True)
     elif _commend == 'morph_case_parallel':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True,\
-            use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance, export_extra_info=True)
+            use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')
