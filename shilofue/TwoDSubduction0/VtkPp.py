@@ -29,6 +29,7 @@ from joblib import Parallel, delayed
 from matplotlib import pyplot as plt
 from matplotlib import gridspec, cm
 from matplotlib import colors as mcolors
+from cmcrameri import cm as ccm
 import shilofue.VtkPp as VtkPp
 from shilofue.VtkPp import get_r
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
@@ -1354,7 +1355,7 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     n_distant_profiel_sample = 100
     v_distant_profile = None; query_viscs = None
     if output_ov_ath_profile:
-        header = "# 1: x (m)\n# 2: y (m)\n# 3: depth (m)\n# 4: velocity (m/s)\n# 5: viscosity (pa*s)\n# 6: fixing (by 0.1 deg)\n"
+        header = "# 1: x (m)\n# 2: y (m)\n# 3: depth (m)\n# 4: velocity_h (m/s)\n# 5: velocity_r (m/s)\n# 6: viscosity (pa*s)\n# 7: fixing (by 0.1 deg)\n"
         coords, depths, v_distant_profile, query_viscs, value_fixing = VtkP.ExportOvAthenProfile(depth_distant_lookup, n_sample=n_distant_profiel_sample)
         outputs = np.concatenate((coords, depths.reshape((-1, 1)), v_distant_profile,\
             query_viscs.reshape((-1, 1)), value_fixing.reshape((-1, 1))), axis=1)
@@ -2559,6 +2560,9 @@ class SLABPLOT(LINEARPLOT):
         morph_dir = os.path.join(img_dir, 'morphology')
         if not os.path.isdir(morph_dir):
             os.mkdir(morph_dir)
+        # visit option class 
+        Visit_Options = VISIT_OPTIONS(case_dir)
+        Visit_Options.Interpret()
         # read inputs
         prm_file = os.path.join(case_dir, 'output', 'original.prm')
         assert(os.access(prm_file, os.R_OK))
@@ -2610,8 +2614,8 @@ class SLABPLOT(LINEARPLOT):
         athenosphere_viscosities = self.data[:, col_athenosphere_viscosity]
 
         # 1: trench & slab movement
-        gs = gridspec.GridSpec(2, 1) 
-        fig = plt.figure(tight_layout=True, figsize=(20, 20)) 
+        gs = gridspec.GridSpec(4, 1) 
+        fig = plt.figure(tight_layout=True, figsize=(20, 40)) 
         ax = fig.add_subplot(gs[0, 0]) 
         ax_tx = ax.twinx()
         lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, '-', color='tab:orange', label='trench position (km)')
@@ -2676,6 +2680,51 @@ class SLABPLOT(LINEARPLOT):
         lns = ln_tr + ln_v_tr + ln_v_sub + ln_v_sink + ln_v_ov + ln_v_ath
         labs = [I.get_label() for I in lns]
         ax.legend(lns, labs, loc='upper right')
+        # read athenosphere dataset
+        available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=float(time_interval))
+        depth_mesh = np.zeros([len(available_pvtu_snapshots), 100])
+        time_mesh = np.zeros([len(available_pvtu_snapshots), 100])
+        viscosity_mesh = np.zeros([len(available_pvtu_snapshots), 100])
+        velocity_h_mesh = np.zeros([len(available_pvtu_snapshots), 100])
+        for i in range(len(available_pvtu_snapshots)):
+            vtu_snapshot = available_pvtu_snapshots[i]
+            _time, _ = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot)
+            vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+            slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'ov_ath_profile_%.5d.txt' % vtu_step)
+            assert(os.path.isfile(slab_morph_file))
+            data = np.loadtxt(slab_morph_file)
+            depths = data[:, 2]
+            depth_mesh[i, :] = depths
+            time_mesh[i, :] = np.ones(100) * _time
+            velocities_h = data[:, 3]
+            velocity_h_mesh[i, :] = velocities_h
+            viscosities = data[:, 5]
+            viscosity_mesh[i, :] = viscosities
+        # plot the viscosity
+        ax = fig.add_subplot(gs[2, 0])
+        h = ax.pcolormesh(time_mesh/1e6, depth_mesh/1e3, np.log10(viscosity_mesh), cmap=ccm.roma,\
+            vmin=np.log10(Visit_Options.options["ETA_MIN"]), vmax=np.log10(Visit_Options.options["ETA_MAX"]))
+        ax.invert_yaxis()
+        fig.colorbar(h, ax=ax, label='log(viscosity (Pa*s))', orientation="horizontal")
+        ax.set_xlabel("Time (Ma)")
+        ax.set_ylabel("Depth (km)")
+        if time_range is None:
+            ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+        else:
+            ax.set_xlim((time_range[0]/1e6, time_range[1]/1e6))  # set x limit
+        # plot the velocity
+        ax = fig.add_subplot(gs[3, 0])
+        v_min = np.floor(velocity_h_mesh.min()*100.0 / 5.0) * 5.0
+        v_max = np.ceil(velocity_h_mesh.max()*100.0 / 5.0) * 5.0
+        h = ax.pcolormesh(time_mesh/1e6, depth_mesh/1e3, velocity_h_mesh*100.0, vmin=v_min, vmax=v_max)
+        ax.invert_yaxis()
+        fig.colorbar(h, ax=ax, label='velocity (cm/yr)', orientation="horizontal")
+        ax.set_ylabel("Depth (km)")
+        ax.set_xlabel("Time (Ma)")
+        if time_range is None:
+            ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+        else:
+            ax.set_xlim((time_range[0]/1e6, time_range[1]/1e6))  # set x limit
         # save figure
         o_path = os.path.join(morph_dir, 'trench_t%.2e' % time_interval)
         fig.savefig(o_path + '.png')
