@@ -29,7 +29,7 @@ import multiprocessing
 import time
 from joblib import Parallel, delayed
 import warnings
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, UnivariateSpline
 #### self
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
 from shilofue.ThDSubduction0.PlotVisit import VISIT_OPTIONS
@@ -89,13 +89,18 @@ class VTKP(VtkPp.VTKP):
         self.trench_coords_x = []
         self.trench_coords_y = []
         self.trench_coords_z = []
+        self.trench_b_coords_x = []
+        self.trench_b_coords_y = []
+        self.trench_b_coords_z = []
         self.center_profile_x = []
         self.center_profile_y = []
         self.center_profile_z = []
-        # todo_pind
         self.pinD_profile_x = []
         self.pinD_profile_y = []
         self.pinD_profile_z = []
+        self.pinD_b_profile_x = []
+        self.pinD_b_profile_y = []
+        self.pinD_b_profile_z = []
         self.slab_depth = 0.0  # slab depth
         self.buoyancies = None
 
@@ -169,12 +174,18 @@ class VTKP(VtkPp.VTKP):
         trench_coords_x = []
         trench_coords_y = []
         trench_coords_z = []
+        trench_b_coords_x = []
+        trench_b_coords_y = []
+        trench_b_coords_z = []
         center_profile_x = []
         center_profile_y = []
         center_profile_z = []
         pinD_coords_x = []
         pinD_coords_y = []
         pinD_coords_z = []
+        pinD_b_coords_x = []
+        pinD_b_coords_y = []
+        pinD_b_coords_z = []
         for id_en in range(len(slab_en_point_lists)):
             theta_min = 0.0  # then, loop again by intervals to look for a
             theta_max = 0.0  # max theta and a min theta for each interval
@@ -217,24 +228,37 @@ class VTKP(VtkPp.VTKP):
                     trench_coords_x.append(points[id_max][0])
                     trench_coords_y.append(points[id_max][1])
                     trench_coords_z.append(points[id_max][2])
+                if id_min > 0:
+                    trench_b_coords_x.append(points[id_min][0])
+                    trench_b_coords_y.append(points[id_min][1])
+                    trench_b_coords_z.append(points[id_min][2])
             if get_pin_depth:
                 if id_en % total_en_interval_z == id_en_pin_depth:
-                    # todo_pind
                     # get the pinned x, y and z at a pinned depth
                     if id_max > 0:
                         pinD_coords_x.append(points[id_max][0])
                         pinD_coords_y.append(points[id_max][1])
                         pinD_coords_z.append(points[id_max][2])
+                    if id_min > 0:
+                        pinD_b_coords_x.append(points[id_min][0])
+                        pinD_b_coords_y.append(points[id_min][1])
+                        pinD_b_coords_z.append(points[id_min][2])
         # append data to class objects
         self.trench_coords_x = trench_coords_x
         self.trench_coords_y = trench_coords_y
         self.trench_coords_z = trench_coords_z
+        self.trench_b_coords_x = trench_b_coords_x
+        self.trench_b_coords_y = trench_b_coords_y
+        self.trench_b_coords_z = trench_b_coords_z
         self.center_profile_x = center_profile_x
         self.center_profile_y = center_profile_y
         self.center_profile_z = center_profile_z
         self.pinD_profile_x = pinD_coords_x
         self.pinD_profile_y = pinD_coords_y
         self.pinD_profile_z = pinD_coords_z
+        self.pinD_b_profile_x = pinD_b_coords_x
+        self.pinD_b_profile_y = pinD_b_coords_y
+        self.pinD_b_profile_z = pinD_b_coords_z
 
     # todo_hv 
     def SlabSurfaceAtDepth(self, depth):
@@ -293,13 +317,24 @@ class VTKP(VtkPp.VTKP):
         Output slab information
         '''
         return self.trench_coords_x, self.trench_coords_y, self.trench_coords_z
+
+    def ExportSlabInfoB(self):
+        '''
+        Output slab information (bottom)
+        '''
+        return self.trench_b_coords_x, self.trench_b_coords_y, self.trench_b_coords_z
     
     def ExportPinDInfo(self):
         '''
         Output pinned depth slab curve
-        todo_pind
         '''
         return self.pinD_profile_x, self.pinD_profile_y, self.pinD_profile_z
+    
+    def ExportPinDInfoB(self):
+        '''
+        Output pinned depth slab curve (bottom)
+        '''
+        return self.pinD_b_profile_x, self.pinD_b_profile_y, self.pinD_b_profile_z
 
     # todo_center 
     def ExportCenterProfile(self):
@@ -380,7 +415,14 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     # fileout = os.path.join(output_path, 'slab.vtu')
     slab_point_grid = VtkPp.ExportPointGridFromPolyData(VtkP.i_poly_data, VtkP.slab_points)
     if include_force_balance:
-        fileout = os.path.join(output_path, 'slab.vtp')
+        # mark the composition used for the envelop in the filename
+        if crust_only == 1:
+            filename = 'slab.vtp'
+        elif crust_only == 2:
+            filename = 'slab_l.vtp'
+        else:
+            filename = 'slab_lu.vtp'
+        fileout = os.path.join(output_path, filename)
         # buoyancy array
         VtkP.ComputeBuoyancy()
         buoyancy_vtk_array = numpy_to_vtk(VtkP.buoyancies)
@@ -414,7 +456,13 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         # export data
         VtkPp.ExportPolyData(o_poly_data, fileout)
     else:
-        fileout = os.path.join(output_path, 'slab.vtu')
+        if crust_only == 1:
+            filename = 'slab.vtu'
+        elif crust_only == 2:
+            filename = 'slab_l.vtu'
+        else:
+            filename = 'slab_lu.vtu'
+        fileout = os.path.join(output_path, filename)
         writer = vtk.vtkXMLUnstructuredGridWriter()
         writer.SetInputData(slab_point_grid)
         writer.SetFileName(fileout)
@@ -422,8 +470,15 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         writer.Write()
     print("File output for slab internal points: %s" % fileout)
     # 2. slab envelops
-    file_name = "slab_env0" + appendix + ".vtu"
-    fileout = os.path.join(output_path, file_name)
+    # 2a bottom
+    if crust_only == 1:
+        # mark the composition used for the envelop in the filename
+        filename = "slab_env0" + appendix + ".vtu"
+    elif crust_only == 2:
+        filename = "slab_env0_l" + appendix + ".vtu"
+    else:
+        filename = "slab_env0_lu" + appendix + ".vtu"
+    fileout = os.path.join(output_path, filename)
     slab_env0_grid = VtkPp.ExportPointGridFromPolyData(VtkP.i_poly_data,VtkP.slab_envelop_point_list0)
     writer = vtk.vtkXMLUnstructuredGridWriter()
     writer.SetInputData(slab_env0_grid)
@@ -431,8 +486,15 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     writer.Update()
     writer.Write()
     print("File output for slab envelop0 (smaller x) points: %s" % fileout)
-    file_name = "slab_env1" + appendix + ".vtu"
-    fileout = os.path.join(output_path, file_name)
+    # 2b top
+    if crust_only == 1:
+        # mark the composition used for the envelop in the filename
+        filename = "slab_env1" + appendix + ".vtu"
+    elif crust_only == 2:
+        filename = "slab_env1_l" + appendix + ".vtu"
+    else:
+        filename = "slab_env1_lu" + appendix + ".vtu"
+    fileout = os.path.join(output_path, filename)
     slab_env1_grid = VtkPp.ExportPointGridFromPolyData(VtkP.i_poly_data,VtkP.slab_envelop_point_list1)
     writer = vtk.vtkXMLUnstructuredGridWriter()
     writer.SetInputData(slab_env1_grid)
@@ -445,6 +507,7 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     start = end
     # prepare outputs
     # First write the position of the trench
+    # a. top
     trench_coords_x, trench_coords_y, trench_coords_z = VtkP.ExportSlabInfo()
     outputs = "# trench coordinates: x, y and z\n" + \
     "# vtu step: %d\n" % vtu_step  + \
@@ -453,10 +516,37 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         if i > 0:
             outputs += "\n"
         outputs += str(trench_coords_x[i]) + " " + str(trench_coords_y[i]) + " " + str(trench_coords_z[i])
-    fileout = os.path.join(output_path, "trench_%05d.txt" % vtu_snapshot)
+    if crust_only == 1:
+        # mark the composition used for the envelop in the filename
+        filename = "trench_%05d.txt" % vtu_snapshot
+    elif crust_only == 2:
+        filename = "trench_l_%05d.txt" % vtu_snapshot
+    else:
+        filename = "trench_lu_%05d.txt" % vtu_snapshot
+    fileout = os.path.join(output_path, filename)
     with open(fileout, 'w') as fout:
         fout.write(outputs)
-    print("File output for trench positions: %s" % fileout)
+    print("File output for trench positions (upper boundary): %s" % fileout)
+    # b. bottom
+    trench_b_coords_x, trench_b_coords_y, trench_b_coords_z = VtkP.ExportSlabInfoB()
+    outputs = "# trench coordinates: x, y and z\n" + \
+    "# vtu step: %d\n" % vtu_step  + \
+    "# time: %.4e\n" % _time
+    for i in range(len(trench_b_coords_x)):
+        if i > 0:
+            outputs += "\n"
+        outputs += str(trench_b_coords_x[i]) + " " + str(trench_b_coords_y[i]) + " " + str(trench_b_coords_z[i])
+    if crust_only == 1:
+        # mark the composition used for the envelop in the filename
+        filename = "trench_b_%05d.txt" % vtu_snapshot
+    elif crust_only == 2:
+        filename = "trench_l_b_%05d.txt" % vtu_snapshot
+    else:
+        filename = "trench_lu_b_%05d.txt" % vtu_snapshot
+    fileout = os.path.join(output_path, filename)
+    with open(fileout, 'w') as fout:
+        fout.write(outputs)  
+    print("File output for trench positions (lower boundary): %s" % fileout)
     end = time.time()
     print("Write trench positions, takes %.2f s" % (end - start))
     start = end
@@ -469,7 +559,14 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         if i > 0:
             outputs += "\n"
         outputs += str(center_profile_x[i]) + " " + str(center_profile_y[i]) + " " + str(center_profile_z[i])
-    fileout = os.path.join(output_path, "center_profile_%05d.txt" % vtu_snapshot)
+    if crust_only == 1:
+        # mark the composition used for the envelop in the filename
+        filename = "center_profile_%05d.txt" % vtu_snapshot
+    elif crust_only == 2:
+        filename = "center_profile_l_%05d.txt" % vtu_snapshot
+    else:
+        filename = "center_profile_lu_%05d.txt" % vtu_snapshot
+    fileout = os.path.join(output_path, filename)
     with open(fileout, 'w') as fout:
         fout.write(outputs)
     print("File output for the center profile: %s" % fileout)
@@ -477,7 +574,7 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     print("Write center profile, takes %.2f s" % (end - start))
     start = end
     # Then write the pinned depth if required
-    # todo_pind
+    # top
     pinD_coords_x, pinD_coords_y, pinD_coords_z = VtkP.ExportPinDInfo()
     outputs = "# pinned points at depth %.2f km coordinates: x, y and z\n" % (pin_depth/1e3) + \
     "# vtu step: %d\n" % vtu_step  + \
@@ -486,7 +583,34 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         if i > 0:
             outputs += "\n"
         outputs += str(pinD_coords_x[i]) + " " + str(pinD_coords_y[i]) + " " + str(pinD_coords_z[i])
-    fileout = os.path.join(output_path, "trench_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot))
+    if crust_only == 1:
+        # mark the composition used for the envelop in the filename
+        filename = "trench_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+    elif crust_only == 2:
+        filename = "trench_l_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+    else:
+        filename = "trench_lu_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+    fileout = os.path.join(output_path, filename)
+    with open(fileout, 'w') as fout:
+        fout.write(outputs)
+    print("File output for trench positions at depth %.2f km: %s" % (pin_depth/1e3, fileout))
+    # bottom
+    pinD_b_coords_x, pinD_b_coords_y, pinD_b_coords_z = VtkP.ExportPinDInfoB()
+    outputs = "# pinned points at depth %.2f km coordinates: x, y and z\n" % (pin_depth/1e3) + \
+    "# vtu step: %d\n" % vtu_step  + \
+    "# time: %.4e\n" % _time
+    for i in range(len(pinD_b_coords_x)):
+        if i > 0:
+            outputs += "\n"
+        outputs += str(pinD_b_coords_x[i]) + " " + str(pinD_b_coords_y[i]) + " " + str(pinD_b_coords_z[i])
+    if crust_only == 1:
+        # mark the composition used for the envelop in the filename
+        filename = "trench_b_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+    elif crust_only == 2:
+        filename = "trench_l_b_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+    else:
+        filename = "trench_lu_b_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+    fileout = os.path.join(output_path, filename)
     with open(fileout, 'w') as fout:
         fout.write(outputs)
     print("File output for trench positions at depth %.2f km: %s" % (pin_depth/1e3, fileout))
@@ -504,7 +628,14 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
             if i > 0:
                 outputs += "\n"
             outputs += str(coords_x[i]) + " " + str(coords_y[i]) + " " + str(coords_z[i])
-        fileout = os.path.join(output_path, "slab_surface_%05d_d%.2fkm.txt" % (vtu_snapshot, hv_depth/1e3))
+        if crust_only == 1:
+            # mark the composition used for the envelop in the filename
+            filename = "slab_surface_%05d_d%.2fkm.txt" % (vtu_snapshot, hv_depth/1e3)
+        elif crust_only == 2:
+            filename = "slab_surface_l_%05d_d%.2fkm.txt" % (vtu_snapshot, hv_depth/1e3)
+        else:
+            filename = "slab_surface_lu_%05d_d%.2fkm.txt" % (vtu_snapshot, hv_depth/1e3)
+        fileout = os.path.join(output_path, filename)
         with open(fileout, 'w') as fout:
             fout.write(outputs)
         print("File output for trench positions: %s" % fileout)
@@ -548,7 +679,16 @@ def SlabMorphologyCase(case_dir, **kwargs):
     # slab_morph_file = os.path.join(vtk_output_dir, 'slab_morph.txt')
 
     # Initiation Wrapper class for parallel computation
-    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology, if_rewrite=if_rewrite, slab_envelop_interval_y=slab_envelop_interval_y,\
+    if crust_only == 1:
+        # mark the composition used in the file name
+        base_name = "slab_morph"
+    elif crust_only == 2:
+        base_name = "slab_morph_l"
+    elif crust_only == 3:
+        base_name = "slab_morph_lu"
+    # use a wrapper of a processing function
+    # the base_name is the basename of files to generate
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK(base_name, SlabMorphology, if_rewrite=if_rewrite, slab_envelop_interval_y=slab_envelop_interval_y,\
                                                 slab_envelop_interval_z=slab_envelop_interval_z, slab_shallow_cutoff=slab_shallow_cutoff, crust_only=crust_only,\
                                                 include_force_balance=include_force_balance)
     ParallelWrapper.configure(case_dir)  # assign case directory
@@ -953,6 +1093,7 @@ def PlotSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
     y_query = kwargs.get("y_query", 0.0)
     ax_twinx = kwargs.get("axis_twinx", None)
     pin_depth = kwargs.get("pin_depth", 100e3)
+    crust_only = kwargs.get("crust_only", 0)
 
     # initiation
     Visit_Options = VISIT_OPTIONS(case_dir)
@@ -973,9 +1114,22 @@ def PlotSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
     ts = []
     for n in range(n_snapshots-1):
         vtu_snapshot = available_pvtu_snapshots[n]
-        filein0 = os.path.join(case_dir, "vtk_outputs", "trench_%05d.txt" % vtu_snapshot)
-        filein1 = os.path.join(case_dir, "vtk_outputs", "center_profile_%05d.txt" % vtu_snapshot)
-        filein2 = os.path.join(case_dir, "vtk_outputs", "trench_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot))
+        # mark the composition used for the envelop in the filename
+        if crust_only == 1:
+            filename0 = "trench_b_%05d.txt" % vtu_snapshot
+            filename1 = "center_profile_%05d.txt" % vtu_snapshot
+            filename2 = "trench_b_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+        elif crust_only == 2:
+            filename0 = "trench_l_b_%05d.txt" % vtu_snapshot
+            filename1 = "center_profile_l_%05d.txt" % vtu_snapshot
+            filename2 = "trench_l_b_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+        else:
+            filename0 = "trench_lu_b_%05d.txt" % vtu_snapshot
+            filename1 = "center_profile_lu_%05d.txt" % vtu_snapshot
+            filename2 = "trench_lu_b_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+        filein0 = os.path.join(case_dir, "vtk_outputs", filename0)
+        filein1 = os.path.join(case_dir, "vtk_outputs", filename1)
+        filein2 = os.path.join(case_dir, "vtk_outputs", filename2)
         if not os.path.isfile(filein0):
             if not silence:
                 warnings.warn('PlotTrenchVelocity: File %s is not found' % filein0, UserWarning)
@@ -1011,8 +1165,13 @@ def PlotSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
     dips = np.array(dips)
     depths = np.array(depths)
     ts = np.array(ts)
+    # apply a spline
+    spline = UnivariateSpline(ts/1e6, dips, s=0) # s=0 means interpolation
+    ts_new = np.linspace(ts.min(), ts.max(), 1000)
+    dips_splined = spline(ts_new/1e6)
     # plot the differences by subtracting the initial value
     ax.plot(ts / 1e6, dips * 180.0 / np.pi, label="y = %.2f km" % (y_query / 1e3), color=_color) # trench position
+    ax.plot(ts_new / 1e6, dips_splined * 180.0 / np.pi, "--", label="y = %.2f km (splined)" % (y_query / 1e3), color=_color) # trench position
     if y_query < 1e-6:
         # only plot the depth at the center
         ax_twinx.plot(ts / 1e6, depths / 1e3, "--", color=_color) # depth
