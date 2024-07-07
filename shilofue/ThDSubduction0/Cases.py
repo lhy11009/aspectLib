@@ -64,7 +64,7 @@ class CASE_OPT(CasesP.CASE_OPT):
         self.start = self.number_of_keys()
         self.add_key("Width of the box", float, ['geometry setup', 'box width'], 2000e3, nick='box_width')
         self.add_key("Length of the box", float, ['geometry setup', 'box length'], 4000e3, nick='box_length')
-        self.add_key("Depth of the box", float, ['geometry setup', 'box depth'], 1000e3, nick='box_depth')
+        self.add_key("Height of the box", float, ['geometry setup', 'box height'], 1000e3, nick='box_height')
         self.add_key("Width of the subducting plate", float, ['plate setup', 'sp width'], 1000e3, nick='sp_width')
         self.add_key("Length of the subducting plate", float, ['plate setup', 'sp length'], 2200e3, nick='sp_length')
         self.add_key("Depth of the subducting plate (in schellart 07 model", float,\
@@ -160,7 +160,7 @@ different age will be adjusted.",\
     def check(self):
         _type = self.values[9] 
         reset_trailing_morb = self.values[self.start+7]
-        assert(reset_trailing_morb in [0, 1, 2])
+        assert(reset_trailing_morb in [0, 1, 2, 3])
         friction_angle = self.values[self.start+10] # range of friction angle, in degree
         assert(friction_angle >= 0.0 and friction_angle <= 90.0)
         dip_angle = self.values[self.start+23] # initial dipping angle of the slab
@@ -197,7 +197,7 @@ different age will be adjusted.",\
             box_length = re_write_geometry_while_assigning_plate_age(
             *self.to_re_write_geometry_pa()
             ) # adjust box width
-        box_depth = self.values[self.start+2]
+        box_height = self.values[self.start+2]
         sp_width = self.values[self.start+3]
         trailing_length = self.values[self.start+6]
         reset_trailing_morb = self.values[self.start+7]
@@ -252,7 +252,7 @@ different age will be adjusted.",\
         adjust_mantle_rheology_detail = self.values[self.start+59]
         include_ov_upper_plate = self.values[self.start+60]
         slab_strength = self.values[self.start+61]
-        return _type, if_wb, geometry, box_width, box_length, box_depth,\
+        return _type, if_wb, geometry, box_width, box_length, box_height,\
             sp_width, trailing_length, reset_trailing_morb, ref_visc,\
             relative_visc_plate, friction_angle, relative_visc_lower_mantle, cohesion,\
             sp_depth_refining, reference_density, sp_relative_density, global_refinement,\
@@ -330,7 +330,7 @@ class CASE(CasesP.CASE):
     class for a case
     More Attributes:
     '''
-    def configure_prm(self, _type, if_wb, geometry, box_width, box_length, box_depth,\
+    def configure_prm(self, _type, if_wb, geometry, box_width, box_length, box_height,\
     sp_width, trailing_length, reset_trailing_morb, ref_visc, relative_visc_plate, friction_angle,\
     relative_visc_lower_mantle, cohesion, sp_depth_refining, reference_density, sp_relative_density, \
     global_refinement, adaptive_refinement, mantle_rheology_scheme, Dsz, apply_reference_density, Ddl,\
@@ -366,30 +366,30 @@ class CASE(CasesP.CASE):
         # The repitition_slice is defined by a max_repitition_slice and the minimum value compared with the dimensions
         # boudnary temperature: figure this out from the depth average profile
         max_repitition_slice = 1000e3 # a value for the maximum value
-        repitition_slice = np.min(np.array([box_length, box_width, box_depth, max_repitition_slice]))  # take the min as the repitition_slice
+        repitition_slice = np.min(np.array([box_length, box_width, box_height, max_repitition_slice]))  # take the min as the repitition_slice
         o_dict['Geometry model']['Box']['X extent'] =  str(box_length)
         o_dict['Geometry model']['Box']['Y extent'] =  str(box_width)
-        o_dict['Geometry model']['Box']['Z extent'] =  str(box_depth)
+        o_dict['Geometry model']['Box']['Z extent'] =  str(box_height)
         if repitition_slice_method == "floor": 
             o_dict['Geometry model']['Box']['X repetitions'] = str(int(box_length//repitition_slice))
             o_dict['Geometry model']['Box']['Y repetitions'] = str(int(box_width//repitition_slice))
-            o_dict['Geometry model']['Box']['Z repetitions'] = str(int(box_depth//repitition_slice))
+            o_dict['Geometry model']['Box']['Z repetitions'] = str(int(box_height//repitition_slice))
         elif repitition_slice_method == "nearest": 
             o_dict['Geometry model']['Box']['X repetitions'] = \
                 str(int(np.ceil(int((box_length/repitition_slice) * 2.0) / 2.0)))
             o_dict['Geometry model']['Box']['Y repetitions'] = \
                 str(int(np.ceil(int((box_width/repitition_slice) * 2.0) / 2.0)))
             o_dict['Geometry model']['Box']['Z repetitions'] = \
-                str(int(np.ceil(int((box_depth/repitition_slice) * 2.0) / 2.0)))
+                str(int(np.ceil(int((box_height/repitition_slice) * 2.0) / 2.0)))
         if fix_boudnary_temperature_auto:
             # boudnary temperature: figure this out from the depth average profile
             assert(self.da_Tad_func is not None)
             try:
-                Tad_bot = self.da_Tad_func(box_depth) # bottom adiabatic temperature
+                Tad_bot = self.da_Tad_func(box_height) # bottom adiabatic temperature
             except ValueError:
                 # in case this is above the given range of depth in the depth_average
                 # file, apply a slight variation and try again
-                Tad_bot = self.da_Tad_func(box_depth - 50e3)
+                Tad_bot = self.da_Tad_func(box_height - 50e3)
             o_dict['Boundary temperature model']['Box']['Bottom temperature'] = "%.4e" % Tad_bot
         # refinement
         o_dict["Mesh refinement"]["Initial global refinement"] = str(global_refinement)
@@ -402,22 +402,22 @@ class CASE(CasesP.CASE):
         if _type == "s07":
             if (abs(sp_depth_refining - 200e3)/200e3 > 1e-6):
                 o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
-                "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3" % (box_depth, sp_depth_refining)
+                "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3" % (box_height, sp_depth_refining)
             else:
                 o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
-                "Do=%.4e, UM=670e3, DD=200e3, Dp=100e3" % (box_depth)
+                "Do=%.4e, UM=670e3, DD=200e3, Dp=100e3" % (box_height)
         elif _type == "s07T":
             o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
-                "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining,\
+                "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_height, sp_depth_refining,\
                 max_refinement - coarsen_minimum_refinement_level, max_refinement - coarsen_minimum_refinement_level - 1)
         elif _type == "2d_consistent":
             o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
-                "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining,\
+                "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_height, sp_depth_refining,\
                 max_refinement - coarsen_minimum_refinement_level, max_refinement - coarsen_minimum_refinement_level -1)
             if coarsen_side:
                 # append an additional variable to coarsen the side with no slab
                 o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
-                    "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Wside=%.4e, Rd=%d, Rum=%d" % (box_depth, sp_depth_refining,\
+                    "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Wside=%.4e, Rd=%d, Rum=%d" % (box_height, sp_depth_refining,\
                     sp_width + coarsen_side_interval,\
                     max_refinement - coarsen_minimum_refinement_level, max_refinement - coarsen_minimum_refinement_level - 1)
                 if coarsen_side_level ==-1:
@@ -626,28 +626,28 @@ class CASE(CasesP.CASE):
         # rewrite the reset viscosity part
         if _type == 's07':
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
-            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
+            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_height, box_length, sp_width)
         elif _type == 's07_newton' and reset_trailing_ov_viscosity == 1:
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
-            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
+            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_height, box_length, sp_width)
         elif _type == '2d_consistent':
             if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
                 # another implementation, set trailing_length = 0.0 to turn off the older implementation
                 o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
-            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length_1, box_depth, box_length, sp_width)
+            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length_1, box_height, box_length, sp_width)
             else:
                 o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
-            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
+            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_height, box_length, sp_width)
         # rewrite the reset density part
         if _type == '2d_consistent':
             if "Reset density function" in o_dict['Material model'][material_model_subsection]:
                 if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
                     # another implementation, set trailing_length = 0.0 to turn off the older implementation
                     o_dict['Material model'][material_model_subsection]["Reset density function"]['Function constants'] =\
-                    "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CD=3300.0, Wp=%.4e" % (trailing_length_1, box_depth, box_length, sp_width)
+                    "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CD=3300.0, Wp=%.4e" % (trailing_length_1, box_height, box_length, sp_width)
                 else:
                     o_dict['Material model'][material_model_subsection]["Reset density function"]['Function constants'] =\
-                    "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CD=3300.0, Wp=%.4e" % (trailing_length, box_depth, box_length, sp_width)
+                    "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CD=3300.0, Wp=%.4e" % (trailing_length, box_height, box_length, sp_width)
 
         # rewrite the reaction morb part
         if _type in ['s07', 's07_newton', '2d_consistent']:
@@ -669,22 +669,27 @@ class CASE(CasesP.CASE):
             # fix the variables type-wise
             if reset_trailing_morb == 1:
                 o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
-                    "Width=%.4e, Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (trailing_length, box_depth, box_length, Dsz_str, Dp_str, sp_width)
+                    "Width=%.4e, Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (trailing_length, box_height, box_length, Dsz_str, Dp_str, sp_width)
         elif _type == "s07_newton":
             if reset_trailing_morb == 1:
                 o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
-                    "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (box_depth, box_length, Dsz_str, Dp_str, sp_width)
+                    "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (box_height, box_length, Dsz_str, Dp_str, sp_width)
         elif _type == '2d_consistent':
+            # todo_1000
             if reset_trailing_morb == 1:
                 if sp_ridge_x > 0.0 and ov_side_dist > 0.0:
                     o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
                         "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=%.4e, dOvSide=%.4e" % \
-                        (box_depth, box_length, Dsz_str, Dp_str, sp_width, sp_ridge_x, ov_side_dist)
-            if reset_trailing_morb == 2:
+                        (box_height, box_length, Dsz_str, Dp_str, sp_width, sp_ridge_x, ov_side_dist)
+            elif reset_trailing_morb == 2:
                 # use this option to reset the morb composition when sp ridge is 0.0
                 o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
                     "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=%.4e, dOvSide=%.4e" % \
-                    (box_depth, box_length, Dsz_str, Dp_str, sp_width, 6e5, 6e5)
+                    (box_height, box_length, Dsz_str, Dp_str, sp_width, 6e5, 6e5)
+            elif reset_trailing_morb == 3:
+                o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
+                "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=6.0000e+05, dOvSide=6.0000e+05" %\
+                (box_height, box_length, Dsz_str, Dp_str, sp_width)
         else:
             raise ValueError()
         # prescribe mantle temperature
@@ -694,14 +699,14 @@ class CASE(CasesP.CASE):
                 o_dict["Prescribe internal mantle adiabat temperatures"] = 'true'
                 o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function constants"] = \
                     "Do=%.4e, xm=%.4e, Wp=%.4e, Depth=150e3, pRidge=%.4e, dOvSide=%.4e" % \
-                    (box_depth, box_length, sp_width, sp_ridge_x, ov_side_dist)
+                    (box_height, box_length, sp_width, sp_ridge_x, ov_side_dist)
                 o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function expression"] = \
                     "(z > Do - Depth) && ((x <= pRidge) || (x > (xm - dOvSide))) && (y <= Wp)? 1.0: 0.0"
             elif prescribe_mantle_sp and (not prescribe_mantle_ov):
                 o_dict["Prescribe internal mantle adiabat temperatures"] = 'true'
                 o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function constants"] = \
                     "Do=%.4e, xm=%.4e, Wp=%.4e, Depth=150e3, pRidge=%.4e" % \
-                    (box_depth, box_length, sp_width, sp_ridge_x)
+                    (box_height, box_length, sp_width, sp_ridge_x)
                 o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function expression"] = \
                     "(z > Do - Depth) && (x <= pRidge) && (y <= Wp)? 1.0: 0.0"
                 pass
@@ -709,7 +714,7 @@ class CASE(CasesP.CASE):
                 o_dict["Prescribe internal mantle adiabat temperatures"] = 'true'
                 o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function constants"] = \
                     "Do=%.4e, xm=%.4e, Wp=%.4e, Depth=150e3, dOvSide=%.4e" % \
-                    (box_depth, box_length, sp_width, ov_side_dist)
+                    (box_height, box_length, sp_width, ov_side_dist)
                 o_dict["Prescribed mantle adiabat temperatures"]["Indicator function"]["Function expression"] = \
                     "(z > Do - Depth) && (x > (xm - dOvSide)) && (y <= Wp)? 1.0: 0.0"
                 pass
@@ -719,13 +724,16 @@ class CASE(CasesP.CASE):
             if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
                 # another implementation, set trailing_length = 0.0 to turn off the older implementation
                 # here we set this option to false and remove the corresponding section
+                Do_str = "2.890e6"
+                if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
+                    Do_str = "%.4e" % box_height
                 prescribe_T_area_width = trailing_length_1 + 300e3
                 o_dict["Prescribe internal mantle adiabat temperatures"] = 'false'
                 if "Prescribed mantle adiabat temperatures" in o_dict:
                     o_dict.pop("Prescribed mantle adiabat temperatures")
                 o_dict["Prescribe internal temperatures"] = 'true'
                 o_dict["Prescribed temperatures"]["Indicator function"]["Function constants"] = \
-                    "Depth=1.45e5, Width=%.4e, Do=2.890e6, xm=%.4e, Wp=%.4e" % (prescribe_T_area_width, box_length, sp_width)
+                    "Depth=1.45e5, Width=%.4e, Do=%s, xm=%.4e, Wp=%.4e" % (prescribe_T_area_width, Do_str, box_length, sp_width)
                 o_dict["Prescribed temperatures"]["Plate model 1"] = {
                     'Area width': "%.4e" % prescribe_T_area_width,
                     'Subducting plate velocity': "%.4e" % (sp_rate / year),

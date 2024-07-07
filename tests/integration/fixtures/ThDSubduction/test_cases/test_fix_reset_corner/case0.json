@@ -16,7 +16,7 @@
   "geometry setup": {
     "box width": 4000000.0,
     "box length": 5000000.0,
-    "box depth": 2890000.0,
+    "box height": 2890000.0,
     "box length before adjusting": 6783000.0,
     "adjust box trailing length": 1,
     "repitition slice method": "nearest",

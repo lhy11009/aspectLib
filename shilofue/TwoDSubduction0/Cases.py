@@ -184,6 +184,8 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("Clapeyron slope of the 660 km", float,\
          ["CDPT", "slope 660"], -1e6, nick="slope_660")
         self.add_key("Slab strengh", float, ["slab", "strength"], 500e6, nick="slab_strength")
+        self.add_key("Height of the Box", float,\
+            ["world builder", "box height"], 2890e3, nick='box_height')
     
     def check(self):
         '''
@@ -358,6 +360,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         slope_410 = self.values[self.start + 64]
         slope_660 = self.values[self.start + 65]
         slab_strength = self.values[self.start + 66]
+        box_height = self.values[self.start + 67]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -370,7 +373,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
         rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as,\
         prescribe_T_width, prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb, lookup_table_morb_mixing,\
-        delta_Vdiff, slope_410, slope_660, slab_strength
+        delta_Vdiff, slope_410, slope_660, slab_strength, box_height
 
     def to_configure_wb(self):
         '''
@@ -470,7 +473,7 @@ class CASE(CasesP.CASE):
     global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density,\
     maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width,\
     prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb,\
-    lookup_table_morb_mixing, delta_Vdiff, slope_410, slope_660, slab_strength):
+    lookup_table_morb_mixing, delta_Vdiff, slope_410, slope_660, slab_strength, box_height):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -526,9 +529,12 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             max_phi = box_width / Ro * 180.0 / np.pi  # extent in term of phi
             o_dict["Geometry model"] = prm_geometry_sph(max_phi, adjust_mesh_with_width=adjust_mesh_with_width)
         elif geometry == 'box':
+            y_extent_str = "2.8900e6"
+            if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
+                y_extent_str = "%.4e" % box_height
             if adjust_mesh_with_width:
                 x_repetitions = int(np.ceil(int((box_width/repetition_slice) * 2.0) / 2.0))
-                y_repetitions = int(np.ceil(int((2.8900e6/repetition_slice) * 2.0) / 2.0))
+                y_repetitions = int(np.ceil(int((box_height/repetition_slice) * 2.0) / 2.0))
             else:
                 x_repetitions = 2
                 y_repetitions = 1
@@ -536,7 +542,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                 "Model name": "box",
                 "Box": {
                     "X extent": "%.4e" % box_width,
-                    "Y extent": "2.8900e6",
+                    "Y extent": y_extent_str,
                     "X repetitions": "%d" % x_repetitions
                 }
             }
@@ -577,9 +583,12 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             o_dict["Mesh refinement"]["Minimum refinement level"] = "%d" % global_refinement
             o_dict["Mesh refinement"]["Minimum refinement function"]["Coordinate system"] = "cartesian"
             o_dict["Mesh refinement"]["Minimum refinement function"]["Variable names"] = "x, y, t"
+            Do_str = "2.8900e+06" # strong for box height
+            if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
+                Do_str = "%.4e" % box_height
             o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] = \
-                "Do=2.8900e+06, UM=670e3, Dp=100e3, Rd=%d, Rum=%d" %\
-                    (global_refinement+adaptive_refinement-1, global_refinement+adaptive_refinement-2)
+                "Do=%s, UM=670e3, Dp=100e3, Rd=%d, Rum=%d" %\
+                    (Do_str, global_refinement+adaptive_refinement-1, global_refinement+adaptive_refinement-2)
             o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"] = \
                 "(Do-y<UM)?\\\n\
                                     ((Do-y<Dp+50e3)? Rd: Rum)\\\n\
@@ -599,11 +608,11 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             # boudnary temperature: figure this out from the depth average profile
             assert(self.da_Tad_func is not None)
             try:
-                Tad_bot = self.da_Tad_func(2890e3) # bottom adiabatic temperature
+                Tad_bot = self.da_Tad_func(box_height) # bottom adiabatic temperature
             except ValueError:
                 # in case this is above the given range of depth in the depth_average
                 # file, apply a slight variation and try again
-                Tad_bot = self.da_Tad_func(2890e3 - 50e3)
+                Tad_bot = self.da_Tad_func(box_height - 50e3)
             o_dict['Boundary temperature model']['Box']['Bottom temperature'] = "%.4e" % Tad_bot
        
         # compositional fields
@@ -619,7 +628,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
               prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, sp_trailing_length, ov_trailing_length)
         elif geometry == 'box':
             o_dict['Material model']['Visco Plastic TwoD'] =\
-              prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_trailing_length,\
+              prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, box_height, type_of_bd, sp_trailing_length,\
                                            ov_trailing_length, Dsz, reset_density=reset_density)
        
         # set up subsection Prescribed temperatures
@@ -639,7 +648,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                     prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate, ov_age)
             elif prescribe_T_method == 'plate model 1':
                 o_dict['Prescribed temperatures'] =\
-                    prm_prescribed_temperature_cart_plate_model_1(box_width, potential_T, sp_rate, ov_age, area_width=prescribe_T_width)
+                    prm_prescribed_temperature_cart_plate_model_1(box_width, box_height, potential_T, sp_rate, ov_age, area_width=prescribe_T_width)
                 o_dict["Prescribe internal temperatures"] = "true"
 
         if type_of_bd in ["top prescribed with bottom right open", "top prescribed with bottom left open", "top prescribed"]:
@@ -1990,7 +1999,7 @@ def prm_visco_plastic_TwoD_sph(visco_plastic_twoD, max_phi, type_of_bd, sp_trail
     return o_dict
 
 
-def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_trailing_length,\
+def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, box_height, type_of_bd, sp_trailing_length,\
                                 ov_trailing_length, Dsz, **kwargs):
     '''
     reset subsection Visco Plastic TwoD
@@ -2002,14 +2011,14 @@ def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_tr
     reset_density = kwargs.get("reset_density", False)
     o_dict = visco_plastic_twoD.copy()
     o_dict['Reset viscosity function'] =\
-        prm_reset_viscosity_function_cart(box_width, sp_trailing_length, ov_trailing_length)
+        prm_reset_viscosity_function_cart(box_width, box_height, sp_trailing_length, ov_trailing_length)
     if type_of_bd in ["all free slip"]:
         o_dict["Reaction mor"] = 'true'
     else:
         o_dict["Reaction mor"] = 'false'
     print("Dsz: ", Dsz)  # debug
     o_dict["Reaction mor function"] =\
-        prm_reaction_mor_function_cart(box_width, sp_trailing_length, ov_trailing_length, Dsz)
+        prm_reaction_mor_function_cart(box_width, box_height, sp_trailing_length, ov_trailing_length, Dsz)
     if type_of_bd in ["all free slip"]:
         # use free slip on both sides, set ridges on both sides
         o_dict['Reset viscosity'] = 'true'
@@ -2020,7 +2029,7 @@ def prm_visco_plastic_TwoD_cart(visco_plastic_twoD, box_width, type_of_bd, sp_tr
     if reset_density:
         o_dict['Reset density'] = 'true'
         o_dict['Reset density function'] = \
-            prm_reaction_density_function_cart(box_width, sp_trailing_length, ov_trailing_length)
+            prm_reaction_density_function_cart(box_width, box_height, sp_trailing_length, ov_trailing_length)
 
     return o_dict
 
@@ -2051,19 +2060,22 @@ def prm_reset_viscosity_function_sph(max_phi, sp_trailing_length, ov_trailing_le
     return odict
 
 
-def prm_reset_viscosity_function_cart(box_width, sp_trailing_length, ov_trailing_length):
+def prm_reset_viscosity_function_cart(box_width, box_height, sp_trailing_length, ov_trailing_length):
     '''
     Default setting for Reset viscosity function in cartesian geometry
     Inputs:
         sp_trailing_length: trailing length of the subducting plate
         ov_trailing_length: trailing length of the overiding plate
     '''
+    Do_str = "2.890e6"
+    if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
+        Do_str = "%.4e" % box_height
     if sp_trailing_length < 1e-6 and ov_trailing_length < 1e-6:
-        function_constants_str =  "Depth=1.45e5, Width=2.75e5, Do=2.890e6, xm=%.4e, CV=1e20" % box_width
+        function_constants_str =  "Depth=1.45e5, Width=2.75e5, Do=%s, xm=%.4e, CV=1e20" % (Do_str, box_width)
         function_expression_str =  "(((y > Do - Depth) && ((x < Width) || (xm-x < Width)))? CV: -1.0)"
     elif sp_trailing_length > 1e-6 and ov_trailing_length > 1e-6:
-        function_constants_str = "Depth=1.45e5, SPTL=%.4e, OPTL=%.4e, Do=2.890e6, xm=%.4e, CV=1e20" % \
-        (sp_trailing_length, ov_trailing_length, box_width)
+        function_constants_str = "Depth=1.45e5, SPTL=%.4e, OPTL=%.4e, Do=%s, xm=%.4e, CV=1e20" % \
+        (sp_trailing_length, ov_trailing_length, Do_str, box_width)
         function_expression_str =  "(((y > Do - Depth) && ((x < SPTL) || (xm-x < OPTL)))? CV: -1.0)"
     else:
         raise ValueError("Must set the trailing edges of the subducting plate and the overiding palte as the same time.")
@@ -2107,19 +2119,22 @@ def prm_reaction_mor_function_sph(max_phi, sp_trailing_length, ov_trailing_lengt
     return odict
 
 
-def prm_reaction_mor_function_cart(box_width, sp_trailing_length, ov_trailing_length, Dsz):
+def prm_reaction_mor_function_cart(box_width, box_height, sp_trailing_length, ov_trailing_length, Dsz):
     '''
     Default setting for Reaction mor function in cartesian geometry
     '''
+    Do_str = "2.890e6"
+    if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
+        Do_str = "%.4e" % box_height
     if sp_trailing_length < 1e-6 and ov_trailing_length < 1e-6:
-        function_constants_str = "Width=2.75e5, Do=2.890e6, xm=%.4e, DCS=%.4e, DHS=%.4e" % (box_width, Dsz, Dsz*35.2/7.5)
+        function_constants_str = "Width=2.75e5, Do=%s, xm=%.4e, DCS=%.4e, DHS=%.4e" % (Do_str, box_width, Dsz, Dsz*35.2/7.5)
         function_expression_str = "((y > Do - DCS) && (x < Width)) ? 0:\
 \\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (x < Width)) ? 1:\
 \\\n                                        ((y > Do - DCS) && (xm - x < Width)) ? 2:\
 \\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (xm - x < Width)) ? 3: -1" 
     elif sp_trailing_length > 1e-6 and ov_trailing_length > 1e-6:
-        function_constants_str = "Width=2.75e5, SPTL=%.4e, OPTL=%.4e, Do=2.890e6, xm=%.4e, DCS=%.4e, DHS=%.4e" % \
-        (sp_trailing_length, ov_trailing_length, box_width, Dsz, Dsz*35.2/7.5)
+        function_constants_str = "Width=2.75e5, SPTL=%.4e, OPTL=%.4e, Do=%s, xm=%.4e, DCS=%.4e, DHS=%.4e" % \
+        (sp_trailing_length, ov_trailing_length, Do_str, box_width, Dsz, Dsz*35.2/7.5)
         function_expression_str = "((y > Do - DCS) && (x > SPTL) && (x < Width + SPTL)) ? 0:\
 \\\n                                        ((y < Do - DCS) && (y > Do - DHS) && (x > SPTL) && (x < Width + SPTL)) ? 1:\
 \\\n                                        ((y > Do - DCS) && (xm - x > OPTL) && (xm - x < Width + OPTL)) ? 2:\
@@ -2134,11 +2149,15 @@ def prm_reaction_mor_function_cart(box_width, sp_trailing_length, ov_trailing_le
     }
     return odict
 
-def prm_reaction_density_function_cart(box_width, sp_trailing_length, ov_trailing_length):
+
+def prm_reaction_density_function_cart(box_width, box_height, sp_trailing_length, ov_trailing_length):
     '''
     Default setting for Reaction mor function in cartesian geometry
     '''
-    function_constants_str = "Depth=1.45e5, SPTL=%.4e, OPTL=%.4e, Do=2.890e6, xm=%.4e, CD=3300.0" % (sp_trailing_length, ov_trailing_length, box_width)
+    Do_str = "2.890e6"
+    if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
+        Do_str = "%.4e" % box_height
+    function_constants_str = "Depth=1.45e5, SPTL=%.4e, OPTL=%.4e, Do=%s, xm=%.4e, CD=3300.0" % (sp_trailing_length, ov_trailing_length, Do_str, box_width)
     function_expression_str = "(((y > Do - Depth) && ((x < SPTL) || (xm-x < OPTL)))? CD: -1.0)"
     odict = {
         "Coordinate system": "cartesian",\
@@ -2239,19 +2258,22 @@ def prm_prescribed_temperature_cart_plate_model(box_width, potential_T, sp_rate,
     return odict
 
 
-def prm_prescribed_temperature_cart_plate_model_1(box_width, potential_T, sp_rate, ov_age, **kwargs):
+def prm_prescribed_temperature_cart_plate_model_1(box_width, box_height, potential_T, sp_rate, ov_age, **kwargs):
     '''
     Default setting for Prescribed temperatures in cartesian geometry using the plate model
     Inputs:
         area_width: width of the reseting area
     '''
     area_width = kwargs.get('area_width', 2.75e5)
+    Do_str = "2.890e6"
+    if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
+        Do_str = "%.4e" % box_height
     odict = {
         "Model name": "plate model 1",
         "Indicator function": {
           "Coordinate system": "cartesian",
           "Variable names": "x, y",
-          "Function constants": "Depth=1.45e5, Width=%.4e, Do=2.890e6, xm=%.4e" % (area_width, box_width),
+          "Function constants": "Depth=1.45e5, Width=%.4e, Do=%s, xm=%.4e" % (area_width, Do_str, box_width),
           "Function expression": "(((y>Do-Depth)&&((x<Width)||(xm-x<Width))) ? 1:0)"
         },
         "Plate model 1": {

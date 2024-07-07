@@ -14,7 +14,7 @@
   "geometry setup":{
       "box width": 2000e3,
       "box length": 4000e3,
-      "box depth": 1000e3
+      "box height": 1000e3
   },
   "plate setup":{
       "sp width": 2000e3,

@@ -19,7 +19,7 @@ Examples of usage:
 
   - plot newton solver history
          python -m shilofue.PlotRunTime plot_newton_solver_history
-         -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20/output/log.txt
+         -i /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20
          -o /home/lochy/ASPECT_PROJECT/TwoDSubduction/non_linear32/eba1_MRf12_iter20/img/newton_solver_history.png
 
 descriptions
