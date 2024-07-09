@@ -8,6 +8,12 @@ export EntropySub_DIR="/group/billengrp-mpi-io/lochy/EntropySub"
 export Pedro_DIR="/group/billengrp-mpi-io/lochy/PedroJoined"
 export SQUEUE="/share/apps/slurm-19.05.3/18.04/bin/squeue"
 export SCANCEL="/share/apps/slurm-19.05.3/18.04/bin/scancel"
+
+# si, sq: sinfo and squeue
+alias si="sinfo -o \"%20P %5D %14F %8z %10m %10d %11l %16f %N\""
+# ssi, ssq: only show my partition
+alias ssi="sinfo -p p-billen -o \"%20P %5D %14F %8z %10m %10d %11l %16f %N\""
+alias ssq="squeue -p p-billen -o \"%8i %12j %4t %10u %20q %20a %10g %20P %10Q %5D %11l %11L %R\""
 alias all_case_info="Lib_parse_case all_case_info"
 alias all_case_info_in_dir="Lib_parse_case case_info_in_dir ."
 alias check_restart_dir=" Lib_parse_case  check_time_restart_directory . 59e6 p-billen"
