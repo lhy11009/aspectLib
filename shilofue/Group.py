@@ -842,7 +842,11 @@ class CASE_SUMMARY():
             if format == 'txt':
                 in_array = reader.export_field_as_array(attr)
             if format == 'csv':
-                in_array = df[attr]
+                in_array = None
+                try:
+                    in_array = df[attr]
+                except KeyError:
+                    in_array = []
             if (len(in_array) == 0):
                 # no data input, continue
                 continue
@@ -933,7 +937,7 @@ class CASE_SUMMARY():
                 # len(temp) == 0 marks an void field
                 Utilities.my_assert(length_of_data == len(temp), ValueError,\
                     "Data for field \'%s\'(%d) doesn't much the length of data (%d)" % (_attr, len(temp), length_of_data))
-            data[header] = temp
+                data[header] = temp
         df = pd.DataFrame(data)
         df.to_csv(fout) # save to csv file
         

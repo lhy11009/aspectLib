@@ -95,6 +95,9 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         GroupP.CASE_SUMMARY.__init__(self, **kwargs)
         self.t660s = []
         self.attrs.append("t660s")
+        # todo_szm
+        self.sz_methods = []
+        self.attrs.append('sz_methods')
         self.sz_thicks = []
         self.attrs.append("sz_thicks")
         self.sz_depths = []
@@ -118,8 +121,9 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.ov_ages = []
         self.attrs.append("ov_ages")
 
-        self.attrs_to_output += ['t660s', "sz_thicks", "sz_depths", "sz_viscs", "slab_strs", "sd_modes", "V_sink_avgs", "V_plate_avgs", "V_ov_plate_avgs", "V_trench_avgs", "sp_ages", "ov_ages"]
-        self.headers += ['t660s (yr)', "sz_thicks (m)", "sz_depths (m)", "sz_viscs (Pa s)", "slab_strs (Pa)", "sd_modes", "V_sink_avgs (m/s)", "V_plate_avgs (m/s)", "V_ov_plate_avgs (m/s)", "V_trench_avgs (m/s)", "sp_ages (yr)", "op_ages (yr)"]
+        self.attrs_to_output += self.attrs
+        # ['t660s', "sz_thicks", "sz_depths", "sz_viscs", "slab_strs", "sd_modes", "V_sink_avgs", "V_plate_avgs", "V_ov_plate_avgs", "V_trench_avgs", "sp_ages", "ov_ages"]
+        # self.headers += ['t660s (yr)', "sz_thicks (m)", "sz_depths (m)", "sz_viscs (Pa s)", "slab_strs (Pa)", "sd_modes", "V_sink_avgs (m/s)", "V_plate_avgs (m/s)", "V_ov_plate_avgs (m/s)", "V_trench_avgs (m/s)", "sp_ages (yr)", "op_ages (yr)"]
     
     def Update(self, **kwargs):
         '''
@@ -152,7 +156,12 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             self.slab_strs = [-1 for i in range(self.n_case)]
             for i in range(self.n_case):
                 self.update_slab_strength(i)
-            
+
+        # todo_szm
+        if "sz_method" in actions:
+            self.sz_methods = [-1 for i in range(self.n_case)]
+            for i in range(self.n_case):
+                self.update_sz_methods(i)
 
         if "sd_modes" in actions:
             # assign an default value of 1 to the subducting modes
@@ -294,6 +303,20 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             self.slab_strs[i] = Visit_Options.options["MAXIMUM_YIELD_STRESS"]
         except FileNotFoundError:
             self.slab_strs[i] = -1.0
+    
+    def update_sz_methods(self, i):
+        '''
+        Update method of shear zone viscosity
+        '''
+        # todo_szm
+        case_dir = self.ab_paths[i]
+        try:
+            Visit_Options = self.VISIT_OPTIONS(case_dir)
+            Visit_Options.Interpret()
+            self.sz_methods[i] = Visit_Options.options["SHEAR_ZONE_METHOD"]
+        except FileNotFoundError:
+            self.sz_methods[i] = -1
+        pass
 
     def update_plate_ages(self, i):
         '''

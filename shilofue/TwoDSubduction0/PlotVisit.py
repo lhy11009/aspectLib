@@ -164,6 +164,18 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         # shear zone:
         #   the initial thickness is parsed from the wb file
         #   parse the cutoff depth if the viscosity is decoupled from the eclogite transition
+        # todo_szm
+        use_lookup_table_morb = self.idict['Material model']['Visco Plastic TwoD'].get("Use lookup table morb", 'false')
+        sz_method = 0
+        if use_lookup_table_morb == 'true':
+            phase_rheology_mixing_models_str = self.idict['Material model']['Visco Plastic TwoD'].get('Phase rheology mixing models', "0, 0, 0, 0, 0")
+            phase_rheology_mixing_models = Utilities.string2list(phase_rheology_mixing_models_str, int)
+            sz_method = phase_rheology_mixing_models[1]
+        elif use_lookup_table_morb == 'false':
+            pass
+        else:
+            raise ValueError()
+        self.options["SHEAR_ZONE_METHOD"] = sz_method
         self.options["INITIAL_SHEAR_ZONE_THICKNESS"] = feature_sp["composition models"][0]["max depth"]
         decoupling_eclogite_viscosity = self.idict['Material model']['Visco Plastic TwoD'].get('Decoupling eclogite viscosity', 'false')
         if decoupling_eclogite_viscosity == 'true':
