@@ -27,6 +27,7 @@ from shilofue.Plot import LINEARPLOT
 # import pathlib
 # import subprocess
 import numpy as np
+import pandas as pd
 import subprocess
 # from matplotlib import cm
 from matplotlib import pyplot as plt
@@ -657,11 +658,22 @@ class CASE_SUMMARY():
         Inputs:
             _dir (str): directory to import
         '''
+        format = kwargs.get("format", "txt")
         # try to import a previous summary first
         # if not found, import the cases in the directory
-        i_path = os.path.join(_dir, 'case_summary.txt')
+        if format == "txt":
+            i_name = 'case_summary.txt'
+        elif format == "csv":
+            i_name = 'case_summary.csv'
+        else:
+            raise NotImplementedError()
+        i_path = os.path.join(_dir, i_name)
+
         if os.path.isfile(i_path):
-            self.import_txt(i_path)
+            if format == "txt":
+                self.import_txt(i_path)
+            elif format == "csv":
+                self.import_csv(i_path)
             self.Update(**kwargs)
         else:
             self.import_directory(_dir, **kwargs)
@@ -777,6 +789,96 @@ class CASE_SUMMARY():
         # set has_update to False
         self.has_update = False
 
+    def import_file(self, i_path):
+        '''
+        import an existing file
+        Inputs:
+            i_path: path to a txt/csv file
+        '''
+        reader = LINEARPLOT('case_summary') # initiation, reading txt
+        df = None # initiation, pd object
+
+        Utilities.my_assert(os.path.isfile(i_path), self.SummaryFileNotExistError, "%s is not a file." % i_path)
+
+        format = i_path.split('.')[-1]
+        if format == 'txt':
+            reader.ReadHeader(i_path)
+            reader.ReadData(i_path, dtype=str)
+        elif format == 'csv':
+            df = pd.read_csv(i_path, dtype=str)
+        else:
+            raise TypeError("%s: input file needs to be \"txt\" or \"csv\", but filename is %s" % Utilities.func_name(), i_path)
+
+        # Read input cases
+        # if case already exists in the record, update
+        # else: append new case into the record
+        n_case_old = self.n_case
+        in_cases = None; in_ab_paths = None
+        if format == 'txt':
+            in_cases = reader.export_field_as_array("cases")
+            in_ab_paths = reader.export_field_as_array("ab_paths")
+        elif format == 'csv':
+            in_cases = df["cases"]
+            in_ab_paths = df["ab_paths"]
+        indexes = []
+        for i in range(len(in_cases)):
+            in_case = in_cases[i]
+            if in_case in self.cases:
+                j = self.cases.index(in_case)
+                indexes.append(j)
+            else:
+                self.cases.append(in_case)
+                self.ab_paths.append(in_ab_paths[i])
+                indexes.append(-1)
+                self.n_case += 1
+
+        # import data and either append or update fields
+        for attr in self.attrs:
+            # "cases" attribute is handled in the previous loop
+            if attr == "cases":
+                continue
+            temp = getattr(self, attr)
+            in_array = None
+            if format == 'txt':
+                in_array = reader.export_field_as_array(attr)
+            if format == 'csv':
+                in_array = df[attr]
+            if (len(in_array) == 0):
+                # no data input, continue
+                continue
+            if len(temp) > 0:
+                # field exist
+                for i in range(len(in_cases)):
+                    if indexes[i] < 0:
+                        # case doesn't preexist
+                        temp.append(in_array[i])
+                    else:
+                        # case preexist
+                        temp[indexes[i]] = in_array[i] 
+            else:
+                # field doesn't exist
+                # current: do nothing
+                # TODO: figure out updating strategy
+                for i in range(len(in_cases)):
+                    if indexes[i] < 0:
+                        # case doesn't preexist
+                        # compensate results for previous case by adding trivial values
+                        # then append the values for the new cases
+                        if i == 0:
+                            temp = [-1 for j in range(n_case_old)]
+                        temp.append(in_array[i])
+                    else:
+                        # case preexist
+                        # temp[indexes[i]] =in_array[i] 
+                        continue
+                # field doesn't exist
+            setattr(self, attr, temp)
+        
+        # set has_update to False
+        self.has_update = False
+
+        print("%s: file %s imported successfully" % (Utilities.func_name(), i_path))
+    
     def write(self, fout, attrs_to_output, headers):
         '''
         Write an output file
@@ -809,6 +911,31 @@ class CASE_SUMMARY():
             fout.write("# %d: %s\n" % (i+1, header))
             i += 1
         np.savetxt(fout, data, delimiter=" ", fmt="%s")
+    
+    def write_csv(self, fout, attrs_to_output, headers):
+        '''
+        Write an output file in csv format
+        Inputs:
+            fout (object): object of output
+            attrs_to_output: attribute to output
+            headers: headers of the file
+        '''
+        # header and data to write
+        data = {} # a vacant dict
+        length_of_data = 0
+        for i in range(len(attrs_to_output)):
+            _attr = attrs_to_output[i]
+            header = headers[i]
+            temp = np.array(getattr(self, _attr))
+            if i == 0:
+                length_of_data = len(temp)
+            if len(temp) > 0:
+                # len(temp) == 0 marks an void field
+                Utilities.my_assert(length_of_data == len(temp), ValueError,\
+                    "Data for field \'%s\'(%d) doesn't much the length of data (%d)" % (_attr, len(temp), length_of_data))
+            data[header] = temp
+        df = pd.DataFrame(data)
+        df.to_csv(fout) # save to csv file
         
     def write_file(self, o_path):
         '''
@@ -821,9 +948,17 @@ class CASE_SUMMARY():
         headers = ["cases"] + self.attrs_to_output + ["ab_paths"]
 
         # write file
-        with open(o_path, 'w') as fout: 
-            self.write(fout, attrs_to_output, headers) 
-        
+        format = o_path.split('.')[-1]
+        if format == "txt":
+            with open(o_path, 'w') as fout: 
+                self.write(fout, attrs_to_output, headers) 
+        elif format == "csv":
+            with open(o_path, 'w') as fout: 
+                self.write_csv(fout, attrs_to_output, headers) 
+        else:
+            raise ValueError("%s: filename should end with \".txt\" or \".csv\", but the given name is %s" % (Utilities.func_name(), o_path))
+
+        Utilities.my_assert(os.path.isfile(o_path), FileNotFoundError, "%s: file %s is not written successfully" % (Utilities.func_name(), o_path)) 
         print("%s: Write file %s" % (Utilities.func_name(), o_path))
 
     def write_file_if_update(self, o_path):
