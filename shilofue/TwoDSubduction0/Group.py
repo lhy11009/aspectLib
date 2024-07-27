@@ -95,7 +95,6 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         GroupP.CASE_SUMMARY.__init__(self, **kwargs)
         self.t660s = []
         self.attrs.append("t660s")
-        # todo_szm
         self.sz_methods = []
         self.attrs.append('sz_methods')
         self.sz_thicks = []
@@ -157,7 +156,6 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             for i in range(self.n_case):
                 self.update_slab_strength(i)
 
-        # todo_szm
         if "sz_method" in actions:
             self.sz_methods = [-1 for i in range(self.n_case)]
             for i in range(self.n_case):
@@ -308,7 +306,6 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         '''
         Update method of shear zone viscosity
         '''
-        # todo_szm
         case_dir = self.ab_paths[i]
         try:
             Visit_Options = self.VISIT_OPTIONS(case_dir)

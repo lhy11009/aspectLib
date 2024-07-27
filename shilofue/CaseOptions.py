@@ -17,6 +17,7 @@ Examples of usage:
 
 descriptions
 """ 
+from multiprocessing.sharedctypes import Value
 import numpy as np
 import sys, os, argparse
 import json, re
@@ -111,7 +112,10 @@ class CASE_OPTIONS(Utilities.CODESUB):
         self.Statistics = STATISTICS_PLOT('Statistics')
         self.statistic_file = os.path.join(self._output_dir, 'statistics')
         self.Statistics.ReadHeader(self.statistic_file)
-        self.Statistics.ReadData(self.statistic_file)
+        try:
+            self.Statistics.ReadData(self.statistic_file)
+        except ValueError as e:
+            raise ValueError("%s: error while reading file %s" % (Utilities.func_name(), self.statistic_file)) from e
 
         # horiz_avg
         self.horiz_avg_file = os.path.join(self._output_dir, "depth_average.txt")

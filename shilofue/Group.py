@@ -915,8 +915,8 @@ class CASE_SUMMARY():
             fout.write("# %d: %s\n" % (i+1, header))
             i += 1
         np.savetxt(fout, data, delimiter=" ", fmt="%s")
-    
-    def write_csv(self, fout, attrs_to_output, headers):
+
+    def write_csv(self, fout, attrs_to_output, headers, mask=None):
         '''
         Write an output file in csv format
         Inputs:
@@ -937,9 +937,53 @@ class CASE_SUMMARY():
                 # len(temp) == 0 marks an void field
                 Utilities.my_assert(length_of_data == len(temp), ValueError,\
                     "Data for field \'%s\'(%d) doesn't much the length of data (%d)" % (_attr, len(temp), length_of_data))
-                data[header] = temp
+                if mask is not None:
+                    data[header] = temp[mask]
+                else:
+                    data[header] = temp
         df = pd.DataFrame(data)
         df.to_csv(fout) # save to csv file
+
+    def sort_out_by_attr_value(self, o_path, _attr, value):
+        '''
+        Sort out cases that have some value for an attribute
+        Inputs:
+            o_path (str) - file to output
+            _attr (str or list) - name of the attribute
+            value (float or list) - value of the attribute
+        '''
+        # append the case name first and the absolute path last
+        attrs_to_output = ["cases"] + self.attrs_to_output + ["ab_paths"]
+        headers = ["cases"] + self.attrs_to_output + ["ab_paths"]
+
+        # handle two different situation:
+        # 1. give 1 value
+        # 2. give a list of values
+        mask = None
+        if type(_attr) == str: 
+            temp = np.array(getattr(self, _attr))
+            mask = np.abs((temp - value) / value) < 1e-6
+        if type(_attr) == list:
+            assert(len(_attr) == len(value))
+            for i in range(len(_attr)):
+                a = _attr[i]
+                v = value[i]
+                temp = np.array(getattr(self, a))
+                mask1 = np.abs((temp - v) / v) < 1e-6
+                if i == 0:
+                    mask = mask1
+                else:
+                    mask = (mask & mask1)
+        
+        # write file
+        format = o_path.split('.')[-1]
+        if format == "csv":
+            with open(o_path, 'w') as fout: 
+                self.write_csv(fout, attrs_to_output, headers, mask)
+        else:
+            raise NotImplementedError()
+        Utilities.my_assert(os.path.isfile(o_path), FileNotFoundError, "%s: file %s is not written successfully" % (Utilities.func_name(), o_path)) 
+        print("%s: Write file %s" % (Utilities.func_name(), o_path))
         
     def write_file(self, o_path):
         '''

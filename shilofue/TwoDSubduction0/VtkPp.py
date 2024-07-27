@@ -1293,8 +1293,6 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     '''
     indent = kwargs.get("indent", 0)  # indentation for outputs
     findmdd = kwargs.get("findmdd", False)
-    mdd_dx0 = kwargs.get('mdd_dx0', 10e3)
-    mdd_dx1 = kwargs.get('mdd_dx1', 10e3)
     output_ov_ath_profile = kwargs.get("output_ov_ath_profile", False)
     output_path = os.path.join(case_dir, "vtk_outputs")
     if not os.path.isdir(output_path):
@@ -2854,15 +2852,22 @@ class SLABPLOT(LINEARPLOT):
             _time, _ = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot)
             vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
             slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'ov_ath_profile_%.5d.txt' % vtu_step)
-            assert(os.path.isfile(slab_morph_file))
-            data = np.loadtxt(slab_morph_file)
-            depths = data[:, 2]
-            depth_mesh[i, :] = depths
-            time_mesh[i, :] = np.ones(100) * _time
-            velocities_h = data[:, 3]
-            velocity_h_mesh[i, :] = velocities_h
-            viscosities = data[:, 5]
-            viscosity_mesh[i, :] = viscosities
+            # Utilities.my_assert(os.path.isfile(slab_morph_file), FileExistsError, "%s: %s doesn't exist" % (Utilities.func_name(), slab_morph_file))
+            if os.path.isfile(slab_morph_file):
+                data = np.loadtxt(slab_morph_file)
+                depths = data[:, 2]
+                depth_mesh[i, :] = depths
+                time_mesh[i, :] = np.ones(100) * _time
+                velocities_h = data[:, 3]
+                velocity_h_mesh[i, :] = velocities_h
+                viscosities = data[:, 5]
+                viscosity_mesh[i, :] = viscosities
+            else:
+                # a method to fix invalid timestep:
+                # make sure this plots outside of the figure
+                depths = np.ones(100) * (-1)
+                time_mesh[i, :] = np.ones(100) * _time
+                velocities_h = data[:, 3]
         # plot the viscosity
         ax = fig.add_subplot(gs[1, 0])
         h = ax.pcolormesh(time_mesh/1e6, depth_mesh/1e3, np.log10(viscosity_mesh), cmap=ccm.roma,\

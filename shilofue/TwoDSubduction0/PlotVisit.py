@@ -95,7 +95,17 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
             self.options['ETA_MAX'] = eta_max_inputs.data['background'][0] # use phases
         # self.options['IF_DEFORM_MECHANISM'] = value.get('deform_mechanism', 0)
         self.options['IF_DEFORM_MECHANISM'] = 1
-        # ages
+        # crustal layers
+        # todo_2l
+        is_crust_2l = False
+        composition_fields = []
+        temp_list = self.idict['Compositional fields']['Names of fields'].split(",")
+        for temp in temp_list:
+            temp1 = Utilities.re_neat_word(temp)
+            if temp1 != "":
+                composition_fields.append(temp1)
+        if "spcrust_up" in composition_fields:
+            is_crust_2l = True
         # currently only works for chunk geometry
         if self.options['GEOMETRY'] == 'chunk':
             sp_age = -1.0
@@ -164,7 +174,6 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         # shear zone:
         #   the initial thickness is parsed from the wb file
         #   parse the cutoff depth if the viscosity is decoupled from the eclogite transition
-        # todo_szm
         use_lookup_table_morb = self.idict['Material model']['Visco Plastic TwoD'].get("Use lookup table morb", 'false')
         sz_method = 0
         if use_lookup_table_morb == 'true':
@@ -183,8 +192,12 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         else:
             self.options["SHEAR_ZONE_CUTOFF_DEPTH"] = -1.0
         #  the shear zone constant viscosity is calculated from the prefactor of spcrust
-        A_diff_inputs = ParsePrm.COMPOSITION(self.idict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep']) 
-        self.options["SHEAR_ZONE_CONSTANT_VISCOSITY"] = 1.0 / 2.0 / A_diff_inputs.data['spcrust'][0] # use phases
+        A_diff_inputs = ParsePrm.COMPOSITION(self.idict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep'])
+        # todo_2l
+        if is_crust_2l:
+            self.options["SHEAR_ZONE_CONSTANT_VISCOSITY"] = 1.0 / 2.0 / A_diff_inputs.data['spcrust_up'][0] # use phases
+        else:
+            self.options["SHEAR_ZONE_CONSTANT_VISCOSITY"] = 1.0 / 2.0 / A_diff_inputs.data['spcrust'][0] # use phases
         # yield stress
         try:
             self.options["MAXIMUM_YIELD_STRESS"] = float(self.idict['Material model']['Visco Plastic TwoD']["Maximum yield stress"])

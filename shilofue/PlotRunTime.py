@@ -59,6 +59,11 @@ Examples of usage: \n\
   - plot newton solver step\n\
 \n\
         Lib_PlotRunTime plot_newton_solver_step -i `pwd` -s 390\n\
+\n\
+  - plot newton solver step with interval of 10 iterations\n\
+        python -m shilofue.PlotRunTime plot_newton_solver_step_1\n\
+        -i /mnt/lochy/ASPECT_DATA/EntropySubduction/ES_3/es_test_2_hr_1_pr_table_hr5_sol_re4_re160\n\
+             -s 171\n\
         ")
 
 def RunTimeInfo(log_path, **kwargs):
@@ -340,9 +345,13 @@ def PlotNewtonSolver(log_path, fig_path_base, **kwargs):
     Read runtime info from log file and then plot
     Inputs:
         log_path(str) - path to log file
+        kwargs:
+            style - 0: regular; 1: split the output with an interval of 10 iterations
     Returns:
         RunTime.png
     '''
+    style = kwargs.get("style", 0)
+
     # read log file
     temp_path = os.path.join(RESULT_DIR, 'run_time_output_newton')
     os.system("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
@@ -361,21 +370,47 @@ def PlotNewtonSolver(log_path, fig_path_base, **kwargs):
     residuals = data[:, col_residual]
     col_scaling_factor = Plotter.header["Newton_Derivative_Scaling_Factor"]['col']
     scaling_factors = data[:, col_scaling_factor]
-    # line1: residual
-    fig, ax1 = plt.subplots(figsize=(5, 5))
-    color = 'tab:blue'
-    ax1.semilogy(number_of_iterations, residuals, '-', color=color, label='Residuals')
-    ax1.set_ylabel('Relative non-linear residual', color=color)
-    ax1.set_xlabel('Number of non-linear iterations')
-    ax1.tick_params(axis='y', labelcolor=color)
-    ax1.set_title('Newton Solver Output For Step %d' % (step))
-    # line 2: scaling factor
-    ax2 = ax1.twinx()
-    color = 'tab:red'
-    ax2.plot(number_of_iterations, scaling_factors, '--', color=color, label='Scaling factors')
-    ax2.set_ylabel('Newton derivative scaling factor', color=color)
-    ax2.set_xlabel('Number of non-linear iterations')
-    ax2.tick_params(axis='y', labelcolor=color)
+
+    if style == 0:
+        # style - 0: regular
+        # line1: residual
+        fig, ax1 = plt.subplots(figsize=(5, 5))
+        color = 'tab:blue'
+        ax1.semilogy(number_of_iterations, residuals, '-', color=color, label='Residuals')
+        ax1.set_ylabel('Relative non-linear residual', color=color)
+        ax1.set_xlabel('Number of non-linear iterations')
+        ax1.tick_params(axis='y', labelcolor=color)
+        ax1.set_title('Newton Solver Output For Step %d' % (step))
+        # line 2: scaling factor
+        ax2 = ax1.twinx()
+        color = 'tab:red'
+        ax2.plot(number_of_iterations, scaling_factors, '--', color=color, label='Scaling factors')
+        ax2.set_ylabel('Newton derivative scaling factor', color=color)
+        ax2.set_xlabel('Number of non-linear iterations')
+        ax2.tick_params(axis='y', labelcolor=color)
+    elif style == 1:
+        # 1: split the output with an interval of 10 iterations
+        _fig_sub_size = 5
+        n_sub = int(np.ceil(np.max(number_of_iterations) / 10.0))
+        n_col = int(np.ceil(np.max(number_of_iterations) / 30.0))
+        residual_max = 10**np.ceil(np.log10(np.max(residuals)))
+        residual_min = 10**np.floor(np.log10(np.min(residuals)))
+        _figsize = (3 * _fig_sub_size,  n_col * _fig_sub_size)
+        fig = plt.figure(figsize=_figsize, tight_layout=True)
+        gs = gridspec.GridSpec(n_col, 3)
+        color = 'tab:blue'
+        for i in range(n_sub):
+            ax = fig.add_subplot(gs[i//3, i%3])
+            mask = ((number_of_iterations >= i * 10) & (number_of_iterations < (i+1) * 10))
+            ax.semilogy(number_of_iterations[mask], residuals[mask], '*', color=color, label='Residuals')
+            ax.set_ylabel('Relative non-linear residual', color=color)
+            ax.set_xlabel('Number of non-linear iterations')
+            ax.tick_params(axis='y', labelcolor=color)
+            ax.set_ylim([residual_min, residual_max])
+        fig.suptitle('Newton Solver Output For Step %d' % (step))
+    else:
+        raise NotImplementedError()
+        pass
 
     # save figure
     fig.tight_layout()
@@ -432,8 +467,13 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
         step = steps[i]
         mask_step = (Plotter.data[:, col_step] == step)
         data = Plotter.data[mask_step, :]
-        number_of_iterations[step] = data[-1, col_number_of_iteration]
-        residuals[step] = data[-1, col_residual]
+        try:
+            number_of_iterations[step] = data[-1, col_number_of_iteration]
+            residuals[step] = data[-1, col_residual]
+        except IndexError:
+            # no data, apply a 0 value
+            number_of_iterations[step] = 0
+            residuals[step] = 1e-31
         
     # query residual of iteration 'query_iteration'
     for i in range(steps.size):
@@ -586,6 +626,15 @@ def main():
         if not os.path.isdir(os.path.dirname(fig_path)):
             os.mkdir(os.path.dirname(fig_path))
         o_path = PlotNewtonSolver(log_file, fig_path, step=arg.step)
+    
+    elif _commend == "plot_newton_solver_step_1":
+        # plot newton solver output
+        log_file = os.path.join(arg.inputs, 'output', 'log.txt')
+        assert(log_file)
+        fig_path = os.path.join(arg.inputs, 'img', 'newton_solver.png')
+        if not os.path.isdir(os.path.dirname(fig_path)):
+            os.mkdir(os.path.dirname(fig_path))
+        o_path = PlotNewtonSolver(log_file, fig_path, step=arg.step, style=1)
 
     elif _commend == "plot_newton_solver_history":
         # plot newton solver output

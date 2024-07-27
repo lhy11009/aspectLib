@@ -217,7 +217,7 @@ intiation stage causes the slab to break in the middle",\
 than the multiplication of the default values of \"sp rate\" and \"age trench\"")
         # check the option for refinement
         refinement_level = self.values[15]
-        assert(refinement_level in [-1, 9, 10, 11])  # it's either not turned on or one of the options for the total refinement levels
+        assert(refinement_level in [-1, 9, 10, 11, 12, 13])  # it's either not turned on or one of the options for the total refinement levels
         # check the option for the type of boundary conditions
         type_of_bd = self.values[self.start + 5]
         assert(type_of_bd in ["all free slip", "top prescribed", "top prescribed with bottom right open", "top prescribed with bottom left open"])
@@ -563,6 +563,14 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                 elif refinement_level == 11:
                     o_dict["Mesh refinement"]["Initial global refinement"] = "6"
                     o_dict["Mesh refinement"]["Initial adaptive refinement"] = "5"
+                elif refinement_level == 12:
+                    o_dict["Mesh refinement"]["Initial global refinement"] = "6"
+                    o_dict["Mesh refinement"]["Initial adaptive refinement"] = "6"
+                elif refinement_level == 13:
+                    o_dict["Mesh refinement"]["Initial global refinement"] = "7"
+                    o_dict["Mesh refinement"]["Initial adaptive refinement"] = "6"
+                else:
+                    raise NotImplementedError()
                 o_dict["Mesh refinement"]["Minimum refinement level"] = o_dict["Mesh refinement"]["Initial global refinement"]
                 if geometry == 'chunk':
                     o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph(refinement_level=refinement_level)
@@ -1003,10 +1011,15 @@ opcrust: 1e+31, opharz: 1e+31", \
             visco_plastic_dict["Use lookup table morb"] = "true"
             visco_plastic_dict["Use phase rheology mixing"] = "true"
             visco_plastic_dict["Phase rheology mixing models"] = "0, %d, 0, 0, 0" % lookup_table_morb_mixing
+            if n_crust_layer == 2:
+                visco_plastic_dict["Phase rheology mixing models"] = "0, 0, 0, %d, 0, 0, 0" % lookup_table_morb_mixing
+            morb_index = "1"
+            if n_crust_layer == 2:
+                morb_index = "4"
             visco_plastic_dict["Lookup table morb"] = {
                 "Data directory": "$ASPECT_SOURCE_DIR/lookup_tables/",
                 "Material file names": "perplex_morb_test.txt",
-                "Morb composition index": "1",
+                "Morb composition index": morb_index,
                 "Cutoff eclogite phase below": "0.25",
                 "Bilinear interpolation": "true",
                 "Cutoff eclogite phase above T1": "1673.0",
@@ -1906,6 +1919,12 @@ def prm_minimum_refinement_sph(**kwargs):
     elif refinement_level == 11:
         R_UM = 7
         R_LS = 9
+    elif refinement_level == 12:
+        R_UM = 7
+        R_LS = 9
+    elif refinement_level == 13:
+        R_UM = 7
+        R_LS = 10
     else:
         raise ValueError("Wrong value %d for the \"refinement_level\"" % refinement_level)
     o_dict = {
