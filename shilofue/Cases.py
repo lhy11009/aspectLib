@@ -102,6 +102,10 @@ it only takes effect if the input is positiveh",\
         self.add_key("Depth average inputs", str, ["depth average file"], "", nick='da_inputs')
         self.add_key("mantle rheology scenario (previous composed)", str, ['mantle rheology', 'known scenario'], "", nick='mantle_rheology_known_scenario')
         self.add_key("Use the new rheology module, default is 0 to keep backward consistency", int, ['use new rheology module'], 0, nick='use_new_rheology_module')
+        self.add_key("Minimum number of particles per cell", int,\
+         ["composition method", "minimum particles per cell"], 33, nick="minimum_particles_per_cell")
+        self.add_key("Maximum number of particles per cell", int,\
+         ["composition method", "maximum particles per cell"], 50, nick="maximum_particles_per_cell")
     
     def check(self):
         '''
@@ -128,6 +132,8 @@ it only takes effect if the input is positiveh",\
             assert(os.path.isfile(da_inputs))
         use_new_rheology_module = self.values[28]
         assert(use_new_rheology_module in [0, 1])
+        minimum_particles_per_cell = self.values[29]
+        maximum_particles_per_cell = self.values[30]
 
     def to_init(self):
         '''

@@ -58,7 +58,10 @@ class COMPOSITION():
                 key = Utilities.re_neat_word(key_str)
                 values_str = part.split(':')[1].split('|')
                 # convert string to float
-                values = [float(Utilities.re_neat_word(val)) for val in values_str]
+                try:
+                    values = [float(Utilities.re_neat_word(val)) for val in values_str]
+                except ValueError:
+                    values = [Utilities.re_neat_word(val) for val in values_str]
                 self.data[key] = values
         elif type(in_var) == type(self):
             self.data = in_var.data.copy()
@@ -83,9 +86,15 @@ class COMPOSITION():
             i = 0
             for val in values:
                 if i == 0:
-                    part_of_line += '%.4e' % val
+                    if type(val) == float:
+                        part_of_line += '%.4e' % val
+                    elif type(val) == str:
+                        part_of_line += val
                 else:
-                    part_of_line += '|' + '%.4e' % val
+                    if type(val) == float:
+                        part_of_line += '|' + '%.4e' % val
+                    elif type(val) == str:
+                        part_of_line += val
                 i += 1
             line += part_of_line
             j += 1
@@ -864,7 +873,7 @@ class SLURM_OPT(Utilities.JSON_OPT):
         return output_directory
 
 
-def duplicate_composition_option(str_in, comp0, comp1):
+def duplicate_composition_option(str_in, comp0, comp1, **kwargs):
     '''
     duplicate the composition option,  parse to a new string
     Inputs:
@@ -873,9 +882,13 @@ def duplicate_composition_option(str_in, comp0, comp1):
     Return:
         str_out: a new string for inputs of composition
     '''
+    is_mapped_particle_properties = kwargs.get("is_mapped_particle_properties", False)
     # read in original options
     comp_in = COMPOSITION(str_in)
     var = comp_in.data[comp0]
+    if is_mapped_particle_properties:
+        # replace substring by new composition in value
+        var = ["initial %s" % comp1]
     # duplicate option with a new composition
     comp_out = COMPOSITION(comp_in)
     comp_out.data[comp1] = var
@@ -884,20 +897,26 @@ def duplicate_composition_option(str_in, comp0, comp1):
     return str_out
 
 
-def move_composition_option(str_in, comp0, comp1):
+def move_composition_option(str_in, comp0, comp1, **kwargs):
     '''
     move the composition option,  parse to a new string
     Inputs:
         str_in: an input of string
         comp0, comp1: move the option with comp0 to a new one with comp1
+        kwargs: substitute string in var
     Return:
         str_out: a new string for inputs of composition
     '''
+    do_sub_in_var = kwargs.get("do_sub_in_var", False)
     # read in original options
     comp_in = COMPOSITION(str_in)
     # move option to a new composition
     comp_out = COMPOSITION(comp_in)
     var = comp_out.data.pop(comp0)
+    if do_sub_in_var:
+        sub_string = " %s" % comp0
+        replace_string = " %s" % comp1
+        var = re.sub(sub_string, replace_string, var)
     comp_out.data[comp1] = var
     # convert to a new string & return
     str_out = comp_out.parse_back() 

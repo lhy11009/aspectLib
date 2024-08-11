@@ -361,6 +361,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         slope_660 = self.values[self.start + 65]
         slab_strength = self.values[self.start + 66]
         box_height = self.values[self.start + 67]
+        minimum_particles_per_cell = self.values[29]
+        maximum_particles_per_cell = self.values[30]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -373,7 +375,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
         rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as,\
         prescribe_T_width, prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb, lookup_table_morb_mixing,\
-        delta_Vdiff, slope_410, slope_660, slab_strength, box_height
+        delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell
 
     def to_configure_wb(self):
         '''
@@ -473,7 +475,7 @@ class CASE(CasesP.CASE):
     global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density,\
     maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width,\
     prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb,\
-    lookup_table_morb_mixing, delta_Vdiff, slope_410, slope_660, slab_strength, box_height):
+    lookup_table_morb_mixing, delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -627,7 +629,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         # note the options for additional compositions and less compositions are handled later
         # options for using the particle method
         if comp_method == "particle":
-            o_dict = change_field_to_particle(o_dict)
+            o_dict = change_field_to_particle(o_dict, minimum_particles_per_cell=minimum_particles_per_cell, maximum_particles_per_cell=maximum_particles_per_cell)
         
         # set up subsection reset viscosity function
         visco_plastic_twoD = self.idict['Material model']['Visco Plastic TwoD']
@@ -1182,7 +1184,7 @@ opcrust: 1e+31, opharz: 1e+31", \
                 self.particle_data = particle_positions_ef(geometry, Ro, trench, Dsz, ef_Dbury, p0, slab_lengths, slab_dips, interval=ef_particle_interval)
 
 
-def change_field_to_particle(i_dict):
+def change_field_to_particle(i_dict, **kwargs):
     '''
     change field method to particle method.
     This function will automatically substitute all
@@ -1190,6 +1192,8 @@ def change_field_to_particle(i_dict):
     Inputs:
         i_dict: a dictionary containing parameters of a case
     '''
+    minimum_particles_per_cell = kwargs.get("minimum_particles_per_cell", 33)
+    maximum_particles_per_cell = kwargs.get("maximum_particles_per_cell", 50)
     o_dict = deepcopy(i_dict)
     comp_dict = o_dict["Compositional fields"]
     nof = int(o_dict["Compositional fields"]["Number of fields"])
@@ -1223,8 +1227,8 @@ def change_field_to_particle(i_dict):
     pp_dict["List of postprocessors"] += ', particles'
     pp_dict['Particles'] = {\
         "Number of particles": "5e7",\
-        "Minimum particles per cell": "33",\
-        "Maximum particles per cell": "50",\
+        "Minimum particles per cell": "%d" % minimum_particles_per_cell,\
+        "Maximum particles per cell": "%d" % maximum_particles_per_cell,\
         "Load balancing strategy": "remove and add particles",\
         "Interpolation scheme": "cell average",\
         "Update ghost particles": "true",\
@@ -1272,7 +1276,10 @@ def expand_multi_composition_options(i_dict, comp0, comps):
                 try:
                     temp = value
                     for comp in comps:
-                        temp = ParsePrm.duplicate_composition_option(temp, comp0, comp)
+                        if key == "Mapped particle properties":
+                            temp = ParsePrm.duplicate_composition_option(temp, comp0, comp, is_mapped_particle_properties=True)
+                        else:
+                            temp = ParsePrm.duplicate_composition_option(temp, comp0, comp)
                     o_dict[key] = ParsePrm.remove_composition_option(temp, comp0)
                 except KeyError:
                     # this is not a string with options of compositions, skip
