@@ -2,8 +2,8 @@
 export ASPECT_LAB_DIR=/work2/06806/hyli/frontera/Softwares/aspectLib
 # aspectLib executables
 export PATH=${PATH}:/work2/06806/hyli/frontera/Softwares/aspectLib/bin
-export TwoDSubduction_DIR="/work2/06806/hyli/frontera/TwoDSubduction"
-export ThDSubduction_DIR="/work2/06806/hyli/frontera/ThDSubduction"
+export TwoDSubduction_DIR="/scratch1/06806/hyli/TwoDSubduction"
+export ThDSubduction_DIR="/scratch1/06806/hyli/ThDSubduction"
 alias all_case_info="Lib_parse_case all_case_info"
 alias all_case_info_in_dir="Lib_parse_case case_info_in_dir ."
 alias rsync_restart_local="rsync -avu --progress --exclude=*restart*.old --exclude=*solution* ${SCRATCH}/ThDSubduction/* /work2/06806/hyli/frontera/ThDSubduction/"
