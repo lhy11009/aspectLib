@@ -2999,15 +2999,15 @@ class SLABPLOT(LINEARPLOT):
         # trench velocity
         ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
         lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color=color, label=labels[0])
-        lns1 = ax.plot(times/1e6, sp_velocities*1e2, '--', color=color, label=labels[1])
+        lns1 = ax.plot(times/1e6, sp_velocities*1e2, ':', color=color, label=labels[1])
         lns2 = ax.plot(times/1e6, ov_velocities*1e2, '-.', color=color, label=labels[2])
-        ax.plot(times/1e6, sink_velocities*1e2, ':', color=color, label=labels[3])
+        ax.plot(times/1e6, sink_velocities*1e2, '--', color=color, label=labels[3])
         if time_range != []:
             xlims = time_range
         else:
             xlims = (np.min(times), np.max(times))
         ax.set_xlim(xlims[0]/1e6, xlims[1]/1e6)  # set x limit
-        # for the limit of y, there are 3 options: a. fix_v_range would give a (-10, 10);
+        # for the limit of y, there are 3 options: a. fix_v_range would give a (-10, 20);
         # b. assigne a v_range will apply that value; c. by default, the min value of 
         # the trench velocity and the max value of the subducting velocity will be used.
         if v_range != []:
@@ -3016,7 +3016,7 @@ class SLABPLOT(LINEARPLOT):
             mask = (times > xlims[0]) & (times < xlims[1])
             ylims = [-0.15, np.max(sp_velocities[mask])]
         if fix_v_range:
-            ax.set_ylim((-10, 10))
+            ax.set_ylim((-10, 20))
         else:
             ax.set_ylim((ylims[0]*1e2, ylims[1]*1e2))
         ax.set_ylabel('Velocity (cm/yr)')
@@ -3972,6 +3972,7 @@ class PLOT_COMBINE_SLAB_MORPH(PLOT_COMBINE):
         kwargs:
             color_method: use a list of color or the generated values
         '''
+        multiple_size = kwargs.get("multiple_size", 1) # get the multiple size factor
         _name = "combine_morphology"
         _title = "Comparing slab morphology results"
         color_method = kwargs.get('color_method', 'list')
@@ -3982,7 +3983,7 @@ class PLOT_COMBINE_SLAB_MORPH(PLOT_COMBINE):
         # initiate
         ni = 3  # number of plots along 1st and 2nd dimension
         nj = 2
-        fig, gs, colors = self.initiate_combined_plotting((ni, nj), color_method, dump_color_to_json)
+        fig, gs, colors = self.initiate_combined_plotting((ni, nj), color_method, dump_color_to_json, multiple_size=multiple_size)
         case_names = []  # names of cases
         for i in range(self.n_cases):
             case_name = os.path.basename(self.cases[i])

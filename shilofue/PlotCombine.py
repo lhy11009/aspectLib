@@ -401,16 +401,17 @@ class PLOT_COMBINE():
                 h_location = self.title_height / 2 + 10
                 d.text((w_location,h_location), case_name, font=fnt, fill=(0, 0, 0))  # anchor option doesn't work
         
-    def initiate_combined_plotting(self, shape, color_method, dump_color_to_json):
+    def initiate_combined_plotting(self, shape, color_method, dump_color_to_json, **kwargs):
         '''
         Initiate options for combining plots
         Inputs:
             color_method: generated, list or check_first
         '''
+        multiple_size = kwargs.get("multiple_size", 1)
         n_color_max = 5
         ni = shape[0]
         nj = shape[1]
-        fig = plt.figure(tight_layout=True, figsize=[7*nj, 5*ni])
+        fig = plt.figure(tight_layout=True, figsize=[7*nj*multiple_size, 5*ni*multiple_size])
         gs = gridspec.GridSpec(ni, nj)
         colors_dict = {}
         if color_method == 'generated':
