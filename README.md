@@ -2,6 +2,18 @@
 
 This is a repository of my scripts post-processing ASPECT
 
+### Installation
+
+#### Big data files
+
+Their sources locate under (box folder: big_fixtures)
+
+    https://ucdavis.app.box.com/folder/261299625472
+
+And they should be downloaded to
+
+    tests/integration/big_fixtures
+
 ### Python scripts in shilofue folder
 
 #### Input Options
@@ -54,15 +66,14 @@ Plot summary of mantle rheology from multiple rheologies:
 
     python -m shilofue.Rheology compare_mantle_rheology
 
-### Installation
+### Bash scripts in shilofue folder
 
+#### bash_scripts/parse_case.sh
 
-#### Big data files
+Submit cases in a series.
+Usage: use this on a server that limit job run time and submit a series of jobs at a time
+The job id will then be saved in a file called "job_series_log", use the second command to cancel the job in series
 
-Their sources locate under (box folder: big_fixtures)
+    Lib_parse_case submit_time_series `pwd` job_frontera-normal.sh 
 
-    https://ucdavis.app.box.com/folder/261299625472
-
-And they should be downloaded to
-
-    tests/integration/big_fixtures
+    scancel `cat job_series_log`

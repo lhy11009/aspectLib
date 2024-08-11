@@ -397,6 +397,7 @@ submit_job_series(){
     local prm_path="${case_path}/case.prm"
     local prm_tmp_path="${case_path}/case_1.prm"
     local slurm_file_path="${case_path}/$2"
+    local case_log_file_path="${case_path}/job_series_log"
     local n_in_series="$3"
     local test_only="0"
     [[ -n $4 ]] && test_only="$4"
@@ -404,8 +405,10 @@ submit_job_series(){
     # submit first case and get the job id
     # test_only: assign a value to test the function
     if [[ ${test_only} == "0" ]]; then
-        _message=$(sbatch ${slurm_file_path})
-        job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
+        local _message=$(sbatch ${slurm_file_path})
+        job_id=$(echo "${_message}" | sed -n '$p' | sed 's/^.*Submitted\ batch\ job\ //')
+        echo "${job_id}"  # print the job id to screen
+        echo "${job_id}" > ${case_log_file_path} # save to a log file
     else
         job_id="000000"
     fi
@@ -421,8 +424,10 @@ submit_job_series(){
         slurm_file_path_this="${case_path}/job_series_$i.sh"
         # submit the subsequent case and get the job id
         if [[ ${test_only} == "0" ]]; then
-            _message=$(sbatch ${slurm_file_path_this})
-            job_id=$(echo "${_message}" | sed 's/Submitted\ batch\ job\ //')
+            local _message=$(sbatch ${slurm_file_path_this})
+            job_id=$(echo "${_message}" | sed -n '$p' | sed 's/^.*Submitted\ batch\ job\ //')
+            echo "${job_id}"  # print the job id to screen
+            echo "${job_id}" >> ${case_log_file_path} # save to a log file
         else
             job_id="00000$i"
         fi
