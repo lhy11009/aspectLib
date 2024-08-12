@@ -27,7 +27,7 @@ import numpy as np
 # from shilofue.Utilities import 
 # from matplotlib import pyplot as plt
 # from shutil import rmtree  # for remove directories
-from shutil import rmtree  # for remove directories
+from shutil import rmtree, copytree  # for remove directories
 import vtk
 from shilofue.ThDSubduction0.VtkPp import *  # import test module
 
@@ -41,6 +41,24 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 # todo_hv
+
+def test_Interpolate3dVtkCase():
+    '''
+    test the function of Interpolate3dVtkCase
+    '''
+    case_dir = os.path.join(source_case_dir, 'test_prepare_slab')
+    output_path = os.path.join(test_dir, "ThDSubduction_vtk_test_Interpolate3dVtkCase")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    copytree(case_dir, output_path)
+    vtu_snapshot = 0
+    Interpolate3dVtkCase(output_path, vtu_snapshot, interval=1000e3, n_x=800, n_z=100, file_extension="txt")
+    txt_output = os.path.join(output_path, "vtk_outputs", "center_slice-00000.txt")
+    txt_output_std = os.path.join(case_dir, "vtk_outputs", "center_slice-00000_std.txt")
+    assert(os.path.isfile(txt_output))  # assert file generation and file contents
+    assert(os.path.isfile(txt_output_std))
+    assert(filecmp.cmp(txt_output, txt_output_std))
+
 
 def test_extract_slab_cross_section_at_depth():
     '''

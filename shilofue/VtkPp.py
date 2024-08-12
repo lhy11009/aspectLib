@@ -245,7 +245,6 @@ import data takes %f, interpolate cell center data takes %f"\
         if not quiet:
             print(message)
 
-
     def ConstructTemperatureDifference(self):
         '''
         Construct a dT field of temperature differences

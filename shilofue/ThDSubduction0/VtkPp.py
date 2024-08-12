@@ -29,7 +29,7 @@ import multiprocessing
 import time
 from joblib import Parallel, delayed
 import warnings
-from scipy.interpolate import interp1d, UnivariateSpline
+from scipy.interpolate import interp1d, UnivariateSpline, griddata
 #### self
 from shilofue.PlotVisit import PrepareVTKOptions, RunVTKScripts, PARALLEL_WRAPPER_FOR_VTK
 from shilofue.ThDSubduction0.PlotVisit import VISIT_OPTIONS
@@ -37,6 +37,7 @@ from shilofue.ParsePrm import ReadPrmFile
 from shilofue.Plot import LINEARPLOT
 from shilofue.PlotCombine import PLOT_COMBINE
 from shilofue.TwoDSubduction0.VtkPp import get_theta
+from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 import shilofue.VtkPp as VtkPp
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -1267,6 +1268,144 @@ def CenterProfileAnalyze(case_dir, time_interval_for_slab_morphology, **kwargs):
     step660 = steps[i660]
 
     return t660, step660
+
+
+# functions
+def GetVtkCells2d(n_x, n_z):
+    '''
+    Get a vtk cells from number of points along x, z in 2 dimensions
+    '''
+  
+    cells = vtk.vtkCellArray()
+  
+    for ix in range(n_x-1):
+        for jz in range(n_z-1):
+          cells.InsertNextCell(4)
+          # cell = vtk.vtkIdType()
+          cells.InsertCellPoint(ix*n_z + jz+1)
+          cells.InsertCellPoint(ix*n_z + jz)
+          cells.InsertCellPoint((ix+1)*n_z + jz)
+          cells.InsertCellPoint((ix+1)*n_z + jz+1)
+  
+    return cells
+
+
+def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
+    '''
+    interpolate a 3d vtk output from a case
+    Inputs:
+        kwargs:
+            interval - this determines the interval of the slices
+    '''
+    interval = kwargs.get("interval", 10e3)
+    file_extension = kwargs.get("file_extension", "vtp")
+    n_x = kwargs.get("n_x", 800)
+    n_z = kwargs.get("n_z", 100)
+
+    assert(os.path.isdir(case_dir))
+
+    ha_file = os.path.join(case_dir, "output", "depth_average.txt")
+    assert(os.path.isfile(ha_file))
+    
+    # class for the basic settings of the case
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    geometry = Visit_Options.options['GEOMETRY']
+    geometry = Visit_Options.options['GEOMETRY']
+    Depth =  Visit_Options.options['OUTER_RADIUS']
+    Xmax = Visit_Options.options['XMAX']
+    print("geometry: %s, Depth: %f, Xmax: %f" % (geometry, Depth, Xmax))
+    
+    # load the class for processing the depth average output
+    DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
+    DepthAverage.Import(ha_file)
+
+    # parse file location, time and step
+    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+    Utilities.my_assert(os.path.isfile(filein), FileNotFoundError, "%s is not found" % filein)
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    _time, step = Visit_Options.get_time_and_step(vtu_step)
+
+    # parse from depth average files 
+    Utilities.my_assert(_time != None, ValueError, "\"time\" is a requried input if \"ha_file\" is presented")
+    Tref_func = DepthAverage.GetInterpolateFunc(_time, "temperature")
+    density_ref_func = DepthAverage.GetInterpolateFunc(_time, "adiabatic_density")
+
+    # initiate vtk readers
+    reader = vtk.vtkXMLPUnstructuredGridReader()
+    reader.SetFileName(filein)
+
+    # read data
+    start = time.time() # time this operation
+    reader.Update()
+    grid = reader.GetOutput()
+    data_set = reader.GetOutputAsDataSet()
+    points = grid.GetPoints()
+    cells = grid.GetCells()
+    point_data = data_set.GetPointData()
+    end = time.time()
+    print("Read data takes %.2f s" % (end-start))
+
+    # get points and point data 
+    points_np = vtk_to_numpy(points.GetData())
+    T_np = vtk_to_numpy(point_data.GetArray("T"))
+
+    # new mesh
+    y0 = 1.0
+    N = n_x * n_z
+    target_points_np = np.zeros((N, 3))
+    target_cells_vtk = GetVtkCells2d(n_x, n_z)
+    for ix in range(n_x):
+        for jz in range(n_z):
+            ii = ix * n_z + jz
+            target_points_np[ii, 0] = Xmax * ix / (n_x - 1)
+            target_points_np[ii, 1] = y0
+            target_points_np[ii, 2] = Depth * jz / (n_z - 1)
+
+    # apply a mask before interpolate
+    mask = (points_np[:, 1] > (y0 - interval)) & (points_np[:, 1] < (y0 + interval))
+    print("Interval = %.2e, Adjacent points number = %d" % (interval, points_np[mask].shape[0]))
+
+    # Resample the data from the source mesh to the target mesh
+    resampled_data = griddata(points_np[mask], T_np[mask], target_points_np, method='linear')
+
+    # path to output
+    odir = os.path.join(case_dir, "vtk_outputs")
+    if not os.path.isdir(odir):
+        os.mkdir(odir)
+    fileout=os.path.join(odir, "center_slice-%05d.%s" % (vtu_snapshot, file_extension))
+
+    # output to vtp file
+    o_poly_data = vtk.vtkPolyData()  # initiate poly daa
+    # insert points
+    target_points_vtk = vtk.vtkPoints()
+    for i in range(target_points_np.shape[0]):
+      target_points_vtk.InsertNextPoint(target_points_np[i, 0], target_points_np[i, 1], target_points_np[i, 2])
+    o_poly_data.SetPoints(target_points_vtk) # insert points
+    o_poly_data.SetPolys(target_cells_vtk)
+    # insert data
+    resampled_T_vtk = numpy_to_vtk(resampled_data, deep=1)
+    resampled_T_vtk.SetName('T')
+    o_poly_data.GetPointData().SetScalars(resampled_T_vtk)
+
+    # initiate writer and output 
+    if file_extension == 'txt':
+        if resampled_data.ndim == 1:
+            resampled_data = resampled_data.reshape(resampled_data.size, 1)
+        odata = np.concatenate((target_points_np, resampled_data), axis=1)
+        np.savetxt(fileout, odata)
+        # writer = vtk.vtkSimplePointsWriter()
+    elif file_extension == 'vtp':
+        writer = vtk.vtkXMLPolyDataWriter()
+        writer.SetFileName(fileout)
+        writer.SetInputData(o_poly_data)
+        # writer.SetFileTypeToBinary()  # try this later to see if this works
+        writer.Update()
+        writer.Write()
+    else:
+        raise NotImplementedError()
+    
+    print("Saved file %s" % fileout)
 
 
 def main():
