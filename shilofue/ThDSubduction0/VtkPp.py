@@ -1296,11 +1296,14 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     Inputs:
         kwargs:
             interval - this determines the interval of the slices
+            d_lateral - the lateral distance,
+                take a minimum value of 1.0 to assure successful slicing of the geometry
     '''
     interval = kwargs.get("interval", 10e3)
     file_extension = kwargs.get("file_extension", "vtp")
     n0 = kwargs.get("n0", 800)
     n1 = kwargs.get("n1", 100)
+    d_lateral = kwargs.get("d_lateral", 1.0)
 
     assert(os.path.isdir(case_dir))
 
@@ -1356,28 +1359,31 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     target_cells_vtk = GetVtkCells2d(n0, n1)
     mask=None
     if geometry == "box":
-        y0 = 1.0
         for i0 in range(n0):
             for j1 in range(n1):
                 ii = i0 * n1 + j1
                 target_points_np[ii, 0] = Xmax * i0 / (n0 - 1)
-                target_points_np[ii, 1] = y0
+                target_points_np[ii, 1] = d_lateral
                 target_points_np[ii, 2] = Ro * j1 / (n1 - 1) # Ro and depth are the same in this case
-        mask = (points_np[:, 1] > (y0 - interval)) & (points_np[:, 1] < (y0 + interval))
+        mask = (points_np[:, 1] > (d_lateral - interval)) & (points_np[:, 1] < (d_lateral + interval))
     elif geometry == "chunk":
-        z0 = 1.0
         for i0 in range(n0):
             for j1 in range(n1):
                 # note we use theta = 0.0 here, but z0 = small value, this is to ensure a successful slice
                 # of the chunk geometry
+                # we take the slice at z = d_lateral, then x and y are between Ri and a R1 value
+                if d_lateral < 1e3:
+                    R1 = Ro
+                else:
+                    R1 = (Ro**2.0 - d_lateral**2.0)**0.5
                 ii = i0 * n1 + j1
                 phi = i0 / n0 * Xmax * np.pi / 180.0
-                r = Ro * (j1 - 0.0) / (n1 - 0.0) + Ri * (j1 - n1)/ (0.0 - n1)  
+                r = R1 * (j1 - 0.0) / (n1 - 0.0) + Ri * (j1 - n1)/ (0.0 - n1)  
                 slice_x, slice_y, _  = Utilities.ggr2cart(0.0, phi, r) 
                 target_points_np[ii, 0] = slice_x
                 target_points_np[ii, 1] = slice_y
-                target_points_np[ii, 2] = z0
-        mask = (points_np[:, 2] > (z0 - interval)) & (points_np[:, 2] < (z0 + interval))
+                target_points_np[ii, 2] = d_lateral
+        mask = (points_np[:, 2] > (d_lateral - interval)) & (points_np[:, 2] < (d_lateral + interval))
 
     # apply a mask before interpolate
     print("Interval = %.2e, Adjacent points number = %d" % (interval, points_np[mask].shape[0]))
@@ -1389,7 +1395,10 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     odir = os.path.join(case_dir, "vtk_outputs")
     if not os.path.isdir(odir):
         os.mkdir(odir)
-    fileout=os.path.join(odir, "center_slice-%05d.%s" % (vtu_snapshot, file_extension))
+    filebase = "center_slice"
+    if d_lateral > 1.0e3:
+        filebase = "lateral_slice_d%.2fkm" % (d_lateral)
+    fileout=os.path.join(odir, "%s-%05d.%s" % (filebase, vtu_snapshot, file_extension))
 
     # output to vtp file
     o_poly_data = vtk.vtkPolyData()  # initiate poly daa
