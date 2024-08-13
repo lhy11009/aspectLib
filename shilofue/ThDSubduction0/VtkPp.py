@@ -1299,8 +1299,8 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     '''
     interval = kwargs.get("interval", 10e3)
     file_extension = kwargs.get("file_extension", "vtp")
-    n_x = kwargs.get("n_x", 800)
-    n_z = kwargs.get("n_z", 100)
+    n0 = kwargs.get("n0", 800)
+    n1 = kwargs.get("n1", 100)
 
     assert(os.path.isdir(case_dir))
 
@@ -1311,10 +1311,10 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
     geometry = Visit_Options.options['GEOMETRY']
-    geometry = Visit_Options.options['GEOMETRY']
-    Depth =  Visit_Options.options['OUTER_RADIUS']
+    Ro =  Visit_Options.options['OUTER_RADIUS']
+    Ri = Visit_Options.options['INNER_RADIUS']
     Xmax = Visit_Options.options['XMAX']
-    print("geometry: %s, Depth: %f, Xmax: %f" % (geometry, Depth, Xmax))
+    print("geometry: %s, Ro/Depth: %f, Xmax: %f" % (geometry, Ro, Xmax))
     
     # load the class for processing the depth average output
     DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
@@ -1351,19 +1351,35 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     T_np = vtk_to_numpy(point_data.GetArray("T"))
 
     # new mesh
-    y0 = 1.0
-    N = n_x * n_z
+    N = n0 * n1
     target_points_np = np.zeros((N, 3))
-    target_cells_vtk = GetVtkCells2d(n_x, n_z)
-    for ix in range(n_x):
-        for jz in range(n_z):
-            ii = ix * n_z + jz
-            target_points_np[ii, 0] = Xmax * ix / (n_x - 1)
-            target_points_np[ii, 1] = y0
-            target_points_np[ii, 2] = Depth * jz / (n_z - 1)
+    target_cells_vtk = GetVtkCells2d(n0, n1)
+    mask=None
+    if geometry == "box":
+        y0 = 1.0
+        for i0 in range(n0):
+            for j1 in range(n1):
+                ii = i0 * n1 + j1
+                target_points_np[ii, 0] = Xmax * i0 / (n0 - 1)
+                target_points_np[ii, 1] = y0
+                target_points_np[ii, 2] = Ro * j1 / (n1 - 1) # Ro and depth are the same in this case
+        mask = (points_np[:, 1] > (y0 - interval)) & (points_np[:, 1] < (y0 + interval))
+    elif geometry == "chunk":
+        z0 = 1.0
+        for i0 in range(n0):
+            for j1 in range(n1):
+                # note we use theta = 0.0 here, but z0 = small value, this is to ensure a successful slice
+                # of the chunk geometry
+                ii = i0 * n1 + j1
+                phi = i0 / n0 * Xmax * np.pi / 180.0
+                r = Ro * (j1 - 0.0) / (n1 - 0.0) + Ri * (j1 - n1)/ (0.0 - n1)  
+                slice_x, slice_y, _  = Utilities.ggr2cart(0.0, phi, r) 
+                target_points_np[ii, 0] = slice_x
+                target_points_np[ii, 1] = slice_y
+                target_points_np[ii, 2] = z0
+        mask = (points_np[:, 2] > (z0 - interval)) & (points_np[:, 2] < (z0 + interval))
 
     # apply a mask before interpolate
-    mask = (points_np[:, 1] > (y0 - interval)) & (points_np[:, 1] < (y0 + interval))
     print("Interval = %.2e, Adjacent points number = %d" % (interval, points_np[mask].shape[0]))
 
     # Resample the data from the source mesh to the target mesh
