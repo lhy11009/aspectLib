@@ -40,15 +40,31 @@ if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
 
-def test_Interpolate3dVtkCaseChunck():
+
+def test_Interpolate3dVtkCaseChunckPart():
     '''
-    test the function of Interpolate3dVtkCase, in chunk geometry
+    test the function of Interpolate3dVtkCase, in chunk geometry, only read in a solution in part
     '''
     case_dir = os.path.join(source_case_dir, 'test_prepare_slab_chunk')
     output_path = os.path.join(test_dir, "ThDSubduction_vtk_test_Interpolate3dVtkCaseChunk")
     if os.path.isdir(output_path):
         rmtree(output_path)  # remove old results
     copytree(case_dir, output_path)
+    vtu_snapshot = 0
+    Interpolate3dVtkCase(output_path, vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt", part=1)
+    txt_output = os.path.join(output_path, "vtk_outputs", "center_slice-00000.0001.txt")
+    txt_output_std = os.path.join(case_dir, "vtk_outputs", "center_slice-00000.0001_std.txt")
+    assert(os.path.isfile(txt_output))  # assert file generation and file contents
+    assert(os.path.isfile(txt_output_std))
+    assert(filecmp.cmp(txt_output, txt_output_std))
+
+
+def test_Interpolate3dVtkCaseChunck():
+    '''
+    test the function of Interpolate3dVtkCase, in chunk geometry
+    '''
+    case_dir = os.path.join(source_case_dir, 'test_prepare_slab_chunk')
+    output_path = os.path.join(test_dir, "ThDSubduction_vtk_test_Interpolate3dVtkCaseChunk")
     vtu_snapshot = 0
     Interpolate3dVtkCase(output_path, vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt")
     txt_output = os.path.join(output_path, "vtk_outputs", "center_slice-00000.txt")

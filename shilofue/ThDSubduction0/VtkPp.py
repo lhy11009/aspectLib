@@ -1304,6 +1304,7 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     n0 = kwargs.get("n0", 800)
     n1 = kwargs.get("n1", 100)
     d_lateral = kwargs.get("d_lateral", 1.0)
+    part = kwargs.get("part", None)
 
     assert(os.path.isdir(case_dir))
 
@@ -1324,7 +1325,16 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     DepthAverage.Import(ha_file)
 
     # parse file location, time and step
-    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+    # allow importing the solution for the step (.pvtu) or the solution for part of the stpe (.vtu)
+    filein = None
+    reader = None
+    if part is None:
+        filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+        reader = vtk.vtkXMLPUnstructuredGridReader()
+    else:
+        assert(type(part) == int)
+        filein = os.path.join(case_dir, "output", "solution", "solution-%05d.%04d.vtu" % (vtu_snapshot, part))
+        reader = vtk.vtkXMLUnstructuredGridReader()
     Utilities.my_assert(os.path.isfile(filein), FileNotFoundError, "%s is not found" % filein)
     vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
     _time, step = Visit_Options.get_time_and_step(vtu_step)
@@ -1335,7 +1345,6 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     density_ref_func = DepthAverage.GetInterpolateFunc(_time, "adiabatic_density")
 
     # initiate vtk readers
-    reader = vtk.vtkXMLPUnstructuredGridReader()
     reader.SetFileName(filein)
 
     # read data
@@ -1348,6 +1357,7 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     point_data = data_set.GetPointData()
     end = time.time()
     print("Read data takes %.2f s" % (end-start))
+    print("Bound of grid:", points.GetBounds())
 
     # get points and point data 
     points_np = vtk_to_numpy(points.GetData())
@@ -1398,7 +1408,11 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     filebase = "center_slice"
     if d_lateral > 1.0e3:
         filebase = "lateral_slice_d%.2fkm" % (d_lateral)
-    fileout=os.path.join(odir, "%s-%05d.%s" % (filebase, vtu_snapshot, file_extension))
+    if part is None:
+        extension = "%05d.%s" % (vtu_snapshot, file_extension)
+    else:
+        extension = "%05d.%04d.%s" % (vtu_snapshot, part, file_extension)
+    fileout=os.path.join(odir, "%s-%s" % (filebase, extension))
 
     # output to vtp file
     o_poly_data = vtk.vtkPolyData()  # initiate poly daa
@@ -1519,6 +1533,9 @@ def main():
         SlabPlot = SLABPLOT('slab')
         episodes = [[0, 5], [5, 20], [20, 30]]
         SlabPlot.PlotTrenchPositionEpisodes(arg.inputs, episodes, time_interval=arg.time_interval)
+    elif _commend == 'slice_3d_geometry':
+        # Interpolate3dVtkCase(arg.inputs, arg.vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt")
+        Interpolate3dVtkCase(arg.inputs, arg.vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt", part=2)
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 
