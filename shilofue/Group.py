@@ -684,9 +684,28 @@ class CASE_SUMMARY():
         Inputs:
             kwargs
         '''
+        hr = 3600.0 # s in hr
         # append the include field
         if len(self.includes) < self.n_case:
             self.includes += [1 for i in range(self.n_case - len(self.includes))]
+        # update step, time and wallclock time
+        for i in range(self.n_case):
+            step, _time, wallclock = -1, -1.0, -1.0
+            log_file = os.path.join(self.ab_paths[i], 'output', 'log.txt')
+            if os.path.isfile(log_file):
+                try:
+                    step, _time, wallclock = RunTimeInfo(log_file, quiet=True)
+                except TypeError:
+                    pass
+            self.steps[i] = step
+            if _time > 0.0:
+                self.times[i] = _time / 1e6
+            else:
+                self.times[i] = -1.0
+            if wallclock > 0.0:
+                self.wallclocks[i] = wallclock / hr
+            else:
+                self.wallclocks[i] = -1.0
 
     def import_directory(self, _dir, **kwargs):
         '''
@@ -694,6 +713,7 @@ class CASE_SUMMARY():
         Inputs:
             _dir (str): directory to import
         '''
+        hr = 3600.0 # s in hr
         assert(os.path.isdir(_dir))
         # first parse in run time information
         case_list, step_list, time_list, wallclock_list = ReadBasicInfoGroup(_dir)
@@ -705,18 +725,31 @@ class CASE_SUMMARY():
             if _case in self.cases:
                 j = self.cases.index(_case)
                 self.steps[j] = step
-                self.times[j] = _time
-                self.wallclocks[j] = wallclock
+                if _time > 0.0:
+                    self.times[j] = _time / 1e6
+                else:
+                    self.times[j] = -1.0
+                if wallclock > 0.0:
+                    self.wallclocks[j] = wallclock / hr
+                else:
+                    self.wallclocks[j] = -1.0
             else:
                 self.n_case += 1
                 self.cases.append(_case)
                 self.steps.append(step)
-                self.times.append(_time)
-                self.wallclocks.append(wallclock)
+                if _time > 0.0:
+                    self.times.append(_time / 1e6)
+                else:
+                    self.times.append(-1.0)
+                if wallclock > 0.0:
+                    self.wallclocks.append(wallclock / hr)
+                else:
+                    self.wallclocks.append(-1.0)
                 self.ab_paths.append(os.path.join(_dir, _case))
         
-        # then call update for properties
-        self.Update(**kwargs)
+        # append the include field
+        if len(self.includes) < self.n_case:
+            self.includes += [1 for i in range(self.n_case - len(self.includes))]
 
     def import_txt(self, i_path):
         '''
@@ -1002,7 +1035,10 @@ class CASE_SUMMARY():
                 self.write(fout, attrs_to_output, headers) 
         elif format == "csv":
             with open(o_path, 'w') as fout: 
-                self.write_csv(fout, attrs_to_output, headers) 
+                self.write_csv(fout, attrs_to_output, headers)
+        elif format == "tex":
+            with open(o_path, 'w') as fout: 
+                self.export_to_latex_table(fout, attrs_to_output, headers)
         else:
             raise ValueError("%s: filename should end with \".txt\" or \".csv\", but the given name is %s" % (Utilities.func_name(), o_path))
 
@@ -1019,6 +1055,31 @@ class CASE_SUMMARY():
             self.write_file(o_path)
         else:
             print("%s: File already exists %s" % (Utilities.func_name(), o_path))
+    
+    def export_to_latex_table(self, fout, attrs_to_output, headers):
+        '''
+        export summary results to a table in latex format
+        '''
+        # header and data to write
+        data_raw = []
+        oheaders = []
+        length_of_data = 0
+        for i in range(len(attrs_to_output)):
+            _attr = attrs_to_output[i]
+            header = headers[i]
+            temp = np.array(getattr(self, _attr))
+            if i == 0:
+                length_of_data = len(temp)
+            if len(temp) > 0:
+                # len(temp) == 0 marks an void field
+                Utilities.my_assert(length_of_data == len(temp), ValueError,\
+                    "Data for field \'%s\'(%d) doesn't much the length of data (%d)" % (_attr, len(temp), length_of_data))
+                data_raw.append(temp)
+                oheaders.append(header)
+        data = np.column_stack(data_raw)
+        TexTable = Utilities.TEX_TABLE("case-summary", header=oheaders, data=np.transpose(data).tolist()) # class initiation
+        table_contents = TexTable(format="latex", fix_underscore_in_content=False)
+        fout.write(table_contents)
 
     # error types
     class SummaryFileNotExistError(Exception):
@@ -1054,6 +1115,20 @@ class CASE_SUMMARY():
         ZZ = WeightedByDistance(Xs, Ys, Zs, XX, YY)
 
         return XX, YY, ZZ
+    
+    def update_geometry(self, i):
+        '''
+        update info of geometry
+        '''
+        case_dir = self.ab_paths[i]
+        Utilities.my_assert(os.path.isdir(case_dir), FileExistsError, "Directory doesn't exist %s" % case_dir)
+
+        try:
+            Visit_Options = self.VISIT_OPTIONS(case_dir)
+            Visit_Options.Interpret()
+            self.geometries[i] = Visit_Options.options["GEOMETRY"]
+        except FileNotFoundError:
+            self.geometries[i] = -1.0
 
 
 def WeightedByDistance(Xs, Ys, Zs, XX, YY):

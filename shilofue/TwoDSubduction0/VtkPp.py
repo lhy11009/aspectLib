@@ -421,6 +421,31 @@ class VTKP(VtkPp.VTKP):
         self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
         pass
 
+    # todo_dip
+    def GetDipAtDepth(self, depth_lookup, depth_interval):
+        # 100 km dip angle
+        self.coord_0 = self.SlabSurfDepthLookup(depth_lookup-depth_interval)
+        self.coord_1 = self.SlabSurfDepthLookup(depth_lookup)
+        x_0, y_0, x_1, y_1 = None, None, None, None
+        if self.geometry == "chunk":
+            x_0 = (self.Ro - depth_lookup +depth_interval) * np.cos(self.coord_0)
+            y_0 = (self.Ro - depth_lookup +depth_interval) * np.sin(self.coord_0)
+            x_1 = (self.Ro - depth_lookup) * np.cos(self.coord_1)
+            y_1 = (self.Ro - depth_lookup) * np.sin(self.coord_1)
+        elif self.geometry == "box":
+            x_0 = self.coord_0
+            y_0 = self.Ro - depth_lookup + depth_interval
+            x_1 = self.coord_1
+            y_1 = self.Ro - depth_lookup
+        r_0 = get_r(x_0, y_0, self.geometry)
+        theta_0 = get_theta(x_0, y_0, self.geometry)
+        r_1 = get_r(x_1, y_1, self.geometry)
+        theta_1 = get_theta(x_1, y_1, self.geometry)
+        dip = get_dip(x_0, y_0, x_1, y_1, self.geometry)
+        print("x_0, y_0: ", x_0, y_0) # debug
+        print("x_1, y_1: ", x_1, y_1)
+        return dip
+
     def ExportOvAthenProfile(self, depth_distant_lookup, **kwargs):
         '''
         query a profile ending at depth_distant_lookup that is 5 deg to the
@@ -1280,7 +1305,7 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     print("%s%s" % (indent*" ", outputs)) # debug
     return vtu_step, outputs
 
-
+# todo_dip
 def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     '''
     Wrapper for using PVTK class to get slab morphology, uses two distinct mdd_dx1 value
@@ -1299,6 +1324,7 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
         os.mkdir(output_path)
     findmdd_tolerance = kwargs.get("findmdd_tolerance", 0.05)
     depth_distant_lookup = kwargs.get("depth_distant_lookup", 200e3)
+    dip_angle_depth_lookup = kwargs.get("dip_angle_depth_lookup", None)
     project_velocity = kwargs.get('project_velocity', False)
     mdd = -1.0 # an initial value
     print("%s%s: Start" % (indent*" ", Utilities.func_name()))
@@ -1378,6 +1404,9 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
         outputs += "%-14.4e %-14.4e" % (mdd1, mdd2)
     if output_ov_ath_profile:
         outputs += "%-14.4e %-14.4e" % (v_distant_profile[n_distant_profiel_sample-1, 0], query_viscs[n_distant_profiel_sample-1])
+    if dip_angle_depth_lookup is not None:
+        outputs += "%-14.4e" % (VtkP.GetDipAtDepth(dip_angle_depth_lookup, 60e3))
+    
     outputs += "\n"
     print("%s%s" % (indent*" ", outputs)) # debug
     return vtu_step, outputs
@@ -4253,6 +4282,46 @@ def PlotTrenchDifferences2d(SlabPlot, case_dir, **kwargs):
     ax.plot(times/1e6, (trenches - trenches[0])/1e3, color=_color, label = "2d")
     if ax_twinx is not None:
         ax_twinx.plot(times/1e6, slab_depths/1e3, '--', color=_color)
+
+def GetSlabDipAt660(case_dir):
+    '''
+    Get the slab dip angle when reaching 660
+    '''
+    IndexByValue = lambda array_1d, val: np.argmin(abs(array_1d - val))
+    Resample1d = lambda array_1d, n: array_1d[np.ix_(range(0, array_1d.size, n))]
+    
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret() 
+    
+    slab_morph_path = os.path.join(case_dir, "vtk_outputs", "slab_morph_t1.00e+05.txt")
+    assert(os.path.isfile(slab_morph_path))
+    
+    data = np.loadtxt(slab_morph_path)
+    steps = data[:, 1]
+    times = data[:, 2]
+    trenches = data[:, 3]
+    slab_depths = data[:, 4]
+    
+    # time of slab tip reaching 660 km and the index in the list
+    sfunc = interp1d(slab_depths, times, assume_sorted=True)
+    t660 = sfunc(660e3)
+    i660 = IndexByValue(times, t660)
+    step660 = steps[i660]
+
+    # figure out the snapshot to analyze 
+    available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=0.1e6)
+    available_pvtu_times = Visit_Options.get_times_for_slab_morphology(time_interval=0.1e6)
+    id = IndexByValue(available_pvtu_times, t660)
+    vtu_snapshot = available_pvtu_snapshots[id]
+
+    # get the dip angle at 660 km 
+    vtu_step, outputs = SlabMorphology_dual_mdd(case_dir, vtu_snapshot, dip_angle_depth_lookup=660e3)
+    o_list = []
+    for entry in outputs.split(' '):
+        if entry not in ["", "\n"]:
+            o_list.append(entry)
+    dip660 = float(o_list[-1])
+    return dip660
 
 
 def main():

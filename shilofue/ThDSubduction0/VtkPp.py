@@ -1233,16 +1233,18 @@ def CenterProfileAnalyze(case_dir, time_interval_for_slab_morphology, **kwargs):
     IndexByValue = lambda array_1d, val: np.argmin(abs(array_1d - val))
     # initiation
     Visit_Options = VISIT_OPTIONS(case_dir)
-    Visit_Options.Interpret()
+    Visit_Options.Interpret(graphical_type="slice_center")
     trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
     # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
-    available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+    available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology_outputs(time_interval=time_interval_for_slab_morphology)
     n_snapshots = len(available_pvtu_snapshots)
-
+    if n_snapshots <= 1:
+        raise FileNotFoundError("available snapshots are not found / only 1 snapshot for case %s" % case_dir)
     # derive the depth of the slab tip
     depths = []
     ts = []
     steps = []
+    # n_snapshots - 1: some time the last step is not complete?
     for n in range(n_snapshots-1):
         vtu_snapshot = available_pvtu_snapshots[n]
         filein1 = os.path.join(case_dir, "vtk_outputs", "center_profile_%05d.txt" % vtu_snapshot)
@@ -1263,11 +1265,43 @@ def CenterProfileAnalyze(case_dir, time_interval_for_slab_morphology, **kwargs):
 
     # time of slab tip reaching 660 km and the index in the list
     sfunc = interp1d(depths, ts, assume_sorted=True)
-    t660 = sfunc(660e3)
-    i660 = IndexByValue(ts, t660)
-    step660 = steps[i660]
+    try:
+        t660 = sfunc(660e3)
+        i660 = IndexByValue(ts, t660)
+        step660 = steps[i660]
+    except ValueError:
+        t660 = np.nan
+        i660 = np.nan
+        step660 = np.nan
+    try:
+        t800 = sfunc(800e3)
+        i800 = IndexByValue(ts, t800)
+        step800 = steps[i800]
+    except ValueError:
+        t800 = np.nan
+        i800 = np.nan
+        step800 = np.nan
+    try:
+        t1000 = sfunc(1000e3)
+        i1000 = IndexByValue(ts, t1000)
+        step1000 = steps[i1000]
+    except ValueError:
+        t1000 = np.nan
+        i1000 = np.nan
+        step1000 = np.nan
 
-    return t660, step660
+    # construct the results
+    results = {}
+    results['t660'] = t660
+    results['step660'] = step660
+
+    results['t800'] = t800
+    results['step800'] = step800
+    
+    results['t1000'] = t1000
+    results['step1000'] = step1000
+
+    return results
 
 
 # functions
@@ -1290,21 +1324,160 @@ def GetVtkCells2d(n_x, n_z):
     return cells
 
 
-def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
+def MakeTargetMesh(Visit_Options, n0, n1, d_lateral):
     '''
-    interpolate a 3d vtk output from a case
+    Make a target mesh for slicing 3d dataset
+    Inputs:
+        Visit_Options - a VISIT_OPTIONS class
+        n0, n1 - number of points along the 1st and 3rd dimention
+        interval - this determines the interval of the slices
+        d_lateral - the lateral distance, along the 2nd dimention
+            take a minimum value of 1.0 to assure successful slicing of the geometry
+    '''
+    # get the options 
+    geometry = Visit_Options.options['GEOMETRY']
+    Ro =  Visit_Options.options['OUTER_RADIUS']
+    Ri = Visit_Options.options['INNER_RADIUS']
+    Xmax = Visit_Options.options['XMAX']
+    N = n0 * n1
+    # new mesh
+    target_points_np = np.zeros((N, 3))
+    if geometry == "box":
+        for i0 in range(n0):
+            for j1 in range(n1):
+                ii = i0 * n1 + j1
+                target_points_np[ii, 0] = Xmax * i0 / (n0 - 1)
+                target_points_np[ii, 1] = d_lateral
+                target_points_np[ii, 2] = Ro * j1 / (n1 - 1) # Ro and depth are the same in this case
+    elif geometry == "chunk":
+        for i0 in range(n0):
+            for j1 in range(n1):
+                # note we use theta = 0.0 here, but z0 = small value, this is to ensure a successful slice
+                # of the chunk geometry
+                # we take the slice at z = d_lateral, then x and y are between Ri and a R1 value
+                if d_lateral < 1e3:
+                    R1 = Ro
+                else:
+                    R1 = (Ro**2.0 - d_lateral**2.0)**0.5
+                ii = i0 * n1 + j1
+                phi = i0 / n0 * Xmax * np.pi / 180.0
+                r = R1 * (j1 - 0.0) / (n1 - 0.0) + Ri * (j1 - n1)/ (0.0 - n1)  
+                slice_x, slice_y, _  = Utilities.ggr2cart(0.0, phi, r) 
+                target_points_np[ii, 0] = slice_x
+                target_points_np[ii, 1] = slice_y
+                target_points_np[ii, 2] = d_lateral
+    return target_points_np
+
+# todo_i3d
+def Interpolate3dVtkCaseByParts(case_dir, vtu_snapshot, **kwargs):
+    '''
+    interpolate a 3d vtk output from a case, start from a single part
+    '''
+    assert(os.path.isdir(case_dir))
+    # get options
+    n0 = kwargs.get("n0", 800)
+    n1 = kwargs.get("n1", 100)
+    N = n0 * n1
+    d_lateral = kwargs.get("d_lateral", 1.0)
+    field = kwargs.get("field", "T")
+    file_extension = kwargs.get("file_extension", 'txt')
+    # class for the basic settings of the case
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    target_points_np = MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
+    resampled_data = np.zeros([target_points_np.shape[0], 1])
+    resampled_data[:] = np.nan
+    # rewrite the kwargs for sub-function 
+    kwargs['file_extension'] = None # set to no output
+    kwargs['target_points_np'] = target_points_np
+    kwargs['indent'] = 4
+    points = None; 
+    point_data = None
+    for part in range(16):
+        print("Mask data from part %d" % part)
+        points_part, point_data_part = Mask3dVtkCase(case_dir, vtu_snapshot, part, **kwargs)
+        print("Get %d points from part %d" % (points_part.shape[0], part))
+        if part == 0:
+            points = points_part
+            point_data = point_data_part
+        else:
+            points = np.concatenate([points, points_part], axis=0)
+            point_data = np.concatenate((point_data, point_data_part), axis=0)
+    print("Get %d points in total" % (points.shape[0]))
+    print("Start interpolation")
+    start = time.time()
+    resampled_data = griddata(points, point_data, target_points_np, method='linear')
+    end = time.time()
+    print("End interpolation, take %.2f s" % (end-start))
+#    for part in range(16):
+#        print("Start part %d/16" % part)
+#        kwargs['part'] = part
+#        resampled_data_pt = Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs)
+#        mask = (~np.isnan(resampled_data_pt[:,0]))
+#        resampled_data[mask] = resampled_data_pt[mask]
+#        mask1 = (~np.isnan(resampled_data[:, 0]))
+#        print("End part %d/16, Valid values in resampled data: %d/%d" % (part, mask1.sum(), N))
+    # path to output
+    odir = os.path.join(case_dir, "vtk_outputs")
+    if not os.path.isdir(odir):
+        os.mkdir(odir)
+    filebase = "center_slice"
+    if d_lateral > 1.0e3:
+        filebase = "lateral_slice_d%.2fkm" % (d_lateral)
+    extension = "%05d.%s" % (vtu_snapshot, file_extension)
+    fileout=os.path.join(odir, "%s-%s" % (filebase, extension))
+
+    # initiate writer and output 
+    if file_extension == 'txt':
+        odata = np.concatenate((target_points_np, resampled_data), axis=1)
+        np.savetxt(fileout, odata)
+        # writer = vtk.vtkSimplePointsWriter()
+        print("Saved file %s" % (fileout))
+    elif file_extension == 'vtp':
+        # output to vtp file
+        o_poly_data = vtk.vtkPolyData()  # initiate poly data
+        # new mesh
+        target_cells_vtk = GetVtkCells2d(n0, n1)
+        # insert points
+        target_points_vtk = vtk.vtkPoints()
+        for i in range(target_points_np.shape[0]):
+          target_points_vtk.InsertNextPoint(target_points_np[i, 0], target_points_np[i, 1], target_points_np[i, 2])
+        o_poly_data.SetPoints(target_points_vtk) # insert points
+        o_poly_data.SetPolys(target_cells_vtk)
+        # insert data
+        resampled_field_vtk = numpy_to_vtk(resampled_data[:, 0], deep=1)
+        resampled_field_vtk.SetName(field)
+        o_poly_data.GetPointData().SetScalars(resampled_field_vtk)
+        # write to file
+        writer = vtk.vtkXMLPolyDataWriter()
+        writer.SetFileName(fileout)
+        writer.SetInputData(o_poly_data)
+        # writer.SetFileTypeToBinary()  # try this later to see if this works
+        writer.Update()
+        writer.Write()
+        print("Saved file %s" % (fileout))
+
+
+def Mask3dVtkCase(case_dir, vtu_snapshot, part, **kwargs):
+    '''
+    mask the 3d vtk data
     Inputs:
         kwargs:
+            n0, n1 - number of points along the 1st and 3rd dimention
             interval - this determines the interval of the slices
-            d_lateral - the lateral distance,
+            d_lateral - the lateral distance, along the 2nd dimention
                 take a minimum value of 1.0 to assure successful slicing of the geometry
     '''
+    # parse options
     interval = kwargs.get("interval", 10e3)
+    field = kwargs.get("field", "T")
     file_extension = kwargs.get("file_extension", "vtp")
     n0 = kwargs.get("n0", 800)
     n1 = kwargs.get("n1", 100)
+    indent = kwargs.get('indent', 0) # indentation when outputing to screen
     d_lateral = kwargs.get("d_lateral", 1.0)
-    part = kwargs.get("part", None)
+    target_points_np = kwargs.get("target_points_np", None)
+    print("%sMask data from part %d, get field %s" % (indent*" ", part, field))
 
     assert(os.path.isdir(case_dir))
 
@@ -1318,7 +1491,85 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     Ro =  Visit_Options.options['OUTER_RADIUS']
     Ri = Visit_Options.options['INNER_RADIUS']
     Xmax = Visit_Options.options['XMAX']
-    print("geometry: %s, Ro/Depth: %f, Xmax: %f" % (geometry, Ro, Xmax))
+    
+    # parse file location, time and step
+    # allow importing the solution for the step (.pvtu) or the solution for part of the stpe (.vtu)
+    assert(type(part) == int)
+    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.%04d.vtu" % (vtu_snapshot, part))
+    reader = vtk.vtkXMLUnstructuredGridReader()
+    Utilities.my_assert(os.path.isfile(filein), FileNotFoundError, "%s is not found" % filein)
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    _time, step = Visit_Options.get_time_and_step(vtu_step)
+
+    # parse from depth average files 
+    Utilities.my_assert(_time != None, ValueError, "\"time\" is a requried input if \"ha_file\" is presented")
+
+    # initiate vtk readers
+    reader.SetFileName(filein)
+
+    # read data
+    start = time.time() # time this operation
+    reader.Update()
+    grid = reader.GetOutput()
+    data_set = reader.GetOutputAsDataSet()
+    points = grid.GetPoints()
+    cells = grid.GetCells()
+    point_data = data_set.GetPointData()
+    end = time.time()
+    print("%sRead data takes %.2f s" % (" "*indent, end-start))
+    print("%sBound of grid:" % (" "*indent), points.GetBounds())
+
+    # get points and point data 
+    points_np = vtk_to_numpy(points.GetData())
+    field_np = vtk_to_numpy(point_data.GetArray(field))
+    field_np = field_np.reshape((field_np.size, 1))
+
+    if target_points_np is None:
+        # make a target mesh is none is given
+        target_points_np = MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
+    print("%sPoints in target: %d" % (" "*indent, target_points_np.shape[0]))
+    # mask the data to the adjacency of the mesh
+    mask=None
+    if geometry == "box":
+        mask = (points_np[:, 1] > (d_lateral - interval)) & (points_np[:, 1] < (d_lateral + interval))
+    elif geometry == "chunk":
+        mask = (points_np[:, 2] > (d_lateral - interval)) & (points_np[:, 2] < (d_lateral + interval))
+    mask_points = points_np[mask, :]
+    mask_data = field_np[mask, :]
+    return mask_points, mask_data
+
+
+def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
+    '''
+    interpolate a 3d vtk output from a case
+    Inputs:
+        kwargs:
+            n0, n1 - number of points along the 1st and 3rd dimention
+            interval - this determines the interval of the slices
+            d_lateral - the lateral distance, along the 2nd dimention
+                take a minimum value of 1.0 to assure successful slicing of the geometry
+    '''
+    interval = kwargs.get("interval", 10e3)
+    file_extension = kwargs.get("file_extension", "vtp")
+    n0 = kwargs.get("n0", 800)
+    n1 = kwargs.get("n1", 100)
+    indent = kwargs.get('indent', 0) # indentation when outputing to screen
+    d_lateral = kwargs.get("d_lateral", 1.0)
+    part = kwargs.get("part", None)
+    target_points_np = kwargs.get("target_points_np", None)
+
+    assert(os.path.isdir(case_dir))
+
+    ha_file = os.path.join(case_dir, "output", "depth_average.txt")
+    assert(os.path.isfile(ha_file))
+    
+    # class for the basic settings of the case
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    geometry = Visit_Options.options['GEOMETRY']
+    Ro =  Visit_Options.options['OUTER_RADIUS']
+    Ri = Visit_Options.options['INNER_RADIUS']
+    Xmax = Visit_Options.options['XMAX']
     
     # load the class for processing the depth average output
     DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
@@ -1356,50 +1607,34 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
     cells = grid.GetCells()
     point_data = data_set.GetPointData()
     end = time.time()
-    print("Read data takes %.2f s" % (end-start))
-    print("Bound of grid:", points.GetBounds())
+    print("%sRead data takes %.2f s" % (" "*indent, end-start))
+    print("%sBound of grid:" % (" "*indent), points.GetBounds())
 
     # get points and point data 
     points_np = vtk_to_numpy(points.GetData())
     T_np = vtk_to_numpy(point_data.GetArray("T"))
 
-    # new mesh
-    N = n0 * n1
-    target_points_np = np.zeros((N, 3))
-    target_cells_vtk = GetVtkCells2d(n0, n1)
+    if target_points_np is None:
+        # make a target mesh is none is given
+        target_points_np = MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
+    print("%sPoints in target: %d" % (" "*indent, target_points_np.shape[0]))
+    # mask the data to the adjacency of the mesh
     mask=None
     if geometry == "box":
-        for i0 in range(n0):
-            for j1 in range(n1):
-                ii = i0 * n1 + j1
-                target_points_np[ii, 0] = Xmax * i0 / (n0 - 1)
-                target_points_np[ii, 1] = d_lateral
-                target_points_np[ii, 2] = Ro * j1 / (n1 - 1) # Ro and depth are the same in this case
         mask = (points_np[:, 1] > (d_lateral - interval)) & (points_np[:, 1] < (d_lateral + interval))
     elif geometry == "chunk":
-        for i0 in range(n0):
-            for j1 in range(n1):
-                # note we use theta = 0.0 here, but z0 = small value, this is to ensure a successful slice
-                # of the chunk geometry
-                # we take the slice at z = d_lateral, then x and y are between Ri and a R1 value
-                if d_lateral < 1e3:
-                    R1 = Ro
-                else:
-                    R1 = (Ro**2.0 - d_lateral**2.0)**0.5
-                ii = i0 * n1 + j1
-                phi = i0 / n0 * Xmax * np.pi / 180.0
-                r = R1 * (j1 - 0.0) / (n1 - 0.0) + Ri * (j1 - n1)/ (0.0 - n1)  
-                slice_x, slice_y, _  = Utilities.ggr2cart(0.0, phi, r) 
-                target_points_np[ii, 0] = slice_x
-                target_points_np[ii, 1] = slice_y
-                target_points_np[ii, 2] = d_lateral
         mask = (points_np[:, 2] > (d_lateral - interval)) & (points_np[:, 2] < (d_lateral + interval))
 
     # apply a mask before interpolate
-    print("Interval = %.2e, Adjacent points number = %d" % (interval, points_np[mask].shape[0]))
+    print("%sInterval = %.2e, Adjacent points number = %d" % (" "*indent, interval, points_np[mask].shape[0]))
 
     # Resample the data from the source mesh to the target mesh
     resampled_data = griddata(points_np[mask], T_np[mask], target_points_np, method='linear')
+    if resampled_data.ndim == 1:
+        # reshape to the right shape if there is only one field
+        resampled_data = resampled_data.reshape(resampled_data.size, 1)
+    mask = (~np.isnan(resampled_data[:, 0]))
+    print("%sValid values in resampled data: %d" % (" "*indent, mask.sum()))
 
     # path to output
     odir = os.path.join(case_dir, "vtk_outputs")
@@ -1414,37 +1649,39 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
         extension = "%05d.%04d.%s" % (vtu_snapshot, part, file_extension)
     fileout=os.path.join(odir, "%s-%s" % (filebase, extension))
 
-    # output to vtp file
-    o_poly_data = vtk.vtkPolyData()  # initiate poly daa
-    # insert points
-    target_points_vtk = vtk.vtkPoints()
-    for i in range(target_points_np.shape[0]):
-      target_points_vtk.InsertNextPoint(target_points_np[i, 0], target_points_np[i, 1], target_points_np[i, 2])
-    o_poly_data.SetPoints(target_points_vtk) # insert points
-    o_poly_data.SetPolys(target_cells_vtk)
-    # insert data
-    resampled_T_vtk = numpy_to_vtk(resampled_data, deep=1)
-    resampled_T_vtk.SetName('T')
-    o_poly_data.GetPointData().SetScalars(resampled_T_vtk)
-
     # initiate writer and output 
     if file_extension == 'txt':
-        if resampled_data.ndim == 1:
-            resampled_data = resampled_data.reshape(resampled_data.size, 1)
         odata = np.concatenate((target_points_np, resampled_data), axis=1)
         np.savetxt(fileout, odata)
         # writer = vtk.vtkSimplePointsWriter()
+        print("%sSaved file %s" % (" "*indent, fileout))
     elif file_extension == 'vtp':
+        # output to vtp file
+        o_poly_data = vtk.vtkPolyData()  # initiate poly data
+        # new mesh
+        target_cells_vtk = GetVtkCells2d(n0, n1)
+        # insert points
+        target_points_vtk = vtk.vtkPoints()
+        for i in range(target_points_np.shape[0]):
+          target_points_vtk.InsertNextPoint(target_points_np[i, 0], target_points_np[i, 1], target_points_np[i, 2])
+        o_poly_data.SetPoints(target_points_vtk) # insert points
+        o_poly_data.SetPolys(target_cells_vtk)
+        # insert data
+        resampled_T_vtk = numpy_to_vtk(resampled_data[:, 0], deep=1)
+        resampled_T_vtk.SetName('T')
+        o_poly_data.GetPointData().SetScalars(resampled_T_vtk)
+        # write to file
         writer = vtk.vtkXMLPolyDataWriter()
         writer.SetFileName(fileout)
         writer.SetInputData(o_poly_data)
         # writer.SetFileTypeToBinary()  # try this later to see if this works
         writer.Update()
         writer.Write()
+        print("%sSaved file %s" % (" "*indent, fileout))
     else:
-        raise NotImplementedError()
+        pass
     
-    print("Saved file %s" % fileout)
+    return resampled_data
 
 
 def main():
@@ -1534,8 +1771,11 @@ def main():
         episodes = [[0, 5], [5, 20], [20, 30]]
         SlabPlot.PlotTrenchPositionEpisodes(arg.inputs, episodes, time_interval=arg.time_interval)
     elif _commend == 'slice_3d_geometry':
-        # Interpolate3dVtkCase(arg.inputs, arg.vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt")
-        Interpolate3dVtkCase(arg.inputs, arg.vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt", part=2)
+        # Interpolate3dVtkCase(arg.inputs, arg.vtu_snapshot, interval=10e3, n0=800, n1=100, file_extension="vtp")
+        # Interpolate3dVtkCase(arg.inputs, arg.vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt", part=2)
+        # Interpolate3dVtkCaseByParts(arg.inputs, arg.vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt")
+        Interpolate3dVtkCaseByParts(arg.inputs, arg.vtu_snapshot, interval=10e3, n0=800, n1=100, file_extension="vtp", field="viscosity")
+        Interpolate3dVtkCaseByParts(arg.inputs, arg.vtu_snapshot, interval=10e3, n0=800, n1=100, d_lateral=750e3, file_extension="vtp", field="viscosity")
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 

@@ -84,6 +84,7 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         plot_axis = kwargs.get('plot_axis', False)
         max_velocity = kwargs.get('max_velocity', -1.0)
         slices = kwargs.get('slices', 3)
+        graphical_type = kwargs.get("graphical_type", "pvd")
         # call function from parent
         CASE_OPTIONS.Interpret(self)
         # particle file
@@ -127,8 +128,12 @@ class VISIT_OPTIONS(CASE_OPTIONS):
             graphical_snap = graphical_snaps_guess[i]
             time_step = time_steps_guess[i]
             _time = times_guess[i]
-            pvtu_file_path = os.path.join(self.options["DATA_OUTPUT_DIR"], "solution", "solution-%05d.pvtu" % graphical_snap)
-            if os.path.isfile(pvtu_file_path):
+            graphical_file_path = None
+            if graphical_type == "pvd":
+                graphical_file_path = os.path.join(self.options["DATA_OUTPUT_DIR"], "solution", "solution-%05d.pvtu" % graphical_snap)
+            elif graphical_type == "slice_center":
+                graphical_file_path = os.path.join(self._case_dir, "vtk_outputs", "center_profile_%05d.txt" % graphical_snap)
+            if os.path.isfile(graphical_file_path):
                 graphical_snaps.append(graphical_snap)
                 time_steps.append(time_step)
                 times.append(_time)

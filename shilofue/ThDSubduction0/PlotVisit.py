@@ -67,6 +67,9 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         kwargs: options
             last_step(list): plot the last few steps
         """
+        # additional inputs
+        rotation_plus = kwargs.get("rotation_plus", 0.0) # additional rotation
+        
         to_rad = np.pi / 180.0
         # call function from parent
         PlotVisit.VISIT_OPTIONS.Interpret(self, **kwargs)
@@ -79,7 +82,7 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         sub_plate_extends = sub_plate_feature['coordinates'][1]
         box_width = -1.0
         Ro = -1.0
-        print("geometry: ", self.options["GEOMETRY"]) # debug
+        self.options['ROTATION_ANGLE'] = 0.0
         if self.options["GEOMETRY"] == "box":
             box_width = self.idict["Geometry model"]["Box"]["Y extent"]
             self.options['TRENCH_EDGE_Y'] = sub_plate_extends[1] * 0.75
@@ -97,6 +100,16 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
             self.options["CHUNK_RIDGE_EDGE_X"] = ridge_edge_x
             self.options["CHUNK_RIDGE_EDGE_Z"] = ridge_edge_z
             self.options['BOX_WIDTH'] = -1.0
+            try:
+                index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
+            except KeyError:
+                # either there is no wb file found, or the feature 'Subducting plate' is not defined
+                rotation_angle = 52.0 + rotation_plus
+            else:
+                # rotate to center on the slab
+                feature_sp = self.wb_dict['features'][index]
+                rotation_angle = 90.0 - feature_sp["coordinates"][2][0] - 2.0 + rotation_plus
+            self.options['ROTATION_ANGLE'] = rotation_angle
         else:
             raise ValueError("geometry must by either box or chunk")
 
@@ -105,13 +118,48 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         self.options['ETA_MAX'] = self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity']
         self.options['TRENCH_INITIAL'] = slab_feature['coordinates'][1][0] 
 
-
     def vtk_options(self, **kwargs):
         '''
         options of vtk scripts
         '''
         # call function from parent
         PlotVisit.VISIT_OPTIONS.vtk_options(self, **kwargs)
+
+    def get_snaps_for_slab_morphology_outputs(self, **kwargs):
+        '''
+        get the snaps for processing slab morphology, look for existing outputs
+        kwargs (dict):
+            time_interval (float)
+        '''
+        ptime_start = kwargs.get('time_start', None)
+        ptime_interval = kwargs.get('time_interval', None)
+        ptime_end = kwargs.get('time_end', None)
+        assert(ptime_interval is None or type(ptime_interval) == float)      
+        # steps for processing slab morphology
+        snaps, times, _ = PlotVisit.GetSnapsSteps(self._case_dir, 'graphical')
+        psnaps = []
+        ptimes = []
+        last_time = -1e8  # initiate as a small value, so first step is included
+        # loop within all the available steps, find steps satisfying the time interval requirement.
+        for i in range(len(times)):
+            time = times[i]
+            snap = snaps[i]
+            if ptime_start is not None and time < ptime_start:
+                # check on the start
+                continue
+            if ptime_end is not None and time > ptime_end:
+                # check on the end
+                break
+            if type(ptime_interval) == float:
+                if (time - last_time) < ptime_interval:
+                    continue  # continue if interval is not reached
+            center_profile_file_path = os.path.join(self._case_dir, "vtk_outputs", "center_profile_%05d.txt" % snap)
+            if os.path.isfile(center_profile_file_path):
+                # append if the file is found
+                last_time = time
+                psnaps.append(snap)
+                ptimes.append(time)
+        return psnaps
 
 
 class PREPARE_RESULT_OPTIONS(PlotVisit.PREPARE_RESULT_OPTIONS):

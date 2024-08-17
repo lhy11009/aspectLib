@@ -42,6 +42,27 @@ if os.path.isdir(test_local_dir):
     rmtree(test_local_dir)
 os.mkdir(test_local_dir)
 
+def test_case_summary_latex():
+    '''
+    test writing a latex table
+    '''
+    # initiate
+    Case_Summary = CASE_SUMMARY()
+
+    # import a group 
+    group_dir = os.path.join(source_dir, "test_documentation_group_in_dir", "EBA_2d_consistent_1")
+    assert(os.path.isdir(group_dir))
+    Case_Summary.import_directory(group_dir)
+
+    # write outputs
+    o_file = os.path.join(test_local_dir, "case_summary.tex")
+    o_file_std =  os.path.join(source_dir, "test_documentation_group_in_dir", "EBA_2d_consistent_1", "ofile_std.tex")
+    Case_Summary.write_file(o_file)
+    assert(os.path.isfile(o_file))
+    assert(os.path.isfile(o_file_std))
+    assert(filecmp.cmp(o_file, o_file_std))
+
+
 def test_case_summary():
     '''
     Test the CASE_SUMMARY class
