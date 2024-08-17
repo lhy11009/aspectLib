@@ -4283,6 +4283,7 @@ def PlotTrenchDifferences2d(SlabPlot, case_dir, **kwargs):
     if ax_twinx is not None:
         ax_twinx.plot(times/1e6, slab_depths/1e3, '--', color=_color)
 
+# todo_dip
 def GetSlabDipAt660(case_dir):
     '''
     Get the slab dip angle when reaching 660

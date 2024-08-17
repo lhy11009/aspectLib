@@ -36,7 +36,7 @@ from shilofue.ThDSubduction0.PlotVisit import VISIT_OPTIONS
 from shilofue.ParsePrm import ReadPrmFile
 from shilofue.Plot import LINEARPLOT
 from shilofue.PlotCombine import PLOT_COMBINE
-from shilofue.TwoDSubduction0.VtkPp import get_theta
+from shilofue.TwoDSubduction0.VtkPp import get_theta, get_dip
 from shilofue.PlotDepthAverage import DEPTH_AVERAGE_PLOT
 import shilofue.VtkPp as VtkPp
 # directory to the aspect Lab
@@ -1083,6 +1083,50 @@ def PlotTrenchDifferences(case_dir, time_interval_for_slab_morphology, **kwargs)
         ax_twinx.plot(ts / 1e6, depths / 1e3, "--", color=_color) # depth
     return ax
 
+# todo_dip
+def GetSlabDipAngle(case_dir, vtu_snapshot, Visit_Options, depth_lookup, depth_interval, **kwargs):
+    '''
+    Get slab dip angle at a given snapshot
+    currently only works for slab center
+    '''
+    # options
+    silence = kwargs.get("silence", False)
+    crust_only = kwargs.get("crust_only", 0)
+    
+    # mark the composition used for the envelop in the filename
+    if crust_only == 1:
+        filename1 = "center_profile_%05d.txt" % vtu_snapshot
+    elif crust_only == 2:
+        filename1 = "center_profile_l_%05d.txt" % vtu_snapshot
+    else:
+        filename1 = "center_profile_lu_%05d.txt" % vtu_snapshot
+    filein1 = os.path.join(case_dir, "vtk_outputs", filename1)
+    if not os.path.isfile(filein1):
+        if not silence:
+            warnings.warn('PlotTrenchVelocity: File %s is not found' % filein1, UserWarning)
+        return np.nan
+   
+    # get the slab tip depth
+    data1 = np.loadtxt(filein1)
+    xs1 = data1[:, 0]
+    zs1 = data1[:, 2]
+  
+    # interpret the x coordinate around the depth_lookup
+    # and compute the dip angle
+    Ro = Visit_Options.options['OUTER_RADIUS']
+    geometry = Visit_Options.options['GEOMETRY']
+    depth0 = depth_lookup - depth_interval
+    depth1 = depth_lookup
+    x0 = np.interp(Ro - depth0, zs1, xs1)
+    x1 = np.interp(Ro - depth1, zs1, xs1)
+    dip = get_dip(x0, Ro - depth0, x1, Ro - depth1, geometry)
+
+    # return 
+    return dip
+
+
+
+
 
 def PlotSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
     '''
@@ -1236,7 +1280,7 @@ def CenterProfileAnalyze(case_dir, time_interval_for_slab_morphology, **kwargs):
     Visit_Options.Interpret(graphical_type="slice_center")
     trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
     # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
-    available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology_outputs(time_interval=time_interval_for_slab_morphology)
+    _, available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology_outputs(time_interval=time_interval_for_slab_morphology)
     n_snapshots = len(available_pvtu_snapshots)
     if n_snapshots <= 1:
         raise FileNotFoundError("available snapshots are not found / only 1 snapshot for case %s" % case_dir)
