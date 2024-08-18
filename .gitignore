@@ -89,6 +89,7 @@ jupyter_notebooks/Slab_morphology/*.vtp
 jupyter_notebooks/Phase-transition/*.stderr
 jupyter_notebooks/Phase-transition/*.stdout
 jupyter_notebooks/Phase-transition/output
+jupyter_notebooks/ThDSubduction/plate-model-repo
 
 # IPython
 profile_default/
