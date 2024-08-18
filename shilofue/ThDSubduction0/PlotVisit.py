@@ -124,7 +124,7 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         '''
         # call function from parent
         PlotVisit.VISIT_OPTIONS.vtk_options(self, **kwargs)
-    # todo_dip
+    
     def get_snaps_for_slab_morphology_outputs(self, **kwargs):
         '''
         get the snaps for processing slab morphology, look for existing outputs

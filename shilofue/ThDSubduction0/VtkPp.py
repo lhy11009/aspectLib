@@ -1083,13 +1083,13 @@ def PlotTrenchDifferences(case_dir, time_interval_for_slab_morphology, **kwargs)
         ax_twinx.plot(ts / 1e6, depths / 1e3, "--", color=_color) # depth
     return ax
 
-# todo_dip
 def GetSlabDipAngle(case_dir, vtu_snapshot, Visit_Options, depth_lookup, depth_interval, **kwargs):
     '''
     Get slab dip angle at a given snapshot
     currently only works for slab center
     '''
     # options
+    indent = kwargs.get("indent", 0)
     silence = kwargs.get("silence", False)
     crust_only = kwargs.get("crust_only", 0)
     
@@ -1103,23 +1103,43 @@ def GetSlabDipAngle(case_dir, vtu_snapshot, Visit_Options, depth_lookup, depth_i
     filein1 = os.path.join(case_dir, "vtk_outputs", filename1)
     if not os.path.isfile(filein1):
         if not silence:
-            warnings.warn('PlotTrenchVelocity: File %s is not found' % filein1, UserWarning)
+            warnings.warn('%s%s: File %s is not found' % (" "*indent, Utilities.func_name(), filein1), UserWarning)
         return np.nan
+    else:
+        if not silence:
+            print("%s%s: Found flle %s" % (" "*indent, Utilities.func_name(), filename1))
    
     # get the slab tip depth
     data1 = np.loadtxt(filein1)
-    xs1 = data1[:, 0]
-    zs1 = data1[:, 2]
+    xs = data1[:, 0]
+    zs = data1[:, 2]
+    sfunc = interp1d(zs/1e6, xs/1e6, assume_sorted=True, fill_value="extrapolate")
   
     # interpret the x coordinate around the depth_lookup
     # and compute the dip angle
+    # lhy11009: for some odd reason, the buildin interp function doesn't work
     Ro = Visit_Options.options['OUTER_RADIUS']
     geometry = Visit_Options.options['GEOMETRY']
     depth0 = depth_lookup - depth_interval
+    z0 = Ro - depth0
+    # x0 = np.interp(z0, zs, xs)
+    # x0 = sfunc(z0/1e6) * 1e6
+    x0 = 0.0
+    for i in range(zs.size-1):
+        if z0 < zs[i] and z0 > zs[i+1]:
+            x0 = xs[i+1] * (z0 - zs[i]) / (zs[i+1] - zs[i]) + xs[i] * (z0 - zs[i+1]) / (zs[i] - zs[i+1])
     depth1 = depth_lookup
-    x0 = np.interp(Ro - depth0, zs1, xs1)
-    x1 = np.interp(Ro - depth1, zs1, xs1)
-    dip = get_dip(x0, Ro - depth0, x1, Ro - depth1, geometry)
+    z1 = Ro - depth1
+    # x1 = np.interp(z1, zs, xs)
+    # x1 = sfunc(z1/1e6) * 1e6
+    x1 = 0.0
+    for i in range(zs.size-1):
+        if z1 < zs[i] and z1 > zs[i+1]:
+            x1 = xs[i+1] * (z1 - zs[i]) / (zs[i+1] - zs[i]) + xs[i] * (z1 - zs[i+1]) / (zs[i] - zs[i+1])
+    if not silence:
+        print("%s(x0, z0): (%.4e, %.4e)" % (" "*indent, x0, z0))
+        print("%s(x1, z1): (%.4e, %.4e)" % (" "*indent, x1, z1))
+    dip = get_dip(x0, z0, x1, z1, geometry)
 
     # return 
     return dip

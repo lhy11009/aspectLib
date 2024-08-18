@@ -95,6 +95,11 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         GroupP.CASE_SUMMARY.__init__(self, **kwargs)
         self.t660s = []
         self.attrs.append("t660s")
+        # todo_ssum
+        self.t800s = []
+        self.attrs.append("t800s")
+        self.t1000s = []
+        self.attrs.append("t1000s")
         self.sz_methods = []
         self.attrs.append('sz_methods')
         self.sz_thicks = []
@@ -119,6 +124,8 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.attrs.append("sp_ages")
         self.ov_ages = []
         self.attrs.append("ov_ages")
+        self.dip660s = []
+        self.attrs.append("dip660s")
 
         self.attrs_to_output += self.attrs
         # ['t660s', "sz_thicks", "sz_depths", "sz_viscs", "slab_strs", "sd_modes", "V_sink_avgs", "V_plate_avgs", "V_ov_plate_avgs", "V_trench_avgs", "sp_ages", "ov_ages"]
@@ -135,12 +142,29 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
 
         GroupP.CASE_SUMMARY.Update(self, **kwargs)
 
+        print("actions: ", actions) # debug
+
         if "t660" in actions:
             # initiate these field
             self.t660s = [-1 for i in range(self.n_case)]
             # update on specific properties
             for i in range(self.n_case):
                 self.update_t660(i)
+        
+        # todo_ssum
+        if "t800" in actions:
+            # initiate these field
+            self.t800s = [-1 for i in range(self.n_case)]
+            # update on specific properties
+            for i in range(self.n_case):
+                self.update_t800(i)
+        
+        if "t1000" in actions:
+            # initiate these field
+            self.t1000s = [-1 for i in range(self.n_case)]
+            # update on specific properties
+            for i in range(self.n_case):
+                self.update_t1000(i)
 
         if "shear_zone" in actions:
             # initiate these field
@@ -183,6 +207,15 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             self.ov_ages = [-1 for i in range(self.n_case)]
             for i in range(self.n_case):
                 self.update_plate_ages(i)
+
+        # These fields need to be mannualy assigned, so we
+        # only initiation a nan value for the first time
+        if "dip660" in actions:
+            # initiate these field
+            if self.dip660s == []:
+                self.dip660s = [np.nan for i in range(self.n_case)]
+            else:
+                pass
 
     # todo_diagram
     def generate_py_scripts(self):
@@ -232,6 +265,37 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         except SLABPLOT.SlabMorphFileNotExistError:
             t660 = -1.0
         self.t660s[i] = t660
+    
+    # todo_ssum
+    def update_t800(self, i):
+        '''
+        update t800
+        '''
+        case_dir = self.ab_paths[i]
+        Utilities.my_assert(os.path.isdir(case_dir), FileExistsError, "Directory doesn't exist %s" % case_dir)
+        # use the SLABPLOT class to read the slab_morph.txt file
+        # and get the t800
+        SlabPlot = SLABPLOT('foo')
+        try:
+            t800 = SlabPlot.GetTimeDepthTip(case_dir, 800e3, filename="slab_morph_t1.00e+05.txt")
+        except SLABPLOT.SlabMorphFileNotExistError:
+            t800 = -1.0
+        self.t800s[i] = t800
+    
+    def update_t1000(self, i):
+        '''
+        update t1000
+        '''
+        case_dir = self.ab_paths[i]
+        Utilities.my_assert(os.path.isdir(case_dir), FileExistsError, "Directory doesn't exist %s" % case_dir)
+        # use the SLABPLOT class to read the slab_morph.txt file
+        # and get the t1000
+        SlabPlot = SLABPLOT('foo')
+        try:
+            t1000 = SlabPlot.GetTimeDepthTip(case_dir, 1000e3, filename="slab_morph_t1.00e+05.txt")
+        except SLABPLOT.SlabMorphFileNotExistError:
+            t1000 = -1.0
+        self.t1000s[i] = t1000
     
     def update_Vavg(self, i, **kwargs):
         '''

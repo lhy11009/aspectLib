@@ -421,7 +421,6 @@ class VTKP(VtkPp.VTKP):
         self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
         pass
 
-    # todo_dip
     def GetDipAtDepth(self, depth_lookup, depth_interval):
         # 100 km dip angle
         self.coord_0 = self.SlabSurfDepthLookup(depth_lookup-depth_interval)
@@ -1305,7 +1304,6 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     print("%s%s" % (indent*" ", outputs)) # debug
     return vtu_step, outputs
 
-# todo_dip
 def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     '''
     Wrapper for using PVTK class to get slab morphology, uses two distinct mdd_dx1 value
@@ -4283,7 +4281,6 @@ def PlotTrenchDifferences2d(SlabPlot, case_dir, **kwargs):
     if ax_twinx is not None:
         ax_twinx.plot(times/1e6, slab_depths/1e3, '--', color=_color)
 
-# todo_dip
 def GetSlabDipAt660(case_dir):
     '''
     Get the slab dip angle when reaching 660

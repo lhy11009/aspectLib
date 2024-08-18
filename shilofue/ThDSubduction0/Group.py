@@ -92,8 +92,10 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.attrs.append("t800s")
         self.t1000s = []
         self.attrs.append("t1000s")
-        # self.attrs.append("t660s")
-        self.attrs_to_output += ["geometries", "t660s", "t800s", "t1000s"]
+        # todo_d660
+        self.dip660s = []
+        self.attrs.append("dip660s")
+        self.attrs_to_output += ["geometries", "t660s", "t800s", "t1000s", "dip660s"]
 
     def Update(self, **kwargs):
         '''
@@ -133,6 +135,15 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             # update on specific properties
             for i in range(self.n_case):
                 self.update_t1000(i)
+        
+        # These fields need to be mannualy assigned, so we
+        # only initiation a nan value for the first time
+        if "dip660" in actions:
+            # initiate these field
+            if self.dip660s == []:
+                self.dip660s = [np.nan for i in range(self.n_case)]
+            else:
+                pass
     
     def update_t660(self, i):
         '''
