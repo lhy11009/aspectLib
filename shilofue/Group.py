@@ -636,16 +636,17 @@ class CASE_SUMMARY():
                 VISIT_OPTIONS - the VISIT_OPTIONS class
         '''
         self.cases = []
+        self.names = []
         self.steps = []
         self.times = []
         self.wallclocks = []
         self.ab_paths = []
         self.includes = []
-        self.attrs = ['includes', 'cases', 'steps', 'times', 'wallclocks']
+        self.attrs = ['includes', 'cases', 'names', 'steps', 'times', 'wallclocks']
         self.n_case = 0
 
-        self.attrs_to_output = ['includes', 'steps', 'times', 'wallclocks']
-        self.headers = ['includes', 'steps', 'times (yr)', 'wallclocks (s)']
+        self.attrs_to_output = ['names', 'includes', 'steps', 'times', 'wallclocks']
+        self.headers = ['names', 'includes', 'steps', 'times (yr)', 'wallclocks (s)']
 
         self.has_update = True
         self.VISIT_OPTIONS = kwargs.get("VISIT_OPTIONS", None)
@@ -706,6 +707,12 @@ class CASE_SUMMARY():
                 self.wallclocks[i] = wallclock / hr
             else:
                 self.wallclocks[i] = -1.0
+        # These fields need to be mannualy assigned, so we
+        # only initiation a nan value for the first time
+        if self.names == []:
+            self.names = [np.nan for i in range(self.n_case)]
+        else:
+            pass
 
     def import_directory(self, _dir, **kwargs):
         '''

@@ -75,13 +75,17 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         PlotVisit.VISIT_OPTIONS.Interpret(self, **kwargs)
         idx = ParsePrm.FindWBFeatures(self.wb_dict, "Subducting plate")
         idx1 = ParsePrm.FindWBFeatures(self.wb_dict, "Slab")
+        idx2 = ParsePrm.FindWBFeatures(self.wb_dict, "Overiding plate")
 
         # Geometry
         sub_plate_feature = self.wb_dict["features"][idx]
         slab_feature = self.wb_dict["features"][idx1]
+        ov_plate_feature = self.wb_dict["features"][idx2]
         sub_plate_extends = sub_plate_feature['coordinates'][1]
         box_width = -1.0
         Ro = -1.0
+        sp_age = np.nan
+        ov_age = np.nan
         self.options['ROTATION_ANGLE'] = 0.0
         if self.options["GEOMETRY"] == "box":
             box_width = self.idict["Geometry model"]["Box"]["Y extent"]
@@ -89,6 +93,15 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
             self.options['TRENCH_EDGE_Y_FULL'] = sub_plate_extends[1]
             self.options['BOX_WIDTH'] = box_width
             self.options['BOX_THICKNESS'] = self.idict["Geometry model"]["Box"]["Z extent"]
+            try:
+                index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
+            except KeyError:
+                pass
+            else:
+                feature_sp = self.wb_dict['features'][index]
+                trench_x = feature_sp["coordinates"][2][0]
+                spreading_velocity = feature_sp["temperature models"][0]["spreading velocity"]
+                sp_age = trench_x / spreading_velocity 
         elif self.options["GEOMETRY"] == "chunk":
             Ro = float(self.idict["Geometry model"]["Chunk"]["Chunk outer radius"])
             self.options['TRENCH_EDGE_Y'] = -1.0
@@ -108,15 +121,29 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
             else:
                 # rotate to center on the slab
                 feature_sp = self.wb_dict['features'][index]
-                rotation_angle = 90.0 - feature_sp["coordinates"][2][0] - 2.0 + rotation_plus
+                trench_phi = feature_sp["coordinates"][2][0]
+                rotation_angle = 90.0 - trench_phi - 2.0 + rotation_plus
+                spreading_velocity = feature_sp["temperature models"][0]["spreading velocity"]
+                sp_age = trench_phi * np.pi / 180.0 * Ro/ spreading_velocity 
             self.options['ROTATION_ANGLE'] = rotation_angle
         else:
             raise ValueError("geometry must by either box or chunk")
+        ov_age = ov_plate_feature["temperature models"][0]["plate age"]
 
         # viscosity
         self.options['ETA_MIN'] = self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']
         self.options['ETA_MAX'] = self.idict['Material model']['Visco Plastic TwoD']['Maximum viscosity']
         self.options['TRENCH_INITIAL'] = slab_feature['coordinates'][1][0] 
+        
+        # yield stress
+        try:
+            self.options["MAXIMUM_YIELD_STRESS"] = float(self.idict['Material model']['Visco Plastic TwoD']["Maximum yield stress"])
+        except KeyError:
+            self.options["MAXIMUM_YIELD_STRESS"] = 1e9
+
+        # age
+        self.options["SP_AGE"] = sp_age
+        self.options["OV_AGE"] = ov_age
 
     def vtk_options(self, **kwargs):
         '''

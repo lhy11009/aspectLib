@@ -131,7 +131,15 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
             sp_age = -1.0
             ov_age = -1.0
             try:
+                # todo_ptable
                 index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
+                index1 = ParsePrm.FindWBFeatures(self.wb_dict, "Overiding plate")
+                feature_sp = self.wb_dict['features'][index]
+                feature_ov = self.wb_dict['features'][index1]
+                trench_x = feature_sp["coordinates"][2][0]
+                spreading_velocity = feature_sp["temperature models"][0]["spreading velocity"]
+                sp_age = trench_x / spreading_velocity 
+                ov_age = feature_ov["temperature models"][0]["plate age"]
             except KeyError:
                 # either there is no wb file found, or the feature 'Subducting plate' is not defined
                 sp_age = -1.0
