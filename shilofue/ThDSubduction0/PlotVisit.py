@@ -75,12 +75,10 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         PlotVisit.VISIT_OPTIONS.Interpret(self, **kwargs)
         idx = ParsePrm.FindWBFeatures(self.wb_dict, "Subducting plate")
         idx1 = ParsePrm.FindWBFeatures(self.wb_dict, "Slab")
-        idx2 = ParsePrm.FindWBFeatures(self.wb_dict, "Overiding plate")
 
         # Geometry
         sub_plate_feature = self.wb_dict["features"][idx]
         slab_feature = self.wb_dict["features"][idx1]
-        ov_plate_feature = self.wb_dict["features"][idx2]
         sub_plate_extends = sub_plate_feature['coordinates'][1]
         box_width = -1.0
         Ro = -1.0
@@ -95,13 +93,25 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
             self.options['BOX_THICKNESS'] = self.idict["Geometry model"]["Box"]["Z extent"]
             try:
                 index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
-            except KeyError:
+            except ParsePrm.WBFeatureNotFoundError:
                 pass
             else:
                 feature_sp = self.wb_dict['features'][index]
                 trench_x = feature_sp["coordinates"][2][0]
-                spreading_velocity = feature_sp["temperature models"][0]["spreading velocity"]
-                sp_age = trench_x / spreading_velocity 
+                try:
+                    spreading_velocity = feature_sp["temperature models"][0]["spreading velocity"]
+                except KeyError:
+                    pass
+                else:
+                    sp_age = trench_x / spreading_velocity 
+            try: 
+                idx2 = ParsePrm.FindWBFeatures(self.wb_dict, "Overiding plate")
+            except ParsePrm.WBFeatureNotFoundError:
+                pass
+            else:
+                ov_plate_feature = self.wb_dict["features"][idx2]
+                ov_age = ov_plate_feature["temperature models"][0]["plate age"]
+            self.options['ROTATION_ANGLE'] = 0.0
         elif self.options["GEOMETRY"] == "chunk":
             Ro = float(self.idict["Geometry model"]["Chunk"]["Chunk outer radius"])
             self.options['TRENCH_EDGE_Y'] = -1.0
@@ -115,7 +125,7 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
             self.options['BOX_WIDTH'] = -1.0
             try:
                 index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
-            except KeyError:
+            except ParsePrm.WBFeatureNotFoundError:
                 # either there is no wb file found, or the feature 'Subducting plate' is not defined
                 rotation_angle = 52.0 + rotation_plus
             else:
@@ -123,12 +133,23 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
                 feature_sp = self.wb_dict['features'][index]
                 trench_phi = feature_sp["coordinates"][2][0]
                 rotation_angle = 90.0 - trench_phi - 2.0 + rotation_plus
-                spreading_velocity = feature_sp["temperature models"][0]["spreading velocity"]
-                sp_age = trench_phi * np.pi / 180.0 * Ro/ spreading_velocity 
-            self.options['ROTATION_ANGLE'] = rotation_angle
+                try:
+                    spreading_velocity = feature_sp["temperature models"][0]["spreading velocity"]
+                except KeyError:
+                    pass
+                else:
+                    sp_age = trench_phi * np.pi / 180.0 * Ro/ spreading_velocity 
+            try: 
+                idx2 = ParsePrm.FindWBFeatures(self.wb_dict, "Overiding plate")
+            except ParsePrm.WBFeatureNotFoundError:
+                pass
+            else:
+                ov_plate_feature = self.wb_dict["features"][idx2]
+                ov_age = ov_plate_feature["temperature models"][0]["plate age"]
+                self.options['ROTATION_ANGLE'] = rotation_angle
         else:
             raise ValueError("geometry must by either box or chunk")
-        ov_age = ov_plate_feature["temperature models"][0]["plate age"]
+
 
         # viscosity
         self.options['ETA_MIN'] = self.idict['Material model']['Visco Plastic TwoD']['Minimum viscosity']

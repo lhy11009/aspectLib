@@ -35,6 +35,7 @@ import shilofue.PlotRunTime as PlotRunTime
 import shilofue.PlotStatistics as PlotStatistics
 import shilofue.ThermalModel as ThermalModel
 import shilofue.Rheology as Rheology
+from matplotlib import gridspec, cm
  
 
 # directory to the aspect Lab
