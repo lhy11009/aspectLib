@@ -100,7 +100,9 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.attrs.append("ov_ages")
         self.slab_strs = []
         self.attrs.append("slab_strs")
-        self.attrs_to_output += ["geometries", "t660s", "t800s", "t1000s", "dip660s", "sp_ages", "ov_ages", "slab_strs"]
+        self.include_Ps = []
+        self.attrs.append("include_Ps")
+        self.attrs_to_output += ["geometries", "t660s", "t800s", "t1000s", "dip660s", "sp_ages", "ov_ages", "slab_strs", "include_Ps"]
 
     def Update(self, **kwargs):
         '''
@@ -152,6 +154,11 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             self.slab_strs = [-1 for i in range(self.n_case)]
             for i in range(self.n_case):
                 self.update_slab_strength(i)
+        
+        if "include_Ps" in actions:
+            self.include_Ps = [np.nan for i in range(self.n_case)]
+            for i in range(self.n_case):
+                self.update_include_peierls(i)
         
         # These fields need to be mannualy assigned, so we
         # only initiation a nan value for the first time
@@ -247,6 +254,15 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             self.slab_strs[i] = Visit_Options.options["MAXIMUM_YIELD_STRESS"] / 1e6
         except FileNotFoundError:
             self.slab_strs[i] = np.nan
+    
+    def update_include_peierls(self, i):
+        case_dir = self.ab_paths[i]
+        try:
+            Visit_Options = self.VISIT_OPTIONS(case_dir)
+            Visit_Options.Interpret()
+            self.include_Ps[i] = Visit_Options.options["INCLUDE_PEIERLS_RHEOLOGY"]
+        except FileNotFoundError:
+            self.include_Ps[i] = np.nan
 
     def write_file_for_paper(self, o_path):
         '''

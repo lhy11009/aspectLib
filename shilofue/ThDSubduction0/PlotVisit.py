@@ -162,6 +162,16 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         except KeyError:
             self.options["MAXIMUM_YIELD_STRESS"] = 1e9
 
+        # peierls rheology
+        try:
+            include_peierls_rheology = self.idict['Material model']['Visco Plastic TwoD']['Include Peierls creep']
+            if include_peierls_rheology == 'true':
+                self.options['INCLUDE_PEIERLS_RHEOLOGY'] = True
+            else:
+                self.options['INCLUDE_PEIERLS_RHEOLOGY'] = False
+        except KeyError:
+            self.options['INCLUDE_PEIERLS_RHEOLOGY'] = False
+
         # age
         self.options["SP_AGE"] = sp_age
         self.options["OV_AGE"] = ov_age

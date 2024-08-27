@@ -199,7 +199,7 @@ class CAP13():
 
         # a critical age, between trench advance and retreat (eq 6)
         t_c_A = c4 * l / c2
-        t_c_B = (c1 * h_D * np.cos(phi) * np.sin(phi)**(-2.0) * t**0.5)
+        t_c_B = (c1 * h_D * np.cos(phi) * np.sin(phi)**(-2.0))
         t_c_C = (c5 - c3 * (1.0 + np.log(W/L)))
         t_c = (t_c_A * t_c_B / t_c_C)**2.0
 

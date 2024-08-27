@@ -126,6 +126,8 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.attrs.append("ov_ages")
         self.dip660s = []
         self.attrs.append("dip660s")
+        self.include_Ps = []
+        self.attrs.append("include_Ps")
 
         self.attrs_to_output += self.attrs
         # ['t660s', "sz_thicks", "sz_depths", "sz_viscs", "slab_strs", "sd_modes", "V_sink_avgs", "V_plate_avgs", "V_ov_plate_avgs", "V_trench_avgs", "sp_ages", "ov_ages"]
@@ -207,6 +209,13 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             self.ov_ages = [-1 for i in range(self.n_case)]
             for i in range(self.n_case):
                 self.update_plate_ages(i)
+        
+        if "include_Ps" in actions:
+            # include Peierls creep
+            self.include_Ps = [np.nan for i in range(self.n_case)]
+            for i in range(self.n_case):
+                self.update_include_peierls(i)
+
 
         # These fields need to be mannualy assigned, so we
         # only initiation a nan value for the first time
@@ -250,6 +259,7 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         '''
         assert(os.path.isdir(_dir))
         GroupP.CASE_SUMMARY.import_directory(self, _dir, **kwargs)
+        self.Update(**kwargs)
 
     def update_t660(self, i):
         '''
@@ -392,6 +402,24 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         except FileNotFoundError:
             self.sp_ages[i] = -1.0
             self.ov_ages[i] = -1.0
+    
+    def update_include_peierls(self, i):
+        '''
+        update if Peierls creep is included
+        '''
+        case_dir = self.ab_paths[i]
+        try:
+            Visit_Options = self.VISIT_OPTIONS(case_dir)
+            Visit_Options.Interpret()
+            self.include_Ps[i] = Visit_Options.options["INCLUDE_PEIERLS_RHEOLOGY"]
+        except FileNotFoundError:
+            self.include_Ps[i] = np.nan
+    
+    def update_dip660(self, i, dip660):
+        '''
+        update the 660 dip angle
+        '''
+        self.dip660s[i] = dip660
 
     def plot_diagram_t660(self, **kwargs):
         '''

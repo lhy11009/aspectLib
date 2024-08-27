@@ -4281,6 +4281,7 @@ def PlotTrenchDifferences2d(SlabPlot, case_dir, **kwargs):
     if ax_twinx is not None:
         ax_twinx.plot(times/1e6, slab_depths/1e3, '--', color=_color)
 
+
 def GetSlabDipAt660(case_dir):
     '''
     Get the slab dip angle when reaching 660
@@ -4292,7 +4293,7 @@ def GetSlabDipAt660(case_dir):
     Visit_Options.Interpret() 
     
     slab_morph_path = os.path.join(case_dir, "vtk_outputs", "slab_morph_t1.00e+05.txt")
-    assert(os.path.isfile(slab_morph_path))
+    Utilities.my_assert(os.path.isfile(slab_morph_path), SLABPLOT.SlabMorphFileNotExistError, "File %s doesn't exist" % slab_morph_path)
     
     data = np.loadtxt(slab_morph_path)
     steps = data[:, 1]
@@ -4309,6 +4310,7 @@ def GetSlabDipAt660(case_dir):
     # figure out the snapshot to analyze 
     available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=0.1e6)
     available_pvtu_times = Visit_Options.get_times_for_slab_morphology(time_interval=0.1e6)
+    # available_pvtu_times, available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology_outputs(time_interval=0.1e6)
     id = IndexByValue(available_pvtu_times, t660)
     vtu_snapshot = available_pvtu_snapshots[id]
 

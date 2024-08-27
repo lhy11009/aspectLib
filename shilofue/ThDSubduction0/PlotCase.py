@@ -150,7 +150,7 @@ def PrScriptToUse(case_path, default):
     return pr_script
 
 # todo_r10
-def ExportStrenghProfile(case_dir, sp_age, slab_str, strain_rate, o_path=None):
+def ExportStrenghProfile(case_dir, sp_age, slab_str, strain_rate, o_path=None, **kwargs):
     '''
     export the strength profile from my 3d case
     Inputs:
@@ -164,6 +164,8 @@ def ExportStrenghProfile(case_dir, sp_age, slab_str, strain_rate, o_path=None):
     assert(os.path.isfile(rheology_aspect_json))
     with open(rheology_aspect_json, 'r') as fin:
         rheology_aspect = json.load(fin)
+    
+    include_peierls = kwargs.get("include_peierls", True)
     
     # define global parameters
     g = 9.81
@@ -218,7 +220,11 @@ def ExportStrenghProfile(case_dir, sp_age, slab_str, strain_rate, o_path=None):
     eta = 1.0 / (1.0/eta_brittle + 1.0/eta_peierls + 1.0/eta_dfds)
     eta1 = np.minimum(eta_peierls, eta_dfds)  # minimum
     eta1 = np.minimum(eta_brittle, eta1)
-    eta2 = np.minimum(eta_brittle, 1.0 / (1.0 / eta_peierls + 1.0/eta_dfds)) # DP yield
+    eta2 = None
+    if include_peierls:
+        eta2 = np.minimum(eta_brittle, 1.0 / (1.0 / eta_peierls + 1.0/eta_dfds)) # DP yield
+    else:
+        eta2 = np.minimum(eta_brittle, eta_dfds) # DP yield
     eta3 = np.minimum(eta_brittle, 1.0/(1.0 / np.minimum(eta_peierls, eta_dislocation) + 1.0 / eta_diffusion)) # competing Peierls and Dislocation
     eta_nopc = np.minimum(eta_brittle, eta_dfds)
     taus = 2 * strain_rate * eta
