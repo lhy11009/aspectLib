@@ -746,6 +746,14 @@ class SLURM_OPERATOR():
         '''
         self.o_dict['config']['--job-name'] = _name
 
+    def SetModule(self, module_list, module_u_list=[]):
+        '''
+        set the list of module to load
+        '''
+        assert(type(module_list) == list)
+        self.o_dict['load'] = module_list
+        self.o_dict['unload'] = module_u_list
+
     def SetCommand(self, build_directory, prm_file):
         '''
         Set the command to use

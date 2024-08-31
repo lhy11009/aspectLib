@@ -1320,6 +1320,8 @@ def DistributeParallelControl(hefesto_dir, o_dir, case_name, nproc, control_path
     SlurmOperator.SetAffinity(1, nproc, 1)
     SlurmOperator.ResetCommand()
     SlurmOperator.SetName(case_name)
+    SlurmOperator.SetModule(['intel-oneapi-mkl/2022.2.1'], [])
+
     SlurmOperator.SetTimeByHour(300)
     # generate the command to run
     extra_contents = ""
