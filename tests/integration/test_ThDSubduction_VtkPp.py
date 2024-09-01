@@ -29,6 +29,7 @@ import numpy as np
 # from shutil import rmtree  # for remove directories
 from shutil import rmtree, copytree  # for remove directories
 import vtk
+import shilofue.VtkPp as VtkPp
 from shilofue.ThDSubduction0.VtkPp import *  # import test module
 
 test_dir = os.path.join(".test", "test_ThDSubduction_VtkPp")
@@ -39,6 +40,207 @@ source_case_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'ThDSubduc
 if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
+
+
+def test_InterpolateBySlices_3d_case_chunk_by_part():
+    '''
+    test using a 3d case output at step 0, by part (vtu files), in chunk geometry
+    asserts:
+        all points are found
+        values from interpolating
+    '''
+    case_dir = os.path.join(source_case_dir, 'test_prepare_slab_chunk')
+    output_path = os.path.join(test_dir, "ThDSubduction_vtk_test_InterpolateBySlices_3d_case_chunk_by_part")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    os.mkdir(output_path)
+    # class for the basic settings of the case
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # options
+    vtu_snapshot = 0
+    spacing = [10, 10, 10]
+    split_perturbation = 2
+    fields = ["T", "density"]
+    d_lateral = 1e3
+    # mesh
+    n0 = 80
+    n1 = 30
+    # make a target mesh is none is given
+    target_points_np = VtkPp.MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
+    # options
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    # interpolation
+    interpolated_data = np.zeros((len(fields), target_points_np.shape[0]))
+    for part in range(16):
+        filein = os.path.join(case_dir, "output", "solution", "solution-%05d.%04d.vtu" % (vtu_snapshot, part))
+        if part == 0:
+            points_found = None
+        print("-"*20 + "split" + "-"*20) # print a spliting
+        print(filein)
+        _, points_found, interpolated_data = VtkPp.InterpolateVtu(Visit_Options, filein, spacing, fields, target_points_np, points_found=points_found,\
+                                                    split_perturbation=split_perturbation, interpolated_data=interpolated_data, output_poly_data=False)
+    assert(np.sum(points_found==1) == 2400)
+    assert(abs(interpolated_data[0][0]-3188.590789515355)/3188.590789515355 < 1e-6)
+    assert(abs(interpolated_data[1][0]-3773.6249999999995)/3773.6249999999995 < 1e-6)
+
+def test_InterpolateBySlices_3d_case_chunk():
+    '''
+    test using a 3d case output at step 0
+    asserts:
+        all points are found
+        values from interpolating
+    '''
+    case_dir = os.path.join(source_case_dir, 'test_prepare_slab_chunk')
+    output_path = os.path.join(test_dir, "ThDSubduction_vtk_test_InterpolateBySlices_3d_case_chunk")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    os.mkdir(output_path)
+    # class for the basic settings of the case
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # options
+    vtu_snapshot = 0
+    spacing = [100, 100, 100]
+    split_perturbation = 10
+    fields = ["T", "density"]
+    d_lateral = 1e3
+    # mesh
+    n0 = 80
+    n1 = 30
+    # make a target mesh is none is given
+    target_points_np = VtkPp.MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
+    # options
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    # interpolation
+    interpolated_data = np.zeros((len(fields), target_points_np.shape[0]))
+    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+    _, points_found, interpolated_data = VtkPp.InterpolateVtu(Visit_Options, filein, spacing, fields, target_points_np, split_perturbation=split_perturbation,\
+                                                interpolated_data=interpolated_data, output_poly_data=False)
+    assert(np.sum(points_found==1) == 2400)
+    assert(abs(interpolated_data[0][0]-3188.590789515355)/3188.590789515355 < 1e-6)
+    assert(abs(interpolated_data[1][0]-3773.6249999999995)/3773.6249999999995 < 1e-6)
+
+
+def test_InterpolateBySlices_3d_case_by_part():
+    '''
+    test using a 3d case output at step 0, by part (vtu files)
+    asserts:
+        all points are found
+        values from interpolating
+    '''
+    case_dir = os.path.join(source_case_dir, 'test_3d_80deg_subduction')
+    output_path = os.path.join(test_dir, "ThDSubduction_vtk_test_InterpolateBySlices_3d_case_by_part")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    os.mkdir(output_path)
+    # class for the basic settings of the case
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # options
+    vtu_snapshot = 0
+    spacing = [10, 10, 10]
+    split_perturbation = 2
+    fields = ["T", "density"]
+    d_lateral = 1e3
+    # mesh
+    n0 = 80
+    n1 = 30
+    # make a target mesh is none is given
+    target_points_np = VtkPp.MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
+    # options
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    # interpolation
+    interpolated_data = np.zeros((len(fields), target_points_np.shape[0]))
+    for part in range(16):
+        filein = os.path.join(case_dir, "output", "solution", "solution-%05d.%04d.vtu" % (vtu_snapshot, part))
+        if part == 0:
+            points_found = None
+        print("-"*20 + "split" + "-"*20) # print a spliting
+        print(filein)
+        _, points_found, interpolated_data = VtkPp.InterpolateVtu(Visit_Options, filein, spacing, fields, target_points_np, points_found=points_found,\
+                                                    split_perturbation=split_perturbation, interpolated_data=interpolated_data, output_poly_data=False)
+    assert(np.sum(points_found==1) == 2400)
+    assert(abs(interpolated_data[0][0]-3188.590789515355)/3188.590789515355 < 1e-6)
+    assert(abs(interpolated_data[1][0]-3774.437988281252)/3774.437988281252 < 1e-6)
+
+
+def test_InterpolateBySlices_3d_case():
+    '''
+    test using a 3d case output at step 0
+    asserts:
+        all points are found
+        values from interpolating
+    '''
+    case_dir = os.path.join(source_case_dir, 'test_3d_80deg_subduction')
+    output_path = os.path.join(test_dir, "ThDSubduction_vtk_test_InterpolateBySlices_3d_case")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    os.mkdir(output_path)
+    # class for the basic settings of the case
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    # options
+    vtu_snapshot = 0
+    spacing = [100, 100, 100]
+    split_perturbation = 10
+    fields = ["T", "density"]
+    d_lateral = 1e3
+    # mesh
+    n0 = 80
+    n1 = 30
+    # make a target mesh is none is given
+    target_points_np = VtkPp.MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
+    # options
+    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+    # interpolation
+    interpolated_data = np.zeros((len(fields), target_points_np.shape[0]))
+    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+    _, points_found, interpolated_data = VtkPp.InterpolateVtu(Visit_Options, filein, spacing, fields, target_points_np, split_perturbation=split_perturbation,\
+                                                interpolated_data=interpolated_data, output_poly_data=False)
+    assert(np.sum(points_found==1) == 2400)
+    assert(abs(interpolated_data[0][0]-3188.590789515355)/3188.590789515355 < 1e-6)
+    assert(abs(interpolated_data[1][0]-3774.437988281252)/3774.437988281252 < 1e-6)
+
+
+
+def test_InterpolateBySlices():
+    '''
+    test interpolation by slices in the domain
+    assert:
+        the values interpolated
+    '''
+    case_dir = os.path.join(source_case_dir, 'test_prepare_slab')
+    output_path = os.path.join(test_dir, "ThDSubduction_vtk_test_InterpolateBySlices")
+    if os.path.isdir(output_path):
+        rmtree(output_path)  # remove old results
+    os.mkdir(output_path)
+    vtu_snapshot = 0
+    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+    # get the case options
+    Visit_Options = VISIT_OPTIONS(case_dir)
+    Visit_Options.Interpret()
+    geometry = Visit_Options.options['GEOMETRY']
+    Ro =  Visit_Options.options['OUTER_RADIUS']
+    Ri = Visit_Options.options['INNER_RADIUS']
+    Xmax = Visit_Options.options['XMAX']
+    # mesh
+    n0 = 80
+    n1 = 30
+    d_lateral = 1e3
+    target_points_np = VtkPp.MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
+    target_cells_vtk = VtkPp.GetVtkCells2d(n0, n1)
+    # interpolation
+    VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
+    VtkP.ReadFile(filein)
+    VtkP.ConstructPolyData(["density"], include_cell_center=False)
+    VtkP.SplitInSpace([10, 10, 10], dim=3)
+    o_poly_data, _, _ = VtkP.InterpolateSplitSpacing(target_points_np, fields=["density"], cells_vtk=target_cells_vtk, split_perturbation=4)
+    o_point_data = o_poly_data.GetPointData()
+    densities = vtk_to_numpy(o_point_data.GetArray('density'))
+    assert(abs(densities[236]-3.339520996093750000e+03)/3.339520996093750000e+03 < 1e6)
+    assert(abs(densities[238]-3.380000000000000000e+03)/3.380000000000000000e+03 < 1e6)
+
 
 
 def test_Interpolate3dVtkCaseChunckPart():

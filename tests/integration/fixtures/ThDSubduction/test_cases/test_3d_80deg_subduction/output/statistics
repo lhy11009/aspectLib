@@ -1,0 +1,28 @@
+# 1: Time step number
+# 2: Time (years)
+# 3: Time step size (years)
+# 4: Number of mesh cells
+# 5: Number of Stokes degrees of freedom
+# 6: Number of temperature degrees of freedom
+# 7: Number of degrees of freedom for all compositions
+# 8: Number of nonlinear iterations
+# 9: Visualization file name
+# 10: RMS velocity (m/year)
+# 11: Max. velocity (m/year)
+# 12: Minimal temperature (K)
+# 13: Average temperature (K)
+# 14: Maximal temperature (K)
+# 15: Average nondimensional temperature (K)
+# 16: Iterations for temperature solver
+# 17: Iterations for composition solver 1
+# 18: Iterations for composition solver 2
+# 19: Iterations for composition solver 3
+# 20: Iterations for composition solver 4
+# 21: Iterations for Stokes solver
+# 22: Velocity iterations in Stokes preconditioner
+# 23: Schur complement iterations in Stokes preconditioner
+  0 0.000000000000e+00 0.000000000000e+00   55296   1445700   461825   5971968  0 output/solution/solution-00000 0.00000000e+00 0.00000000e+00 2.73000000e+02 2.28016216e+03 3.18860000e+03 6.88421648e-01  0 0 0 0 0    0    0    0 
+  0 0.000000000000e+00 0.000000000000e+00  152064   4000910  1278341  16422912  0 output/solution/solution-00001 0.00000000e+00 0.00000000e+00 2.73000000e+02 2.27990159e+03 3.18860000e+03 6.88332279e-01  0 0 0 0 0    0    0    0 
+  0 0.000000000000e+00 0.000000000000e+00  861696  22275467  7121739  93063168  0 output/solution/solution-00002 0.00000000e+00 0.00000000e+00 2.73000000e+02 2.27991093e+03 3.18860000e+03 6.88335483e-01  0 0 0 0 0    0    0    0 
+  0 0.000000000000e+00 0.000000000000e+00 2170990  56930686 18196666 234466920  0 output/solution/solution-00003 0.00000000e+00 0.00000000e+00 2.73000000e+02 2.27992956e+03 3.18860000e+03 6.88341870e-01  0 0 0 0 0    0    0    0 
+  0 0.000000000000e+00 0.000000000000e+00 2392680  63404125 20261427 258409440 25 output/solution/solution-00004 3.95505971e-03 1.55928774e-01 2.73000000e+02 2.27993047e+03 3.18860000e+03 6.88342184e-01  0 1 1 1 1 1627 1678 1678 

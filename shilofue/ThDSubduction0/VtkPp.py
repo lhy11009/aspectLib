@@ -15,6 +15,7 @@ descriptions
 """
 #### 3rd parties
 import math
+from posixpath import split
 import numpy as np
 import sys, os, argparse
 # import json, re
@@ -1368,70 +1369,6 @@ def CenterProfileAnalyze(case_dir, time_interval_for_slab_morphology, **kwargs):
     return results
 
 
-# functions
-def GetVtkCells2d(n_x, n_z):
-    '''
-    Get a vtk cells from number of points along x, z in 2 dimensions
-    '''
-  
-    cells = vtk.vtkCellArray()
-  
-    for ix in range(n_x-1):
-        for jz in range(n_z-1):
-          cells.InsertNextCell(4)
-          # cell = vtk.vtkIdType()
-          cells.InsertCellPoint(ix*n_z + jz+1)
-          cells.InsertCellPoint(ix*n_z + jz)
-          cells.InsertCellPoint((ix+1)*n_z + jz)
-          cells.InsertCellPoint((ix+1)*n_z + jz+1)
-  
-    return cells
-
-
-def MakeTargetMesh(Visit_Options, n0, n1, d_lateral):
-    '''
-    Make a target mesh for slicing 3d dataset
-    Inputs:
-        Visit_Options - a VISIT_OPTIONS class
-        n0, n1 - number of points along the 1st and 3rd dimention
-        interval - this determines the interval of the slices
-        d_lateral - the lateral distance, along the 2nd dimention
-            take a minimum value of 1.0 to assure successful slicing of the geometry
-    '''
-    # get the options 
-    geometry = Visit_Options.options['GEOMETRY']
-    Ro =  Visit_Options.options['OUTER_RADIUS']
-    Ri = Visit_Options.options['INNER_RADIUS']
-    Xmax = Visit_Options.options['XMAX']
-    N = n0 * n1
-    # new mesh
-    target_points_np = np.zeros((N, 3))
-    if geometry == "box":
-        for i0 in range(n0):
-            for j1 in range(n1):
-                ii = i0 * n1 + j1
-                target_points_np[ii, 0] = Xmax * i0 / (n0 - 1)
-                target_points_np[ii, 1] = d_lateral
-                target_points_np[ii, 2] = Ro * j1 / (n1 - 1) # Ro and depth are the same in this case
-    elif geometry == "chunk":
-        for i0 in range(n0):
-            for j1 in range(n1):
-                # note we use theta = 0.0 here, but z0 = small value, this is to ensure a successful slice
-                # of the chunk geometry
-                # we take the slice at z = d_lateral, then x and y are between Ri and a R1 value
-                if d_lateral < 1e3:
-                    R1 = Ro
-                else:
-                    R1 = (Ro**2.0 - d_lateral**2.0)**0.5
-                ii = i0 * n1 + j1
-                phi = i0 / n0 * Xmax * np.pi / 180.0
-                r = R1 * (j1 - 0.0) / (n1 - 0.0) + Ri * (j1 - n1)/ (0.0 - n1)  
-                slice_x, slice_y, _  = Utilities.ggr2cart(0.0, phi, r) 
-                target_points_np[ii, 0] = slice_x
-                target_points_np[ii, 1] = slice_y
-                target_points_np[ii, 2] = d_lateral
-    return target_points_np
-
 # todo_i3d
 def Interpolate3dVtkCaseByParts(case_dir, vtu_snapshot, **kwargs):
     '''
@@ -1448,7 +1385,7 @@ def Interpolate3dVtkCaseByParts(case_dir, vtu_snapshot, **kwargs):
     # class for the basic settings of the case
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
-    target_points_np = MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
+    target_points_np = VtkPp.MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
     resampled_data = np.zeros([target_points_np.shape[0], 1])
     resampled_data[:] = np.nan
     # rewrite the kwargs for sub-function 
@@ -1501,7 +1438,7 @@ def Interpolate3dVtkCaseByParts(case_dir, vtu_snapshot, **kwargs):
         # output to vtp file
         o_poly_data = vtk.vtkPolyData()  # initiate poly data
         # new mesh
-        target_cells_vtk = GetVtkCells2d(n0, n1)
+        target_cells_vtk = VtkPp.GetVtkCells2d(n0, n1)
         # insert points
         target_points_vtk = vtk.vtkPoints()
         for i in range(target_points_np.shape[0]):
@@ -1590,7 +1527,7 @@ def Mask3dVtkCase(case_dir, vtu_snapshot, part, **kwargs):
 
     if target_points_np is None:
         # make a target mesh is none is given
-        target_points_np = MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
+        target_points_np = VtkPp.MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
     print("%sPoints in target: %d" % (" "*indent, target_points_np.shape[0]))
     # mask the data to the adjacency of the mesh
     mask=None
@@ -1680,7 +1617,7 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
 
     if target_points_np is None:
         # make a target mesh is none is given
-        target_points_np = MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
+        target_points_np = VtkPp.MakeTargetMesh(Visit_Options, n0, n1, d_lateral)
     print("%sPoints in target: %d" % (" "*indent, target_points_np.shape[0]))
     # mask the data to the adjacency of the mesh
     mask=None
@@ -1723,7 +1660,7 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
         # output to vtp file
         o_poly_data = vtk.vtkPolyData()  # initiate poly data
         # new mesh
-        target_cells_vtk = GetVtkCells2d(n0, n1)
+        target_cells_vtk = VtkPp.GetVtkCells2d(n0, n1)
         # insert points
         target_points_vtk = vtk.vtkPoints()
         for i in range(target_points_np.shape[0]):
@@ -1793,6 +1730,18 @@ def main():
     parser.add_argument('-co', '--crust_only', type=int,
                         default=0,
                         help='If we only use the crustal composition to sort out the trench locations')
+    parser.add_argument('-sptb', '--split_perturbation', type=int,
+                        default=2,
+                        help='his determines the number of slices the algorithm searches for a query point')
+    parser.add_argument('-gs', '--geometry_spacing', nargs='+', type=int,
+                        default=[10, 10, 10],
+                        help='a list of values, spacing of the domain, this determines the number of slices the interpolation algorithm produce')
+    parser.add_argument('-sr', '--slice_resolution', nargs='+', type=int,
+                        default=[800, 300],
+                        help='a list of values, mesh resolutions for interpolation')
+    parser.add_argument('-sdl', '--slice_d_lateral', type=float,
+                        default=1e3,
+                        help='this is the distance of the slice measured on the 2nd dimension')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -1834,12 +1783,21 @@ def main():
         SlabPlot = SLABPLOT('slab')
         episodes = [[0, 5], [5, 20], [20, 30]]
         SlabPlot.PlotTrenchPositionEpisodes(arg.inputs, episodes, time_interval=arg.time_interval)
-    elif _commend == 'slice_3d_geometry':
+    # todo_inter
+    elif _commend == 'slice_3d_geometry_old':
         # Interpolate3dVtkCase(arg.inputs, arg.vtu_snapshot, interval=10e3, n0=800, n1=100, file_extension="vtp")
         # Interpolate3dVtkCase(arg.inputs, arg.vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt", part=2)
         # Interpolate3dVtkCaseByParts(arg.inputs, arg.vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt")
         Interpolate3dVtkCaseByParts(arg.inputs, arg.vtu_snapshot, interval=10e3, n0=800, n1=100, file_extension="vtp", field="viscosity")
         Interpolate3dVtkCaseByParts(arg.inputs, arg.vtu_snapshot, interval=10e3, n0=800, n1=100, d_lateral=750e3, file_extension="vtp", field="viscosity")
+    elif _commend == 'slice_3d_geometry':
+        fields = ["viscosity", "T"]
+        mesh_options = {"type": "slice_2nd", "resolution": arg.slice_resolution, "d_lateral": arg.slice_d_lateral}
+        print("mesh_options: ", mesh_options)
+        print("spacing: ", arg.geometry_spacing)
+        print("split_perturbation: ", arg.split_perturbation)
+        VtkPp.Interpolate3dVtkCaseBeta(arg.inputs, VISIT_OPTIONS, arg.vtu_snapshot, fields, mesh_options,\
+             spacing=arg.geometry_spacing, split_perturbation=arg.split_perturbation, by_part=True)
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 
