@@ -23,6 +23,7 @@ Examples of usage:
 
 descriptions
 """ 
+from operator import index
 import numpy as np
 import sys, os, argparse
 import json, re
@@ -427,9 +428,9 @@ class LOOKUP_TABLE():
         '''
         first_dimension_name = kwargs.get('first_dimension', 'Pressure')
         second_dimension_name = kwargs.get('second_dimension', 'Temperature')
-        digit = kwargs.get('digit', 8)
-        file_type = kwargs.get("file_type", 'perple_x')
         fix_coordinate_minor = kwargs.get("fix_coordinate_minor", False)
+        interval1 = kwargs.get('interval1', 1)
+        interval2 = kwargs.get('interval2', 1)
 
         # read dimension info
         col_first = self.header[first_dimension_name]['col']
@@ -443,20 +444,18 @@ class LOOKUP_TABLE():
             FixSecondDimensionMinor(self.data[:, col_second], self.number1)
 
         # output
-        interval1 = kwargs.get('interval1', 1)
-        interval2 = kwargs.get('interval2', 1)
         if interval1 == 1 and interval2 == 1:
-            self.indexes = range(self.number1*self.number2)
+            self.indexes = np.array(range(self.number1*self.number2))
         else:
             print("%s begin indexing" % Utilities.func_name())  # debug
-            self.indexes = self.IndexesByInterval(interval1, interval2)  # work out indexes
+            self.indexes = np.array(self.IndexesByInterval(interval1, interval2))  # work out indexes
             print("%s finish indexing" % Utilities.func_name())  # debug
         self.number_out1 = int(np.ceil(self.number1 / interval1)) # number of output
         self.number_out2 = int(np.ceil(self.number2 / interval2))
         # output intervals
         self.delta_out1 = self.delta1 * interval1 # output intervals
         self.delta_out2 = self.delta2 * interval2 # output intervals
-        self.OutputPerplexTable(field_names, o_path, digit=digit, file_type=file_type)
+        self.OutputPerplexTable(field_names, o_path, **kwargs)
 
     def OutputPerplexTable(self, field_names, o_path, **kwargs):
         '''
@@ -469,6 +468,7 @@ class LOOKUP_TABLE():
                 version: version of this file
                 digit: digit of output numbers
                 file_type: type of the output file, perple_x or structured
+                exchange_dimension: exchange the 1st and 2nd dimensions
         Outputs:
             Output of this function is the Perplex file form that could be recognized by aspect
         Returns:
@@ -476,6 +476,7 @@ class LOOKUP_TABLE():
         '''
         digit = kwargs.get('digit', 8)
         file_type = kwargs.get("file_type", 'perple_x')
+        exchange_dimension = kwargs.get("exchange_dimension", False)
         assert(file_type in ['perple_x', 'structured'])
 
         UnitConvert = Utilities.UNITCONVERT()
@@ -534,6 +535,8 @@ class LOOKUP_TABLE():
         # output
         with open(o_path, 'w') as fout: 
             if file_type == "perple_x":
+                if exchange_dimension:
+                    raise NotImplementedError()
                 # write header for perple_x file
                 fout.write(self.version + '\n')  # version
                 fout.write(os.path.basename(o_path) + '\n') # filenamea
@@ -550,17 +553,39 @@ class LOOKUP_TABLE():
             elif file_type == "structured":
                 # write header for structured file
                 fout.write("# This is a data output from HeFESTo\n")
-                fout.write("# Independent variables are %s and %s\n" % (self.oheader[field_names[0]], self.oheader[field_names[1]]))
-                fout.write("# POINTS: %d %d\n" % (self.number_out1, self.number_out2)) 
+                if exchange_dimension:
+                    fout.write("# Independent variables are %s and %s\n" % (self.oheader[field_names[1]], self.oheader[field_names[0]]))
+                    fout.write("# POINTS: %d %d\n" % (self.number_out2, self.number_out1)) 
+                else:
+                    fout.write("# Independent variables are %s and %s\n" % (self.oheader[field_names[0]], self.oheader[field_names[1]]))
+                    fout.write("# POINTS: %d %d\n" % (self.number_out1, self.number_out2)) 
             temp = ''
-            for field_name in field_names:
+            if exchange_dimension:
+                temp += '%-20s%-20s' % (self.oheader[field_names[1]], self.oheader[field_names[0]])
+            else:
+                temp += '%-20s%-20s' % (self.oheader[field_names[0]], self.oheader[field_names[1]])
+            for i in range(2, len(field_names)):
+                field_name = field_names[i]
                 temp += '%-20s' % self.oheader[field_name]
             temp += '\n'
             fout.write(temp)
-
             # data is indexes, so that only part of the table is output
             _format = '%-' + str(digit + 11) + '.' + str(digit) + 'e'
-            np.savetxt(fout, self.data[np.ix_(self.indexes, columns)] * unit_factors, fmt=_format)
+            indexes_output = None; columns_output = None; unit_factors_output = None
+            if exchange_dimension:
+                indexes_output = ExchangeDimensions(self.indexes, self.number_out1, self.number_out2)
+                columns_output = columns.copy()
+                columns_output[0] = columns[1]
+                columns_output[1] = columns[0]
+                unit_factors_output = unit_factors.copy()
+                tmp = unit_factors[0]
+                unit_factors_output[0] = unit_factors[1]
+                unit_factors_output[1] = tmp
+            else:
+                indexes_output = self.indexes
+                columns_output = columns
+                unit_factors_output = unit_factors
+            np.savetxt(fout, self.data[np.ix_(indexes_output, columns_output)] * unit_factors_output, fmt=_format)
         print("New file generated: %s" % o_path) 
     
     def OutputPressureEntropyTable(self, field_names, o_path):
@@ -1481,6 +1506,20 @@ def convert_mol_fraction(comps):
     return comps_atom
 
 
+def ExchangeDimensions(indexes, number_out1, number_out2):
+    '''
+    exchange the indexing for the 1st and the 2nd dimensions
+    '''
+    assert(indexes.ndim==1)
+    ixx = np.zeros(indexes.shape, dtype=int)
+    i = 0
+    for i1 in range(number_out1):
+        for j2 in range(number_out2):
+            ixx[i] = j2 * number_out1 + i1
+            i += 1
+    ex_indexes = indexes[np.ix_(ixx)] 
+
+    return ex_indexes
     
 
 def main():

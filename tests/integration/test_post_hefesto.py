@@ -37,6 +37,53 @@ if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
 
+def test_ExchangeDimensions():
+    '''
+    test function ExchangeDimensions
+    '''
+    input_file = os.path.join(source_dir, "table_index_test.txt")
+    indexes = np.loadtxt(input_file)
+    number_out1 = 26
+    number_out2 = 4
+    ex_indexes = ExchangeDimensions(indexes, number_out1, number_out2)
+    # save result to file
+    output_file = os.path.join(test_dir, "exchange_dimensions_output.txt")
+    if os.path.isfile(output_file):
+        os.remove(output_file)
+    with open(output_file, 'w') as fout:
+        np.savetxt(fout, ex_indexes)
+    assert(os.path.isfile(output_file))
+    # compare
+    output_std_file = os.path.join(source_dir, "exchange_dimensions_output_std.txt")
+    assert(os.path.isfile(output_std_file))
+    assert(filecmp.cmp(output_file, output_std_file))
+
+
+def test_process_hefesto_fort56_PS_exchange_dimension():
+    '''
+    Test processing hefesto table and exchange the 1st and 2nd dimensions
+    Asserts:
+    '''
+    input_file = os.path.join(source_dir, "fort.56.PS")
+    assert(os.path.isfile(input_file))  # assert there is an existing Hefesto table
+    # output paths
+    output_file = os.path.join(test_dir, "hefesto_PS_table_from_fort56_exchange_dimension")
+    if (os.path.isfile(output_file)):  # remove old files
+        os.remove(output_file)
+    output_file_std = os.path.join(source_dir, "hefesto_PS_table_from_fort56_exchange_dimension_std")
+    assert(os.path.isfile(output_file_std))  # assert there is an existing standard file
+    # call processfunction
+    LookupTable = LOOKUP_TABLE()
+    LookupTable.ReadRawFort56(input_file)
+    # fields to read in
+    field_names = ['Pressure', 'Entropy', 'Temperature', 'Density', 'Thermal_expansivity', 'Isobaric_heat_capacity', 'VP', 'VS', 'Enthalpy']
+    LookupTable.Process(field_names, output_file, interval1=1, interval2=1, second_dimension="Entropy",\
+                        fix_coordinate_minor=True, exchange_dimension=True, file_type="structured")
+    # assert something 
+    assert(os.path.isfile(output_file))
+    # filecmp
+    assert(filecmp.cmp(output_file, output_file_std))
+
 
 def test_process_hefesto_fort56_PS():
     '''
