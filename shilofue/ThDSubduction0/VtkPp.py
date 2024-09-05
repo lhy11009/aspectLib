@@ -1742,6 +1742,9 @@ def main():
     parser.add_argument('-sdl', '--slice_d_lateral', type=float,
                         default=1e3,
                         help='this is the distance of the slice measured on the 2nd dimension')
+    parser.add_argument('-aacs', '--apply_additional_chunk_search', type=int,
+                        default=1,
+                        help='Apply additional search in interpolation if interpolatiion is in chunk geometry.')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -1784,7 +1787,7 @@ def main():
         episodes = [[0, 5], [5, 20], [20, 30]]
         SlabPlot.PlotTrenchPositionEpisodes(arg.inputs, episodes, time_interval=arg.time_interval)
     # todo_inter
-    elif _commend == 'slice_3d_geometry_old':
+    elif _commend == 'slice_3d_geometry_alpha':
         # Interpolate3dVtkCase(arg.inputs, arg.vtu_snapshot, interval=10e3, n0=800, n1=100, file_extension="vtp")
         # Interpolate3dVtkCase(arg.inputs, arg.vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt", part=2)
         # Interpolate3dVtkCaseByParts(arg.inputs, arg.vtu_snapshot, interval=1000e3, n0=800, n1=100, file_extension="txt")
@@ -1796,8 +1799,10 @@ def main():
         print("mesh_options: ", mesh_options)
         print("spacing: ", arg.geometry_spacing)
         print("split_perturbation: ", arg.split_perturbation)
+        print("apply_additional_chunk_search: ", arg.apply_additional_chunk_search)
         VtkPp.Interpolate3dVtkCaseBeta(arg.inputs, VISIT_OPTIONS, arg.vtu_snapshot, fields, mesh_options,\
-             spacing=arg.geometry_spacing, split_perturbation=arg.split_perturbation, by_part=True)
+             spacing=arg.geometry_spacing, split_perturbation=arg.split_perturbation, by_part=True,\
+                 apply_additional_chunk_search=(arg.apply_additional_chunk_search==1))
     else:
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
 

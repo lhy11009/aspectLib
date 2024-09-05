@@ -327,6 +327,7 @@ import data takes %f, interpolate cell center data takes %f"\
         points_found = kwargs.get("points_found", None)
         output_poly_data = kwargs.get("output_poly_data", True)
         interpolated_data = kwargs.get("interpolated_data", None)
+        apply_additional_chunk_search = kwargs.get('apply_additional_chunk_search', True)
         is_box = (self.geometry == "box")
         if not is_box:
             Utilities.my_assert(self.geometry == "chunk", ValueError, "%s: we only handle box and chunk geometry" % Utilities.func_name())
@@ -386,6 +387,8 @@ import data takes %f, interpolate cell center data takes %f"\
                         diffs.append([pert_x, pert_y, -pert_z])
         end = time.time()
         print("\tInitiating takes %2f s" % (end - start))
+        if (not is_box) and apply_additional_chunk_search:
+            print("\tApply additional chunk search")
         # loop over the points, find cells containing the points and interpolate from the cell points
         start = end
         points_in_cell = [[0.0, 0.0, 0.0] for i in range(8)] # for 3d, parse vtk cell, chunk case
@@ -420,13 +423,18 @@ import data takes %f, interpolate cell center data takes %f"\
                             points_found[i] = 1
                             break
                         else:
-                            r, theta, phi = Utilities.cart2sph(points[i][0], points[i][1], points[i][2])
-                            cell_points = cell.GetPoints()
-                            for i_pc in range(cell.GetNumberOfPoints()):
-                                point_id = cell.GetPointId(i_pc)
-                                cell_points.GetPoint(i_pc, points_in_cell[i_pc])
-                            sph_bounds_cell = Utilities.SphBound(points_in_cell)
-                            if PointInBound([phi, theta, r], sph_bounds_cell):
+                            if apply_additional_chunk_search:
+                                r, theta, phi = Utilities.cart2sph(points[i][0], points[i][1], points[i][2])
+                                cell_points = cell.GetPoints()
+                                for i_pc in range(cell.GetNumberOfPoints()):
+                                    point_id = cell.GetPointId(i_pc)
+                                    cell_points.GetPoint(i_pc, points_in_cell[i_pc])
+                                sph_bounds_cell = Utilities.SphBound(points_in_cell)
+                                if PointInBound([phi, theta, r], sph_bounds_cell):
+                                    found = True
+                                    points_found[i] = 1
+                                    break
+                            else:
                                 found = True
                                 points_found[i] = 1
                                 break
@@ -988,6 +996,7 @@ def Interpolate3dVtkCaseBeta(case_dir, VISIT_OPTIONS, vtu_snapshot, fields, mesh
     assert(os.path.isdir(case_dir))
     # algorithm
     by_part = kwargs.get("by_part", False)
+    apply_additional_chunk_search = kwargs.get("apply_additional_chunk_search", True)
     spacing = kwargs.get("spacing", [10, 10, 10])
     split_perturbation = kwargs.get("split_perturbation", 2)
     fields = ["T", "density"]
@@ -1028,14 +1037,15 @@ def Interpolate3dVtkCaseBeta(case_dir, VISIT_OPTIONS, vtu_snapshot, fields, mesh
             print("-"*20 + "split" + "-"*20) # print a spliting
             print(filein)
             _, points_found, interpolated_data = InterpolateVtu(Visit_Options, filein, spacing, fields, target_points_np, points_found=points_found,\
-                                                        split_perturbation=split_perturbation, interpolated_data=interpolated_data, output_poly_data=False)
+                                                        split_perturbation=split_perturbation, interpolated_data=interpolated_data, output_poly_data=False,
+                                                        apply_additional_chunk_search=apply_additional_chunk_search)
             if np.sum(points_found == 1) == points_found.size:
                 print("All points have been found, exiting")
                 break
     else:
         filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
         _, points_found, interpolated_data = InterpolateVtu(Visit_Options, filein, spacing, fields, target_points_np, split_perturbation=split_perturbation,\
-                                                    interpolated_data=None, output_poly_data=False)
+                                                    interpolated_data=None, output_poly_data=False, apply_additional_chunk_search=apply_additional_chunk_search)
     pass
 
     # organize output
