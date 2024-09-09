@@ -43,6 +43,26 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
+def test_InterpolateDomain():
+    '''
+    test InterpolateDomain
+    '''
+    fields = ["T", "density", "viscosity", "C_1", "velocity"]
+    filein = os.path.join(source_dir, "test_interpolation_domain", "solution-00000.0000.vtu")
+    assert(os.path.isfile(filein))
+
+    VtkP = VTKP(geometry="box")
+    VtkP.ReadFile(filein)
+    # construct poly data
+    VtkP.ConstructPolyData(fields)
+
+    # interpolate for the center point
+    target_points_np = np.array([[1.445e6, 1.445e6, 0.0]])
+    o_poly_data, points_found, interpolated_data, interpolated_vector = VtkP.InterpolateDomain(target_points_np, fields=fields)
+    assert(abs(interpolated_data[1] - 3.41992407e+03)/3.41992407e+03 < 1e-6)
+    assert(abs((interpolated_vector[0][0][1] - (-5.60043305e-02))/(-5.60043305e-02)) < 1e-6)
+
+
 def test_utilities():
     '''
     Test utilities from VtkPp.py

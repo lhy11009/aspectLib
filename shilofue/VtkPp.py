@@ -314,6 +314,157 @@ import data takes %f, interpolate cell center data takes %f"\
         end = time.time()
         print("\t%s takes %.2f s" % (Utilities.func_name(), end-start))
     
+    def InterpolateDomain(self, points, fields, **kwargs):
+        '''
+        Run interpolation
+        '''
+        print("%s started" % Utilities.func_name())
+        start = time.time()
+        cells_vtk = kwargs.get("cells_vtk", None) # for set connectivity
+        points_found = kwargs.get("points_found", None)
+        output_poly_data = kwargs.get("output_poly_data", True)
+        interpolated_data = kwargs.get("interpolated_data", None)
+        apply_additional_chunk_search = kwargs.get('apply_additional_chunk_search', True)
+        is_box = (self.geometry == "box")
+        if not is_box:
+            Utilities.my_assert(self.geometry == "chunk", ValueError, "%s: we only handle box and chunk geometry" % Utilities.func_name())
+        # check point dimension
+        if points.shape[1] == 2:
+            pass
+        elif points.shape[1] == 3:
+            pass
+        else:
+            raise ValueError("%s: points.shape[1] needs to either 2 or 3" % Utilities.func_name())
+        # initiate a ndarray to store found information 
+        if points_found is None:
+            points_found = np.zeros(points.shape[0], dtype=int)
+        # Get the bounds
+        domain_bounds = self.i_poly_data.GetPoints().GetBounds()
+        # prepare the datafield to interpolate
+        # field_type: 0 - scalar, 1 - vector
+        raw_data = []
+        field_type = []
+        n_vector = 0
+        for field in fields:
+            if field in ["velocity"]:
+                raw_data.append(self.i_poly_data.GetPointData().GetVectors(field))
+                field_type.append(1)
+                n_vector += 1
+            else:
+                raw_data.append(self.i_poly_data.GetPointData().GetArray(field))
+                field_type.append(0)
+        if interpolated_data is None:
+            interpolated_data = np.zeros((len(fields), points.shape[0]))
+        if n_vector > 0:
+            interpolated_vector = [ [[0.0, 0.0, 0.0] for j in range(points.shape[0])] for i in range(n_vector)]
+        end = time.time()
+        print("\tInitiating takes %2f s" % (end - start))
+        if (not is_box) and apply_additional_chunk_search:
+            print("\tApply additional chunk search")
+        
+        # loop over the points, find cells containing the points and interpolate from the cell points
+        start = end
+        points_in_cell = [[0.0, 0.0, 0.0] for i in range(4)] # for 2d, parse vtk cell, chunk case
+        n_found = 0
+        n_out_of_bound = 0
+        n_not_found = 0
+        for i in range(points.shape[0]):
+            if points_found[i]:
+                # skip points found in other files
+                continue
+            if not PointInBound2D(points[i], domain_bounds):
+                # coordinates out of range, append invalid values
+                n_out_of_bound += 1
+                continue
+            for iC in range(self.i_poly_data.GetNumberOfCells()):
+                cell = self.i_poly_data.GetCell(iC)
+                bound = cell.GetBounds()
+                if PointInBound2D(points[i], bound):
+                    # mark points inside the cell iC and mark found of point i
+                    # box: simply use the cell bound
+                    # chunk: check first the cell bound, then convert both the query point and the bound
+                    # to spherical coordinates and check again
+                    if is_box:
+                        found = True
+                        points_found[i] = 1
+                        cell_found = cell
+                        break
+                    else:
+                        if apply_additional_chunk_search:
+                            r, theta, phi = Utilities.cart2sph(points[i][0], points[i][1], points[i][2])
+                            cell_points = cell.GetPoints()
+                            for i_pc in range(cell.GetNumberOfPoints()):
+                                point_id = cell.GetPointId(i_pc)
+                                cell_points.GetPoint(i_pc, points_in_cell[i_pc])
+                            sph_bounds_cell = Utilities.SphBound(points_in_cell)
+                            if PointInBound([phi, theta, r], sph_bounds_cell):
+                                found = True
+                                points_found[i] = 1
+                                cell_found = cell
+                                break
+                        else:
+                            found = True
+                            points_found[i] = 1
+                            cell_found = cell
+                            break
+            if found:
+                n_found += 1
+                # Prepare variables for EvaluatePosition
+                closest_point = [0.0, 0.0, 0.0]
+                sub_id = vtk.reference(0)
+                dist2 = vtk.reference(0.0)
+                pcoords = [0.0, 0.0, 0.0]
+                weights = [0.0] * cell.GetNumberOfPoints()
+                # Evaluate the position to check if the point is inside the cell
+                inside = cell.EvaluatePosition(points[i], closest_point, sub_id, pcoords, dist2, weights)
+                for i_f in range(len(fields)):
+                    fdata = raw_data[i_f]
+                    if field_type[i_f] == 0:
+                        interpolated_val = 0.0
+                        for i_pc in range(cell_found.GetNumberOfPoints()):
+                            point_id = cell_found.GetPointId(i_pc)
+                            value = fdata.GetTuple1(point_id)  # Assuming scalar data
+                            interpolated_val += value * weights[i_pc]
+                        interpolated_data[i_f][i] = interpolated_val
+                    elif field_type[i_f] == 1:
+                        interpolated_val = np.array([0.0, 0.0, 0.0])
+                        for i_pc in range(cell_found.GetNumberOfPoints()):
+                            point_id = cell_found.GetPointId(i_pc)
+                            value = fdata.GetTuple(point_id)  # Assuming scalar data
+                            interpolated_val += np.array(value) * weights[i_pc]
+                        interpolated_vector[0][i] = interpolated_val
+            else:
+                n_not_found += 1 
+        total_n_found = np.sum(points_found==1)
+        end = time.time()
+        print("\t%s Searched %d points (%d found total; %d found current file; %d out of bound; %d not found)" % (Utilities.func_name(), points.shape[0], total_n_found, n_found, n_out_of_bound, n_not_found))
+        print("\tSearching takes %2f s" % (end - start))
+
+        # construct new polydata
+        # We construct the polydata ourself, now it only works for field data
+        if output_poly_data:
+            o_poly_data = vtk.vtkPolyData()
+            points_vtk = vtk.vtkPoints()
+            for i in range(points.shape[0]):
+                points_vtk.InsertNextPoint(points[i])
+            o_poly_data.SetPoints(points_vtk) # insert points
+            if cells_vtk is not None:
+                o_poly_data.SetPolys(cells_vtk)
+            for i_f in range(len(fields)):
+                interpolated_array = numpy_to_vtk(interpolated_data[i_f])
+                interpolated_array.SetName(fields[i_f])
+                if i_f == 0:
+                    # the first array
+                    o_poly_data.GetPointData().SetScalars(interpolated_array)
+                else:
+                    # following arrays
+                    o_poly_data.GetPointData().AddArray(interpolated_array)
+        else:
+            o_poly_data = None
+
+        return o_poly_data, points_found, interpolated_data, interpolated_vector
+
+    
     def InterpolateSplitSpacing(self, points, fields, **kwargs):
         '''
         Run interpolation from split spacing
@@ -806,6 +957,23 @@ def PointInBound(point, bound):
         raise TypeError
     return (point[0] >= bound[0]) and (point[0] <= bound[1]) and (point[1] >= bound[2])\
         and (point[1] <= bound[3]) and (point[2] >= bound[4]) and (point[2] <= bound[5])
+
+
+def PointInBound2D(point, bound):
+    '''
+    Determine whether a 2d point is within a bound
+    Inputs:
+        points: 2d, list or np.ndarray, not we still need 3 entries to be consistent with vtk
+        bound: 4 component list, x_min, x_max, y_min, y_max
+    '''
+    if type(point) == np.ndarray:
+        assert(point.size == 3)
+    elif type(point) == list:
+        assert(len(point) == 3)
+    else:
+        raise TypeError
+    return (point[0] >= bound[0]) and (point[0] <= bound[1]) and (point[1] >= bound[2])\
+        and (point[1] <= bound[3])
 
 
 def InterpolateGrid(poly_data, points, **kwargs):
