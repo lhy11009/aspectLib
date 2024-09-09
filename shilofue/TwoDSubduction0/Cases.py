@@ -235,12 +235,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             Utilities.my_assert(os.path.isdir(HeFESTo_data_dir_pull_path),\
             FileNotFoundError, "%s is not a directory" % HeFESTo_data_dir_pull_path)
         # assert scheme to use for refinement
+        # todo_chunk
         rf_scheme = self.values[self.start + 17]
         assert(rf_scheme in ['2d', '3d consistent'])
-        if rf_scheme == '3d consistent':
-            # 3d consistent geometry only works for box model
-            geometry = self.values[3]
-            assert(geometry == "box")
         # assert scheme of peierls creep to use
         peierls_scheme = self.values[self.start + 18]
         assert(peierls_scheme in ['MK10', "MK10p", 'Idrissi16'])
@@ -529,7 +526,30 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         repetition_slice = np.min(np.array([maximum_repetition_slice, 2.8900e6]))
         if geometry == 'chunk':
             max_phi = box_width / Ro * 180.0 / np.pi  # extent in term of phi
-            o_dict["Geometry model"] = prm_geometry_sph(max_phi, adjust_mesh_with_width=adjust_mesh_with_width)
+            # todo_chunk
+            if rf_scheme == "3d consistent":
+                y_extent_str = "2.8900e6"
+                if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
+                    y_extent_str = "%.4e" % box_height
+                if adjust_mesh_with_width:
+                    x_repetitions = int(np.ceil(int((box_width/repetition_slice) * 2.0) / 2.0))
+                    y_repetitions = int(np.ceil(int((box_height/repetition_slice) * 2.0) / 2.0))
+                else:
+                    x_repetitions = 2
+                    y_repetitions = 1
+                o_dict["Geometry model"] = {
+                    "Model name": "chunk",
+                    "Chunk": {
+                        "Chunk inner radius": "%.4e" % (6371e3 - box_height),
+                        "Chunk outer radius": "%.4e" % 6371e3,
+                        "Chunk minimum longitude": "0.0",
+                        "Chunk maximum longitude": "%.4e" % max_phi,
+                        "Longitude repetitions": "%d" % x_repetitions,
+                        "Radius repetitions": "%d" % y_repetitions
+                    }
+                }
+            else:
+                o_dict["Geometry model"] = prm_geometry_sph(max_phi, adjust_mesh_with_width=adjust_mesh_with_width)
         elif geometry == 'box':
             y_extent_str = "2.8900e6"
             if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
@@ -584,28 +604,37 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                 elif geometry == 'box':
                     o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart()
         # adjust refinement with different schemes
+        # todo_chunk
         elif rf_scheme == "3d consistent":
-            # todo_chunk
             # 3d consistent scheme:
             #   the global and adaptive refinement are set up by two variables separately
             #   remove additional inputs
             o_dict["Mesh refinement"]["Initial global refinement"] = "%d" % global_refinement
             o_dict["Mesh refinement"]["Initial adaptive refinement"] = "%d" % adaptive_refinement
             o_dict["Mesh refinement"]["Minimum refinement level"] = "%d" % global_refinement
-            o_dict["Mesh refinement"]["Minimum refinement function"]["Coordinate system"] = "cartesian"
-            o_dict["Mesh refinement"]["Minimum refinement function"]["Variable names"] = "x, y, t"
-            Do_str = "2.8900e+06" # strong for box height
-            if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
-                Do_str = "%.4e" % box_height
-            o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] = \
-                "Do=%s, UM=670e3, Dp=100e3, Rd=%d, Rum=%d" %\
-                    (Do_str, global_refinement+adaptive_refinement-1, global_refinement+adaptive_refinement-2)
-            o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"] = \
-                "(Do-y<UM)?\\\n\
-                                    ((Do-y<Dp+50e3)? Rd: Rum)\\\n\
-                                    :0"
             o_dict["Mesh refinement"]["IsosurfacesTwoD1"].pop("Depth for coarsening the lower mantle")
             o_dict["Mesh refinement"]["IsosurfacesTwoD1"].pop("Level for coarsening the lower mantle")
+            if geometry == "box":
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Coordinate system"] = "cartesian"
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Variable names"] = "x, y, t"
+                Do_str = "2.8900e+06" # strong for box height
+                if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
+                    Do_str = "%.4e" % box_height
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"] = \
+                    "(Do-y<UM)?\\\n\
+                                        ((Do-y<Dp+50e3)? Rd: Rum)\\\n\
+                                        :0"
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] = \
+                    "Do=%s, UM=670e3, Dp=100e3, Rd=%d, Rum=%d" %\
+                        (Do_str, global_refinement+adaptive_refinement-1, global_refinement+adaptive_refinement-2)
+            else:
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] = \
+                    "Ro=6371e3, UM=670e3, Dp=100e3, Rd=%d, Rum=%d" %\
+                        (global_refinement+adaptive_refinement-1, global_refinement+adaptive_refinement-2)
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"] = \
+                    "(Ro-r<UM)?\\\n\
+                                        ((Ro-r<Dp+50e3)? Rd: Rum)\\\n\
+                                        :0"
         # boundary temperature model
         # 1. assign the option from sph and cart model, respectively
         # 2. check if we want to automatically fix the boundary temperature
@@ -624,7 +653,10 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                 # in case this is above the given range of depth in the depth_average
                 # file, apply a slight variation and try again
                 Tad_bot = self.da_Tad_func(box_height - 50e3)
-            o_dict['Boundary temperature model']['Box']['Bottom temperature'] = "%.4e" % Tad_bot
+            if geometry == "box":
+                o_dict['Boundary temperature model']['Box']['Bottom temperature'] = "%.4e" % Tad_bot
+            elif geometry == "chunk":
+                o_dict['Boundary temperature model']['Spherical constant']['Inner temperature'] = "%.4e" % Tad_bot
        
         # compositional fields
         # note the options for additional compositions and less compositions are handled later
