@@ -690,6 +690,32 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         if fig_path is not None:
             fig.savefig(fig_path)
             print("figure generated: ", fig_path)
+    
+    def write_file_for_sz_paper(self, o_path):
+        '''
+        Write output file, with a format we like for figure table
+        '''
+        # append the case name first and the absolute path last
+        table_columns = ["t660s", "t800s", "t1000s"]
+        attrs_to_output = ["names"] + table_columns
+        headers = ["names"] + table_columns
+
+        # write file
+        format = o_path.split('.')[-1]
+        if format == "txt":
+            with open(o_path, 'w') as fout: 
+                self.write(fout, attrs_to_output, headers) 
+        elif format == "csv":
+            with open(o_path, 'w') as fout: 
+                self.write_csv(fout, attrs_to_output, headers)
+        elif format == "tex":
+            with open(o_path, 'w') as fout: 
+                self.export_to_latex_table(fout, attrs_to_output, headers)
+        else:
+            raise ValueError("%s: filename should end with \".txt\" or \".csv\", but the given name is %s" % (Utilities.func_name(), o_path))
+
+        Utilities.my_assert(os.path.isfile(o_path), FileNotFoundError, "%s: file %s is not written successfully" % (Utilities.func_name(), o_path)) 
+        print("%s: Write file %s" % (Utilities.func_name(), o_path))
 
     def write_file_for_3d_paper(self, o_path):
         '''

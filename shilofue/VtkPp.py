@@ -126,13 +126,15 @@ class VTKP():
             self.density_ref_func = DepthAverage.GetInterpolateFunc(self.time, "adiabatic_density")
         pass
 
-    def ReadFile(self, filein):
+    def ReadFile(self, filein, **kwargs):
         '''
         Read file
         Inputs:
             filein (str): path to a input file
         '''
-        print("%s started" % Utilities.func_name())
+        quiet = kwargs.get("quiet", False)
+        if not quiet:
+            print("%s started" % Utilities.func_name())
         start = time.time()
         assert(os.path.isfile(filein))
         file_extension = filein.split('.')[-1]
@@ -145,8 +147,9 @@ class VTKP():
         self.reader.SetFileName(filein)
         self.reader.Update()
         end = time.time()
-        print("\tReadFile: %s" % filein)
-        print("\t%s, takes %.2f s" % (Utilities.func_name(), end - start))
+        if not quiet:
+            print("\tReadFile: %s" % filein)
+            print("\t%s, takes %.2f s" % (Utilities.func_name(), end - start))
     
     def ConstructPolyData(self, field_names, **kwargs):
         '''
@@ -156,11 +159,12 @@ class VTKP():
             kwargs:
                 include_cell_center - include_cell_center in the poly_data
         '''
-        print("%s started" % Utilities.func_name())
+        quiet = kwargs.get("quiet", False)
+        if not quiet:
+            print("%s started" % Utilities.func_name())
         start = time.time()
         include_cell_center = kwargs.get('include_cell_center', False)
         fix_cell_value = kwargs.get('fix_cell_value', True)  # fix the value of cell centers
-        quiet = kwargs.get('quiet', False)
         construct_Tdiff = kwargs.get("construct_Tdiff", False)
         assert(type(field_names) == list and len(field_names) > 0)
         noP = 0
@@ -260,7 +264,8 @@ import data takes %f, interpolate cell center data takes %f"\
         if not quiet:
             print(message)
         end = time.time()
-        print("\tConstruct polydata, takes %.2f s" % (end - start))
+        if not quiet:
+            print("\tConstruct polydata, takes %.2f s" % (end - start))
 
     def SplitInSpace(self, spacing, **kwargs):
         '''
@@ -318,7 +323,9 @@ import data takes %f, interpolate cell center data takes %f"\
         '''
         Run interpolation
         '''
-        print("%s started" % Utilities.func_name())
+        quiet = kwargs.get("quiet", True)
+        if not quiet:
+            print("%s started" % Utilities.func_name())
         start = time.time()
         cells_vtk = kwargs.get("cells_vtk", None) # for set connectivity
         points_found = kwargs.get("points_found", None)
@@ -358,9 +365,10 @@ import data takes %f, interpolate cell center data takes %f"\
         if n_vector > 0:
             interpolated_vector = [ [[0.0, 0.0, 0.0] for j in range(points.shape[0])] for i in range(n_vector)]
         end = time.time()
-        print("\tInitiating takes %2f s" % (end - start))
-        if (not is_box) and apply_additional_chunk_search:
-            print("\tApply additional chunk search")
+        if not quiet:
+            print("\tInitiating takes %2f s" % (end - start))
+            if (not is_box) and apply_additional_chunk_search:
+                print("\tApply additional chunk search")
         
         # loop over the points, find cells containing the points and interpolate from the cell points
         start = end
@@ -437,8 +445,9 @@ import data takes %f, interpolate cell center data takes %f"\
                 n_not_found += 1 
         total_n_found = np.sum(points_found==1)
         end = time.time()
-        print("\t%s Searched %d points (%d found total; %d found current file; %d out of bound; %d not found)" % (Utilities.func_name(), points.shape[0], total_n_found, n_found, n_out_of_bound, n_not_found))
-        print("\tSearching takes %2f s" % (end - start))
+        if not quiet:
+            print("\t%s Searched %d points (%d found total; %d found current file; %d out of bound; %d not found)" % (Utilities.func_name(), points.shape[0], total_n_found, n_found, n_out_of_bound, n_not_found))
+            print("\tSearching takes %2f s" % (end - start))
 
         # construct new polydata
         # We construct the polydata ourself, now it only works for field data
