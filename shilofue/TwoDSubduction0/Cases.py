@@ -235,7 +235,6 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
             Utilities.my_assert(os.path.isdir(HeFESTo_data_dir_pull_path),\
             FileNotFoundError, "%s is not a directory" % HeFESTo_data_dir_pull_path)
         # assert scheme to use for refinement
-        # todo_chunk
         rf_scheme = self.values[self.start + 17]
         assert(rf_scheme in ['2d', '3d consistent'])
         # assert scheme of peierls creep to use
@@ -526,7 +525,6 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         repetition_slice = np.min(np.array([maximum_repetition_slice, 2.8900e6]))
         if geometry == 'chunk':
             max_phi = box_width / Ro * 180.0 / np.pi  # extent in term of phi
-            # todo_chunk
             if rf_scheme == "3d consistent":
                 y_extent_str = "2.8900e6"
                 if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
@@ -604,7 +602,6 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                 elif geometry == 'box':
                     o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart()
         # adjust refinement with different schemes
-        # todo_chunk
         elif rf_scheme == "3d consistent":
             # 3d consistent scheme:
             #   the global and adaptive refinement are set up by two variables separately

@@ -367,20 +367,47 @@ class CASE(CasesP.CASE):
         # boudnary temperature: figure this out from the depth average profile
         max_repitition_slice = 1000e3 # a value for the maximum value
         repitition_slice = np.min(np.array([box_length, box_width, box_height, max_repitition_slice]))  # take the min as the repitition_slice
-        o_dict['Geometry model']['Box']['X extent'] =  str(box_length)
-        o_dict['Geometry model']['Box']['Y extent'] =  str(box_width)
-        o_dict['Geometry model']['Box']['Z extent'] =  str(box_height)
-        if repitition_slice_method == "floor": 
-            o_dict['Geometry model']['Box']['X repetitions'] = str(int(box_length//repitition_slice))
-            o_dict['Geometry model']['Box']['Y repetitions'] = str(int(box_width//repitition_slice))
-            o_dict['Geometry model']['Box']['Z repetitions'] = str(int(box_height//repitition_slice))
-        elif repitition_slice_method == "nearest": 
-            o_dict['Geometry model']['Box']['X repetitions'] = \
-                str(int(np.ceil(int((box_length/repitition_slice) * 2.0) / 2.0)))
-            o_dict['Geometry model']['Box']['Y repetitions'] = \
-                str(int(np.ceil(int((box_width/repitition_slice) * 2.0) / 2.0)))
-            o_dict['Geometry model']['Box']['Z repetitions'] = \
-                str(int(np.ceil(int((box_height/repitition_slice) * 2.0) / 2.0)))
+        Ro = 6371e3
+        box_length_deg = box_length / Ro * 180.0 / np.pi
+        box_width_deg = box_width / Ro * 180.0 / np.pi
+        # invoke different options for different geometries
+        if geometry == "box":
+            o_dict['Geometry model']['Box']['X extent'] =  str(box_length)
+            o_dict['Geometry model']['Box']['Y extent'] =  str(box_width)
+            o_dict['Geometry model']['Box']['Z extent'] =  str(box_height)
+            if repitition_slice_method == "floor": 
+                o_dict['Geometry model']['Box']['X repetitions'] = str(int(box_length//repitition_slice))
+                o_dict['Geometry model']['Box']['Y repetitions'] = str(int(box_width//repitition_slice))
+                o_dict['Geometry model']['Box']['Z repetitions'] = str(int(box_height//repitition_slice))
+            elif repitition_slice_method == "nearest": 
+                o_dict['Geometry model']['Box']['X repetitions'] = \
+                    str(int(np.ceil(int((box_length/repitition_slice) * 2.0) / 2.0)))
+                o_dict['Geometry model']['Box']['Y repetitions'] = \
+                    str(int(np.ceil(int((box_width/repitition_slice) * 2.0) / 2.0)))
+                o_dict['Geometry model']['Box']['Z repetitions'] = \
+                    str(int(np.ceil(int((box_height/repitition_slice) * 2.0) / 2.0)))
+        elif geometry == "chunk":
+            o_dict['Geometry model']['Model name'] = 'chunk'
+            o_dict['Geometry model'].pop('Box')
+            o_dict['Geometry model']['Chunk'] = {}
+            o_dict['Geometry model']['Chunk']['Chunk inner radius'] =  "%.4e" % (Ro-box_height)
+            o_dict['Geometry model']['Chunk']['Chunk outer radius'] = "6.371e6" 
+            o_dict['Geometry model']['Chunk']["Chunk minimum longitude"] = "0"
+            o_dict['Geometry model']['Chunk']['Chunk maximum longitude'] =  str(box_length_deg)
+            o_dict['Geometry model']['Chunk']["Chunk minimum latitude"] = "0"
+            o_dict['Geometry model']['Chunk']['Chunk maximum latitude'] =  str(box_width_deg)
+            if repitition_slice_method == "floor": 
+                o_dict['Geometry model']['Chunk']['Longitude repetitions'] = str(int(box_length//repitition_slice))
+                o_dict['Geometry model']['Chunk']['Latitude repetitions'] = str(int(box_width//repitition_slice))
+                o_dict['Geometry model']['Chunk']['Radius repetitions'] = str(int(box_height//repitition_slice))
+            elif repitition_slice_method == "nearest": 
+                o_dict['Geometry model']['Chunk']['Longitude repetitions'] = \
+                    str(int(np.ceil(int((box_length/repitition_slice) * 2.0) / 2.0)))
+                o_dict['Geometry model']['Chunk']['Latitude repetitions'] = \
+                    str(int(np.ceil(int((box_width/repitition_slice) * 2.0) / 2.0)))
+                o_dict['Geometry model']['Chunk']['Radius repetitions'] = \
+                    str(int(np.ceil(int((box_height/repitition_slice) * 2.0) / 2.0)))
+
         if fix_boudnary_temperature_auto:
             # boudnary temperature: figure this out from the depth average profile
             assert(self.da_Tad_func is not None)
@@ -411,10 +438,20 @@ class CASE(CasesP.CASE):
                 "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_height, sp_depth_refining,\
                 max_refinement - coarsen_minimum_refinement_level, max_refinement - coarsen_minimum_refinement_level - 1)
         elif _type == "2d_consistent":
-            o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
-                "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_height, sp_depth_refining,\
-                max_refinement - coarsen_minimum_refinement_level, max_refinement - coarsen_minimum_refinement_level -1)
+            if geometry == "box":
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+                    "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Rd=%d, Rum=%d" % (box_height, sp_depth_refining,\
+                    max_refinement - coarsen_minimum_refinement_level, max_refinement - coarsen_minimum_refinement_level -1)
+            if geometry == "chunk":
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Coordinate system"] = "spherical"
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Variable names"] = "r,phi,theta"
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
+                    "Ro=%.4e, UM=670e3, DD=%.4e, Rd=%d, Rum=%d" % (Ro, sp_depth_refining,\
+                    max_refinement - coarsen_minimum_refinement_level, max_refinement - coarsen_minimum_refinement_level -1)
+                o_dict["Mesh refinement"]["Minimum refinement function"]["Function expression"] = "((Ro-r<UM)? ((Ro-r<DD)? Rd: Rum): 0.0)"
             if coarsen_side:
+                if geometry == "chunk":
+                    raise NotImplementedError()
                 # append an additional variable to coarsen the side with no slab
                 o_dict["Mesh refinement"]["Minimum refinement function"]["Function constants"] =\
                     "Do=%.4e, UM=670e3, DD=%.4e, Dp=100e3, Wside=%.4e, Rd=%d, Rum=%d" % (box_height, sp_depth_refining,\
@@ -631,23 +668,41 @@ class CASE(CasesP.CASE):
             o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
             "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_height, box_length, sp_width)
         elif _type == '2d_consistent':
+            # selection between two methods
             if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
-                # another implementation, set trailing_length = 0.0 to turn off the older implementation
-                o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
-            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length_1, box_height, box_length, sp_width)
+                reset_length = trailing_length_1
             else:
+                reset_length = trailing_length
+                # another implementation, set trailing_length = 0.0 to turn off the older implementation
+            # different geometry
+            if geometry == "box":
                 o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
-            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (trailing_length, box_height, box_length, sp_width)
+            "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CV=1e20, Wp=%.4e" % (reset_length, box_height, box_length, sp_width)
+            elif geometry == "chunk":
+                o_dict['Material model'][material_model_subsection]['Reset viscosity function']["Coordinate system"] = "spherical"
+                o_dict['Material model'][material_model_subsection]['Reset viscosity function']["Variable names"] = "r, phi, theta"
+                o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
+                    "Ro=6.371e6, Width=%.4e, Do=%.4e, PHIM=%.4e, CV=1e20, Wp=%.4e, PI=3.1415" % (reset_length, box_height, box_length/Ro, sp_width)
+                o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function expression'] =\
+                    "(((r > Ro - Depth) && ((Ro*phi < Width)||(Ro*(PHIM-phi) < Width)) && (Ro*(PI/2.0 - theta) <= Wp))? CV: -1.0)"
         # rewrite the reset density part
         if _type == '2d_consistent':
             if "Reset density function" in o_dict['Material model'][material_model_subsection]:
+                # selection between two method
                 if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
-                    # another implementation, set trailing_length = 0.0 to turn off the older implementation
-                    o_dict['Material model'][material_model_subsection]["Reset density function"]['Function constants'] =\
-                    "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CD=3300.0, Wp=%.4e" % (trailing_length_1, box_height, box_length, sp_width)
+                    reset_length = trailing_length_1
                 else:
+                    reset_length = trailing_length
+                if geometry == "box":
                     o_dict['Material model'][material_model_subsection]["Reset density function"]['Function constants'] =\
-                    "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CD=3300.0, Wp=%.4e" % (trailing_length, box_height, box_length, sp_width)
+                        "Depth=1.45e5, Width=%.4e, Do=%.4e, xm=%.4e, CD=3300.0, Wp=%.4e" % (reset_length, box_height, box_length, sp_width)
+                elif geometry == "chunk":
+                    o_dict['Material model'][material_model_subsection]['Reset density function']["Coordinate system"] = "spherical"
+                    o_dict['Material model'][material_model_subsection]['Reset density function']["Variable names"] = "r, phi, theta"
+                    o_dict['Material model'][material_model_subsection]['Reset density function']['Function constants'] =\
+                        "Ro=6.371e6, Width=%.4e, Do=%.4e, PHIM=%.4e, CD=3300.0, Wp=%.4e, PI=3.1415" % (reset_length, box_height, box_length/Ro, sp_width)
+                    o_dict['Material model'][material_model_subsection]['Reset density function']['Function expression'] =\
+                        "(((r > Ro - Depth) && ((Ro*phi < Width)||(Ro*(PHIM-phi) < Width)) && (Ro*(PI/2.0 - theta) <= Wp))? CD: -1.0)"
 
         # rewrite the reaction morb part
         if _type in ['s07', 's07_newton', '2d_consistent']:
@@ -675,17 +730,39 @@ class CASE(CasesP.CASE):
                 o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
                     "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5" %  (box_height, box_length, Dsz_str, Dp_str, sp_width)
         elif _type == '2d_consistent':
-            # todo_1000
             if reset_trailing_morb == 1:
-                if sp_ridge_x > 0.0 and ov_side_dist > 0.0:
-                    o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
-                        "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=%.4e, dOvSide=%.4e" % \
-                        (box_height, box_length, Dsz_str, Dp_str, sp_width, sp_ridge_x, ov_side_dist)
+                if geometry == "box":
+                    if sp_ridge_x > 0.0 and ov_side_dist > 0.0:
+                        o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
+                            "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=%.4e, dOvSide=%.4e" % \
+                            (box_height, box_length, Dsz_str, Dp_str, sp_width, sp_ridge_x, ov_side_dist)
+                elif geometry == "chunk":
+                    o_dict['Material model'][material_model_subsection]['Reaction mor function']["Coordinate system"] = "spherical"
+                    o_dict['Material model'][material_model_subsection]['Reaction mor function']["Variable names"] = "r, phi, theta"
+                    if sp_ridge_x > 0.0 and ov_side_dist > 0.0:
+                        o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
+                            "Ro=6.371e6, PHIM=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=%.4e, dOvSide=%.4e" % \
+                            (box_length/Ro, Dsz_str, Dp_str, sp_width, sp_ridge_x, ov_side_dist)
+                    o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function expression'] =\
+                        "((r > Ro - DpUp) && (Ro*phi > pRidge) && (Ro*phi <= pRidge + pWidth) && (Ro*(PI/2.0 - theta) <= Wp)) ? 0:\\\n\
+                                        (((r <= Ro - DpUp) && (r > Ro - Dp) && (Ro*phi > pRidge) && (Ro*phi <= pRidge + pWidth) && (Ro*(PI/2.0 - theta) <= Wp)) ? 1:\\\n\
+                                        ((r > Ro - Dplate) && (((Ro*phi > pRidge) && (Ro*phi <= pRidge + pWidth)) || ((Ro*(PHIM-phi) < dOvSide + pWidth) && (Ro*(PHIM-phi) >= dOvSide))) && (Ro*(PI/2.0 - theta) > Wp) && (Ro*(PI/2.0 - theta) <= Wp + Wweak))? 2:-1)"
             elif reset_trailing_morb == 2:
                 # use this option to reset the morb composition when sp ridge is 0.0
-                o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
-                    "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=%.4e, dOvSide=%.4e" % \
-                    (box_height, box_length, Dsz_str, Dp_str, sp_width, 6e5, 6e5)
+                if geometry == "box":
+                    o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
+                        "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=%.4e, dOvSide=%.4e" % \
+                        (box_height, box_length, Dsz_str, Dp_str, sp_width, 6e5, 6e5)
+                elif geometry == "chunk":
+                    o_dict['Material model'][material_model_subsection]['Reaction mor function']["Coordinate system"] = "spherical"
+                    o_dict['Material model'][material_model_subsection]['Reaction mor function']["Variable names"] = "r, phi, theta"
+                    o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
+                        "Ro=6.371e6, PHIM=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=%.4e, dOvSide=%.4e" % \
+                        (box_length/Ro, Dsz_str, Dp_str, sp_width, 6e5, 6e5)
+                    o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function expression'] =\
+                        "((r > Ro - DpUp) && (Ro*phi > pRidge) && (Ro*phi <= pRidge + pWidth) && (Ro*(PI/2.0 - theta) <= Wp)) ? 0:\\\n\
+                                        (((r <= Ro - DpUp) && (r > Ro - Dp) && (Ro*phi > pRidge) && (Ro*phi <= pRidge + pWidth) && (Ro*(PI/2.0 - theta) <= Wp)) ? 1:\\\n\
+                                        ((r > Ro - Dplate) && (((Ro*phi > pRidge) && (Ro*phi <= pRidge + pWidth)) || ((Ro*(PHIM-phi) < dOvSide + pWidth) && (Ro*(PHIM-phi) >= dOvSide))) && (Ro*(PI/2.0 - theta) > Wp) && (Ro*(PI/2.0 - theta) <= Wp + Wweak))? 2:-1)"
             elif reset_trailing_morb == 3:
                 o_dict['Material model'][material_model_subsection]['Reaction mor function']['Function constants'] =\
                 "Do=%.4e, xm=%.4e, DpUp=%s, Dp=%s, Wp=%.4e, pWidth=1e5, Dplate=200e3, Wweak=55e3, pRidge=6.0000e+05, dOvSide=6.0000e+05" %\
@@ -694,6 +771,12 @@ class CASE(CasesP.CASE):
             raise ValueError()
         # prescribe mantle temperature
         if _type == '2d_consistent':
+            if geometry == "chunk":
+                # modify for the chunk geometry
+                o_dict["Prescribed temperatures"]["Indicator function"]["Coordinate system"] = "spherical"
+                o_dict["Prescribed temperatures"]["Indicator function"]["Variable names"] = "r, phi, theta"
+                o_dict["Prescribed temperatures"]["Indicator function"]["Function constants"] = "Depth=1.45e5, Width=9.0000e+05, Wp=1.0000e+06, Ro=6.371e6, PHIM=%.4f, PI=3.1415" % (box_length/Ro)
+                o_dict["Prescribed temperatures"]["Indicator function"]["Function expression"] = "(((r>Ro-Depth)&&(Ro*(PI/2.0 - theta)<Wp)&&((Ro*phi<Width)||(Ro*(PHIM-phi)<Width))) ? 1:0)"
             # only do this for the 2d_consistent model
             if prescribe_mantle_sp and prescribe_mantle_ov:
                 o_dict["Prescribe internal mantle adiabat temperatures"] = 'true'
@@ -721,26 +804,44 @@ class CASE(CasesP.CASE):
             else:
                 # the default in the file should be false if there is any
                 pass
-            if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
-                # another implementation, set trailing_length = 0.0 to turn off the older implementation
-                # here we set this option to false and remove the corresponding section
-                Do_str = "2.890e6"
-                if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
-                    Do_str = "%.4e" % box_height
-                prescribe_T_area_width = trailing_length_1 + 300e3
-                o_dict["Prescribe internal mantle adiabat temperatures"] = 'false'
-                if "Prescribed mantle adiabat temperatures" in o_dict:
-                    o_dict.pop("Prescribed mantle adiabat temperatures")
-                o_dict["Prescribe internal temperatures"] = 'true'
-                o_dict["Prescribed temperatures"]["Indicator function"]["Function constants"] = \
-                    "Depth=1.45e5, Width=%.4e, Do=%s, xm=%.4e, Wp=%.4e" % (prescribe_T_area_width, Do_str, box_length, sp_width)
-                o_dict["Prescribed temperatures"]["Plate model 1"] = {
-                    'Area width': "%.4e" % prescribe_T_area_width,
-                    'Subducting plate velocity': "%.4e" % (sp_rate / year),
-                    'Overiding plate age': "%.4e" % (ov_age * year),
-                    "Overiding area width": "%.4e" % prescribe_T_area_width,
-                    "Top temperature": "273.0"
-                }
+            # modify the prescribe temperature feature if another implementation of plate is applied
+            if geometry == "box":
+                if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
+                    # another implementation, set trailing_length = 0.0 to turn off the older implementation
+                    # here we set this option to false and remove the corresponding section
+                    Do_str = "2.890e6"
+                    if abs(box_height - 2.89e6) / 2.89e6 > 1e-6:
+                        Do_str = "%.4e" % box_height
+                    prescribe_T_area_width = trailing_length_1 + 300e3
+                    o_dict["Prescribe internal mantle adiabat temperatures"] = 'false'
+                    if "Prescribed mantle adiabat temperatures" in o_dict:
+                        o_dict.pop("Prescribed mantle adiabat temperatures")
+                    o_dict["Prescribe internal temperatures"] = 'true'
+                    o_dict["Prescribed temperatures"]["Indicator function"]["Function constants"] = \
+                        "Depth=1.45e5, Width=%.4e, Do=%s, xm=%.4e, Wp=%.4e" % (prescribe_T_area_width, Do_str, box_length, sp_width)
+                    o_dict["Prescribed temperatures"]["Plate model 1"] = {
+                        'Area width': "%.4e" % prescribe_T_area_width,
+                        'Subducting plate velocity': "%.4e" % (sp_rate / year),
+                        'Overiding plate age': "%.4e" % (ov_age * year),
+                        "Overiding area width": "%.4e" % prescribe_T_area_width,
+                        "Top temperature": "273.0"
+                    }
+            elif geometry == "chunk":
+                if trailing_length < 1e-6 and trailing_length_1 > 1e-6:
+                    # another implementation, set trailing_length = 0.0 to turn off the older implementation
+                    # here we set this option to false and remove the corresponding section
+                    prescribe_T_area_width = trailing_length_1 + 300e3
+                    o_dict["Prescribe internal mantle adiabat temperatures"] = 'false'
+                    if "Prescribed mantle adiabat temperatures" in o_dict:
+                        o_dict.pop("Prescribed mantle adiabat temperatures")
+                    o_dict["Prescribe internal temperatures"] = 'true'
+                    o_dict["Prescribed temperatures"]["Plate model 1"] = {
+                        'Area width': "%.4e" % prescribe_T_area_width,
+                        'Subducting plate velocity': "%.4e" % (sp_rate / year),
+                        'Overiding plate age': "%.4e" % (ov_age * year),
+                        "Overiding area width": "%.4e" % prescribe_T_area_width,
+                        "Top temperature": "273.0"
+                    }
         # reset composition viscosity
         # usage is to prescribe a strong core with the plate
         if reset_composition_viscosity:
@@ -787,6 +888,13 @@ class CASE(CasesP.CASE):
         if not if_wb:
             # check first if we use wb file for this one
             return
+        # header options
+        if geometry == 'chunk':
+            self.wb_dict["coordinate system"] = \
+            {
+                "model": "spherical",
+                "depth method": "begin at end segment"
+            }
         # geometry options
         if setup_method == 'manual':
             if _type in ["s07", "s07T"]:
@@ -796,8 +904,14 @@ class CASE(CasesP.CASE):
             else:
                 raise ValueError("Wrong value for \"type\"")
         elif setup_method == '2d_consistent':
+            # first select between different geometries
             if geometry == 'chunk':
-                raise ValueError("chunk geometry has not been implemented")
+                if make_2d_consistent_plate == 2:
+                    self.wb_dict = wb_configure_plate_2d_consistent_2_chunk(self.wb_dict, sp_width, sp_rate, Dsz,\
+                        slab_length, dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate,  if_ov_trans,\
+                        ov_trans_age, ov_trans_length, sp_ridge_x, ov_side_dist, box_length)
+                else:
+                    raise ValueError("chunk geometry has implemented this option of make_2d_consistent_plate %d" % make_2d_consistent_plate)
             elif geometry == 'box':
                 if make_2d_consistent_plate == 1:
                     self.wb_dict = wb_configure_plate_2d_consistent_1(self.wb_dict, sp_width, sp_rate, Dsz,\
@@ -1220,6 +1334,133 @@ def wb_configure_plate_2d_consistent_2(wb_dict, sp_width, sp_rate, Dsz, slab_len
         sdict["temperature models"][0]["ridge coordinates"] = \
             [[sp_ridge_x,-10000000.0], [sp_ridge_x, 10000000.0]]
     sdict["temperature models"][0]["plate velocity"] = sp_rate
+    return o_dict
+
+
+def wb_configure_plate_2d_consistent_2_chunk(wb_dict, sp_width, sp_rate, Dsz, slab_length,\
+    dip_angle, sp_age_trench, ov_age, wb_new_ridge, assign_side_plate, if_ov_trans, ov_trans_age,\
+    ov_trans_length, sp_ridge_x, ov_side_dist, box_length, **kwargs):
+    '''
+    setup up consistently with the 2d models:
+    a. scale the harzburgite layer with the crustal layer.
+    version 3: add the composition of the overriding plate
+    specific for the chunk geometry
+    '''
+    Xmax = 40000e3  # some big values that are not ever reached
+    PHImax = 360.0
+    Ymax = 20000e3
+    THETAmax = 180.0
+    D2C_ratio = 35.2e3 / 7.5e3 # ratio of depleted / crust layer
+    pe_width = 55e3 # width of the plate edges
+    Ro = kwargs.get("Ro", 6371e3)
+    sp_width_deg = sp_width / Ro * 180.0 / np.pi
+    print("sp_width: ", sp_width) # debug
+    print("sp_width_deg: ", sp_width_deg)
+    sp_ridge_x_deg = sp_ridge_x / Ro * 180.0 / np.pi
+    sp_length = sp_rate * sp_age_trench
+    sp_length_deg = sp_length / Ro * 180.0 / np.pi
+    pe_width_deg = pe_width / Ro * 180.0 / np.pi
+    o_dict = wb_dict.copy()
+    # cross section
+    o_dict["cross section"] = [[0.0, 0.0], [PHImax, 0.0]]
+    # overiding plate 1
+    if if_ov_trans and ov_age > (1e6 + ov_trans_age):  # only transfer to younger age
+        i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate 1')
+        ov_trans_dict, ov =\
+            wb_configure_transit_ov_plates_1_chunk(wb_dict['features'][i0], sp_length + sp_ridge_x,\
+                ov_age, ov_trans_age, ov_trans_length, wb_new_ridge, sp_width,\
+                Ro=Ro, geometry='box')
+        ov_trans_dict["composition models"][0]["max depth"] = Dsz  # moho
+        ov_trans_dict["composition models"][1]["min depth"] = Dsz
+        ov_trans_dict["composition models"][1]["max depth"] = Dsz * D2C_ratio  # lithosphere - athenosphere boundary
+        o_dict['features'][i0] = ov_trans_dict
+    else:
+        # if no using transit plate, remove the feature
+        try:
+            i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate 1')
+        except ParsePrm.WBFeatureNotFoundError:
+            pass
+        else:
+            o_dict = ParsePrm.RemoveWBFeatures(o_dict, i0)
+        ov = sp_length + sp_ridge_x
+    # overiding plate
+    i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate')
+    ov_dict = o_dict['features'][i0]
+    if ov_side_dist > 0.0:
+        ov_end = box_length - ov_side_dist
+        ov_end_deg = ov_end / Ro * 180.0 / np.pi
+    else:
+        ov_end = Xmax
+        ov_end_deg = 360.0
+    ov_deg = ov / Ro * 180.0 / np.pi
+    ov_dict["coordinates"] = [[ov_deg, -1.0], [ov_deg, sp_width_deg], [ov_end_deg, sp_width_deg] ,[ov_end_deg, -1.0]]
+    ov_dict["temperature models"][0]["plate age"] = ov_age
+    ov_dict["composition models"][0]["max depth"] = Dsz  # moho
+    ov_dict["composition models"][1]["min depth"] = Dsz
+    ov_dict["composition models"][1]["max depth"] = Dsz * D2C_ratio  # lithosphere - athenosphere boundary
+    o_dict['features'][i0] = ov_dict
+    # overiding plate edge
+    i0 = ParsePrm.FindWBFeatures(o_dict, 'Overiding plate edge')
+    ove_dict = o_dict['features'][i0]
+    ove_dict["coordinates"] = [[sp_ridge_x_deg + sp_length_deg, sp_width_deg], [sp_ridge_x_deg + sp_length_deg, sp_width_deg + pe_width_deg], [ov_end_deg, sp_width_deg + pe_width_deg] ,[ov_end_deg, sp_width_deg]]
+    ove_dict["temperature models"][0]["plate age"] = ov_age
+    o_dict['features'][i0] = ove_dict
+    # subducting plate
+    i0 = ParsePrm.FindWBFeatures(o_dict, 'Subducting plate')
+    sp_dict = o_dict['features'][i0]
+    sp_dict["coordinates"] = [[sp_ridge_x_deg, -1.0], [sp_ridge_x_deg, sp_width_deg], [sp_ridge_x_deg + sp_length_deg, sp_width_deg] ,[sp_ridge_x_deg + sp_length_deg, -1.0]]
+    sp_dict["composition models"][0]["max depth"] = Dsz  # moho
+    sp_dict["composition models"][1]["min depth"] = Dsz
+    sp_dict["composition models"][1]["max depth"] = Dsz * D2C_ratio  # lithosphere - athenosphere boundary
+    sp_dict["temperature models"][0]["spreading velocity"] = sp_rate
+    sp_dict["temperature models"][0]["ridge coordinates"] = [[[sp_ridge_x_deg, -1.0], [sp_ridge_x_deg, 180.0]]]
+    o_dict['features'][i0] = sp_dict
+    # subducting plate edge
+    i0 = ParsePrm.FindWBFeatures(o_dict, "Subducting plate edge")
+    spe_dict = o_dict['features'][i0]
+    spe_dict["coordinates"] = [[sp_ridge_x_deg, sp_width_deg], [sp_ridge_x_deg, sp_width_deg + pe_width_deg], [sp_ridge_x_deg + sp_length_deg, sp_width_deg + pe_width_deg] ,[sp_ridge_x_deg + sp_length_deg, sp_width_deg]]
+    spe_dict["temperature models"][0]["spreading velocity"] = sp_rate
+    spe_dict["temperature models"][0]["ridge coordinates"] = [[[sp_ridge_x_deg, -1.0], [sp_ridge_x_deg, 180.0]]]
+    # side plate
+    if assign_side_plate == 1:
+        sdp_dict = deepcopy(ov_dict)
+        sdp_dict["name"] = "side plate"
+        sdp_dict["coordinates"] = [[0.0, sp_width_deg+pe_width_deg], [0.0, THETAmax], [PHImax, THETAmax] ,[PHImax, sp_width_deg+pe_width_deg]]
+        try:
+            i0 = ParsePrm.FindWBFeatures(o_dict, "side plate")
+        except ParsePrm.WBFeatureNotFoundError:
+            i0 = ParsePrm.FindWBFeatures(o_dict, "Subducting plate edge")
+            o_dict['features'].insert(i0 + 1, sdp_dict)
+        else:
+            o_dict['features'][i0] = sdp_dict
+    # slab
+    with open(twod_default_wb_file, 'r') as fin:
+        twod_default_dict = json.load(fin)
+    i0 = ParsePrm.FindWBFeatures(o_dict, 'Slab')
+    i1 = ParsePrm.FindWBFeatures(twod_default_dict, 'Slab')
+    o_dict['features'][i0] = twod_default_dict['features'][i1].copy() # default options
+    sdict = o_dict['features'][i0]  # modify the properties
+    sdict["coordinates"] = [[sp_length_deg + sp_ridge_x_deg, -1.0], [sp_length_deg + sp_ridge_x_deg, sp_width_deg]]
+    sdict["dip point"] = [PHImax, 0.0]
+    for i in range(len(sdict["segments"])-1):
+        # slab compostion, the last one is a phantom for temperature tapering
+        segment = sdict["segments"][i]
+        segment["composition models"][0]["max distance slab top"] = Dsz
+        segment["composition models"][1]["min distance slab top"] = Dsz
+        segment["composition models"][1]["max distance slab top"] = Dsz * D2C_ratio
+        sdict["segments"][i] = segment
+    if wb_new_ridge == 1:
+        sdict["temperature models"][0]["ridge coordinates"] = \
+            [[[sp_ridge_x_deg,-1.0], [sp_ridge_x_deg, 180.0]]]
+    else:
+        sdict["temperature models"][0]["ridge coordinates"] = \
+            [[sp_ridge_x_deg,-1.0], [sp_ridge_x_deg, 180.0]]
+    sdict["temperature models"][0]["plate velocity"] = sp_rate
+    # mantle to subtract
+    i0 = ParsePrm.FindWBFeatures(o_dict, "mantle to substract")
+    mdict = o_dict['features'][i0] 
+    mdict["coordinates"] = [[0.0, -1.0], [0.0, THETAmax], [PHImax,THETAmax], [PHImax, -1.0]]
+    
     return o_dict
 
 # todo_ov
@@ -1718,6 +1959,33 @@ def wb_configure_transit_ov_plates_1(i_feature, trench, ov_age,\
     else:
         o_feature["temperature models"][0]["ridge coordinates"] =\
             [[ridge, -side], [ridge, side]]
+    return o_feature, ov
+
+
+def wb_configure_transit_ov_plates_1_chunk(i_feature, trench, ov_age,\
+    ov_trans_age, ov_trans_length, wb_new_ridge, sp_width, **kwargs):
+    '''
+    Transit overiding plate to a younger age at the trench
+    See descriptions of the interface to_configure_wb
+    '''
+    Ro = kwargs.get("Ro", 6371e3)
+    trench_deg = trench / Ro * 180.0 / np.pi
+    o_feature = i_feature.copy()
+    ov = trench  + ov_trans_length  # new ending point of the default overiding plage
+    side_deg = sp_width / Ro * 180.0 / np.pi
+    ridge = trench - ov_trans_length * ov_trans_age / (ov_age - ov_trans_age)
+    ov_deg = ov / Ro * 180.0 / np.pi
+    ridge_deg = ridge / Ro * 180.0 / np.pi
+    v = ov_trans_length / (ov_age - ov_trans_age)
+    o_feature["temperature models"][0]["spreading velocity"] = v
+    o_feature["coordinates"] = [[trench_deg, -1.0], [trench_deg, side_deg],\
+        [ov_deg, side_deg], [ov_deg, -1.0]]
+    if wb_new_ridge == 1:
+        o_feature["temperature models"][0]["ridge coordinates"] =\
+            [[[ridge_deg, -1.0], [ridge_deg, side_deg]]]
+    else:
+        o_feature["temperature models"][0]["ridge coordinates"] =\
+            [[ridge_deg, -1.0], [ridge_deg, side_deg]]
     return o_feature, ov
 
 
