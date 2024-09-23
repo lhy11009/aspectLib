@@ -408,6 +408,7 @@ class CASE(CasesP.CASE):
                 o_dict['Geometry model']['Chunk']['Radius repetitions'] = \
                     str(int(np.ceil(int((box_height/repitition_slice) * 2.0) / 2.0)))
 
+        # boundary temperature
         if fix_boudnary_temperature_auto:
             # boudnary temperature: figure this out from the depth average profile
             assert(self.da_Tad_func is not None)
@@ -418,6 +419,13 @@ class CASE(CasesP.CASE):
                 # file, apply a slight variation and try again
                 Tad_bot = self.da_Tad_func(box_height - 50e3)
             o_dict['Boundary temperature model']['Box']['Bottom temperature'] = "%.4e" % Tad_bot
+        # modify for the chunk geometry
+        if geometry == "chunk":
+            o_dict['Boundary temperature model']["List of model names"] = "spherical constant"
+            o_dict['Boundary temperature model']["Spherical constant"] = o_dict['Boundary temperature model'].pop("Box")
+            o_dict['Boundary temperature model']["Spherical constant"]["Inner temperature"] = o_dict['Boundary temperature model']["Spherical constant"].pop("Bottom temperature")
+            o_dict['Boundary temperature model']["Spherical constant"]["Outer temperature"] = o_dict['Boundary temperature model']["Spherical constant"].pop("Top temperature")
+
         # refinement
         o_dict["Mesh refinement"]["Initial global refinement"] = str(global_refinement)
         o_dict["Mesh refinement"]["Minimum refinement level"] = str(global_refinement)
@@ -626,8 +634,9 @@ class CASE(CasesP.CASE):
                 self.output_files.append(Operator.output_json_aspect)
                 self.output_imgs.append(Operator.output_profile) # append plot of initial conition to figures
             # Change the slab strength by the maximum yield stress, the default value is 500 Mpa
-            # todo_strength
-            if abs(slab_strength - 500e6) / 500e6 > 1e-6:
+            # This implementation has a historical reason. I mistook 500e6 as the default value in aspect, but the 
+            # actual default value is infinite (1e12). This is later adapted to using a large value.
+            if abs(slab_strength - 500e6) / 500e6 > 1e-6 and slab_strength < 1e10:
                 o_dict['Material model']['Visco Plastic TwoD']["Maximum yield stress"] = "%.4e" % slab_strength
             
 
@@ -682,7 +691,7 @@ class CASE(CasesP.CASE):
                 o_dict['Material model'][material_model_subsection]['Reset viscosity function']["Coordinate system"] = "spherical"
                 o_dict['Material model'][material_model_subsection]['Reset viscosity function']["Variable names"] = "r, phi, theta"
                 o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function constants'] =\
-                    "Ro=6.371e6, Width=%.4e, Do=%.4e, PHIM=%.4e, CV=1e20, Wp=%.4e, PI=3.1415" % (reset_length, box_height, box_length/Ro, sp_width)
+                    "Depth=1.45e5, Ro=6.371e6, Width=%.4e, PHIM=%.4e, CV=1e20, Wp=%.4e, PI=3.1415" % (reset_length, box_length/Ro, sp_width)
                 o_dict['Material model'][material_model_subsection]['Reset viscosity function']['Function expression'] =\
                     "(((r > Ro - Depth) && ((Ro*phi < Width)||(Ro*(PHIM-phi) < Width)) && (Ro*(PI/2.0 - theta) <= Wp))? CV: -1.0)"
         # rewrite the reset density part
@@ -700,7 +709,7 @@ class CASE(CasesP.CASE):
                     o_dict['Material model'][material_model_subsection]['Reset density function']["Coordinate system"] = "spherical"
                     o_dict['Material model'][material_model_subsection]['Reset density function']["Variable names"] = "r, phi, theta"
                     o_dict['Material model'][material_model_subsection]['Reset density function']['Function constants'] =\
-                        "Ro=6.371e6, Width=%.4e, Do=%.4e, PHIM=%.4e, CD=3300.0, Wp=%.4e, PI=3.1415" % (reset_length, box_height, box_length/Ro, sp_width)
+                        "Depth=1.45e5, Ro=6.371e6, Width=%.4e, PHIM=%.4e, CD=3300.0, Wp=%.4e, PI=3.1415" % (reset_length, box_length/Ro, sp_width)
                     o_dict['Material model'][material_model_subsection]['Reset density function']['Function expression'] =\
                         "(((r > Ro - Depth) && ((Ro*phi < Width)||(Ro*(PHIM-phi) < Width)) && (Ro*(PI/2.0 - theta) <= Wp))? CD: -1.0)"
 
