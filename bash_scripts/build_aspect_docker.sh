@@ -63,6 +63,7 @@ git config --global --add safe.directory /home/dealii/aspect
 # build the main program
 cd ${ASPECT_BUILD_DIR}
 cmake -G "Ninja" -D ASPECT_TEST_GENERATOR=Ninja -D ASPECT_RUN_ALL_TESTS=ON -D ASPECT_PRECOMPILE_HEADERS=ON -D WORLD_BUILDER_SOURCE_DIR="${WORLD_BUILDER_SOURCE_DIR}" ..
+# cmake -G "Ninja" -D ASPECT_TEST_GENERATOR=Ninja -D ASPECT_RUN_ALL_TESTS=ON -D ASPECT_PRECOMPILE_HEADERS=ON ..
 ninja -j 6
 
 # setup tests

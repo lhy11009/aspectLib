@@ -30,13 +30,13 @@ Example Usage:
 
     build all (all plugins, release and debug mode):
 
-        Lib_build_aspect all master_TwoD
+        Lib_build_aspect debugrelease master_TwoD
 
 	(equivalent to the first one, 0 - do not cmake)
-	Lib_build_aspect all master_TwoD 0
+	Lib_build_aspect debugrelease master_TwoD 0
 
 	(append a flag to tbe build directory, must assign 4 varibales in total)
-	Lib_build_aspect all master_TwoD 0 dealii-9.3.3
+	Lib_build_aspect debugrelease master_TwoD 0 dealii-9.3.3
 
         the last one is the branch to build
 
@@ -76,7 +76,7 @@ build_aspect_project(){
     [[ $1 == "main" ]] && build_dir="${ASPECT_SOURCE_DIR}/build" || build_dir="${ASPECT_SOURCE_DIR}/build_$1"
     local mode
     if [[ -n $2 ]]; then
-        [[ $2 == "debug" || $2 == "release" ]] || { cecho ${BAD} "${FUNCNAME[0]}: mode is either \'debug\' or \'release\'"; exit 1; }
+        [[ $2 == "debug" || $2 == "release" || $2 == "debugrelease" ]] || { cecho ${BAD} "${FUNCNAME[0]}: mode is \'debug\' or \'release\' or \'debugrelease\'"; exit 1; }
         mode="$2"
     else
         mode="debug"
@@ -246,7 +246,7 @@ main(){
     [[ -n "$1" ]] && command="$1" || cecho $BAD "\$1 must be given for options"
     if [[ "${command}" = "-h" ]]; then
         usage
-    elif [[ "${command}" = "all" ]]; then
+    elif [[ "${command}" = "debugrelease" ]]; then
         ##
         # Build the main program with all the plugins
         # Inputs:
@@ -254,8 +254,7 @@ main(){
         ##
     	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
 	do_configure="$3"
-        build_aspect_project "$2" "release" "${do_configure}" "$4"
-        build_aspect_project "$2" "debug" "${do_configure}" "$4"
+        build_aspect_project "$2" "debugrelease" "${do_configure}" "$4"
     elif [[ "${command}" = "release" ]]; then
 	##
         # Build the main program in release mode with all the plugins
