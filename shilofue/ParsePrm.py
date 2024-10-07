@@ -122,7 +122,7 @@ def ReplacePhaseOption(str_in, key, idx, new_option):
             raise KeyError("No composition in str_in (%s) and the key is not background" % str_in)
     return str_out
 
-
+# todo_comments
 def ParseFromDealiiInput(fin):
     """
     ParseFromDealiiInput(fin)
@@ -182,7 +182,7 @@ def ParseFromDealiiInput(fin):
         line = fin.readline()
     return inputs
 
-
+# todo_comments
 def ParseToDealiiInput(fout, outputs, layer=0):
     """
     def ParseToDealiiInput(fout, outputs, layer=0)
@@ -221,8 +221,8 @@ def ReadPrmFile(_path):
         inputs = ParseFromDealiiInput(fin)
     return inputs
 
-
-def WritePrmFile(_path, outputs):
+# todo_comments
+def WritePrmFile(_path, outputs, **kwargs):
     """
     simply a wrapper for the output function
     Inputs:
@@ -230,7 +230,7 @@ def WritePrmFile(_path, outputs):
         outputs: a dictionary contains the settings
     """
     with open(_path, 'w') as fout:
-        ParseToDealiiInput(fout, outputs)
+        ParseToDealiiInput(fout, outputs, **kwargs)
 
 
 def MeshRefinement(Inputs, _config):

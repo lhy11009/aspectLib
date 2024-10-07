@@ -40,7 +40,6 @@ if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
 
-
 def test_parse_from_file():
     # test_file = 'fixtures/parse_test.prm'
     test_file = os.path.join(source_dir, 'case1.prm')
@@ -52,6 +51,14 @@ def test_parse_from_file():
     assert(inputs['End time'] == '40.0e6')
     assert(inputs['Additional shared libraries']
            == '/home/lochy/ASPECT_PROJECT/aspect_plugins/subduction_temperature2d/libsubduction_temperature2d.so, /home/lochy/ASPECT_PROJECT/aspect_plugins/prescribe_field/libprescribed_temperature.so')
+
+# todo_comments
+def test_parse_from_file_include_comments():
+    test_file = os.path.join(source_dir, 'case1.prm')
+    assert(os.access(test_file, os.R_OK))
+    with open(test_file, 'r') as fin:
+        inputs = ParsePrm.ParseFromDealiiInput(fin)
+    assert(inputs['Dimension'] == '2')
 
 
 def test_fast_first_step():
