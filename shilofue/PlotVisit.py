@@ -286,9 +286,15 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         time = self.Statistics.GetTime(step)
         return time, step
 
-    # todo_bd
-    def get_timestep_by_time(self, _time):
+    def get_timestep_by_time(self, _time: float):
         '''
+        Retrieves the closest graphical time and its corresponding timestep based on the given time.
+        
+        Parameters:
+        _time (float): The reference time for which the closest graphical time and timestep are to be found.
+        
+        Returns:
+        Tuple: A tuple containing the closest graphical time and its associated timestep.
         '''
         index = np.argmin(np.abs(np.array(self.all_graphical_times) - _time))
         return self.all_graphical_times[index], self.all_graphical_timesteps[index]

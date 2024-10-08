@@ -192,10 +192,6 @@ def main():
     if (_commend in ['-h', '--help']):
         # example:
         Usage()
-    # todo_bd
-    elif _commend == 'plot_upper_bd_heatflow':
-        PlotUpperBdHeatFlow(arg.inputs)
-        pass
     else:
         # no such option, give an error message
         raise ValueError('No commend called %s, please run -h for help messages' % _commend)
