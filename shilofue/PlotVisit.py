@@ -139,6 +139,7 @@ class VISIT_OPTIONS(CASE_OPTIONS):
                 times.append(_time)
         self.all_graphical_snaps = graphical_snaps
         self.all_graphical_timesteps = time_steps 
+        self.all_graphical_times = times
         self.options['ALL_AVAILABLE_GRAPHICAL_SNAPSHOTS'] = str(graphical_snaps)
         self.options['ALL_AVAILABLE_GRAPHICAL_TIMESTEPS'] = str(time_steps)
         self.options['ALL_AVAILABLE_GRAPHICAL_TIMES'] = str(times)
@@ -284,6 +285,14 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         Utilities.my_assert(found, ValueError, "%s: vtu_snapshot %d is not found" % (Utilities.func_name(), vtu_snapshot))
         time = self.Statistics.GetTime(step)
         return time, step
+
+    # todo_bd
+    def get_timestep_by_time(self, _time):
+        '''
+        '''
+        index = np.argmin(np.abs(np.array(self.all_graphical_times) - _time))
+        return self.all_graphical_times[index], self.all_graphical_timesteps[index]
+
 
 
 class PARALLEL_WRAPPER_FOR_VTK():

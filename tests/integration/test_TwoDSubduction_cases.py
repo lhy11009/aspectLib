@@ -452,7 +452,6 @@ def test_fix_before_group1_old_sp():
 
 def test_bd_v():
     '''
-    todo_bd
     test the boundary velcoty condition of "top prescrbed with bottom right open"
     '''
     source_case_dir = os.path.join(source_dir, "bd_v")
