@@ -297,7 +297,7 @@ class VISIT_OPTIONS(CASE_OPTIONS):
         Tuple: A tuple containing the closest graphical time and its associated timestep.
         '''
         index = np.argmin(np.abs(np.array(self.all_graphical_times) - _time))
-        return self.all_graphical_times[index], self.all_graphical_timesteps[index]
+        return self.all_graphical_times[index], self.all_graphical_timesteps[index], self.all_graphical_snaps[index] - int(self.options['INITIAL_ADAPTIVE_REFINEMENT'])
 
 
 

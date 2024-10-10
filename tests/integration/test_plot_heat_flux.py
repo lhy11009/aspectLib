@@ -36,7 +36,7 @@ if not os.path.isdir(test_dir):
     # check we have the directory to store test result
     os.mkdir(test_dir)
 
-def test_boundary_outputs():
+def test_boundary_indicators():
     '''
     Test function for the BOUNDARYOUTPUTs class to ensure that boundary data is read and processed correctly.
     This test asserts that the boundary indicators for specific locations are correct and that the total count of 
@@ -58,7 +58,34 @@ def test_boundary_outputs():
     assert(BdOutputs.bd_indicators[0] == 2)  
     assert(BdOutputs.bd_indicators[229] == 3)  
     assert(np.where(BdOutputs.bd_indicators == 2)[0].size + np.where(BdOutputs.bd_indicators == 3)[0].size == 2325)
-        
+
+
+def test_boundary_ExportBdHeatFlow():
+    '''
+    Test the ExportBdHeatFlow method from the BOUNDARYOUTPUTs class.
+
+    Asserts:
+        - The z-coordinate of the first boundary output is near zero.
+        - The calculated radial distance from (x, y) coordinates equals Earth's radius (6371 km).
+        - The first heat flux value is within a tolerance of 1.66221.
+    '''
+    filein = os.path.join(source_dir, "heat_flux.00800")
+
+    BdOutputs = BOUNDARYOUTPUTs(2, geometry="chunk")
+    BdOutputs.ReadFile(filein)
+    BdOutputs.ProcessBds()
+    xs, ys, zs, hfs = BdOutputs.ExportBdHeatFlow(3)
+
+    # Assertions to validate boundary data:
+    # Ensure z-coordinate is near zero.
+    assert(abs(zs[0]) < 1e-6)
+
+    # Calculate radial distance from (x, y) and compare to Earth's radius (6371 km).
+    foo = (xs[0]**2.0 + ys[0]**2.0)**0.5
+    assert(abs(foo - 6371e3) / 6371e3 < 1e-6)
+
+    # Check that the first heat flux value matches expected value within tolerance.
+    assert(abs(hfs[0] - 1.66221)/1.66221 < 1e-6)
     
 # notes
     
