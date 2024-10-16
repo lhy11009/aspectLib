@@ -242,6 +242,7 @@ subsection Postprocess
         set Data output format = vtu
         set List of particle properties = initial composition
         set Time between data output = 0.1e6
+        set Allow cells without particles = true
     end
 end
 

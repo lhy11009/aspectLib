@@ -122,10 +122,10 @@ end
 
 subsection Boundary temperature model
     set Fixed temperature boundary indicators = bottom, top
-    set List of model names = box
-    subsection Box
-        set Bottom temperature = 3.1886e+03
-        set Top temperature = 273.0
+    set List of model names = spherical constant
+    subsection Spherical constant
+        set Inner temperature = 3.1886e+03
+        set Outer temperature = 273.0
     end
 end
 
@@ -227,14 +227,14 @@ subsection Material model
         subsection Reset viscosity function
             set Coordinate system = spherical
             set Variable names = r, phi, theta
-            set Function constants = Ro=6.371e6, Width=6.0000e+05, Do=2.8900e+06, PHIM=1.0647e+00, CV=1e20, Wp=1.0000e+06, PI=3.1415
+            set Function constants = Depth=1.45e5, Ro=6.371e6, Width=6.0000e+05, PHIM=1.0647e+00, CV=1e20, Wp=1.0000e+06, PI=3.1415
             set Function expression = (((r > Ro - Depth) && ((Ro*phi < Width)||(Ro*(PHIM-phi) < Width)) && (Ro*(PI/2.0 - theta) <= Wp))? CV: -1.0)
         end
         set Reset density = true
         subsection Reset density function
             set Coordinate system = spherical
             set Variable names = r, phi, theta
-            set Function constants = Ro=6.371e6, Width=6.0000e+05, Do=2.8900e+06, PHIM=1.0647e+00, CD=3300.0, Wp=1.0000e+06, PI=3.1415
+            set Function constants = Depth=1.45e5, Ro=6.371e6, Width=6.0000e+05, PHIM=1.0647e+00, CD=3300.0, Wp=1.0000e+06, PI=3.1415
             set Function expression = (((r > Ro - Depth) && ((Ro*phi < Width)||(Ro*(PHIM-phi) < Width)) && (Ro*(PI/2.0 - theta) <= Wp))? CD: -1.0)
         end
         set Reaction mor = false
