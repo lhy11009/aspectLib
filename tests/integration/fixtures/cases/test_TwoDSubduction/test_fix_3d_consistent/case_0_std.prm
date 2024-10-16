@@ -89,8 +89,8 @@ subsection Mesh refinement
         set Variable names = x, y, t
         set Function constants = Do=2.8900e+06, UM=670e3, Dp=100e3, Rd=6, Rum=5
         set Function expression = (Do-y<UM)?\
-                                    ((Do-y<Dp+50e3)? Rd: Rum)\
-                                    :0
+                                        ((Do-y<Dp+50e3)? Rd: Rum)\
+                                        :0
     end
 end
 

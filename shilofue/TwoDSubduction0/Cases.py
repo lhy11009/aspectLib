@@ -186,14 +186,17 @@ intiation stage causes the slab to break in the middle",\
         self.add_key("Slab strengh", float, ["slab", "strength"], 500e6, nick="slab_strength")
         self.add_key("Height of the Box", float,\
             ["world builder", "box height"], 2890e3, nick='box_height')
+        self.add_key("Refine Wedge", int,\
+            ["refinement", "refine wedge"], 0, nick='refine_wedge')
     
     def check(self):
         '''
         check to see if these values make sense
         '''
         CasesP.CASE_OPT.check(self)
+        geometry = self.values[3]
         # geometry options
-        Utilities.my_assert(self.values[3] in ['chunk', 'box'], ValueError,\
+        Utilities.my_assert(geometry in ['chunk', 'box'], ValueError,\
         "%s: The geometry for TwoDSubduction cases must be \"chunk\" or \"box\"" \
         % Utilities.func_name())
         if self.values[3] == 'box':
@@ -271,6 +274,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         lookup_table_morb_mixing = self.values[self.start + 62]
         if use_lookup_table_morb:
             assert(lookup_table_morb_mixing in [0, 1, 2, 3]) # check the mixing model used
+        refine_wedge = self.values[self.start + 68]
+        if geometry == "box" and refine_wedge:
+            raise NotImplementedError
 
     def to_configure_prm(self):
         if_wb = self.values[8]
@@ -359,6 +365,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         box_height = self.values[self.start + 67]
         minimum_particles_per_cell = self.values[29]
         maximum_particles_per_cell = self.values[30]
+        refine_wedge = self.values[self.start + 68]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -371,7 +378,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
         rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as,\
         prescribe_T_width, prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb, lookup_table_morb_mixing,\
-        delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell
+        delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell, refine_wedge
 
     def to_configure_wb(self):
         '''
@@ -471,7 +478,8 @@ class CASE(CasesP.CASE):
     global_refinement, adaptive_refinement, rm_ov_comp, comp_method, peierls_flow_law, reset_density,\
     maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width,\
     prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb,\
-    lookup_table_morb_mixing, delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell):
+    lookup_table_morb_mixing, delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell,\
+    refine_wedge):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -593,7 +601,11 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
                     raise NotImplementedError()
                 o_dict["Mesh refinement"]["Minimum refinement level"] = o_dict["Mesh refinement"]["Initial global refinement"]
                 if geometry == 'chunk':
-                    o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph(refinement_level=refinement_level)
+                    if plate_age_method == 'adjust box width only assigning age': 
+                        trench = get_trench_position_with_age(sp_age_trench, sp_rate, geometry, Ro)
+                    else:
+                        trench = get_trench_position(sp_age_trench, sp_rate, geometry, Ro, sp_trailing_length)
+                    o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_sph(refinement_level=refinement_level, refine_wedge=refine_wedge, trench=trench)
                 elif geometry == 'box':
                     o_dict["Mesh refinement"]['Minimum refinement function'] = prm_minimum_refinement_cart(refinement_level=refinement_level)
             else:
@@ -1265,7 +1277,8 @@ def change_field_to_particle(i_dict, **kwargs):
         "Particle generator name": "random uniform",\
         "Data output format" : "vtu",\
         "List of particle properties" : "initial composition",\
-        "Time between data output": "0.1e6"\
+        "Time between data output": "0.1e6",\
+        "Allow cells without particles": "true"
     }
     o_dict['Postprocess'] = pp_dict
     return o_dict
@@ -1945,6 +1958,8 @@ def prm_minimum_refinement_sph(**kwargs):
     minimum refinement function for spherical geometry
     """
     Ro = kwargs.get('Ro', 6371e3)
+    refine_wedge = kwargs.get('refine_wedge', False)
+    trench = kwargs.get('trench', 0.62784)
     refinement_level = kwargs.get("refinement_level", 10)
     if refinement_level == 9:
         R_UM = 6
@@ -1966,10 +1981,16 @@ def prm_minimum_refinement_sph(**kwargs):
         raise ValueError("Wrong value %d for the \"refinement_level\"" % refinement_level)
     o_dict = {
       "Coordinate system": "spherical",
-      "Variable names": "r,phi,t",
-      "Function constants": "Ro=%.4e, UM=670e3, DD=100e3" % Ro,
-      "Function expression": "((Ro-r<UM)? \\\n                                   ((Ro-r<DD)? %d: %d): 0.0)" % (R_LS, R_UM)
+      "Variable names": "r,phi,t"
     }
+    if refine_wedge:
+        o_dict["Function constants"] = "Ro=%.4e, UM=670e3, DD=200e3, phiT=%.4f, dphi=%.4f" % (Ro, trench*np.pi/180.0, 10.0*np.pi/180.0)
+        o_dict["Function expression"] =  "((Ro-r<UM)? \\\n                                   ((Ro-r<DD)? (((phi-phiT>-dphi)&&(phi-phiT<dphi))? %d: %d): %d): 0.0)"\
+            % (refinement_level, R_LS, R_UM)
+    else:
+        o_dict["Function constants"] = "Ro=%.4e, UM=670e3, DD=100e3" % Ro
+        o_dict["Function expression"] =  "((Ro-r<UM)? \\\n                                   ((Ro-r<DD)? %d: %d): 0.0)" % (R_LS, R_UM)
+    print(o_dict) # debug
     return o_dict
 
 
