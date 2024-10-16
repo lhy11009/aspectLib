@@ -188,6 +188,9 @@ intiation stage causes the slab to break in the middle",\
             ["world builder", "box height"], 2890e3, nick='box_height')
         self.add_key("Refine Wedge", int,\
             ["refinement", "refine wedge"], 0, nick='refine_wedge')
+        # todo_hf
+        self.add_key("Output heat flux", int,\
+            ["outputs", "heat flux"], 0, nick='output_heat_flux')
     
     def check(self):
         '''
@@ -366,6 +369,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         minimum_particles_per_cell = self.values[29]
         maximum_particles_per_cell = self.values[30]
         refine_wedge = self.values[self.start + 68]
+        output_heat_flux = self.values[self.start + 69]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -378,7 +382,7 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
         rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as,\
         prescribe_T_width, prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb, lookup_table_morb_mixing,\
-        delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell, refine_wedge
+        delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell, refine_wedge, output_heat_flux
 
     def to_configure_wb(self):
         '''
@@ -479,7 +483,7 @@ class CASE(CasesP.CASE):
     maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width,\
     prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb,\
     lookup_table_morb_mixing, delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell,\
-    refine_wedge):
+    refine_wedge, output_heat_flux):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -1094,6 +1098,13 @@ opcrust: 1e+31, opharz: 1e+31", \
             o_dict1['Resume computation'] = 'true'
             self.model_stages = 2
             self.additional_idicts.append(o_dict1)
+
+        # additional outputs 
+        # todo_hf
+        if output_heat_flux:
+            o_dict['Postprocess']["List of postprocessors"] += ', heat flux map'
+            o_dict['Postprocess']["Visualization"]["List of output variables"] += ', heat flux map'
+            o_dict['Postprocess']["Visualization"]["Heat flux map"] = {"Output point wise heat flux": "true"}
 
     def configure_wb(self, if_wb, geometry, potential_T, sp_age_trench, sp_rate, ov_ag,\
         if_ov_trans, ov_trans_age, ov_trans_length, is_box_wider, Dsz, wb_new_ridge, version,\
