@@ -3084,6 +3084,10 @@ def RefitRheology(rheology, diff_correction, disl_correction, ref_state):
     P_ref = ref_state['P'] # Pa
     T_ref = ref_state['T'] # K
     d_ref = ref_state['d'] # mu m
+    strain_rate_diff_ref = CreepStrainRate(diffusion_creep_ori, stress_ref, P_ref, T_ref, d_ref, Coh_ref)
+    strain_rate_disl_ref = CreepStrainRate(dislocation_creep_ori, stress_ref, P_ref, T_ref, d_ref, Coh_ref)
+    print("strain_rate_diff_ref: ", strain_rate_diff_ref)
+    print("strain_rate_disl_ref: ", strain_rate_disl_ref)
 
     # reference pseudo "strain rate" for correction 
     strain_rate_diff_correction = CreepStrainRate(diff_correction, stress_ref, P_ref, T_ref, d_ref, Coh_ref)

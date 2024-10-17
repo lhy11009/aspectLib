@@ -188,9 +188,14 @@ intiation stage causes the slab to break in the middle",\
             ["world builder", "box height"], 2890e3, nick='box_height')
         self.add_key("Refine Wedge", int,\
             ["refinement", "refine wedge"], 0, nick='refine_wedge')
-        # todo_hf
         self.add_key("Output heat flux", int,\
             ["outputs", "heat flux"], 0, nick='output_heat_flux')
+        self.add_key("difference of activation energy in the diffusion creep rheology", float,\
+            ['mantle rheology', "delta Ediff"], 0.0, nick='delta_Ediff')
+        self.add_key("difference of activation energy in the dislocation creep rheology", float,\
+            ['mantle rheology', "delta Edisl"], 0.0, nick='delta_Edisl')
+        self.add_key("difference of activation volume in the dislocation creep rheology", float,\
+            ['mantle rheology', "delta Vdisl"], 3e-6, nick='delta_Vdisl')
     
     def check(self):
         '''
@@ -370,6 +375,9 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         maximum_particles_per_cell = self.values[30]
         refine_wedge = self.values[self.start + 68]
         output_heat_flux = self.values[self.start + 69]
+        delta_Ediff = self.values[self.start + 70]
+        delta_Edisl = self.values[self.start + 71]
+        delta_Vdisl = self.values[self.start + 72]
 
         return if_wb, geometry, box_width, type_of_bd, potential_T, sp_rate,\
         ov_age, prescribe_T_method, if_peierls, if_couple_eclogite_viscosity, phase_model,\
@@ -382,7 +390,8 @@ than the multiplication of the default values of \"sp rate\" and \"age trench\""
         mantle_coh, minimum_viscosity, fix_boudnary_temperature_auto, maximum_repetition_slice, global_refinement, adaptive_refinement,\
         rm_ov_comp, comp_method, peierls_flow_law, reset_density, maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as,\
         prescribe_T_width, prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb, lookup_table_morb_mixing,\
-        delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell, refine_wedge, output_heat_flux
+        delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell, refine_wedge, output_heat_flux,\
+        delta_Ediff, delta_Edisl, delta_Vdisl
 
     def to_configure_wb(self):
         '''
@@ -483,7 +492,7 @@ class CASE(CasesP.CASE):
     maximum_peierls_iterations, CDPT_type, use_new_rheology_module, fix_peierls_V_as, prescribe_T_width,\
     prescribe_T_with_trailing_edge, plate_age_method, jump_lower_mantle, use_3d_da_file, use_lookup_table_morb,\
     lookup_table_morb_mixing, delta_Vdiff, slope_410, slope_660, slab_strength, box_height, minimum_particles_per_cell, maximum_particles_per_cell,\
-    refine_wedge, output_heat_flux):
+    refine_wedge, output_heat_flux,  delta_Ediff, delta_Edisl, delta_Vdisl):
         Ro = 6371e3
         self.configure_case_output_dir(case_o_dir)
         o_dict = self.idict.copy()
@@ -795,9 +804,8 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             dislocation_creep_ori = getattr(rheology_prm_dict, rheology_name + "_disl")
             rheology_dict = {'diffusion': diffusion_creep_ori, 'dislocation': dislocation_creep_ori}
             # prescribe the correction
-            # todo_new_r
-            diff_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': delta_Vdiff}
-            disl_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': 0.0, 'V': 3e-6}
+            diff_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': delta_Ediff, 'V': delta_Vdiff}
+            disl_correction = {'A': 1.0, 'p': 0.0, 'r': 0.0, 'n': 0.0, 'E': delta_Edisl, 'V': delta_Vdisl}
             # prescribe the reference state
             ref_state = {}
             ref_state["Coh"] = mantle_coh # H / 10^6 Si
@@ -806,6 +814,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             ref_state["T"] = 1250.0 + 273.15 # K
             ref_state["d"] = 15.0 # mu m
             # refit rheology
+            print("refit rheology") # debug
             rheology_dict_refit = RefitRheology(rheology_dict, diff_correction, disl_correction, ref_state)
             # derive mantle rheology
             rheology, _ = Operator.MantleRheology(assign_rheology=True, diffusion_creep=rheology_dict_refit['diffusion'],\
