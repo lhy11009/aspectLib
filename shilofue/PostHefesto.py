@@ -140,6 +140,8 @@ class LOOKUP_TABLE():
         '''
         self.header = {}
         self.data = []
+        # todo_maph
+        self.maph_data = []
         self.version = "1.0.0"
         self.UnitConvert = Utilities.UNITCONVERT()
         self.first_dimension_name = None
@@ -167,7 +169,7 @@ class LOOKUP_TABLE():
         self.oheader = { 'Temperature': 'T(K)',  'Pressure': 'P(bar)' ,  'Density': 'rho,kg/m3',\
         'Thermal_expansivity': 'alpha,1/K', 'Isobaric_heat_capacity': 'cp,J/K/kg',\
         'VP': 'vp,km/s', 'VS': 'vs,km/s', 'Enthalpy': 'h,J/kg', "Entropy": 's,J/K/kg',\
-        'Omph_GHP': 'Omph', "Gt_HGP": "Gt"}
+        'Omph_GHP': 'Omph', "Gt_HGP": "Gt", "most abundant phase": "maphs"}
         # header for perplex table
         self.perplex_header = { 'T': "Temperature", "P": 'Pressure', "rho": 'Density',\
                                "alpha": 'Thermal_expansivity', 'cp': "Isobaric_heat_capacity",\
@@ -234,7 +236,11 @@ class LOOKUP_TABLE():
         print("%s: reading file" % Utilities.func_name())
         assert(os.path.isfile(_path))  # assert file exists
         self.header = self.fort_56_header
+        # The float data
         self.data = np.genfromtxt(_path)
+        # todo_maph
+        # 17 th column, the most abundant phase
+        self.maph_data = np.genfromtxt(_path, dtype="U50", encoding=None, usecols=[17])
         print("%s: data dimension: " % Utilities.func_name(), self.data.shape)
 
     def AllFields(self):
@@ -486,6 +492,13 @@ class LOOKUP_TABLE():
         print('first dimension: ', self.number_out1, ", second dimension: ", self.number_out2, ", size:", self.number_out1 * self.number_out2)
         Utilities.my_assert(len(field_names) >= 2, ValueError, 'Entry of field_names must have more than 2 components')
         columns = []
+        
+        # handle in most abundant phase in a different way
+        # todo_maph
+        output_maph = False
+        if "most abundant phase" in field_names:
+            field_names.remove("most abundant phase")
+            output_maph = True
 
         missing_last = self.data.shape[1]
         missing_fix_values = []
@@ -585,7 +598,16 @@ class LOOKUP_TABLE():
                 indexes_output = self.indexes
                 columns_output = columns
                 unit_factors_output = unit_factors
-            np.savetxt(fout, self.data[np.ix_(indexes_output, columns_output)] * unit_factors_output, fmt=_format)
+            # todo_maph
+            odata = self.data[np.ix_(indexes_output, columns_output)] * unit_factors_output
+            _fmt = None
+            if output_maph:
+                odata = np.concatenate((odata, self.maph_data[np.ix_(indexes_output)].reshape(indexes_output.size, 1)), axis=1)
+                _fmt = [_format]*len(field_names) + ['%-' + str(digit+11) + 's']
+            else:
+                _fmt = _format
+            # print("_fmt=", _fmt)
+            np.savetxt(fout,  odata, fmt=_fmt)
         print("New file generated: %s" % o_path) 
     
     def OutputPressureEntropyTable(self, field_names, o_path):
