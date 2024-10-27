@@ -580,10 +580,11 @@ class LOOKUP_TABLE():
             for i in range(2, len(field_names)):
                 field_name = field_names[i]
                 temp += '%-20s' % self.oheader[field_name]
+            if output_maph:
+                temp += '%-20s' % self.oheader["most abundant phase"]
             temp += '\n'
             fout.write(temp)
             # data is indexes, so that only part of the table is output
-            _format = '%-' + str(digit + 11) + '.' + str(digit) + 'e'
             indexes_output = None; columns_output = None; unit_factors_output = None
             if exchange_dimension:
                 indexes_output = ExchangeDimensions(self.indexes, self.number_out1, self.number_out2)
@@ -600,14 +601,15 @@ class LOOKUP_TABLE():
                 unit_factors_output = unit_factors
             # todo_maph
             odata = self.data[np.ix_(indexes_output, columns_output)] * unit_factors_output
-            _fmt = None
+            _format = None
             if output_maph:
                 odata = np.concatenate((odata, self.maph_data[np.ix_(indexes_output)].reshape(indexes_output.size, 1)), axis=1)
-                _fmt = [_format]*len(field_names) + ['%-' + str(digit+11) + 's']
+                # _fmt = [_format]*len(field_names) + ['%-' + str(digit+11) + 's']
+                _format = '%-19s'
             else:
-                _fmt = _format
+                _format = '%-' + str(digit + 11) + '.' + str(digit) + 'e'
             # print("_fmt=", _fmt)
-            np.savetxt(fout,  odata, fmt=_fmt)
+            np.savetxt(fout,  odata, fmt=_format)
         print("New file generated: %s" % o_path) 
     
     def OutputPressureEntropyTable(self, field_names, o_path):
