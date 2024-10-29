@@ -496,9 +496,18 @@ class LOOKUP_TABLE():
         # handle in most abundant phase in a different way
         # todo_maph
         output_maph = False
+        maph_lookup = kwargs.get("maph_lookup", None)
         if "most abundant phase" in field_names:
             field_names.remove("most abundant phase")
             output_maph = True
+            Utilities.my_assert(ValueError, maph_lookup is not None,\
+                                "By exporting the most abundant phase, need to include a \'maph_lookup\' option")
+            conditions = []
+            values = []
+            for i in range(len(maph_lookup)):
+                conditions.append((self.maph_data==maph_lookup[i]))
+                values.append(i+1)
+            maph_output = np.select(conditions, values, default=0)
 
         missing_last = self.data.shape[1]
         missing_fix_values = []
@@ -603,7 +612,7 @@ class LOOKUP_TABLE():
             odata = self.data[np.ix_(indexes_output, columns_output)] * unit_factors_output
             _format = None
             if output_maph:
-                odata = np.concatenate((odata, self.maph_data[np.ix_(indexes_output)].reshape(indexes_output.size, 1)), axis=1)
+                odata = np.concatenate((odata, maph_output[np.ix_(indexes_output)].reshape(indexes_output.size, 1)), axis=1)
                 # _fmt = [_format]*len(field_names) + ['%-' + str(digit+11) + 's']
                 _format = '%-19s'
             else:
