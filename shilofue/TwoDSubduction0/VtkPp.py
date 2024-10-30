@@ -1328,6 +1328,12 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     mdd = -1.0 # an initial value
     print("%s%s: Start" % (indent*" ", Utilities.func_name()))
     output_slab = kwargs.get('output_slab', False)
+    # todo_crust
+    n_crust = kwargs.get("n_crust", 1)
+    if n_crust == 1:
+        crust_fields = ['spcrust']
+    elif n_crust == 2:
+        crust_fields = ['spcrust_up', 'spcrust_low']
     filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
     if not os.path.isfile(filein):
         raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
@@ -1347,9 +1353,9 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
         Xmax = Visit_Options.options['XMAX']
     VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
     VtkP.ReadFile(filein)
-    field_names = ['T', 'density', 'spcrust', 'spharz', 'velocity', 'viscosity']
+    field_names = ['T', 'density', 'spharz', 'velocity', 'viscosity'] + crust_fields
     VtkP.ConstructPolyData(field_names, include_cell_center=True)
-    VtkP.PrepareSlab(['spcrust', 'spharz'], prepare_slab_distant_properties=True, depth_distant_lookup=depth_distant_lookup)
+    VtkP.PrepareSlab(crust_fields + ['spharz'], prepare_slab_distant_properties=True, depth_distant_lookup=depth_distant_lookup)
     if findmdd:
         try:
             mdd1 = VtkP.FindMDD(tolerance=findmdd_tolerance, dx1=-Visit_Options.options["INITIAL_SHEAR_ZONE_THICKNESS"])
@@ -1420,7 +1426,7 @@ def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
             output_slab - output slab file
             use_dT - use temperature difference as the criteria for the slab surface.
     '''
-    # assert something
+    # read in parameters
     indent = kwargs.get("indent", 0)  # indentation for outputs
     print("%s%s: Start" % (indent*" ", Utilities.func_name()))
     output_slab = kwargs.get('output_slab', False)
@@ -2029,6 +2035,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
     slab_morph_file = os.path.join(vtk_output_dir, slab_morph_file_name)
     # Initiation Wrapper class for parallel computation
     # ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology_dual_mdd, if_rewrite=True, findmdd=findmdd, project_velocity=project_velocity, findmdd_tolerance=findmdd_tolerance)
+    # todo_crust
+    kwargs['n_crust'] = 2
     ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology_dual_mdd, **kwargs)
     ParallelWrapper.configure(case_dir)  # assign case directory
     # Remove previous file
