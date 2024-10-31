@@ -42,6 +42,69 @@ if not os.path.isdir(test_dir):
     os.mkdir(test_dir)
 
 
+def test_slab_morphology_chunk():
+    '''
+    Test extract horizontal flow field and slab morphology in chunk geometry.
+    This test uses a big test case which is not included by default
+    in the github folder.
+
+    Asserts:
+        - Verifies the existence of necessary directories and files.
+        - Checks that the generated VTK outputs directory is created.
+        - Compares the generated slab surface envelopes and trench locations with the standard outputs to ensure consistency.
+    '''
+    # Construct the path to the case directory and check if it exists
+    case_dir = os.path.join(big_source_dir, "eba3d_width80_bw4000_sw1000_yd500.0_AR4")
+    assert(os.path.isdir(case_dir))
+
+    # Define the path for standard VTK outputs and check if it exists
+    std_vtk_outputs_dir = os.path.join(case_dir, "vtk_outputs_std")
+    # assert(os.path.isdir(std_vtk_outputs_dir))
+
+    # Define the output directory for the test and recreate it if necessary
+    odir = os.path.join(test_dir, "test_slab_morphology_chunk")
+    if os.path.isdir(odir):
+        rmtree(odir)  # Remove old results and make a new directory
+    os.mkdir(odir)
+
+    # Check if the input solution file exists
+    filein = os.path.join(case_dir, "output", "solution", "solution-00104.pvtu")
+    assert(os.path.isfile(filein))
+
+    # Define the directory for VTK outputs and remove old results if necessary
+    o_vtk_dir = os.path.join(odir, 'vtk_outputs')
+    if os.path.isdir(o_vtk_dir):
+        rmtree(o_vtk_dir)  # Remove old results
+
+    # Parameters for sorting out trench locations
+    slab_envelop_interval_w = 20e3  # Interval along the x-axis to sort out the trench locations
+    slab_envelop_interval_d = 20e3  # Interval along the z-axis to sort out the trench locations
+    slab_shallow_cutoff = 40e3  # Minimum depth along the z-axis to sort out the trench locations
+    crust_only = 1  # Whether to use only the crustal composition for trench location sorting
+
+    # Run the SlabMorphology function to generate outputs
+    SlabMorphology(case_dir, 104, slab_envelop_interval_w=slab_envelop_interval_w,
+                   slab_envelop_interval_d=slab_envelop_interval_d,
+                   slab_shallow_cutoff=slab_shallow_cutoff, crust_only=crust_only, output=o_vtk_dir)
+
+    # Check that the vtk_outputs directory is created
+    assert(os.path.isdir(o_vtk_dir))
+
+    # Compare the contents of the generated envelope files with standard outputs
+    o_env0 = os.path.join(o_vtk_dir, "slab_env0_00144.vtu")
+    o_std_env0 = os.path.join(std_vtk_outputs_dir, "test_slab_morphology_std_env0.vtu")
+    assert(filecmp.cmp(o_env0, o_std_env0))
+
+    o_env1 = os.path.join(o_vtk_dir, "slab_env1_00144.vtu")
+    o_std_env1 = os.path.join(std_vtk_outputs_dir, "test_slab_morphology_std_env1.vtu")
+    assert(filecmp.cmp(o_env1, o_std_env1))
+
+    # Compare the contents of the generated trench.txt file with the standard output
+    o_trench = os.path.join(o_vtk_dir, "trench_00144.txt")
+    o_std_trench = os.path.join(std_vtk_outputs_dir, "test_slab_morphology_std_trench.txt")
+    assert(filecmp.cmp(o_trench, o_std_trench))
+
+
 def test_slab_morphology():
     '''
     Test extract horizontal flow field and slab morphology.
@@ -105,67 +168,6 @@ def test_slab_morphology():
     assert(filecmp.cmp(o_trench, o_std_trench))
 
 
-def test_slab_morphology_chunk():
-    '''
-    Test extract horizontal flow field and slab morphology in chunk geometry.
-    This test uses a big test case which is not included by default
-    in the github folder.
-
-    Asserts:
-        - Verifies the existence of necessary directories and files.
-        - Checks that the generated VTK outputs directory is created.
-        - Compares the generated slab surface envelopes and trench locations with the standard outputs to ensure consistency.
-    '''
-    # Construct the path to the case directory and check if it exists
-    case_dir = os.path.join(big_source_dir, "eba3d_width80_bw4000_sw1000_yd500.0_AR4")
-    assert(os.path.isdir(case_dir))
-
-    # Define the path for standard VTK outputs and check if it exists
-    std_vtk_outputs_dir = os.path.join(case_dir, "vtk_outputs_std")
-    # assert(os.path.isdir(std_vtk_outputs_dir))
-
-    # Define the output directory for the test and recreate it if necessary
-    odir = os.path.join(test_dir, "test_slab_morphology_chunk")
-    if os.path.isdir(odir):
-        rmtree(odir)  # Remove old results and make a new directory
-    os.mkdir(odir)
-
-    # Check if the input solution file exists
-    filein = os.path.join(case_dir, "output", "solution", "solution-00104.pvtu")
-    assert(os.path.isfile(filein))
-
-    # Define the directory for VTK outputs and remove old results if necessary
-    o_vtk_dir = os.path.join(odir, 'vtk_outputs')
-    if os.path.isdir(o_vtk_dir):
-        rmtree(o_vtk_dir)  # Remove old results
-
-    # Parameters for sorting out trench locations
-    slab_envelop_interval_w = 20e3  # Interval along the x-axis to sort out the trench locations
-    slab_envelop_interval_d = 20e3  # Interval along the z-axis to sort out the trench locations
-    slab_shallow_cutoff = 40e3  # Minimum depth along the z-axis to sort out the trench locations
-    crust_only = 1  # Whether to use only the crustal composition for trench location sorting
-
-    # Run the SlabMorphology function to generate outputs
-    SlabMorphology(case_dir, 104, slab_envelop_interval_w=slab_envelop_interval_w,
-                   slab_envelop_interval_d=slab_envelop_interval_d,
-                   slab_shallow_cutoff=slab_shallow_cutoff, crust_only=crust_only, output=o_vtk_dir)
-
-    # Check that the vtk_outputs directory is created
-    assert(os.path.isdir(o_vtk_dir))
-
-    # Compare the contents of the generated envelope files with standard outputs
-    o_env0 = os.path.join(o_vtk_dir, "slab_env0_00144.vtu")
-    o_std_env0 = os.path.join(std_vtk_outputs_dir, "test_slab_morphology_std_env0.vtu")
-    assert(filecmp.cmp(o_env0, o_std_env0))
-
-    o_env1 = os.path.join(o_vtk_dir, "slab_env1_00144.vtu")
-    o_std_env1 = os.path.join(std_vtk_outputs_dir, "test_slab_morphology_std_env1.vtu")
-    assert(filecmp.cmp(o_env1, o_std_env1))
-
-    # Compare the contents of the generated trench.txt file with the standard output
-    o_trench = os.path.join(o_vtk_dir, "trench_00144.txt")
-    o_std_trench = os.path.join(std_vtk_outputs_dir, "test_slab_morphology_std_trench.txt")
-    assert(filecmp.cmp(o_trench, o_std_trench))
 
 
 
