@@ -105,6 +105,8 @@ class VTKP():
         self.dim = kwargs.get('dim', 2)
         self.grav_data = None  # a 2 column array to save the gravity data (depth in meter and grav_acc)
         self.geometry = kwargs.get('geometry', 'chunk')
+        # todo_chunk
+        self.is_chunk = (self.geometry == 'chunk')
         self.Ro = kwargs.get('Ro', 6371e3)
         self.Xmax = kwargs.get('Xmax', 61.0 * np.pi / 180.0)
         self.time = kwargs.get('time', None)
@@ -1317,20 +1319,18 @@ def get_r(x, y, geometry):
     return r
 
 
-def get_r3(x, y, z, geometry):
+def get_r3(x, y, z, is_chunk):
     '''
     Get r (the first coordinate)
     Inputs:
         x - x coordinate
         y - y coordinate
-        geometry - 'chunk' or 'box'
+        is_chunk - whether the geometry is chunk
     '''
-    if geometry == 'chunk':
+    if is_chunk:
         r = (x*x + y*y + z*z)**0.5
-    elif geometry == 'box':
-        r = z
     else:
-        raise ValueError("not implemented")
+        r = z
     return r
 
 

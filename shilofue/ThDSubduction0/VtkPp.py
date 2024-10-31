@@ -83,11 +83,11 @@ class VTKP(VtkPp.VTKP):
         VtkPp.VTKP.__init__(self, **kwargs)  # initiation of parental class
         self.slab_shallow_cutoff = kwargs.get('slab_shallow_cutoff', 70e3)  # depth limit to slab
         self.slab_points = []  # points in the slab
-        self.slab_envelop_interval_z = kwargs.get("slab_envelop_interval_z", 10e3)
-        self.slab_envelop_interval_y = kwargs.get("slab_envelop_interval_y", 10e3)
+        self.slab_envelop_interval_d = kwargs.get("slab_envelop_interval_d", 10e3)
+        self.slab_envelop_interval_w = kwargs.get("slab_envelop_interval_w", 10e3)
         self.slab_envelop_point_list0 = []
         self.slab_envelop_point_list1 = []
-        self.slab_y_max = 0.0
+        self.slab_w_max = 0.0
         self.trench_coords_x = []
         self.trench_coords_y = []
         self.trench_coords_z = []
@@ -138,7 +138,7 @@ class VTKP(VtkPp.VTKP):
             x = points[i][0]
             y = points[i][1]
             z = points[i][2]
-            r = VtkPp.get_r3(x, y, z, self.geometry)
+            r = VtkPp.get_r3(x, y, z, self.is_chunk)
             slab = slab_field[i]
             if field_enum == 0:
                 # with this method, I use the total value of a few composition fields
@@ -153,25 +153,34 @@ class VTKP(VtkPp.VTKP):
                 self.slab_points.append(i)
                 if r < min_r:
                     min_r = r
-                if y > self.slab_y_max:
-                    self.slab_y_max = y
+                if y > self.slab_w_max:
+                    self.slab_w_max = y
         self.slab_depth = self.Ro - min_r  # cart
         print("PrepareSlabByPoints: %d points found in the subducting slab" % len(self.slab_points))
-        # prepare the slab internal
-        total_en_interval_z = int((self.slab_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval_z + 1)
-        total_en_interval_y = int((self.slab_y_max) // self.slab_envelop_interval_y + 1)
-        id_en_pin_depth = int((pin_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval_z)
-        slab_en_point_lists = [ [] for i in range(total_en_interval_z * total_en_interval_y) ]
+        # prepare the slab internal points
+        # The length, width and depth are used to determine 
+        # the location of points within the slab consistently
+        # between the cartesian and the chunk geometry
+        total_en_interval_d = int((self.slab_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval_d + 1)
+        total_en_interval_w = int((self.slab_w_max) // self.slab_envelop_interval_w + 1)
+        id_en_pin_depth = int((pin_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval_d)
+        slab_en_point_lists = [ [] for i in range(total_en_interval_d * total_en_interval_w) ]
         for id in self.slab_points:
             x = points[id][0] # first, separate cells into intervals
             y = points[id][1]
             z = points[id][2]
-            r = VtkPp.get_r3(x, y, z, self.geometry)
-            id_en_z =  int(np.floor(
+            r1, th1, ph1 = Utilities.cart2sph(x,y,z)
+            r = VtkPp.get_r3(x, y, z, self.is_chunk)
+            # todo_chunk
+            if self.is_chunk == True:
+                w = self.Ro * (np.pi/2.0 - th1)
+            else:
+                w = y
+            id_en_d =  int(np.floor(
                                   (self.Ro - r - self.slab_shallow_cutoff)/
-                                  self.slab_envelop_interval_z))# id in the envelop list
-            id_en_y =  int(np.floor(y / self.slab_envelop_interval_y))
-            id_en = id_en_y * total_en_interval_z + id_en_z
+                                  self.slab_envelop_interval_d))# id in the envelop list
+            id_en_w =  int(np.floor(w / self.slab_envelop_interval_w))
+            id_en = id_en_w * total_en_interval_d + id_en_d
             slab_en_point_lists[id_en].append(id)
         trench_coords_x = []
         trench_coords_y = []
@@ -188,9 +197,13 @@ class VTKP(VtkPp.VTKP):
         pinD_b_coords_x = []
         pinD_b_coords_y = []
         pinD_b_coords_z = []
+        # extract the slab envelop
+        # The internal points are processed by their length dimension
+        # consistently between the cartesian and the chunk geometry.
+        # The slab envelops have the min and max value in the length dimension
         for id_en in range(len(slab_en_point_lists)):
-            theta_min = 0.0  # then, loop again by intervals to look for a
-            theta_max = 0.0  # max theta and a min theta for each interval
+            l_min = 0.0  # then, loop again by intervals to look for a
+            l_max = 0.0  # max w and a min w for each interval
             point_list = slab_en_point_lists[id_en]
             if len(point_list) == 0:
                 continue  # make sure we have some point
@@ -200,32 +213,38 @@ class VTKP(VtkPp.VTKP):
             for id in point_list:
                 x = points[id][0]
                 y = points[id][1]
-                theta = get_theta(x, y, self.geometry)  # cart
+                z = points[id][2]
+                # todo_chunk
+                if self.is_chunk:
+                    r1, th1, ph1 = Utilities.cart2sph(x,y,z)
+                    l = self.Ro * (np.pi/2.0 - th1)
+                else:
+                    l = x  # cart
                 if is_first:
                     id_min = id
                     id_max = id
-                    theta_min = theta
-                    theta_max = theta
+                    l_min = l
+                    l_max = l
                     is_first = False
                 else:
-                    if theta < theta_min:
+                    if l < l_min:
                         id_min = id
-                        theta_min = theta
-                    if theta > theta_max:
+                        l_min = l
+                    if l > l_max:
                         id_max = id
-                        theta_max = theta
+                        l_max = l
             self.slab_envelop_point_list0.append(id_min)  # first half of the envelop
             self.slab_envelop_point_list1.append(id_max)  # second half of the envelop
-            if id_en < total_en_interval_z:
+            if id_en < total_en_interval_d:
                 # record center profile
                 # todo_center
                 if id_max > 0:
                     center_profile_x.append(points[id_max][0])
                     center_profile_y.append(points[id_max][1])
                     center_profile_z.append(points[id_max][2])
-            if id_en % total_en_interval_z == 0:
+            if id_en % total_en_interval_d == 0:
                 # record trench coordinates
-                id_en_y = id_en // total_en_interval_z
+                id_en_w = id_en // total_en_interval_d
                 if id_max > 0:
                     trench_coords_x.append(points[id_max][0])
                     trench_coords_y.append(points[id_max][1])
@@ -235,7 +254,7 @@ class VTKP(VtkPp.VTKP):
                     trench_b_coords_y.append(points[id_min][1])
                     trench_b_coords_z.append(points[id_min][2])
             if get_pin_depth:
-                if id_en % total_en_interval_z == id_en_pin_depth:
+                if id_en % total_en_interval_d == id_en_pin_depth:
                     # get the pinned x, y and z at a pinned depth
                     if id_max > 0:
                         pinD_coords_x.append(points[id_max][0])
@@ -307,7 +326,7 @@ class VTKP(VtkPp.VTKP):
             x = points[id_en][0] # first, separate cells into intervals
             y = points[id_en][1]
             z = points[id_en][2]
-            r = VtkPp.get_r3(x, y, z, self.geometry)
+            r = VtkPp.get_r3(x, y, z, self.is_chunk)
             depth = self.Ro - r
             density = density_data[id_en]
             density_ref = self.density_ref_func(depth)
@@ -354,8 +373,8 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         case_dir (str): Path to the case directory.
         vtu_snapshot (int): Step number for VTU outputs.
         kwargs (dict): Additional parameters for the analysis:
-            - slab_envelop_interval_y (float, default=10e3): Interval along the y-axis for sorting trench locations.
-            - slab_envelop_interval_z (float, default=10e3): Interval along the z-axis for sorting trench locations.
+            - slab_envelop_interval_w (float, default=10e3): Interval along the y-axis for sorting trench locations.
+            - slab_envelop_interval_d (float, default=10e3): Interval along the z-axis for sorting trench locations.
             - slab_shallow_cutoff (float, default=70e3): Minimum depth along the z-axis for sorting trench locations.
             - include_force_balance (bool, default=False): Whether to include force balance calculations.
             - crust_only (int, default=0): Specifies which crustal compositions to consider for trench sorting.
@@ -382,8 +401,8 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     Utilities.my_assert(os.path.isfile(filein), FileNotFoundError, "%s is not found" % filein)
     
     # Retrieve or set default values for various parameters
-    slab_envelop_interval_y = kwargs.get("slab_envelop_interval_y", 10e3)
-    slab_envelop_interval_z = kwargs.get("slab_envelop_interval_z", 10e3)
+    slab_envelop_interval_w = kwargs.get("slab_envelop_interval_w", 10e3)
+    slab_envelop_interval_d = kwargs.get("slab_envelop_interval_d", 10e3)
     slab_shallow_cutoff = kwargs.get("slab_shallow_cutoff", 70e3)
     include_force_balance = kwargs.get("include_force_balance", False)
     crust_only = kwargs.get("crust_only", 0)
@@ -415,7 +434,7 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         ha_file = None
     
     VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax, slab_shallow_cutoff=slab_shallow_cutoff,
-                slab_envelop_interval_y=slab_envelop_interval_y, slab_envelop_interval_z=slab_envelop_interval_z,
+                slab_envelop_interval_w=slab_envelop_interval_w, slab_envelop_interval_d=slab_envelop_interval_d,
                 ha_file=ha_file, time=_time)
     VtkP.ReadFile(filein)
     
@@ -470,7 +489,7 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
         for i in range(len(VtkP.slab_points)):
             id_en = VtkP.slab_points[i]
             x, y, z = VtkP.i_poly_data.GetPoints().GetData()[id_en]
-            r = VtkPp.get_r3(x, y, z, VtkP.geometry)
+            r = VtkPp.get_r3(x, y, z, VtkP.is_chunk)
             depth = Ro - r
             densities_ref[i] = VtkP.density_ref_func(depth)
         densities_ref_vtk_array = numpy_to_vtk(densities_ref)
@@ -687,8 +706,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
     '''
     if_rewrite = kwargs.get('rewrite', 0)
     step_for_derivatives = kwargs.get('step_for_derivatives', 5)
-    slab_envelop_interval_y = kwargs.get("slab_envelop_interval_y", 10e3)
-    slab_envelop_interval_z = kwargs.get("slab_envelop_interval_z", 10e3)
+    slab_envelop_interval_w = kwargs.get("slab_envelop_interval_w", 10e3)
+    slab_envelop_interval_d = kwargs.get("slab_envelop_interval_d", 10e3)
     slab_shallow_cutoff = kwargs.get("slab_shallow_cutoff", 70e3)
     include_force_balance = kwargs.get("include_force_balance", False)
     use_parallel = kwargs.get('use_parallel', False)
@@ -719,8 +738,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
         base_name = "slab_morph_lu"
     # use a wrapper of a processing function
     # the base_name is the basename of files to generate
-    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK(base_name, SlabMorphology, if_rewrite=if_rewrite, slab_envelop_interval_y=slab_envelop_interval_y,\
-                                                slab_envelop_interval_z=slab_envelop_interval_z, slab_shallow_cutoff=slab_shallow_cutoff, crust_only=crust_only,\
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK(base_name, SlabMorphology, if_rewrite=if_rewrite, slab_envelop_interval_w=slab_envelop_interval_w,\
+                                                slab_envelop_interval_d=slab_envelop_interval_d, slab_shallow_cutoff=slab_shallow_cutoff, crust_only=crust_only,\
                                                 include_force_balance=include_force_balance)
     ParallelWrapper.configure(case_dir)  # assign case directory
     # Remove previous file
@@ -1747,10 +1766,10 @@ def main():
     parser.add_argument('-ti', '--time_interval', type=float,
                         default=1.0e6,
                         help='Time interval, affecting the time steps to visualize')
-    parser.add_argument('-seix', '--slab_envelop_interval_y', type=float,
+    parser.add_argument('-seix', '--slab_envelop_interval_w', type=float,
                         default=20e6,
                         help='Interval along y axis to sort out the trench locations')
-    parser.add_argument('-seiz', '--slab_envelop_interval_z', type=float,
+    parser.add_argument('-seiz', '--slab_envelop_interval_d', type=float,
                         default=20e6,
                         help='Interval along z axis to sort out the trench locations')
     parser.add_argument('-ssc', '--slab_shallow_cutoff', type=float,
@@ -1790,21 +1809,21 @@ def main():
         # include_force_balance = True
         include_force_balance = False
         SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1,\
-            slab_envelop_interval_y=arg.slab_envelop_interval_y, slab_envelop_interval_z=arg.slab_envelop_interval_z,\
+            slab_envelop_interval_w=arg.slab_envelop_interval_w, slab_envelop_interval_d=arg.slab_envelop_interval_d,\
             slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only, include_force_balance=include_force_balance)
     elif _commend == 'cross_section_at_depth':
         SlabMorphology(arg.inputs, int(arg.vtu_snapshot), rewrite=1,\
-            slab_envelop_interval_y=arg.slab_envelop_interval_y, slab_envelop_interval_z=arg.slab_envelop_interval_z,\
+            slab_envelop_interval_w=arg.slab_envelop_interval_w, slab_envelop_interval_d=arg.slab_envelop_interval_d,\
             slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only, horizontal_velocity_depths=[arg.depth])
     elif _commend == 'morph_case':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=0, time_interval=arg.time_interval,\
-            slab_envelop_interval_y=arg.slab_envelop_interval_y, slab_envelop_interval_z=arg.slab_envelop_interval_z,\
+            slab_envelop_interval_w=arg.slab_envelop_interval_w, slab_envelop_interval_d=arg.slab_envelop_interval_d,\
             slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only)
     elif _commend == 'morph_case_parallel':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=1, time_interval=arg.time_interval,\
-            slab_envelop_interval_y=arg.slab_envelop_interval_y, slab_envelop_interval_z=arg.slab_envelop_interval_z,\
+            slab_envelop_interval_w=arg.slab_envelop_interval_w, slab_envelop_interval_d=arg.slab_envelop_interval_d,\
             slab_shallow_cutoff=arg.slab_shallow_cutoff, crust_only=arg.crust_only, use_parallel=True)
     elif _commend == 'plot_trench':
         # plot slab morphology
