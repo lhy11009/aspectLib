@@ -87,7 +87,6 @@ class VTKP(VtkPp.VTKP):
         self.slab_envelop_interval_w = kwargs.get("slab_envelop_interval_w", 10e3)
         self.slab_envelop_point_list0 = []
         self.slab_envelop_point_list1 = []
-        self.slab_w_max = 0.0
         self.trench_coords_x = []
         self.trench_coords_y = []
         self.trench_coords_z = []
@@ -133,12 +132,15 @@ class VTKP(VtkPp.VTKP):
         slab_field = VtkPp.OperateDataArrays(point_data, slab_field_names,\
         [0 for i in range(len(slab_field_names) - 1)])
         # add cells by composition
+        # todo_3d_chunk
         min_r = self.Ro
+        slab_w_max = 0.0
         for i in range(self.i_poly_data.GetNumberOfPoints()):
             x = points[i][0]
             y = points[i][1]
             z = points[i][2]
             r = VtkPp.get_r3(x, y, z, self.is_chunk)
+            r1, th1, ph1 = Utilities.cart2sph(x,y,z)
             slab = slab_field[i]
             if field_enum == 0:
                 # with this method, I use the total value of a few composition fields
@@ -153,8 +155,12 @@ class VTKP(VtkPp.VTKP):
                 self.slab_points.append(i)
                 if r < min_r:
                     min_r = r
-                if y > self.slab_w_max:
-                    self.slab_w_max = y
+                if self.is_chunk:
+                    w = self.Ro * (np.pi/2.0 - th1)
+                else:
+                    w = y
+                if w > slab_w_max:
+                    slab_w_max = w
         self.slab_depth = self.Ro - min_r  # cart
         print("PrepareSlabByPoints: %d points found in the subducting slab" % len(self.slab_points))
         # prepare the slab internal points
@@ -162,7 +168,7 @@ class VTKP(VtkPp.VTKP):
         # the location of points within the slab consistently
         # between the cartesian and the chunk geometry
         total_en_interval_d = int((self.slab_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval_d + 1)
-        total_en_interval_w = int((self.slab_w_max) // self.slab_envelop_interval_w + 1)
+        total_en_interval_w = int((slab_w_max) // self.slab_envelop_interval_w + 1)
         id_en_pin_depth = int((pin_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval_d)
         slab_en_point_lists = [ [] for i in range(total_en_interval_d * total_en_interval_w) ]
         for id in self.slab_points:
@@ -171,7 +177,7 @@ class VTKP(VtkPp.VTKP):
             z = points[id][2]
             r1, th1, ph1 = Utilities.cart2sph(x,y,z)
             r = VtkPp.get_r3(x, y, z, self.is_chunk)
-            # todo_chunk
+            # todo_3d_chunk
             if self.is_chunk == True:
                 w = self.Ro * (np.pi/2.0 - th1)
             else:
@@ -214,10 +220,10 @@ class VTKP(VtkPp.VTKP):
                 x = points[id][0]
                 y = points[id][1]
                 z = points[id][2]
-                # todo_chunk
+                # todo_3d_chunk
                 if self.is_chunk:
                     r1, th1, ph1 = Utilities.cart2sph(x,y,z)
-                    l = self.Ro * (np.pi/2.0 - th1)
+                    l = self.Ro * ph1
                 else:
                     l = x  # cart
                 if is_first:
@@ -233,6 +239,16 @@ class VTKP(VtkPp.VTKP):
                     if l > l_max:
                         id_max = id
                         l_max = l
+            # debug
+            id_w = int(id_en // total_en_interval_d)
+            id_en_d = int(id_en % total_en_interval_d)
+            if id_w == 0: 
+                x_min, y_min, z_min = points[id_min][0], points[id_min][1], points[id_min][2]
+                r_min, th_min, ph_min = Utilities.cart2sph(x_min,y_min,z_min)
+                x_max, y_max, z_max = points[id_max][0], points[id_max][1], points[id_max][2]
+                r_max, th_max, ph_max = Utilities.cart2sph(x_max,y_max,z_max)
+                print("%d: (%.4e, %.4e, %.4e), (%.4e, %.4e, %.4e)" % (id_en_d, x_min, y_min, z_min, r_min, th_min, ph_min))
+                print("%d: (%.4e, %.4e, %.4e), (%.4e, %.4e, %.4e)" % (id_en_d, x_max, y_max, z_max, r_max, th_max, ph_max))
             self.slab_envelop_point_list0.append(id_min)  # first half of the envelop
             self.slab_envelop_point_list1.append(id_max)  # second half of the envelop
             if id_en < total_en_interval_d:
