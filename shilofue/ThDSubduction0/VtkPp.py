@@ -111,6 +111,8 @@ class VTKP(VtkPp.VTKP):
         because the cell center data requires interpolation, and that takes about
         few minutes when my case scales up.
         '''
+        start = time.time()
+        print("PrepareSlabByPoints")
         slab_threshold = kwargs.get('slab_threshold', 0.2)
         field_type = kwargs.get('field_type', "composition")
         # todo_pind
@@ -131,6 +133,9 @@ class VTKP(VtkPp.VTKP):
         # slab composition field
         slab_field = VtkPp.OperateDataArrays(point_data, slab_field_names,\
         [0 for i in range(len(slab_field_names) - 1)])
+        end = time.time()
+        print("\tInitiation, takes %.2f s" % (end-start))
+        start = end
         # add cells by composition
         # todo_3d_chunk
         min_r = self.Ro
@@ -157,7 +162,10 @@ class VTKP(VtkPp.VTKP):
                 if w > slab_w_max:
                     slab_w_max = w
         self.slab_depth = self.Ro - min_r  # cart
-        print("PrepareSlabByPoints: %d points found in the subducting slab" % len(self.slab_points))
+        end = time.time()
+        print("\tLook for slab points, takes %.2f s" % (end-start))
+        print("\t%d points found in the subducting slab" % len(self.slab_points))
+        start = end
         # prepare the slab internal points
         # The length, width and depth are used to determine 
         # the location of points within the slab consistently
@@ -193,6 +201,9 @@ class VTKP(VtkPp.VTKP):
         pinD_b_coords_x = []
         pinD_b_coords_y = []
         pinD_b_coords_z = []
+        end = time.time()
+        print("\tCategorize slab points, takes %.2f s" % (end-start))
+        start = end
         # extract the slab envelop
         # The internal points are processed by their length dimension
         # consistently between the cartesian and the chunk geometry.
@@ -225,7 +236,7 @@ class VTKP(VtkPp.VTKP):
                     if l > l_max:
                         id_max = id
                         l_max = l
-            # debug
+            ''' DEBUG OUTPUTS - output the points on the top and bottom of the envelops
             id_w = int(id_en // total_en_interval_d)
             id_en_d = int(id_en % total_en_interval_d)
             if id_w == 0: 
@@ -235,6 +246,7 @@ class VTKP(VtkPp.VTKP):
                 r_max, th_max, ph_max = Utilities.cart2sph(x_max,y_max,z_max)
                 print("%d: (%.4e, %.4e, %.4e), (%.4e, %.4e, %.4e)" % (id_en_d, x_min, y_min, z_min, r_min, th_min, ph_min))
                 print("%d: (%.4e, %.4e, %.4e), (%.4e, %.4e, %.4e)" % (id_en_d, x_max, y_max, z_max, r_max, th_max, ph_max))
+            '''
             self.slab_envelop_point_list0.append(id_min)  # first half of the envelop
             self.slab_envelop_point_list1.append(id_max)  # second half of the envelop
             if id_en < total_en_interval_d:
@@ -266,6 +278,9 @@ class VTKP(VtkPp.VTKP):
                         pinD_b_coords_x.append(points[id_min][0])
                         pinD_b_coords_y.append(points[id_min][1])
                         pinD_b_coords_z.append(points[id_min][2])
+        end = time.time()
+        print("\tExtract slab envelops (top and bottom), takes %.2f s" % (end-start))
+        start = end
         # append data to class objects
         self.trench_coords_x = trench_coords_x
         self.trench_coords_y = trench_coords_y
@@ -282,6 +297,9 @@ class VTKP(VtkPp.VTKP):
         self.pinD_b_profile_x = pinD_b_coords_x
         self.pinD_b_profile_y = pinD_b_coords_y
         self.pinD_b_profile_z = pinD_b_coords_z
+        end = time.time()
+        print("\tWrap up, takes %.2f s" % (end-start))
+        start = end
 
     # todo_hv 
     def SlabSurfaceAtDepth(self, depth):
@@ -1196,20 +1214,16 @@ def GetSlabDipAngle(case_dir, vtu_snapshot, Visit_Options, depth_lookup, depth_i
     return dip
 
 
-
-
-
-def PlotSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
+# todo_3d_chunk
+def GetSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
     '''
     plot trench position for a single stepb
     '''
-    _color = kwargs.get("color", None)
-    _label = kwargs.get("label", None)
     silence = kwargs.get("silence", False)
     y_query = kwargs.get("y_query", 0.0)
-    ax_twinx = kwargs.get("axis_twinx", None)
     pin_depth = kwargs.get("pin_depth", 100e3)
     crust_only = kwargs.get("crust_only", 0)
+    # is_chunk = geometry == "chunk"
 
     # initiation
     Visit_Options = VISIT_OPTIONS(case_dir)
@@ -1218,10 +1232,6 @@ def PlotSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
     # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
     available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
     n_snapshots = len(available_pvtu_snapshots)
-    # initiate plot
-    ax = kwargs.get('axis', None)
-    if ax == None:
-        raise ValueError("Not implemented")
    
     # derive the trench locations and interpolate to the query points
     # derive the depth of the slab tip
@@ -1281,6 +1291,23 @@ def PlotSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
     dips = np.array(dips)
     depths = np.array(depths)
     ts = np.array(ts)
+
+    return ts, depths, dips
+
+
+def PlotSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
+    '''
+    plot trench position for a single stepb
+    '''
+    _color = kwargs.get("color", None)
+    _label = kwargs.get("label", None)
+    y_query = kwargs.get("y_query", 0.0)
+    ax_twinx = kwargs.get("axis_twinx", None)
+    # initiate plot
+    ax = kwargs.get('axis', None)
+    if ax == None:
+        raise ValueError("Not implemented")
+    ts, depths, dips = GetSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs)
     # apply a spline
     spline = UnivariateSpline(ts/1e6, dips, s=0) # s=0 means interpolation
     ts_new = np.linspace(ts.min(), ts.max(), 1000)
