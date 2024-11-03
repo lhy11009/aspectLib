@@ -86,36 +86,68 @@ class VERTICAL_PROFILE():
 
 class VTKP():
     '''
-    Class for vtk post-process utilities
+    Class for VTK post-process utilities.
+
     Attributes:
-        reader (vtk reader object): reader for vtk file format
-        i_poly_data (vtkPolydata): input data
+        reader (vtk reader object): Reader for VTK file formats.
+        i_poly_data (vtk.vtkPolyData): Input polydata object used for processing.
+        include_cell_center (bool): Flag indicating if cell centers should be included.
+        c_poly_data (vtk.vtkPolyData): Processed polydata object for cells.
+        cell_sizes (array-like or None): Array to store cell sizes.
+        dim (int): Dimensionality of the data, default is 2.
+        grav_data (array or None): A 2-column array to store gravity data (depth in meters and gravitational acceleration).
+        geometry (str): The type of geometry, default is 'chunk'.
+        is_chunk (bool): Flag to determine if the geometry is a chunk, based on the value of 'geometry'.
+        Ro (float): Outer radius of the spherical domain, default is 6371e3 meters.
+        Xmax (float): Maximum x-coordinate in radians for chunk geometry, default is 61.0 * pi / 180.0.
+        time (float or None): Simulation time, used for time-dependent calculations.
+        spacing_n (int): Number of spacing intervals for domain splitting, default is 0.
+        spacing (array-like or None): Array to store spacing values for splitting the domain.
+        spacing_cell_ids (array-like or None): Array to store cell IDs corresponding to spacing.
+        cell_array (array-like or None): Array for storing cell-related data.
+        Tref_func (callable or None): Interpolated function for temperature reference, derived from depth-averaged data.
+        density_ref_func (callable or None): Interpolated function for adiabatic density reference, derived from depth-averaged data.
     '''
+
     def __init__(self, **kwargs):
         '''
-        Initiation
+        Initialization of the VTKP class.
+
         Inputs:
-            kwargs:
-                dim - dimension
+            kwargs (dict): Additional keyword arguments for initialization:
+                - dim (int, default=2): Dimensionality of the data.
+                - geometry (str, default='chunk'): The geometry type, either 'chunk' or otherwise.
+                - Ro (float, default=6371e3): Outer radius of the spherical domain.
+                - Xmax (float, default=61.0 * pi / 180.0): Maximum x-coordinate in radians.
+                - time (float or None): Simulation time for time-dependent calculations.
+                - ha_file (str or None): Path to a file containing depth-averaged data.
+        
+        Description:
+            - Initializes various VTK and domain-specific attributes.
+            - Sets up the polydata objects and handles gravity and temperature reference data.
+            - If 'ha_file' is provided, it imports the depth-averaged data and sets up interpolation functions.
         '''
         self.i_poly_data = vtk.vtkPolyData()
         self.include_cell_center = False
         self.c_poly_data = vtk.vtkPolyData()
         self.cell_sizes = None
         self.dim = kwargs.get('dim', 2)
-        self.grav_data = None  # a 2 column array to save the gravity data (depth in meter and grav_acc)
+        self.grav_data = None  # A 2-column array to save gravity data (depth in meters and grav_acc)
         self.geometry = kwargs.get('geometry', 'chunk')
-        # todo_3d_chunk
+        # todo_3d_chunk: Extend handling for 3D chunk geometries
         self.is_chunk = (self.geometry == 'chunk')
         self.Ro = kwargs.get('Ro', 6371e3)
         self.Xmax = kwargs.get('Xmax', 61.0 * np.pi / 180.0)
         self.time = kwargs.get('time', None)
+
         # For splitting the domain
         self.spacing_n = 0
         self.spacing = None
         self.spacing_cell_ids = None
-        # for storing an array of cells
+
+        # For storing an array of cells
         self.cell_array = None
+
         ha_file = kwargs.get("ha_file", None)
         if ha_file is None:
             self.Tref_func = None
@@ -123,10 +155,12 @@ class VTKP():
             assert(os.path.isfile(ha_file))
             DepthAverage = DEPTH_AVERAGE_PLOT('DepthAverage')
             DepthAverage.Import(ha_file)
-            Utilities.my_assert(self.time != None, ValueError, "\"time\" is a requried input if \"ha_file\" is presented")
+            Utilities.my_assert(self.time is not None, ValueError, 
+                                "\"time\" is a required input if \"ha_file\" is provided")
             self.Tref_func = DepthAverage.GetInterpolateFunc(self.time, "temperature")
             self.density_ref_func = DepthAverage.GetInterpolateFunc(self.time, "adiabatic_density")
         pass
+
 
     def ReadFile(self, filein, **kwargs):
         '''
@@ -1332,6 +1366,8 @@ def get_r3(x, y, z, is_chunk):
     else:
         r = z
     return r
+
+
 
 
 def main():

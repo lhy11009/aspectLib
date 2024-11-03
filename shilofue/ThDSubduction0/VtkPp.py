@@ -139,8 +139,7 @@ class VTKP(VtkPp.VTKP):
             x = points[i][0]
             y = points[i][1]
             z = points[i][2]
-            r = VtkPp.get_r3(x, y, z, self.is_chunk)
-            r1, th1, ph1 = Utilities.cart2sph(x,y,z)
+            r, w, _ = get_slab_dimensions_3(x, y, z, self.Ro, self.is_chunk)
             slab = slab_field[i]
             if field_enum == 0:
                 # with this method, I use the total value of a few composition fields
@@ -155,10 +154,6 @@ class VTKP(VtkPp.VTKP):
                 self.slab_points.append(i)
                 if r < min_r:
                     min_r = r
-                if self.is_chunk:
-                    w = self.Ro * (np.pi/2.0 - th1)
-                else:
-                    w = y
                 if w > slab_w_max:
                     slab_w_max = w
         self.slab_depth = self.Ro - min_r  # cart
@@ -175,13 +170,8 @@ class VTKP(VtkPp.VTKP):
             x = points[id][0] # first, separate cells into intervals
             y = points[id][1]
             z = points[id][2]
-            r1, th1, ph1 = Utilities.cart2sph(x,y,z)
-            r = VtkPp.get_r3(x, y, z, self.is_chunk)
+            r, w, _ = get_slab_dimensions_3(x, y, z, self.Ro, self.is_chunk)
             # todo_3d_chunk
-            if self.is_chunk == True:
-                w = self.Ro * (np.pi/2.0 - th1)
-            else:
-                w = y
             id_en_d =  int(np.floor(
                                   (self.Ro - r - self.slab_shallow_cutoff)/
                                   self.slab_envelop_interval_d))# id in the envelop list
@@ -220,12 +210,8 @@ class VTKP(VtkPp.VTKP):
                 x = points[id][0]
                 y = points[id][1]
                 z = points[id][2]
+                _, _, l = get_slab_dimensions_3(x, y, z, self.Ro, self.is_chunk)
                 # todo_3d_chunk
-                if self.is_chunk:
-                    r1, th1, ph1 = Utilities.cart2sph(x,y,z)
-                    l = self.Ro * ph1
-                else:
-                    l = x  # cart
                 if is_first:
                     id_min = id
                     id_max = id
@@ -1747,6 +1733,43 @@ def Interpolate3dVtkCase(case_dir, vtu_snapshot, **kwargs):
         pass
     
     return resampled_data
+
+
+# todo_3d_chunk
+def get_slab_dimensions_3(x, y, z, Ro, is_chunk):
+    '''
+    Derives the length along the three dimensions of a subducting slab.
+
+    Inputs:
+        x (float): x-coordinate of the slab point.
+        y (float): y-coordinate of the slab point.
+        z (float): z-coordinate of the slab point.
+        Ro (float): Outer radius of the spherical domain.
+        is_chunk (bool): Flag indicating whether the geometry is a spherical chunk.
+
+    Returns:
+        tuple: A tuple containing (r, w, l):
+            - r (float): Radius or z-coordinate depending on whether the geometry is a chunk.
+            - w (float): Width of the slab in the y-dimension, or converted width for chunk geometry.
+            - l (float): Length of the slab in the x-dimension, or converted length for chunk geometry.
+    
+    Description:
+        - For chunk geometries, converts Cartesian coordinates to spherical coordinates and calculates
+          width and length using the outer radius Ro and spherical angles.
+        - For non-chunk geometries, returns the z, x, and y coordinates directly as radius, length, and width.
+    '''
+    if is_chunk:
+        # Convert Cartesian coordinates to spherical coordinates for chunk geometry
+        r, th1, ph1 = Utilities.cart2sph(x, y, z)
+        w = Ro * (np.pi / 2.0 - th1)  # Calculate width using the spherical angle th1
+        l = Ro * ph1  # Calculate length using the spherical angle ph1
+    else:
+        # For non-chunk geometry, use Cartesian coordinates directly
+        r = z
+        l = x
+        w = y
+
+    return r, w, l
 
 
 def main():
