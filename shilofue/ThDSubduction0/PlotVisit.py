@@ -79,6 +79,7 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
         # Geometry
         sub_plate_feature = self.wb_dict["features"][idx]
         slab_feature = self.wb_dict["features"][idx1]
+        # this is point marking the extension of plate
         sub_plate_extends = sub_plate_feature['coordinates'][1]
         box_width = -1.0
         Ro = -1.0
@@ -113,8 +114,12 @@ class VISIT_OPTIONS(TwoDPlotVisit.VISIT_OPTIONS):
                 ov_age = ov_plate_feature["temperature models"][0]["plate age"]
             self.options['ROTATION_ANGLE'] = 0.0
         elif self.options["GEOMETRY"] == "chunk":
+            # todo_3d_chunk
+            # in chunk geometry, the coordinate is read in as the latitude, and it's in
+            # degree
             Ro = float(self.idict["Geometry model"]["Chunk"]["Chunk outer radius"])
-            self.options['TRENCH_EDGE_Y'] = -1.0
+            self.options['TRENCH_EDGE_Y'] = sub_plate_extends[1] * np.pi / 180.0 * Ro * 0.75
+            self.options['TRENCH_EDGE_Y_FULL'] = sub_plate_extends[1] * np.pi / 180.0 * Ro
             self.options['TRENCH_EDGE_LAT_FULL'] = sub_plate_extends[1]
             self.options["CHUNK_RIDGE_CENTER_X"] = Ro
             self.options["CHUNK_RIDGE_CENTER_Z"] = 0.0

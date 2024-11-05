@@ -137,7 +137,9 @@ class VTKP(VtkPp.VTKP):
         print("\tInitiation, takes %.2f s" % (end-start))
         start = end
         # add cells by composition
-        # todo_3d_chunk
+        # cells are determined by their slab composition
+        # a slab tip depth and a slab width variable are
+        # processed with the right composition
         min_r = self.Ro
         slab_w_max = 0.0
         for i in range(self.i_poly_data.GetNumberOfPoints()):
@@ -169,7 +171,12 @@ class VTKP(VtkPp.VTKP):
         # prepare the slab internal points
         # The length, width and depth are used to determine 
         # the location of points within the slab consistently
-        # between the cartesian and the chunk geometry
+        # between the cartesian and the chunk geometry. This
+        # is recorded with 3 indexes id_en_d and id_en_w and
+        # id_en, where the first two corresponds to the location
+        # of point along the "d" and "w" direction, repectively,
+        # and the 3rd one is a global index derived from the first
+        # two.
         total_en_interval_d = int((self.slab_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval_d + 1)
         total_en_interval_w = int((slab_w_max) // self.slab_envelop_interval_w + 1)
         id_en_pin_depth = int((pin_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval_d)
@@ -179,7 +186,6 @@ class VTKP(VtkPp.VTKP):
             y = points[id][1]
             z = points[id][2]
             r, w, _ = get_slab_dimensions_3(x, y, z, self.Ro, self.is_chunk)
-            # todo_3d_chunk
             id_en_d =  int(np.floor(
                                   (self.Ro - r - self.slab_shallow_cutoff)/
                                   self.slab_envelop_interval_d))# id in the envelop list
@@ -222,7 +228,6 @@ class VTKP(VtkPp.VTKP):
                 y = points[id][1]
                 z = points[id][2]
                 _, _, l = get_slab_dimensions_3(x, y, z, self.Ro, self.is_chunk)
-                # todo_3d_chunk
                 if is_first:
                     id_min = id
                     id_max = id
@@ -762,13 +767,14 @@ def SlabMorphologyCase(case_dir, **kwargs):
                                                 slab_envelop_interval_d=slab_envelop_interval_d, slab_shallow_cutoff=slab_shallow_cutoff, crust_only=crust_only,\
                                                 include_force_balance=include_force_balance)
     ParallelWrapper.configure(case_dir)  # assign case directory
-    # Remove previous file
+    '''Remove previous file
 
-#    if if_rewrite:
-#        if os.path.isfile(slab_morph_file):
-#            print("%s: Delete old slab_morph.txt file." % Utilities.func_name())
-#            os.remove(slab_morph_file)  # delete slab morph file
-#        ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
+    if if_rewrite:
+        if os.path.isfile(slab_morph_file):
+            print("%s: Delete old slab_morph.txt file." % Utilities.func_name())
+            os.remove(slab_morph_file)  # delete slab morph file
+        ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
+    '''
 
     # loop for all the steps to plot
     # Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_step)\
@@ -863,14 +869,14 @@ class SLABPLOT(LINEARPLOT):
         fig, ax= plt.subplots(tight_layout=True, figsize=(8, 5)) 
         # use the steps between the 0th and 1th snapshot as the interval for calculating the velocities
         step_for_derivatives = available_pvtu_snapshots[1] - available_pvtu_snapshots[0]
-        y_queries_for_trench_velocities = np.arange(0.0, trench_edge_y - 100e3, 200e3)
+        w_queries_for_trench_velocities = np.arange(0.0, trench_edge_y - 100e3, 200e3)
         silence = False
-        for i in range(y_queries_for_trench_velocities.size):
+        for i in range(w_queries_for_trench_velocities.size):
             if i > 0:
                 silence = True
-            y_query = y_queries_for_trench_velocities[i]
+            w_query = w_queries_for_trench_velocities[i]
             ax = self.PlotTrenchVelocity(case_dir, time_interval_for_slab_morphology,\
-                                        axis=ax, step_for_derivatives=step_for_derivatives, y_query=y_query, silence=silence)
+                                        axis=ax, step_for_derivatives=step_for_derivatives, w_query=w_query, silence=silence)
         ax.legend()
         # save image
         fileout = os.path.join(morph_img_dir, "trench_velocities.png")
@@ -1012,7 +1018,7 @@ class SLABPLOT(LINEARPLOT):
         _label = kwargs.get("label", None)
         silence = kwargs.get("silence", False)
         step_for_derivatives = kwargs.get('step_for_derivatives', 5)
-        y_query = kwargs.get("y_query", 0.0)
+        w_query = kwargs.get("w_query", 0.0)
 
         # initiation
         Visit_Options = VISIT_OPTIONS(case_dir)
@@ -1025,6 +1031,10 @@ class SLABPLOT(LINEARPLOT):
         ax = kwargs.get('axis', None)
         if ax == None:
             raise ValueError("Not implemented")
+    
+        is_chunk = (Visit_Options.options['GEOMETRY'] == "chunk")
+        if is_chunk:
+            raise NotImplementedError
        
         # derive the trench velocities
         V_trs = []
@@ -1049,17 +1059,17 @@ class SLABPLOT(LINEARPLOT):
             data0 = np.loadtxt(filein0)
             xs0 = data0[:, 0]
             ys0 = data0[:, 1]
-            x_tr0 = np.interp(y_query, ys0, xs0)
+            x_tr0 = np.interp(w_query, ys0, xs0)
             data1 = np.loadtxt(filein1)
             xs1 = data1[:, 0]
             ys1 = data1[:, 1]
-            x_tr1 = np.interp(y_query, ys1, xs1)
+            x_tr1 = np.interp(w_query, ys1, xs1)
             V_tr0 = (x_tr1 - x_tr0) / dt
             V_trs.append(V_tr0)
             ts.append((_time1 + _time) / 2.0)
         V_trs = np.array(V_trs)
         ts = np.array(ts)
-        ax.plot(ts / 1e6, V_trs * 100.0, label="y = %.2f km" % (y_query / 1e3))
+        ax.plot(ts / 1e6, V_trs * 100.0, label="y = %.2f km" % (w_query / 1e3))
         ax.set_xlabel('Time (Myr)')
         ax.set_ylabel('Velocity (cm/yr)')
         ax.grid()
@@ -1090,204 +1100,216 @@ class PLOT_COMBINE_SLAB_MORPH(PLOT_COMBINE):
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
 
+
 def PlotTrenchDifferences(case_dir, time_interval_for_slab_morphology, **kwargs):
     '''
-    plot trench position for a single stepb
+    Plots the differences in trench position and the slab tip depth over time.
+
+    Inputs:
+        case_dir (str): Directory containing the case data.
+        time_interval_for_slab_morphology (float): Time interval for preparing snapshots of slab morphology.
+        kwargs (dict): Additional plotting options:
+            - color (str or None): Color of the plot lines.
+            - label (str or None): Label for the plot lines.
+            - silence (bool, default=False): Suppresses warnings if set to True.
+            - w_query (float, default=0.0): Width value used for querying trench position.
+            - axis_twinx (matplotlib axis object or None): Axis object for plotting depth on a secondary y-axis.
+            - axis (matplotlib axis object, required): Axis object for plotting trench differences.
+    
+    Returns:
+        matplotlib axis object: The axis used for plotting the trench differences.
+
+    Description:
+        - Initializes VTK options and retrieves snapshots based on the specified time interval.
+        - Loads trench position and slab tip depth data for each snapshot and interpolates the trench position.
+        - Plots the difference in trench position from the initial value and, if applicable, plots the slab depth.
     '''
     _color = kwargs.get("color", None)
     _label = kwargs.get("label", None)
     silence = kwargs.get("silence", False)
-    y_query = kwargs.get("y_query", 0.0)
+    w_query = kwargs.get("w_query", 0.0)
     ax_twinx = kwargs.get("axis_twinx", None)
 
-    # initiation
+    # Initialize VTK options and interpret case settings
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
     trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
-    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+
+    # Prepare snapshots for slab morphology with the given time interval
     available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
     n_snapshots = len(available_pvtu_snapshots)
-    # initiate plot
+
+    is_chunk = (Visit_Options.options['GEOMETRY'] == "chunk")
+    Ro = Visit_Options.options['OUTER_RADIUS']
+
+    # Initialize the plot on the provided axis
     ax = kwargs.get('axis', None)
-    if ax == None:
-        raise ValueError("Not implemented")
-   
-    # derive the trench locations and interpolate to the query points
-    # derive the depth of the slab tip
-    dx_trs = []
+    if ax is None:
+        raise ValueError("Axis object must be provided for plotting.")
+
+    # Lists to store results
+    dl_trs = []
     depths = []
     ts = []
-    for n in range(n_snapshots-1):
+
+    # Iterate through each snapshot to calculate trench differences
+    for n in range(n_snapshots - 1):
         vtu_snapshot = available_pvtu_snapshots[n]
+
+        # Construct file paths for trench position and slab tip depth
         filein0 = os.path.join(case_dir, "vtk_outputs", "trench_%05d.txt" % vtu_snapshot)
         filein1 = os.path.join(case_dir, "vtk_outputs", "center_profile_%05d.txt" % vtu_snapshot)
+
+        # Check if files exist, issue warnings if not found
         if not os.path.isfile(filein0):
             if not silence:
-                warnings.warn('PlotTrenchVelocity: File %s is not found' % filein0, UserWarning)
+                warnings.warn(f'PlotTrenchVelocity: File {filein0} is not found', UserWarning)
             continue
         if not os.path.isfile(filein1):
             if not silence:
-                warnings.warn('PlotTrenchVelocity: File %s is not found' % filein1, UserWarning)
+                warnings.warn(f'PlotTrenchVelocity: File {filein1} is not found', UserWarning)
             continue
+
+        # Get time and step information for the current snapshot
         _time, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot)
-        # get the trench locations
+
+        # Load trench position data from file
         data0 = np.loadtxt(filein0)
-        xs0 = data0[:, 0]
-        ys0 = data0[:, 1]
-        x_tr0 = np.interp(y_query, ys0, xs0)
-        dx_trs.append(x_tr0)
-        # get the slab tip depth
+        xs0, ys0, zs0 = data0[:, 0], data0[:, 1], data0[:, 2]
+        rs0, ws0, ls0 = get_slab_dimensions_3(xs0, ys0, zs0, Ro, is_chunk)
+        l_tr0 = np.interp(w_query, ws0, ls0)
+        dl_trs.append(l_tr0)
+
+        # Load slab tip depth data from file
         data1 = np.loadtxt(filein1)
-        zs1 = data1[:, 2]
-        depth = float(Visit_Options.options["BOX_THICKNESS"]) - np.min(zs1)
+        xs1, ys1, zs1 = data1[:, 0], data1[:, 1], data1[:, 2]
+        rs1, ws1, ls1 = get_slab_dimensions_3(xs1, ys1, zs1, Ro, is_chunk)
+        depth = Ro - np.min(zs1)
         depths.append(depth)
         ts.append(_time)
-    dx_trs = np.array(dx_trs)
+
+    # Convert lists to numpy arrays
+    dl_trs = np.array(dl_trs)
     depths = np.array(depths)
     ts = np.array(ts)
-    # plot the differences by subtracting the initial value
-    ax.plot(ts / 1e6, (dx_trs - dx_trs[0]) / 1e3, label="y = %.2f km" % (y_query / 1e3), color=_color) # trench position
-    if y_query < 1e-6:
-        # only plot the depth at the center
-        ax_twinx.plot(ts / 1e6, depths / 1e3, "--", color=_color) # depth
+
+    # Plot the differences in trench position, subtracting the initial value
+    ax.plot(ts / 1e6, (dl_trs - dl_trs[0]) / 1e3, label="y = %.2f km" % (w_query / 1e3), color=_color)
+
+    # If w_query is near zero, plot the depth at the center on the secondary y-axis
+    if w_query < 1e-6 and ax_twinx is not None:
+        ax_twinx.plot(ts / 1e6, depths / 1e3, "--", color=_color)  # Plot depth in km
+
     return ax
-
-def GetSlabDipAngle(case_dir, vtu_snapshot, Visit_Options, depth_lookup, depth_interval, **kwargs):
-    '''
-    Get slab dip angle at a given snapshot
-    currently only works for slab center
-    '''
-    # options
-    indent = kwargs.get("indent", 0)
-    silence = kwargs.get("silence", False)
-    crust_only = kwargs.get("crust_only", 0)
-    
-    # mark the composition used for the envelop in the filename
-    if crust_only == 1:
-        filename1 = "center_profile_%05d.txt" % vtu_snapshot
-    elif crust_only == 2:
-        filename1 = "center_profile_l_%05d.txt" % vtu_snapshot
-    else:
-        filename1 = "center_profile_lu_%05d.txt" % vtu_snapshot
-    filein1 = os.path.join(case_dir, "vtk_outputs", filename1)
-    if not os.path.isfile(filein1):
-        if not silence:
-            warnings.warn('%s%s: File %s is not found' % (" "*indent, Utilities.func_name(), filein1), UserWarning)
-        return np.nan
-    else:
-        if not silence:
-            print("%s%s: Found flle %s" % (" "*indent, Utilities.func_name(), filename1))
-   
-    # get the slab tip depth
-    data1 = np.loadtxt(filein1)
-    xs = data1[:, 0]
-    zs = data1[:, 2]
-    sfunc = interp1d(zs/1e6, xs/1e6, assume_sorted=True, fill_value="extrapolate")
-  
-    # interpret the x coordinate around the depth_lookup
-    # and compute the dip angle
-    # lhy11009: for some odd reason, the buildin interp function doesn't work
-    Ro = Visit_Options.options['OUTER_RADIUS']
-    geometry = Visit_Options.options['GEOMETRY']
-    depth0 = depth_lookup - depth_interval
-    z0 = Ro - depth0
-    # x0 = np.interp(z0, zs, xs)
-    # x0 = sfunc(z0/1e6) * 1e6
-    x0 = 0.0
-    for i in range(zs.size-1):
-        if z0 < zs[i] and z0 > zs[i+1]:
-            x0 = xs[i+1] * (z0 - zs[i]) / (zs[i+1] - zs[i]) + xs[i] * (z0 - zs[i+1]) / (zs[i] - zs[i+1])
-    depth1 = depth_lookup
-    z1 = Ro - depth1
-    # x1 = np.interp(z1, zs, xs)
-    # x1 = sfunc(z1/1e6) * 1e6
-    x1 = 0.0
-    for i in range(zs.size-1):
-        if z1 < zs[i] and z1 > zs[i+1]:
-            x1 = xs[i+1] * (z1 - zs[i]) / (zs[i+1] - zs[i]) + xs[i] * (z1 - zs[i+1]) / (zs[i] - zs[i+1])
-    if not silence:
-        print("%s(x0, z0): (%.4e, %.4e)" % (" "*indent, x0, z0))
-        print("%s(x1, z1): (%.4e, %.4e)" % (" "*indent, x1, z1))
-    dip = get_dip(x0, z0, x1, z1, geometry)
-
-    # return 
-    return dip
 
 
 # todo_3d_chunk
 def GetSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
     '''
-    plot trench position for a single stepb
+    Plots trench position for a single time step and calculates the slab dip angle.
+
+    Inputs:
+        case_dir (str): Directory containing the case data.
+        time_interval_for_slab_morphology (float): Time interval used to prepare snapshots for slab morphology analysis.
+        kwargs (dict): Additional options:
+            - silence (bool, default=False): Suppresses warnings if set to True.
+            - w_query (float, default=0.0): Width value used for querying trench position.
+            - pin_depth (float, default=100e3): Depth value for pinning.
+            - crust_only (int, default=0): Flag to specify crustal composition to consider (0: both, 1: upper, 2: lower).
+
+    Returns:
+        tuple: Three numpy arrays containing time steps, slab depths, and dip angles.
+    
+    Description:
+        - Initializes VTK options and extracts trench and slab tip positions over multiple time snapshots.
+        - Interpolates data to derive the slab dip angle at each time snapshot.
+        - Handles missing data files with warnings (unless silenced) and skips to the next snapshot.
     '''
     silence = kwargs.get("silence", False)
-    y_query = kwargs.get("y_query", 0.0)
+    w_query = kwargs.get("w_query", 0.0)
     pin_depth = kwargs.get("pin_depth", 100e3)
     crust_only = kwargs.get("crust_only", 0)
-    # is_chunk = geometry == "chunk"
 
-    # initiation
+    # Initialize VTK options and interpret case settings
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
     trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
-    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+
+    # Prepare snapshots for slab morphology with a given time interval
     available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
     n_snapshots = len(available_pvtu_snapshots)
-   
-    # derive the trench locations and interpolate to the query points
-    # derive the depth of the slab tip
+
+    is_chunk = (Visit_Options.options['GEOMETRY'] == "chunk")
+    Ro = Visit_Options.options['OUTER_RADIUS']
+
+    # Lists to store results
     dips = []
     depths = []
     ts = []
-    for n in range(n_snapshots-1):
+
+    # Iterate through each snapshot to calculate dip angles
+    for n in range(n_snapshots - 1):
         vtu_snapshot = available_pvtu_snapshots[n]
-        # mark the composition used for the envelop in the filename
+
+        # Construct file names based on crust_only flag
         if crust_only == 1:
             filename0 = "trench_b_%05d.txt" % vtu_snapshot
             filename1 = "center_profile_%05d.txt" % vtu_snapshot
-            filename2 = "trench_b_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+            filename2 = "trench_b_d%.2fkm_%05d.txt" % (pin_depth / 1e3, vtu_snapshot)
         elif crust_only == 2:
             filename0 = "trench_l_b_%05d.txt" % vtu_snapshot
             filename1 = "center_profile_l_%05d.txt" % vtu_snapshot
-            filename2 = "trench_l_b_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+            filename2 = "trench_l_b_d%.2fkm_%05d.txt" % (pin_depth / 1e3, vtu_snapshot)
         else:
             filename0 = "trench_lu_b_%05d.txt" % vtu_snapshot
             filename1 = "center_profile_lu_%05d.txt" % vtu_snapshot
-            filename2 = "trench_lu_b_d%.2fkm_%05d.txt" % (pin_depth/1e3, vtu_snapshot)
+            filename2 = "trench_lu_b_d%.2fkm_%05d.txt" % (pin_depth / 1e3, vtu_snapshot)
+
+        # Construct file paths
         filein0 = os.path.join(case_dir, "vtk_outputs", filename0)
         filein1 = os.path.join(case_dir, "vtk_outputs", filename1)
         filein2 = os.path.join(case_dir, "vtk_outputs", filename2)
+
+        # Check if files exist, issue warnings if not found
         if not os.path.isfile(filein0):
             if not silence:
-                warnings.warn('PlotTrenchVelocity: File %s is not found' % filein0, UserWarning)
+                warnings.warn(f'PlotTrenchVelocity: File {filein0} is not found', UserWarning)
             continue
         if not os.path.isfile(filein1):
             if not silence:
-                warnings.warn('PlotTrenchVelocity: File %s is not found' % filein1, UserWarning)
+                warnings.warn(f'PlotTrenchVelocity: File {filein1} is not found', UserWarning)
             continue
+
+        # Get time and step information for the current snapshot
         _time, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot)
-        # get the trench locations
+
+        # Load trench position data from file
         data0 = np.loadtxt(filein0)
-        xs0 = data0[:, 0]
-        ys0 = data0[:, 1]
-        zs0 = data0[:, 2]
-        x_tr0 = np.interp(y_query, ys0, xs0)
-        z_tr0 = np.interp(y_query, ys0, zs0)
-        # get the slab tip depth
+        xs0, ys0, zs0 = data0[:, 0], data0[:, 1], data0[:, 2]
+        rs0, ws0, ls0 = get_slab_dimensions_3(xs0, ys0, zs0, Ro, is_chunk)
+        l_tr0 = np.interp(w_query, ws0, ls0)
+        r_tr0 = np.interp(w_query, ws0, rs0)
+
+        # Load slab tip depth data from file
         data1 = np.loadtxt(filein1)
-        zs1 = data1[:, 2]
-        depth = float(Visit_Options.options["BOX_THICKNESS"]) - np.min(zs1)
+        rs1 = data1[:, 2]
+        depth = float(Visit_Options.options["OUTER_RADIUS"]) - np.min(rs1)
         depths.append(depth)
         ts.append(_time)
-        # get the curve at a certain depth
+
+        # Load data for the curve at a specific depth
         data2 = np.loadtxt(filein2)
-        xs2 = data2[:, 0]
-        ys2 = data2[:, 1]
-        zs2 = data2[:, 2]
-        x_tr2 = np.interp(y_query, ys2, xs2)
-        z_tr2 = np.interp(y_query, ys2, zs2)
-        dip = - math.atan((z_tr0 - z_tr2)/(x_tr0 - x_tr2))
-        print("vtu_snapshot = %d, x_tr0 = %.4e, z_tr0 = %.4e, x_tr2 = %.4e, z_tr2 = %.4e, dip = %.4e" % (vtu_snapshot, x_tr0, z_tr0, x_tr2, z_tr2, dip))  # debug
+        xs2, ys2, zs2 = data2[:, 0], data2[:, 1], data2[:, 2]
+        rs2, ws2, ls2 = get_slab_dimensions_3(xs2, ys2, zs2, Ro, is_chunk)
+        l_tr2 = np.interp(w_query, ws2, ls2)
+        r_tr2 = np.interp(w_query, ws2, rs2)
+
+        # Calculate the dip angle and append to the list
+        dip = -math.atan((r_tr0 - r_tr2) / (l_tr0 - l_tr2))
+        print(f"vtu_snapshot = {vtu_snapshot}, l_tr0 = {l_tr0:.4e}, r_tr0 = {r_tr0:.4e}, l_tr2 = {l_tr2:.4e}, r_tr2 = {r_tr2:.4e}, dip = {dip:.4e}")  # Debug output
         dips.append(dip)
+
+    # Convert lists to numpy arrays
     dips = np.array(dips)
     depths = np.array(depths)
     ts = np.array(ts)
@@ -1297,27 +1319,53 @@ def GetSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
 
 def PlotSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs):
     '''
-    plot trench position for a single stepb
+    Plots the slab dip angle and trench position for a single time step.
+
+    Inputs:
+        case_dir (str): Directory containing the case data.
+        time_interval_for_slab_morphology (float): Time interval for preparing snapshots of slab morphology.
+        kwargs (dict): Additional plotting options:
+            - color (str or None): Color of the plot lines.
+            - label (str or None): Label for the plot lines.
+            - w_query (float, default=0.0): Query width value in y-dimension for plotting.
+            - axis_twinx (matplotlib axis object or None): Axis object for plotting depth on a secondary y-axis.
+            - axis (matplotlib axis object, required): Axis object for plotting the dip angle.
+    
+    Returns:
+        matplotlib axis object: The axis used for plotting the dip angle.
+
+    Description:
+        - Retrieves time, depths, and dip angles using `GetSlabDipAngle`.
+        - Uses a univariate spline to smooth the dip angle data for visualization.
+        - Plots the original and splined dip angles over time.
+        - If `w_query` is near zero, also plots the depth at the center on the secondary y-axis.
     '''
     _color = kwargs.get("color", None)
     _label = kwargs.get("label", None)
-    y_query = kwargs.get("y_query", 0.0)
+    w_query = kwargs.get("w_query", 0.0)
     ax_twinx = kwargs.get("axis_twinx", None)
-    # initiate plot
+
+    # Initiate the plot on the provided axis
     ax = kwargs.get('axis', None)
-    if ax == None:
-        raise ValueError("Not implemented")
+    if ax is None:
+        raise ValueError("Axis object must be provided for plotting.")
+
+    # Retrieve time, depths, and dip angles
     ts, depths, dips = GetSlabDipAngle(case_dir, time_interval_for_slab_morphology, **kwargs)
-    # apply a spline
-    spline = UnivariateSpline(ts/1e6, dips, s=0) # s=0 means interpolation
+
+    # Apply a univariate spline to smooth the dip angles
+    spline = UnivariateSpline(ts / 1e6, dips, s=0)  # s=0 means interpolation without smoothing
     ts_new = np.linspace(ts.min(), ts.max(), 1000)
-    dips_splined = spline(ts_new/1e6)
-    # plot the differences by subtracting the initial value
-    ax.plot(ts / 1e6, dips * 180.0 / np.pi, label="y = %.2f km" % (y_query / 1e3), color=_color) # trench position
-    ax.plot(ts_new / 1e6, dips_splined * 180.0 / np.pi, "--", label="y = %.2f km (splined)" % (y_query / 1e3), color=_color) # trench position
-    if y_query < 1e-6:
-        # only plot the depth at the center
-        ax_twinx.plot(ts / 1e6, depths / 1e3, "--", color=_color) # depth
+    dips_splined = spline(ts_new / 1e6)
+
+    # Plot the dip angles, converting from radians to degrees
+    ax.plot(ts / 1e6, dips * 180.0 / np.pi, label="y = %.2f km" % (w_query / 1e3), color=_color)
+    ax.plot(ts_new / 1e6, dips_splined * 180.0 / np.pi, "--", label="y = %.2f km (splined)" % (w_query / 1e3), color=_color)
+
+    # If w_query is near zero, plot the depth at the center on the secondary y-axis
+    if w_query < 1e-6 and ax_twinx is not None:
+        ax_twinx.plot(ts / 1e6, depths / 1e3, "--", color=_color)  # Plot depth in km
+
     return ax
 
 
@@ -1328,7 +1376,7 @@ def PlotSlabDepth(case_dir, time_interval_for_slab_morphology, **kwargs):
     _color = kwargs.get("color", None)
     _label = kwargs.get("label", None)
     silence = kwargs.get("silence", False)
-    y_query = kwargs.get("y_query", 0.0)
+    w_query = kwargs.get("w_query", 0.0)
 
     # initiation
     Visit_Options = VISIT_OPTIONS(case_dir)
@@ -1355,93 +1403,125 @@ def PlotSlabDepth(case_dir, time_interval_for_slab_morphology, **kwargs):
         # get the slab tip depth
         data1 = np.loadtxt(filein1)
         zs1 = data1[:, 2]
-        depth = float(Visit_Options.options["BOX_THICKNESS"]) - np.min(zs1)
+        depth = float(Visit_Options.options["OUTER_RADIUS"]) - np.min(zs1)
         depths.append(depth)
         ts.append(_time)
     depths = np.array(depths)
     ts = np.array(ts)
-    if y_query < 1e-6:
+    if w_query < 1e-6:
         # only plot the depth at the center
         ax.plot(ts / 1e6, depths / 1e3, "--", color=_color) # depth
     return ax
 
 
+# todo_3d_chunk
 def CenterProfileAnalyze(case_dir, time_interval_for_slab_morphology, **kwargs):
     '''
-    plot trench position for a single stepb
+    Analyzes the center profile of the slab and determines the time at which the slab tip reaches specific depths.
+
+    Inputs:
+        case_dir (str): Directory containing the case data.
+        time_interval_for_slab_morphology (float): Time interval for preparing snapshots of slab morphology.
+        kwargs (dict): Additional options:
+            - silence (int, default=0): Suppresses warnings if set to a non-zero value.
+
+    Returns:
+        dict: A dictionary containing:
+            - 't660' (float): Time at which the slab tip reaches 660 km depth.
+            - 'step660' (int): Step corresponding to the time when the slab tip reaches 660 km.
+            - 't800' (float): Time at which the slab tip reaches 800 km depth.
+            - 'step800' (int): Step corresponding to the time when the slab tip reaches 800 km.
+            - 't1000' (float): Time at which the slab tip reaches 1000 km depth.
+            - 'step1000' (int): Step corresponding to the time when the slab tip reaches 1000 km.
+
+    Description:
+        - Initializes VTK options for the case and retrieves snapshots for slab morphology analysis.
+        - Iterates through each snapshot to calculate the depth of the slab tip.
+        - Uses interpolation to estimate the times at which the slab tip reaches 660 km, 800 km, and 1000 km depths.
+        - Returns the results in a dictionary format.
     '''
     silence = kwargs.get("silence", 0)
-    # get the index in an array by a given value
+
+    # Helper function to get the index of the closest value in an array
     IndexByValue = lambda array_1d, val: np.argmin(abs(array_1d - val))
-    # initiation
+
+    # Initialize VTK options and interpret case settings
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret(graphical_type="slice_center")
     trench_initial_position = Visit_Options.options['TRENCH_INITIAL']
-    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+
+    # Prepare snapshots for slab morphology with the given time interval
     _, available_pvtu_snapshots = Visit_Options.get_snaps_for_slab_morphology_outputs(time_interval=time_interval_for_slab_morphology)
     n_snapshots = len(available_pvtu_snapshots)
     if n_snapshots <= 1:
-        raise FileNotFoundError("available snapshots are not found / only 1 snapshot for case %s" % case_dir)
-    # derive the depth of the slab tip
+        raise FileNotFoundError(f"Available snapshots are not found or only one snapshot for case {case_dir}")
+
+    is_chunk = (Visit_Options.options['GEOMETRY'] == "chunk")
+    Ro = Visit_Options.options['OUTER_RADIUS']
+
+    # Lists to store results
     depths = []
     ts = []
     steps = []
-    # n_snapshots - 1: some time the last step is not complete?
-    for n in range(n_snapshots-1):
+
+    # Iterate through each snapshot to calculate the slab tip depth
+    for n in range(n_snapshots - 1):
         vtu_snapshot = available_pvtu_snapshots[n]
-        filein1 = os.path.join(case_dir, "vtk_outputs", "center_profile_%05d.txt" % vtu_snapshot)
+        filein1 = os.path.join(case_dir, "vtk_outputs", f"center_profile_{vtu_snapshot:05d}.txt")
+
         if not os.path.isfile(filein1):
             if not silence:
-                warnings.warn('PlotTrenchVelocity: File %s is not found' % filein1, UserWarning)
+                warnings.warn(f'PlotTrenchVelocity: File {filein1} is not found', UserWarning)
             continue
+
+        # Get time and step information for the current snapshot
         _time, step = Visit_Options.get_time_and_step_by_snapshot(vtu_snapshot)
-        # get the slab tip depth
+
+        # Load the center profile data from file
         data1 = np.loadtxt(filein1)
-        zs1 = data1[:, 2]
-        depth = float(Visit_Options.options["BOX_THICKNESS"]) - np.min(zs1)
+        xs1, ys1, zs1 = data1[:, 0], data1[:, 1], data1[:, 2]
+        rs1, _, _ = get_slab_dimensions_3(xs1, ys1, zs1, Ro, is_chunk)
+        depth = Ro - np.min(rs1)
         depths.append(depth)
         ts.append(_time)
         steps.append(step)
+
+    # Convert lists to numpy arrays
     depths = np.array(depths)
     ts = np.array(ts)
 
-    # time of slab tip reaching 660 km and the index in the list
+    # Interpolate to find the times at which the slab tip reaches specified depths
     sfunc = interp1d(depths, ts, assume_sorted=True)
     try:
         t660 = sfunc(660e3)
         i660 = IndexByValue(ts, t660)
         step660 = steps[i660]
     except ValueError:
-        t660 = np.nan
-        i660 = np.nan
-        step660 = np.nan
+        t660, i660, step660 = np.nan, np.nan, np.nan
+
     try:
         t800 = sfunc(800e3)
         i800 = IndexByValue(ts, t800)
         step800 = steps[i800]
     except ValueError:
-        t800 = np.nan
-        i800 = np.nan
-        step800 = np.nan
+        t800, i800, step800 = np.nan, np.nan, np.nan
+
     try:
         t1000 = sfunc(1000e3)
         i1000 = IndexByValue(ts, t1000)
         step1000 = steps[i1000]
     except ValueError:
-        t1000 = np.nan
-        i1000 = np.nan
-        step1000 = np.nan
+        t1000, i1000, step1000 = np.nan, np.nan, np.nan
 
-    # construct the results
-    results = {}
-    results['t660'] = t660
-    results['step660'] = step660
-
-    results['t800'] = t800
-    results['step800'] = step800
-    
-    results['t1000'] = t1000
-    results['step1000'] = step1000
+    # Construct the results dictionary
+    results = {
+        't660': t660,
+        'step660': step660,
+        't800': t800,
+        'step800': step800,
+        't1000': t1000,
+        'step1000': step1000
+    }
 
     return results
 
@@ -1832,10 +1912,10 @@ def main():
     parser.add_argument('-ti', '--time_interval', type=float,
                         default=1.0e6,
                         help='Time interval, affecting the time steps to visualize')
-    parser.add_argument('-seix', '--slab_envelop_interval_w', type=float,
+    parser.add_argument('-seiw', '--slab_envelop_interval_w', type=float,
                         default=20e6,
                         help='Interval along y axis to sort out the trench locations')
-    parser.add_argument('-seiz', '--slab_envelop_interval_d', type=float,
+    parser.add_argument('-seid', '--slab_envelop_interval_d', type=float,
                         default=20e6,
                         help='Interval along z axis to sort out the trench locations')
     parser.add_argument('-ssc', '--slab_shallow_cutoff', type=float,

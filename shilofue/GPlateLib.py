@@ -503,6 +503,46 @@ def plot_one_subduction_data(ax, one_subduction_data, **kwargs):
     return im
 
 
+def MaskBySubductionTrenchIds(subduction_data, subducting_pid, trench_pid, i_p):
+    """
+    Generates a combined mask for subduction data based on user selection or specific 
+    subducting and trench IDs.
+    
+    Parameters:
+        subduction_data (pd.DataFrame): The DataFrame containing subduction data to be filtered.
+        subducting_pid (int or None): The subducting plate ID to match. If None, all IDs are included.
+        trench_pid (int or None): The trench plate ID to match. If None, all IDs are included.
+        i_p (list or None): List of indices selected by the user. If not None, these indices are used.
+    
+    Returns:
+        np.ndarray: A boolean mask combining the specified conditions for filtering the data.
+    
+    Implementation:
+        - If `i_p` is provided, create `mask1` to select only those indices.
+        - If `subducting_pid` is provided, create `mask1` to select rows matching the `subducting_pid`.
+        - If neither is provided, `mask1` includes all rows.
+        - If `trench_pid` is provided, create `mask2` to select rows matching the `trench_pid`.
+        - If `trench_pid` is not provided, `mask2` includes all rows.
+        - The final mask is the logical AND of `mask1` and `mask2`.
+    """
+    if i_p is not None:
+        mask1 = np.zeros(len(subduction_data), dtype=bool)
+        mask1[i_p] = 1
+    elif subducting_pid is not None:
+        # Generate mask1 based on the provided subducting plate ID
+        mask1 = subduction_data.subducting_pid == subducting_pid
+    else:
+        mask1 = np.ones(len(subduction_data), dtype=bool)
+
+    if trench_pid is not None:
+        # Generate mask2 based on the provided trench plate ID
+        mask2 = subduction_data.trench_pid == trench_pid
+    else:
+        mask2 = np.ones(len(subduction_data), dtype=bool)
+
+    return (mask1 & mask2)
+
+
 def main():
     '''
     main function of this module

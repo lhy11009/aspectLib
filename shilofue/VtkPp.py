@@ -134,7 +134,6 @@ class VTKP():
         self.dim = kwargs.get('dim', 2)
         self.grav_data = None  # A 2-column array to save gravity data (depth in meters and grav_acc)
         self.geometry = kwargs.get('geometry', 'chunk')
-        # todo_3d_chunk: Extend handling for 3D chunk geometries
         self.is_chunk = (self.geometry == 'chunk')
         self.Ro = kwargs.get('Ro', 6371e3)
         self.Xmax = kwargs.get('Xmax', 61.0 * np.pi / 180.0)
@@ -1079,18 +1078,18 @@ def InterpolateGrid(poly_data, points, **kwargs):
     return o_poly_data
 
 
-def ProjectVelocity(x_query, y_query, vs, geometry):
+def ProjectVelocity(x_query, w_query, vs, geometry):
     '''
     project the velocity from vx, vy to vr, vh in different geometries
     Inputs:
         x_query - x coordinate of the point
-        y_query - y coordinate of the point
+        w_query - y coordinate of the point
         vs - (vx, vy)
         geometry - type of geometry
     ''' 
     if geometry == "chunk":
-        cos_sp = x_query / (x_query**2.0 + y_query**2.0)**0.5
-        sin_sp = y_query / (x_query**2.0 + y_query**2.0)**0.5
+        cos_sp = x_query / (x_query**2.0 + w_query**2.0)**0.5
+        sin_sp = w_query / (x_query**2.0 + w_query**2.0)**0.5
         if vs.ndim == 1:
             v_h = vs[0] * (-sin_sp) + vs[1] * cos_sp
             v_r = vs[0] * cos_sp + vs[1] * sin_sp

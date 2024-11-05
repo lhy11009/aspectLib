@@ -172,8 +172,8 @@ class VTKP(VtkPp.VTKP):
         self.visc_distant_200 = None
         self.slab_shallow_cutoff = kwargs.get("slab_shallow_cutoff", 50e3)  # depth limit to slab
         self.slab_envelop_interval = kwargs.get("slab_envelop_interval", 5e3)
-        self.velocity_query_depth = 5e3  # depth to look up plate velocities
-        self.velocity_query_disl_to_trench = 500e3  # distance to trench to look up plate velocities
+        self.velocitw_query_depth = 5e3  # depth to look up plate velocities
+        self.velocitw_query_disl_to_trench = 500e3  # distance to trench to look up plate velocities
         default_gravity_file = os.path.join(Utilities.var_subs('${ASPECT_SOURCE_DIR}'),\
         "data", "gravity-model", "prem.txt") 
         gravity_file = kwargs.get('gravity_file', default_gravity_file)
@@ -544,23 +544,23 @@ class VTKP(VtkPp.VTKP):
         project_velocity = kwargs.get('project_velocity', False)
         assert(self.trench is not None)
         if self.geometry == "chunk":
-            r_sp_query = self.Ro - self.velocity_query_depth
-            # theta_sp_query = self.trench - self.velocity_query_disl_to_trench / self.Ro
+            r_sp_query = self.Ro - self.velocitw_query_depth
+            # theta_sp_query = self.trench - self.velocitw_query_disl_to_trench / self.Ro
             theta_sp_query = self.trench / 2.0
-            r_ov_query = self.Ro - self.velocity_query_depth
-            # theta_ov_query = self.trench + self.velocity_query_disl_to_trench / self.Ro
+            r_ov_query = self.Ro - self.velocitw_query_depth
+            # theta_ov_query = self.trench + self.velocitw_query_disl_to_trench / self.Ro
             theta_ov_query = (self.trench + self.Xmax) / 2.0
             x_sp_query = r_sp_query * np.cos(theta_sp_query)
             y_sp_query = r_sp_query * np.sin(theta_sp_query)
             x_ov_query = r_ov_query * np.cos(theta_ov_query)
             y_ov_query = r_ov_query * np.sin(theta_ov_query)
         elif self.geometry == "box":
-            # x_sp_query = self.trench - self.velocity_query_disl_to_trench
+            # x_sp_query = self.trench - self.velocitw_query_disl_to_trench
             x_sp_query = self.trench / 2.0
-            y_sp_query = self.Ro - self.velocity_query_depth
-            # x_ov_query = self.trench + self.velocity_query_disl_to_trench
+            y_sp_query = self.Ro - self.velocitw_query_depth
+            # x_ov_query = self.trench + self.velocitw_query_disl_to_trench
             x_ov_query = (self.trench + self.Xmax) / 2.0
-            y_ov_query = self.Ro - self.velocity_query_depth
+            y_ov_query = self.Ro - self.velocitw_query_depth
         query_grid = np.zeros((2,2))
         query_grid[0, 0] = x_sp_query
         query_grid[0, 1] = y_sp_query
