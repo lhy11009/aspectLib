@@ -542,7 +542,7 @@ class LOOKUP_TABLE():
         # note that self.indexes[self.number_out1] gives the index of the second member in the second dimension
         tolerance = 1e-5
         temp1 = self.data[self.indexes[1], columns[0]] - self.data[self.indexes[0], columns[0]]
-        temp2 = self.data[self.indexes[self.number_out1], columns[1]] - self.data[self.indexes[0], columns[1]]  
+        temp2 = self.data[self.indexes[self.number_out1-1], columns[1]] - self.data[self.indexes[0], columns[1]]  
         Utilities.my_assert( (abs(temp1 - self.delta_out1) / self.delta_out1) < tolerance,
         ValueError, "Output interval(self.delta_out1) doesn't match the interval in data")
         Utilities.my_assert( (abs(temp2 - self.delta_out2) / self.delta_out2) < tolerance,
