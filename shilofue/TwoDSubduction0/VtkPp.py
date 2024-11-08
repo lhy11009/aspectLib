@@ -2035,8 +2035,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
     slab_morph_file = os.path.join(vtk_output_dir, slab_morph_file_name)
     # Initiation Wrapper class for parallel computation
     # ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology_dual_mdd, if_rewrite=True, findmdd=findmdd, project_velocity=project_velocity, findmdd_tolerance=findmdd_tolerance)
-    # todo_crust
-    kwargs['n_crust'] = 2
+    # parse the number of crust from the Visit_Options variable
+    kwargs['n_crust'] = Visit_Options.options["N_CRUST"]
     ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_morph', SlabMorphology_dual_mdd, **kwargs)
     ParallelWrapper.configure(case_dir)  # assign case directory
     # Remove previous file
@@ -4286,6 +4286,7 @@ def PlotTrenchDifferences2d(SlabPlot, case_dir, **kwargs):
         trenches_migration_length = trenches - trenches[0]
     else:
         raise ValueError('Invalid geometry')
+    # get_slab_dimensions_2(x, y, Ro, is_chunk)
     ax.plot(times/1e6, (trenches - trenches[0])/1e3, color=_color, label = "2d")
     if ax_twinx is not None:
         ax_twinx.plot(times/1e6, slab_depths/1e3, '--', color=_color)
@@ -4335,6 +4336,42 @@ def GetSlabDipAt660(case_dir, **kwargs):
             o_list.append(entry)
     dip_depth = float(o_list[-1])
     return dip_depth
+
+
+def get_slab_dimensions_2(x, y, Ro, is_chunk):
+    '''
+    Derives the length along the three dimensions of a subducting slab.
+
+    Inputs:
+        x (float): x-coordinate of the slab point.
+        y (float): y-coordinate of the slab point.
+        z (float): z-coordinate of the slab point.
+        Ro (float): Outer radius of the spherical domain.
+        is_chunk (bool): Flag indicating whether the geometry is a spherical chunk.
+
+    Returns:
+        tuple: A tuple containing (r, w, l):
+            - r (float): Radius or z-coordinate depending on whether the geometry is a chunk.
+            - w (float): Width of the slab in the y-dimension, or converted width for chunk geometry.
+            - l (float): Length of the slab in the x-dimension, or converted length for chunk geometry.
+    
+    Description:
+        - For chunk geometries, converts Cartesian coordinates to spherical coordinates and calculates
+          width and length using the outer radius Ro and spherical angles.
+        - For non-chunk geometries, returns the z, x, and y coordinates directly as radius, length, and width.
+    '''
+    if is_chunk:
+        # Convert Cartesian coordinates to spherical coordinates for chunk geometry
+        r, th1, ph1 = Utilities.cart2sph(x, y, 0.0)
+        w = 0.0
+        l = Ro * ph1  # Calculate length using the spherical angle ph1
+    else:
+        # For non-chunk geometry, use Cartesian coordinates directly
+        r = y
+        w = 0.0
+        l = x 
+
+    return r, w, l
 
 
 def main():

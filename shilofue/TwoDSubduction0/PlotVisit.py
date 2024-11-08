@@ -203,8 +203,10 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         A_diff_inputs = ParsePrm.COMPOSITION(self.idict['Material model']['Visco Plastic TwoD']['Prefactors for diffusion creep'])
         # todo_2l
         if is_crust_2l:
+            self.options["N_CRUST"] = 2
             self.options["SHEAR_ZONE_CONSTANT_VISCOSITY"] = 1.0 / 2.0 / A_diff_inputs.data['spcrust_up'][0] # use phases
         else:
+            self.options["N_CRUST"] = 1
             self.options["SHEAR_ZONE_CONSTANT_VISCOSITY"] = 1.0 / 2.0 / A_diff_inputs.data['spcrust'][0] # use phases
         # yield stress
         try:
