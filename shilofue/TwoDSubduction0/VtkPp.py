@@ -36,7 +36,8 @@ from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 from numpy import linalg as LA 
 import multiprocessing
 import warnings
-from scipy.interpolate import interp1d, griddata
+import time
+from scipy.interpolate import interp1d, griddata, UnivariateSpline
 from scipy.integrate import quad
 from scipy.optimize import minimize
 #### self
@@ -180,30 +181,185 @@ class VTKP(VtkPp.VTKP):
         assert(os.path.isfile(gravity_file))
         self.ImportGravityData(gravity_file)
 
+    # todo_shallow
+    def PrepareSlabShallow(self, trench_initial, **kwargs):
+        '''
+        Prepares and identifies shallow and bottom points of a slab for trench analysis,
+        exporting relevant data to a file if specified. Calculates original and corrected
+        distances between shallow and bottom points based on threshold values.
+    
+        Parameters:
+            trench_initial (float): Initial trench position in radians.
+            **kwargs: Additional options, including trench_lookup_range and export_shallow_file.
+    
+        Returns:
+            dict: Contains information on original and corrected points with distances.
+        '''
+        shallow_cutoff = 1e3 # m
+        bottom_start = 7.5e3
+        bottom_cutoff = 30e3
+        pinned_field_value_threshold = 0.8
+    
+        trench_lookup_range = kwargs.get("trench_lookup_range", 10.0 * np.pi / 180.0)
+        export_shallow_file = kwargs.get("export_shallow_file", None)
+    
+        print("%s started" % Utilities.func_name())
+        start = time.time()
+    
+        # Sorts the shallow points and retrieves relevant data arrays for processing.
+        points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
+        point_data = self.i_poly_data.GetPointData()
+    
+        pinned_field = vtk_to_numpy(point_data.GetArray("spcrust"))
+        pinned_bottom_field = vtk_to_numpy(point_data.GetArray("spharz"))
+    
+        shallow_points_idx = []
+        bottom_points_idx = []
+        for idx in range(self.i_poly_data.GetNumberOfPoints()):
+            x, y, _ = points[idx]
+            r = None; th = None; ph = None
+            if self.is_chunk:
+                r, th, ph = Utilities.cart2sph(x,y,0.0)
+            else:
+                r = y
+            d = self.Ro - r
+            pinned_field_value = pinned_field[idx]
+            pinned_bottom_field_value = pinned_bottom_field[idx]
+    
+            # Determines points based on depth and field thresholds, and location near trench.
+            if d < shallow_cutoff and pinned_field_value > pinned_field_value_threshold and \
+                ph > trench_initial - trench_lookup_range and ph < trench_initial + trench_lookup_range:
+                shallow_points_idx.append(idx)
+    
+            if d > bottom_start and d < bottom_cutoff and pinned_bottom_field_value > pinned_field_value_threshold and \
+                ph > trench_initial - trench_lookup_range and ph < trench_initial + trench_lookup_range:
+                bottom_points_idx.append(idx)
+    
+        n_shallow_points = len(shallow_points_idx)
+        n_bottom_points = len(bottom_points_idx)
+    
+        # Extracts coordinates of shallow and bottom points for further processing.
+        shallow_points = np.zeros([n_shallow_points, 3])
+        for i in range(n_shallow_points):
+            idx = shallow_points_idx[i]
+            shallow_points[i] = points[idx]
+    
+        bottom_points = np.zeros([n_bottom_points, 3])
+        for i in range(n_bottom_points):
+            idx = bottom_points_idx[i]
+            bottom_points[i] = points[idx]
+    
+        end = time.time()
+        print("\tSort shallow points, takes %.2f s" % (end - start))
+        start = end
+    
+        # Exports shallow and bottom points to a specified file if export option is provided.
+        if export_shallow_file is not None:
+            export_shallow_outputs = np.zeros([n_shallow_points+n_bottom_points, 3])
+            for i in range(n_shallow_points):
+                idx = shallow_points_idx[i]
+                export_shallow_outputs[i] = points[idx]
+            for i in range(n_shallow_points, n_shallow_points+n_bottom_points):
+                idx = bottom_points_idx[i-n_shallow_points]
+                export_shallow_outputs[i] = points[idx]
+            with open(export_shallow_file, 'w') as fout:
+                np.savetxt(fout, export_shallow_outputs, header="X Y Z\n%d %d" % (n_shallow_points, n_bottom_points))
+            print("\t%s: Write output file %s" % (Utilities.func_name(), export_shallow_file))
+            end = time.time()
+            print("\tWrite output file, takes %.2f s" % (end - start))
+            start = end
+    
+        # Identifies furthest shallow point based on angle for distance calculations.
+        Phi = np.zeros(n_shallow_points)
+        for i in range(n_shallow_points):
+            idx = shallow_points_idx[i]
+            x, y, z = points[idx]
+            r, th, ph = Utilities.cart2sph(x, y, z)
+            Phi[i] = ph
+    
+        i_max = np.argmax(Phi)
+        id_max = shallow_points_idx[i_max]
+        phi_max = Phi[i_max]
+    
+        # Retrieves initial furthest point coordinates for calculating distances to bottom points.
+        x_max, y_max, z_max = points[id_max]
+        min_dist = float('inf')
+        i_min, min_dist = minimum_distance_array(bottom_points, x_max, y_max, z_max)
+        x_b_min, y_b_min, z_b_min = bottom_points[i_min]
+    
+        outputs = {}
+        outputs["original"] = {"points": [x_max, y_max, z_max], "match points": [x_b_min, y_b_min, z_b_min], "distance": min_dist}
+    
+        end = time.time()
+        print("\tCalculate original distance, takes %.2f s" % (end - start))
+        start = end
+    
+        # Applies corrections to the furthest point based on incremental angle adjustments.
+        if not self.is_chunk:
+            # Ensures only chunk geometry is handled; raises exception otherwise.
+            raise NotImplementedError()
+    
+        dphi = 0.001 * np.pi / 180.0
+        dphi_increment = 0.001 * np.pi / 180.0
+        phi_new = None
+        i_min = None
+        while dphi < 1.0:
+            phi = phi_max - dphi
+            x_new, y_new, z_new = Utilities.ggr2cart(0.0, phi, self.Ro)
+            i_min, min_dist = minimum_distance_array(bottom_points, x_new, y_new, z_new)
+            if min_dist < 9e3:
+                phi_new = phi
+                break
+            dphi += dphi_increment
+    
+        x_new, y_new, z_new = Utilities.ggr2cart(0.0, phi_new, self.Ro)
+        x_b_min, y_b_min, z_b_min = bottom_points[i_min]
+    
+        outputs["corrected"] = {"points": [x_new, y_new, z_new], "match points": [x_b_min, y_b_min, z_b_min], "distance": min_dist}
+    
+        end = time.time()
+        print("\tPerform correction, takes %.2f s" % (end - start))
+        start = end
+    
+        return outputs
+
     def PrepareSlab(self, slab_field_names, **kwargs):
         '''
-        prepare slab composition
-        Slab surface is determined by the crustal composition
-        kwargs:
-            prepare_cmb: generate the envelop of the core-mantle boundary as well
+        Prepares slab composition by identifying slab and crustal regions in the model.
+        
+        Parameters:
+            slab_field_names (list): Names of fields used to define slab composition.
+            kwargs (dict): Optional keyword arguments:
+                - prepare_cmb (str, optional): Field name for core-mantle boundary (CMB) preparation.
+                - prepare_slab_distant_properties (optional): Additional properties for distant slab.
+                - slab_threshold (float, optional): Threshold value for slab field to classify as slab material.
+                - depth_lookup (float, optional): Depth for slab surface lookup, default is 100 km.
+                - depth_distant_lookup (float, optional): Depth threshold for distant properties, default is 200 km.
         '''
+        # Ensure cell centers are included in data
         assert(self.include_cell_center)
+
+        # Initialize optional parameters from kwargs
         prepare_cmb = kwargs.get('prepare_cmb', None)
         prepare_slab_distant_properties = kwargs.get('prepare_slab_distant_properties', None)
         slab_threshold = kwargs.get('slab_threshold', 0.2)
         depth_lookup = kwargs.get("depth_lookup", 100e3)
         depth_distant_lookup = kwargs.get('depth_distant_lookup', 200e3)
+
+        # Extract point and cell data arrays from VTK data structures
         points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
         centers = vtk_to_numpy(self.c_poly_data.GetPoints().GetData())
         point_data = self.i_poly_data.GetPointData()
         cell_point_data = self.c_poly_data.GetPointData()
-        # slab composition field
+        
+        # Get the primary slab field and initialize crust field if `prepare_cmb` is set
         slab_field = VtkPp.OperateDataArrays(cell_point_data, slab_field_names,\
         [0 for i in range(len(slab_field_names) - 1)])
         crust_field = None  # store the field of crust composition
         if prepare_cmb is not None:
             crust_field = vtk_to_numpy(cell_point_data.GetArray(prepare_cmb))
-        # add cells by composition
+        
+        # Identify cells based on composition and radius, storing minimum radius for slab depth
         min_r = self.Ro
         for i in range(self.i_poly_data.GetNumberOfCells()):
             cell = self.i_poly_data.GetCell(i)
@@ -216,6 +372,8 @@ class VTKP(VtkPp.VTKP):
                 self.slab_cells.append(i)
                 if r < min_r:
                     min_r = r
+        
+        # If CMB preparation is requested, identify crustal cells similarly
         if prepare_cmb is not None:
             # cells of the crustal composition
             for i in range(self.i_poly_data.GetNumberOfCells()):
@@ -227,8 +385,11 @@ class VTKP(VtkPp.VTKP):
                 crust = crust_field[i]
                 if crust > slab_threshold and ((self.Ro - r) > self.slab_shallow_cutoff):
                     self.crust_cells.append(i)
-        self.slab_depth = self.Ro - min_r  # cart
-        # get slab envelops
+        
+        # Calculate slab depth based on minimum radius
+        self.slab_depth = self.Ro - min_r
+
+        # Group slab cells into envelop intervals based on radial depth
         total_en_interval = int((self.slab_depth - self.slab_shallow_cutoff) // self.slab_envelop_interval + 1)
         slab_en_cell_lists = [ [] for i in range(total_en_interval) ]
         for id in self.slab_cells:
@@ -239,6 +400,8 @@ class VTKP(VtkPp.VTKP):
                                   (self.Ro - r - self.slab_shallow_cutoff)/
                                   self.slab_envelop_interval))# id in the envelop list
             slab_en_cell_lists[id_en].append(id)
+
+        # Find angular boundaries (min and max theta) for each slab interval
         for id_en in range(len(slab_en_cell_lists)):
             theta_min = 0.0  # then, loop again by intervals to look for a
             theta_max = 0.0  # max theta and a min theta for each interval
@@ -267,12 +430,14 @@ class VTKP(VtkPp.VTKP):
                         theta_max = theta
             self.slab_envelop_cell_list0.append(id_min)  # first half of the envelop
             self.slab_envelop_cell_list1.append(id_max)  # second half of the envelop
-        # trench
+        
+        # Identify the trench position based on maximum angular position
         id_tr = self.slab_envelop_cell_list1[0] # point of the trench
         x_tr = centers[id_tr][0]  # first, separate cells into intervals
         y_tr = centers[id_tr][1]
         self.trench = get_theta(x_tr, y_tr, self.geometry)
-        # 100 km dip angle
+
+        # Calculate dip angle at a specified depth lookup (e.g., 100 km)
         self.coord_100 = self.SlabSurfDepthLookup(depth_lookup)
         if self.geometry == "chunk":
             x100 = (self.Ro - depth_lookup) * np.cos(self.coord_100)
@@ -283,6 +448,8 @@ class VTKP(VtkPp.VTKP):
         r100 = get_r(x100, y100, self.geometry)
         theta100 = get_theta(x100, y100, self.geometry)
         self.dip_100 = get_dip(x_tr, y_tr, x100, y100, self.geometry)
+
+        # If CMB is being prepared, repeat envelope grouping and interval checks for crust cells
         if prepare_cmb is not None:
             # get the crust envelop
             crust_en_cell_lists = [ [] for i in range(total_en_interval) ]
@@ -294,6 +461,8 @@ class VTKP(VtkPp.VTKP):
                                     (self.Ro - r - self.slab_shallow_cutoff)/
                                     self.slab_envelop_interval))# id in the envelop list
                 crust_en_cell_lists[id_en].append(id) 
+
+            # Identify angular boundaries for crust cells to match slab envelope intervals
             for id_en in range(len(crust_en_cell_lists)):
                 theta_min = 0.0  # then, loop again by intervals to look for a
                 # theta_max = 0.0  # max theta and a min theta for each interval
@@ -328,7 +497,8 @@ class VTKP(VtkPp.VTKP):
                         #     id_max = id
                         #    theta_max = theta
                 self.cmb_envelop_cell_list.append(id_min)  # first half of the envelop
-            # make sure these envelops have the same amount of points
+
+            # Ensure crust and slab envelopes have equal lengths 
             assert(len(self.cmb_envelop_cell_list)==len(self.slab_envelop_cell_list1))
     
 
@@ -1327,7 +1497,7 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     project_velocity = kwargs.get('project_velocity', False)
     mdd = -1.0 # an initial value
     print("%s%s: Start" % (indent*" ", Utilities.func_name()))
-    output_slab = kwargs.get('output_slab', False)
+    output_slab = kwargs.get('output_slab', None)
     # todo_crust
     n_crust = kwargs.get("n_crust", 1)
     if n_crust == 1:
@@ -1364,22 +1534,35 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
             mdd1 = - 1.0
             mdd2 = - 1.0
     # output slab profile
-    if output_slab:
+    if output_slab is not None:
         slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
         slab_internal = VtkP.ExportSlabInternal(output_xy=True)
-        o_slab_env0 = os.path.join(case_dir,\
-            "vtk_outputs", "slab_env0_%05d.vtp" % (vtu_step)) # envelop 0
-        o_slab_env1 = os.path.join(case_dir,\
-            "vtk_outputs", "slab_env1_%05d.vtp" % (vtu_step)) # envelop 1
-        o_slab_in = os.path.join(case_dir,\
-            "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
-        VtkPp.ExportPolyDataFromRaw(slab_envelop0[:, 0], slab_envelop0[:, 1], None, None, o_slab_env0) # write the polydata
-        # np.savetxt(o_slab_env0, slab_envelop0)
-        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env0))
-        VtkPp.ExportPolyDataFromRaw(slab_envelop1[:, 0], slab_envelop1[:, 1], None, None, o_slab_env1) # write the polydata
-        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env1))
-        np.savetxt(o_slab_in, slab_internal)
-        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
+        if output_slab == "vtp":
+            o_slab_env0 = os.path.join(case_dir,\
+                "vtk_outputs", "slab_env0_%05d.vtp" % (vtu_step)) # envelop 0
+            o_slab_env1 = os.path.join(case_dir,\
+                "vtk_outputs", "slab_env1_%05d.vtp" % (vtu_step)) # envelop 1
+            o_slab_in = os.path.join(case_dir,\
+                "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
+            VtkPp.ExportPolyDataFromRaw(slab_envelop0[:, 0], slab_envelop0[:, 1], None, None, o_slab_env0) # write the polydata
+            # np.savetxt(o_slab_env0, slab_envelop0)
+            print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env0))
+            VtkPp.ExportPolyDataFromRaw(slab_envelop1[:, 0], slab_envelop1[:, 1], None, None, o_slab_env1) # write the polydata
+            print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env1))
+            np.savetxt(o_slab_in, slab_internal)
+            print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
+        # todo_o_env
+        if output_slab == "txt":
+            o_slab_env =  os.path.join(case_dir, \
+                "vtk_outputs", "slab_env_%05d.txt" % (vtu_step)) # envelop 1
+            slab_env_outputs = np.concatenate([slab_envelop0, slab_envelop1], axis=1) 
+            slab_env_output_header = "X0 Y0 X1 Y1"
+            np.savetxt(o_slab_env, slab_env_outputs, header=slab_env_output_header)
+            print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env))
+            o_slab_in = os.path.join(case_dir,\
+                "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
+            np.savetxt(o_slab_in, slab_internal)
+            print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
     # output a profile distant to the slab
     n_distant_profiel_sample = 100
     v_distant_profile = None; query_viscs = None
@@ -2006,6 +2189,7 @@ def SlabMorphologyCase(case_dir, **kwargs):
             project_velocity - whether the velocity is projected to the tangential direction
             file_tag - apply a tag to file name, default is false
     '''
+    # todo_o_env
     findmdd = kwargs.get('findmdd', False)
     findmdd_tolerance = kwargs.get('findmdd_tolerance', 0.05)
     project_velocity = kwargs.get('project_velocity', False)
@@ -4230,7 +4414,7 @@ def PlotMorphAnimeCombined(case_dir, **kwargs):
         SlabPlot.PlotMorphAnime(case_dir, time=_time)
 
 
-def PlotTrenchDifferences2d(SlabPlot, case_dir, **kwargs):
+def PlotTrenchDifferences2dInter1Ma(SlabPlot, case_dir, **kwargs):
     '''
     plot the differences in the trench location since model started (trench migration)
     overlay the curve on an existing axis.
@@ -4258,9 +4442,9 @@ def PlotTrenchDifferences2d(SlabPlot, case_dir, **kwargs):
     if geometry == 'chunk':
         Ro = float(SlabPlot.prm['Geometry model']['Chunk']['Chunk outer radius'])
     else:
-        Ro = -1.0  # in this way, wrong is wrong
+        Ro = None
     # read data
-    slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph.txt')
+    slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph_t1.00e+06.txt')
     assert(os.path.isfile(slab_morph_file))
     SlabPlot.ReadHeader(slab_morph_file)
     SlabPlot.ReadData(slab_morph_file)
@@ -4287,9 +4471,73 @@ def PlotTrenchDifferences2d(SlabPlot, case_dir, **kwargs):
     else:
         raise ValueError('Invalid geometry')
     # get_slab_dimensions_2(x, y, Ro, is_chunk)
-    ax.plot(times/1e6, (trenches - trenches[0])/1e3, color=_color, label = "2d")
+    ax.plot(times/1e6, trenches_migration_length/1e3, color=_color, label = "2d")
     if ax_twinx is not None:
         ax_twinx.plot(times/1e6, slab_depths/1e3, '--', color=_color)
+
+
+def PlotSlabDip100km2dInter1Ma(SlabPlot, case_dir, **kwargs):
+    '''
+    plot the differences in the trench location since model started (trench migration)
+    overlay the curve on an existing axis.
+    This function is created for combining results with those from the 3d cases
+    '''
+    # initiate plot
+    _color = kwargs.get('color', "c")
+    ax = kwargs.get('axis', None) # for trench position
+    ax_twinx = kwargs.get("axis_twinx", None) # for slab depth
+    if ax == None:
+        raise ValueError("Not implemented")
+    # path
+    img_dir = os.path.join(case_dir, 'img')
+    if not os.path.isdir(img_dir):
+        os.mkdir(img_dir)
+    morph_dir = os.path.join(img_dir, 'morphology')
+    if not os.path.isdir(morph_dir):
+        os.mkdir(morph_dir)
+    # read inputs
+    prm_file = os.path.join(case_dir, 'output', 'original.prm')
+    assert(os.access(prm_file, os.R_OK))
+    SlabPlot.ReadPrm(prm_file)
+    # read parameters
+    geometry = SlabPlot.prm['Geometry model']['Model name']
+    # if geometry == 'chunk':
+    #     Ro = float(SlabPlot.prm['Geometry model']['Chunk']['Chunk outer radius'])
+    # else:
+    #     Ro = None
+    # read data
+    slab_morph_file = os.path.join(case_dir, 'vtk_outputs', 'slab_morph_t1.00e+06.txt')
+    assert(os.path.isfile(slab_morph_file))
+    SlabPlot.ReadHeader(slab_morph_file)
+    SlabPlot.ReadData(slab_morph_file)
+    if not SlabPlot.HasData():
+        print("PlotMorph: file %s doesn't contain data" % slab_morph_file)
+        return 1
+    col_pvtu_step = SlabPlot.header['pvtu_step']['col']
+    col_pvtu_time = SlabPlot.header['time']['col']
+    col_pvtu_trench = SlabPlot.header['trench']['col']
+    col_pvtu_slab_depth = SlabPlot.header['slab_depth']['col']
+    # col_pvtu_sp_v = SlabPlot.header['subducting_plate_velocity']['col']
+    # col_pvtu_ov_v = SlabPlot.header['overiding_plate_velocity']['col']
+    col_100km_dip = SlabPlot.header['100km_dip']['col']
+    # pvtu_steps = SlabPlot.data[:, col_pvtu_step]
+    times = SlabPlot.data[:, col_pvtu_time]
+    trenches = SlabPlot.data[:, col_pvtu_trench]
+    # slab_depths = SlabPlot.data[:, col_pvtu_slab_depth]
+    dip_100kms = SlabPlot.data[:, col_100km_dip]
+    time_interval = times[1] - times[0]
+    if time_interval < 0.5e6:
+        warnings.warn("Time intervals smaller than 0.5e6 may cause vabriation in the velocity (get %.4e)" % time_interval)
+
+    # Apply a univariate spline to smooth the dip angles
+    spline = UnivariateSpline(times / 1e6, dip_100kms, s=0)  # s=0 means interpolation without smoothing
+    times_new = np.linspace(times.min(), times.max(), 1000)
+    dips_splined = spline(times_new / 1e6)
+    # get_slab_dimensions_2(x, y, Ro, is_chunk)
+    ax.plot(times/1e6, dip_100kms * 180.0 / np.pi, color=_color, label = "2d")
+    ax.plot(times_new/1e6, dips_splined * 180.0 / np.pi, "-.", color=_color, label = "2d")
+    # if ax_twinx is not None:
+    #     ax_twinx.plot(times/1e6, slab_depths/1e3, '--', color=_color)
 
 
 def GetSlabDipAt660(case_dir, **kwargs):
@@ -4374,6 +4622,69 @@ def get_slab_dimensions_2(x, y, Ro, is_chunk):
     return r, w, l
 
 
+# todo_o_env
+def SlabEnvelopRetrivePoints(local_dir: str, _time: float, Visit_Options: object, depths: float, **kwargs: dict) -> tuple:
+    '''
+    Retrieves the point of the slab envelop at give depth
+
+    Parameters:
+        local_dir (str): Directory where output files are located.
+        _time (float): The time at which to retrieve the heat flow profile.
+        Visit_Options (object): An object containing options for retrieving data.
+        depth: the depth of the point to retrive
+        kwargs (dict): Additional keyword arguments; accepts 'phi_diff' (float, default: 5.0).
+
+    Returns:
+        tuple: A tuple containing two masked arrays: heat fluxes and corresponding phi values.
+    '''
+    Ro = Visit_Options.options["OUTER_RADIUS"]
+
+    _time1, timestep, vtu_step = Visit_Options.get_timestep_by_time(_time)
+    filein = os.path.join(local_dir, "vtk_outputs", "slab_env_%05d.txt" % vtu_step)
+    Utilities.my_assert(os.path.isfile(filein), FileExistsError, "%s: %s doesn't exist" % (Utilities.func_name(), filein))
+
+    # Retrieve slab envelops 
+    # and interpolate the points based on the give depths
+    data = np.loadtxt(filein)
+    X1 = data[:, 2]
+    Y1 = data[:, 3]
+
+    # L1: box geometry - X dimension; chunk geometry - phi dimension
+    if Visit_Options.options["GEOMETRY"] == "box":
+        Ys = np.interp(Ro-depths, Y1,X1) 
+        return Ys
+    elif Visit_Options.options["GEOMETRY"] == "chunk":
+        R0, _, Phi0 = Utilities.cart2sph(X1,Y1,np.zeros(X1.shape))
+        Phis = np.interp(depths, Ro-R0, Phi0)
+        return Phis
+    else:
+        raise NotImplementedError
+
+# todo_shallow 
+def minimum_distance_array(a, x0, y0, z0):
+    """
+    Calculate the minimum distance from a reference point (x0, y0, z0) 
+    to the points in array 'a', where 'a' is a numpy array of shape (n, 3).
+    
+    Parameters:
+        a (numpy.ndarray): Array of shape (n, 3), where each row is [x, y, z] coordinates.
+        x0 (float): x-coordinate of the reference point.
+        y0 (float): y-coordinate of the reference point.
+        z0 (float): z-coordinate of the reference point.
+    
+    Returns:
+        float: The minimum distance from (x0, y0, z0) to the points in 'a'.
+    """
+    # Calculate the squared distances to avoid unnecessary square roots
+    squared_distances = (a[:, 0] - x0)**2 + (a[:, 1] - y0)**2 + (a[:, 2] - z0)**2
+    
+    # Find the minimum squared distance and take its square root to get the actual distance
+    min_distance = np.sqrt(np.min(squared_distances))
+    min_index = np.argmin(squared_distances)
+
+    return min_index, min_distance
+
+
 def main():
     '''
     main function of this module
@@ -4455,16 +4766,17 @@ def main():
         PlotSlabShape(arg.inputs, arg.vtu_step)
     elif _commend == 'morph_step':
         # slab_morphology, input is the case name
-        SlabMorphology_dual_mdd(arg.inputs, int(arg.vtu_snapshot), rewrite=1, output_slab=True, findmdd=True, project_velocity=True,\
-            findmdd_tolerance=arg.findmdd_tolerance, mdd_dx0=arg.mdd_dx0, mdd_dx1=arg.mdd_dx1, output_ov_ath_profile=True)
+        SlabMorphology_dual_mdd(arg.inputs, int(arg.vtu_snapshot), rewrite=1, findmdd=True, project_velocity=True,\
+            findmdd_tolerance=arg.findmdd_tolerance, mdd_dx0=arg.mdd_dx0, mdd_dx1=arg.mdd_dx1, output_ov_ath_profile=True, output_slab='txt')
+    # todo_env
     elif _commend == 'morph_case':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True,\
-            findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True)
+            findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt')
     elif _commend == 'morph_case_parallel':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True,\
-            use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True)
+            use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt')
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')

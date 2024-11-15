@@ -197,8 +197,16 @@ def HeatFlowRetriveProfile(local_dir: str, _time: float, Visit_Options: object, 
     times = data[:, 2]
     trenches = data[:, 3]
     slab_depths = data[:, 4]
-    sfunc = interp1d(times, trenches, assume_sorted=True)
-    trench = sfunc(_time1)
+    mdd1_depths = data[:, 8]
+    mdd2_depths = data[:, 9]
+
+    idx = np.argmin(np.abs(times-_time1))
+    trench = trenches[idx]
+    mdd1_depth = mdd1_depths[idx]
+    mdd2_depth = mdd2_depths[idx]
+
+    # sfunc = interp1d(times, trenches, assume_sorted=True)
+    # trench = sfunc(_time1)
 
     # Interpret Visit_Options, retrieve geometric parameters (inner and outer radii),
     # and initialize BOUNDARYOUTPUTs to handle boundary data.
@@ -223,7 +231,7 @@ def HeatFlowRetriveProfile(local_dir: str, _time: float, Visit_Options: object, 
     hfs_masked = hfs[mask]
     Phis_masked = Phis[mask]
 
-    return hfs_masked, Phis_masked
+    return hfs_masked, Phis_masked, [mdd1_depth, mdd2_depth], trench
 
 
 def HeatFlowRetriveZeroCrossings(Phis_masked: np.ndarray, hfs_spline: object, output_path: str) -> np.ndarray:
@@ -319,7 +327,7 @@ def HeatFlowRetriveForearcMaximumCase(local_dir: str, Visit_Options):
     for _time in Visit_Options.all_graphical_times:
         
         # Retrieve the heat flow profile and masked longitude (Phis) for the given time.
-        hfs_masked, Phis_masked = HeatFlowRetriveProfile(local_dir, _time, Visit_Options)
+        hfs_masked, Phis_masked, _, _ = HeatFlowRetriveProfile(local_dir, _time, Visit_Options)
         phi0 = Phis_masked[0]
         phi1 = Phis_masked[-1]
         

@@ -1231,6 +1231,14 @@ def CenterProfileAnalyze(case_dir, time_interval_for_slab_morphology, **kwargs):
         step660 = steps[i660]
     except ValueError:
         t660, i660, step660 = np.nan, np.nan, np.nan
+    
+    sfunc = interp1d(depths, ts, assume_sorted=True)
+    try:
+        t700 = sfunc(700e3)
+        i700 = IndexByValue(ts, t700)
+        step700 = steps[i700]
+    except ValueError:
+        t700, i700, step700 = np.nan, np.nan, np.nan
 
     try:
         t800 = sfunc(800e3)
@@ -1250,6 +1258,8 @@ def CenterProfileAnalyze(case_dir, time_interval_for_slab_morphology, **kwargs):
     results = {
         't660': t660,
         'step660': step660,
+        't700': t700,
+        'step700': step700,
         't800': t800,
         'step800': step800,
         't1000': t1000,

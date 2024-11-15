@@ -984,6 +984,16 @@ class CASE_SUMMARY():
         df = pd.DataFrame(data)
         df.to_csv(fout) # save to csv file
 
+    def sort_out_case_attribute_by_absolution_path(self, full_path, _attr):
+        '''
+        Sort out the case name assigned to a case path
+        '''
+        value = None
+        for i in range(self.n_case):
+            if self.ab_paths[i] == full_path:
+                value = getattr(self, _attr)[i]
+        return value
+
     def sort_out_by_attr_value(self, o_path, _attr, value):
         '''
         Sort out cases that have some value for an attribute
