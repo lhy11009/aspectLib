@@ -50,6 +50,33 @@ class SLAB(PARAVIEW_PLOT):
         add_glyph1("Transform1", "velocity", 1e6, registrationName="Glyph1")
         add_plot("Transform1", "spcrust", lim=[0.0, 1.0], color="vik")
         add_deformation_mechanism("Transform1", registrationName="pFilter_DM")
+    
+        # Extract points
+        # First extract a selection of points
+        # Then set color to "solid"
+        if True:
+            _source="Transform1" # name
+            pvd = FindSource(_source) # pvd - the actual source
+            SetActiveSource(pvd)
+            renderView1 = GetActiveViewOrCreate('RenderView')
+
+            position = [1965877.371, 6060112.801, 0.0]
+            distance = 10e3 
+            QuerySelect(QueryString='(pointIsNear([(%.4f, %.4f, %.4f),], %.4f, inputs))' % (position[0], position[1], position[2], distance),\
+                FieldType='POINT', InsideOut=0)
+        
+            extractSelection1 = ExtractSelection(registrationName='ExtractSelection1', Input=pvd)
+        
+            extractSelection1Display = Show(extractSelection1, renderView1, 'UnstructuredGridRepresentation')
+            field0 = extractSelection1Display.ColorArrayName[1]
+            field0LUT = GetColorTransferFunction(field0)
+        
+            ColorBy(extractSelection1Display, None)
+            extractSelection1Display.PointSize = 4.0
+
+            HideScalarBarIfNotNeeded(field0LUT, renderView1)
+        
+            Hide(pvd, renderView1)
 
 
     def plot_step(self, **kwargs): 

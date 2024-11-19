@@ -1495,6 +1495,7 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     dip_angle_depth_lookup = kwargs.get("dip_angle_depth_lookup", None)
     dip_angle_depth_lookup_interval = kwargs.get("dip_angle_depth_lookup_interval", 60e3)
     project_velocity = kwargs.get('project_velocity', False)
+    find_shallow_trench = kwargs.get("find_shallow_trench", False)
     mdd = -1.0 # an initial value
     print("%s%s: Start" % (indent*" ", Utilities.func_name()))
     output_slab = kwargs.get('output_slab', None)
@@ -1526,6 +1527,12 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     field_names = ['T', 'density', 'spharz', 'velocity', 'viscosity'] + crust_fields
     VtkP.ConstructPolyData(field_names, include_cell_center=True)
     VtkP.PrepareSlab(crust_fields + ['spharz'], prepare_slab_distant_properties=True, depth_distant_lookup=depth_distant_lookup)
+    # todo_shallow
+    if find_shallow_trench:
+        outputs = VtkP.PrepareSlabShallow(Visit_Options.options['THETA_REF_TRENCH'])
+        x, y, z = outputs["corrected"]["points"]
+        _, _, trench_shallow = Utilities.cart2sph(x, y, z)
+
     if findmdd:
         try:
             mdd1 = VtkP.FindMDD(tolerance=findmdd_tolerance, dx1=-Visit_Options.options["INITIAL_SHEAR_ZONE_THICKNESS"])
@@ -1594,6 +1601,8 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
         outputs += "%-14.4e %-14.4e" % (v_distant_profile[n_distant_profiel_sample-1, 0], query_viscs[n_distant_profiel_sample-1])
     if dip_angle_depth_lookup is not None:
         outputs += "%-14.4e" % (VtkP.GetDipAtDepth(dip_angle_depth_lookup, dip_angle_depth_lookup_interval))
+    if find_shallow_trench:
+        outputs += "%-14.4e" % (trench_shallow)
     
     outputs += "\n"
     print("%s%s" % (indent*" ", outputs)) # debug
@@ -2193,6 +2202,8 @@ def SlabMorphologyCase(case_dir, **kwargs):
     findmdd = kwargs.get('findmdd', False)
     findmdd_tolerance = kwargs.get('findmdd_tolerance', 0.05)
     project_velocity = kwargs.get('project_velocity', False)
+    # todo_shallow
+    find_shallow_trench = kwargs.get("find_shallow_trench", False)
     # todo_parallel
     use_parallel = kwargs.get('use_parallel', False)
     file_tag = kwargs.get('file_tag', False)
@@ -2253,6 +2264,9 @@ def SlabMorphologyCase(case_dir, **kwargs):
     if output_ov_ath_profile:
         file_header += "# %d: athenosphere velocity (m/yr)\n# %d: athenosphere viscosity (pa*s)\n" % (n_col+1, n_col+2)
         n_col += 2
+    if find_shallow_trench:
+        file_header += "# %d: shallow trench (rad)\n" % (n_col+1)
+        n_col += 1
     # output file name
     appendix = ""
     if abs(time_interval_for_slab_morphology - 0.5e6) / 0.5e6 > 1e-6:
@@ -2516,6 +2530,7 @@ class SLABPLOT(LINEARPLOT):
             i += 1
         return depthes, Ts
 
+    # todo_shallow
     def PlotMorph(self, case_dir, **kwargs):
         '''
         Inputs:
@@ -2524,6 +2539,7 @@ class SLABPLOT(LINEARPLOT):
             defined but not used
         '''
         save_pdf = kwargs.get("save_pdf", False) 
+        compare_shallow_trench = kwargs.get("compare_shallow_trench", False)
         # initialization
         findmdd = False
         # path
@@ -2554,23 +2570,31 @@ class SLABPLOT(LINEARPLOT):
         col_pvtu_step = self.header['pvtu_step']['col']
         col_pvtu_time = self.header['time']['col']
         col_pvtu_trench = self.header['trench']['col']
+        col_pvtu_shallow_trench = self.header['shallow_trench']['col']
         col_pvtu_slab_depth = self.header['slab_depth']['col']
         col_pvtu_sp_v = self.header['subducting_plate_velocity']['col']
         col_pvtu_ov_v = self.header['overiding_plate_velocity']['col']
         pvtu_steps = self.data[:, col_pvtu_step]
         times = self.data[:, col_pvtu_time]
         trenches = self.data[:, col_pvtu_trench]
+        shallow_trenches = self.data[:, col_pvtu_shallow_trench]
         time_interval = times[1] - times[0]
         if time_interval < 0.5e6:
             warnings.warn("Time intervals smaller than 0.5e6 may cause vabriation in the velocity (get %.4e)" % time_interval)
         if geometry == "chunk":
             trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
+            shallow_trenches_migration_length = (shallow_trenches - shallow_trenches[0]) * Ro  # length of migration
         elif geometry == 'box':
             trenches_migration_length = trenches - trenches[0]
+            shallow_trenches_migration_length = None # not implemented yet
         else:
             raise ValueError('Invalid geometry')
         slab_depthes = self.data[:, col_pvtu_slab_depth]
         trench_velocities = np.gradient(trenches_migration_length, times)
+        if shallow_trenches_migration_length is not None:
+            shallow_trench_velocities = np.gradient(shallow_trenches_migration_length, times)
+        else:
+            shallow_trench_velocities = None
         sink_velocities = np.gradient(slab_depthes, times)
         sp_velocities = self.data[:, col_pvtu_sp_v]
         ov_velocities = self.data[:, col_pvtu_ov_v]
@@ -2597,6 +2621,8 @@ class SLABPLOT(LINEARPLOT):
         ax = fig.add_subplot(gs[0, 0:2]) 
         ax_tx = ax.twinx()
         lns0 = ax.plot(times/1e6, trenches_migration_length/1e3, '-', color='tab:orange', label='trench position (km)')
+        if shallow_trenches_migration_length is not None:
+            lns0_1 = ax.plot(times/1e6, shallow_trenches_migration_length/1e3, '--', color='tab:orange')
         ax.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
         ax.set_ylabel('Trench Position (km)', color="tab:orange")
         ax.tick_params(axis='x', labelbottom=False) # labels along the bottom edge are off
@@ -2611,6 +2637,8 @@ class SLABPLOT(LINEARPLOT):
         ax = fig.add_subplot(gs[1, 0:2]) 
         ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
         lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color='tab:orange', label='trench velocity (cm/yr)')
+        if shallow_trenches_migration_length is not None:
+            lns0_1 = ax.plot(times/1e6, shallow_trench_velocities*1e2, '--', color='tab:orange')
         lns1 = ax.plot(times/1e6, sp_velocities*1e2, '-', color='tab:blue', label='subducting plate (cm/yr)')
         lns2 = ax.plot(times/1e6, ov_velocities*1e2, '-', color='tab:purple', label='overiding velocity (cm/yr)')
         ax.plot(times/1e6, sink_velocities*1e2, 'k-', label='sinking velocity (cm/yr)')
@@ -2621,7 +2649,7 @@ class SLABPLOT(LINEARPLOT):
         ax.grid()
         ax.legend()
         # 2.1: velocity smaller, no y limit, to show the whole curve
-        ax = fig.add_subplot(gs[2, 0]) 
+        ax = fig.add_subplot(gs[2, 0:2]) 
         ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
         lns0 = ax.plot(times/1e6, trench_velocities*1e2, '-', color="tab:orange", label='trench velocity (cm/yr)')
         lns1 = ax.plot(times/1e6, sp_velocities*1e2, '-', color='tab:blue', label='subducting plate (cm/yr)')
@@ -2632,7 +2660,7 @@ class SLABPLOT(LINEARPLOT):
         ax.grid()
         # 3: the mechanical decoupling depth, only if the data is found
         if findmdd:
-            ax = fig.add_subplot(gs[3, 0]) 
+            ax = fig.add_subplot(gs[3, 0:2]) 
             ax.plot(times/1e6, 0.0 * np.zeros(times.shape), 'k--')
             lns3 = ax.plot(times/1e6, mdds1/1e3, '-', color="tab:blue", label='mdd1 (km)')
             lns4 = ax.plot(times/1e6, mdds2/1e3, '-', color="c", label='mdd2 (km)')
@@ -2649,6 +2677,27 @@ class SLABPLOT(LINEARPLOT):
             o_path = os.path.join(morph_dir, 'trench.png')
             plt.savefig(o_path)
         print("%s: figure %s generated" % (Utilities.func_name(), o_path))
+        if compare_shallow_trench:
+            # compare shallow trench to trench
+            assert(shallow_trenches_migration_length is not None)
+            # Create a figure with 3 subplots arranged vertically
+            fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(6, 8))
+            # plot location
+            lns0 = ax0.plot(times/1e6, trenches, '-', color='tab:orange', label='trench')
+            lns0_1 = ax0.plot(times/1e6, shallow_trenches, '--', color='tab:orange', label="shallow trench")
+            ax0.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+            ax0.set_ylabel('Trench Position')
+            ax0.grid()
+            ax0.legend()
+            lns1 = ax1.plot(times/1e6, trench_velocities*1e2, '-', color='tab:orange', label='trench velocity (cm/yr)')
+            lns1_1 = ax1.plot(times/1e6, shallow_trench_velocities*1e2, '--', color='tab:orange')
+            ax1.set_xlim((times[0]/1e6, times[-1]/1e6))  # set x limit
+            ax1.set_ylabel('Velocity (whole, cm/yr)')
+            ax1.set_xlabel('Times (Myr)')
+            ax1.grid()
+            o_path = os.path.join(morph_dir, 'shallow_trench_compare.pdf')
+            plt.savefig(o_path)
+            print("%s: figure %s generated" % (Utilities.func_name(), o_path))
     
     def PlotMorphAnime(self, case_dir, **kwargs):
         '''
@@ -4772,11 +4821,11 @@ def main():
     elif _commend == 'morph_case':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True,\
-            findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt')
+            findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt', find_shallow_trench=True)
     elif _commend == 'morph_case_parallel':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True,\
-            use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt')
+            use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt', find_shallow_trench=True)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')

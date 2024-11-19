@@ -199,9 +199,17 @@ def HeatFlowRetriveProfile(local_dir: str, _time: float, Visit_Options: object, 
     slab_depths = data[:, 4]
     mdd1_depths = data[:, 8]
     mdd2_depths = data[:, 9]
+    try:
+        shallow_trenches = data[:, 12]
+    except IndexError:
+        shallow_trenches = None
 
     idx = np.argmin(np.abs(times-_time1))
     trench = trenches[idx]
+    if shallow_trenches is not None:
+        shallow_trench = shallow_trenches[idx]
+    else:
+        shallow_trench = None
     mdd1_depth = mdd1_depths[idx]
     mdd2_depth = mdd2_depths[idx]
 
@@ -231,7 +239,7 @@ def HeatFlowRetriveProfile(local_dir: str, _time: float, Visit_Options: object, 
     hfs_masked = hfs[mask]
     Phis_masked = Phis[mask]
 
-    return hfs_masked, Phis_masked, [mdd1_depth, mdd2_depth], trench
+    return hfs_masked, Phis_masked, [mdd1_depth, mdd2_depth], trench, shallow_trench
 
 
 def HeatFlowRetriveZeroCrossings(Phis_masked: np.ndarray, hfs_spline: object, output_path: str) -> np.ndarray:

@@ -224,6 +224,34 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         except KeyError:
             self.options['INCLUDE_PEIERLS_RHEOLOGY'] = False
 
+        # todo_shallow
+        # reference trench point
+        self.options['THETA_REF_TRENCH'] = 0.0  # initial value
+        if self.options['GEOMETRY'] == 'chunk':
+            try:
+                index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
+            except KeyError:
+                # either there is no wb file found, or the feature 'Subducting plate' is not defined
+                theta_ref_trench = 0.63
+            else:
+                # rotate to center on the slab
+                feature_sp = self.wb_dict['features'][index]
+                theta_ref_trench = feature_sp["coordinates"][2][0] / 180.0 * np.pi
+        elif self.options['GEOMETRY'] == 'box':
+            try:
+                index = ParsePrm.FindWBFeatures(self.wb_dict, 'Subducting plate')
+            except KeyError:
+                # either there is no wb file found, or the feature 'Subducting plate' is not defined
+                # for the box geometry, this is the x distance of the trench
+                theta_ref_trench = 4000000.0
+            else:
+                # rotate to center on the slab
+                feature_sp = self.wb_dict['features'][index]
+                theta_ref_trench = feature_sp["coordinates"][2][0]        
+        else:
+            raise ValueError("Value of geometry must be either \"chunk\" or \"box\"")
+        self.options['THETA_REF_TRENCH'] = theta_ref_trench
+
     def vtk_options(self, **kwargs):
         '''
         options of vtk scripts
