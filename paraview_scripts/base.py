@@ -6,6 +6,7 @@
 # use environmental variables:
 # PV_INTERFACE_PATH - path to load xml files
 import os
+import math
 # trace generated using paraview version 5.10.1
 #import paraview
 #paraview.compatibility.major = 5

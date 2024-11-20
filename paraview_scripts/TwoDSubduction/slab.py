@@ -19,6 +19,8 @@
 #   PLOT_TYPES
 # additional fields to parse
 #   ADDITIONAL_FIELDS
+# outer radius
+#   OUTER_RADIUS
 
 class SLAB(PARAVIEW_PLOT):
     '''
@@ -52,17 +54,20 @@ class SLAB(PARAVIEW_PLOT):
         add_deformation_mechanism("Transform1", registrationName="pFilter_DM")
     
         # Extract points
-        # First extract a selection of points
+        # Extract a selection of points, one with smaller longitude, one with bigger longitude
         # Then set color to "solid"
+        # Note: For now, I can only get one point to work
         if True:
             _source="Transform1" # name
             pvd = FindSource(_source) # pvd - the actual source
             SetActiveSource(pvd)
             renderView1 = GetActiveViewOrCreate('RenderView')
 
-            position = [1965877.371, 6060112.801, 0.0]
+            first_lon = 20.0 # first point
+            x1, y1 ,z1 = ggr2cart(0.0, (first_lon + ROTATION_ANGLE) / 180.0 * 3.1415926, OUTER_RADIUS)
+            # position = [1965877.371, 6060112.801, 0.0] # first point
             distance = 10e3 
-            QuerySelect(QueryString='(pointIsNear([(%.4f, %.4f, %.4f),], %.4f, inputs))' % (position[0], position[1], position[2], distance),\
+            QuerySelect(QueryString='(pointIsNear([(%.4f, %.4f, %.4f),], %.4f, inputs))' % (x1, y1, z1, distance),\
                 FieldType='POINT', InsideOut=0)
         
             extractSelection1 = ExtractSelection(registrationName='ExtractSelection1', Input=pvd)
@@ -72,11 +77,46 @@ class SLAB(PARAVIEW_PLOT):
             field0LUT = GetColorTransferFunction(field0)
         
             ColorBy(extractSelection1Display, None)
-            extractSelection1Display.PointSize = 4.0
+            extractSelection1Display.AmbientColor = [0.6666666666666666, 0.0, 1.0]
+            extractSelection1Display.DiffuseColor = [0.6666666666666666, 0.0, 1.0]
+            extractSelection1Display.PointSize = 2.0
+
+            HideScalarBarIfNotNeeded(field0LUT, renderView1)
+        
+            
+            second_lon = 45.0 # second point
+            x2, y2 ,z2 = ggr2cart(0.0, (second_lon + ROTATION_ANGLE) / 180.0 * 3.1415926, OUTER_RADIUS)
+            # position = [1965877.371, 6060112.801, 0.0] # first point
+            distance = 10e3 
+            QuerySelect(QueryString='(pointIsNear([(%.4f, %.4f, %.4f),], %.4f, inputs))' % (x2, y2, z2, distance),\
+                FieldType='POINT', InsideOut=0)
+        
+            extractSelection2 = ExtractSelection(registrationName='ExtractSelection2', Input=pvd)
+        
+            extractSelection2Display = Show(extractSelection2, renderView1, 'UnstructuredGridRepresentation')
+            field0 = extractSelection2Display.ColorArrayName[1]
+            field0LUT = GetColorTransferFunction(field0)
+        
+            ColorBy(extractSelection2Display, None)
+            extractSelection2Display.AmbientColor = [0.6666666666666666, 0.0, 1.0]
+            extractSelection2Display.DiffuseColor = [0.6666666666666666, 0.0, 1.0]
+            extractSelection2Display.PointSize = 2.0
 
             HideScalarBarIfNotNeeded(field0LUT, renderView1)
         
             Hide(pvd, renderView1)
+            Hide(extractSelection1, renderView1)
+            Hide(extractSelection2, renderView1)
+
+
+    def plot_step(self, **kwargs): 
+        '''
+        plot a step
+        Inputs:
+            kwargs:
+                glyphRegistrationName: the name of the glyph, used to adjust the glyph outputs
+        '''
+        # parse input
 
 
     def plot_step(self, **kwargs): 
@@ -980,6 +1020,24 @@ def main():
         Slab.goto_time(_time)
         # Slab.plot_slice()
         # Slab(INITIAL_ADAPTIVE_REFINEMENT+SINGLE_SNAPSHOT)
+
+
+def ggr2cart(lat,lon,r):
+    # transform spherical lat,lon,r geographical coordinates
+    # to global cartesian xyz coordinates
+    #
+    # input:  lat,lon,r in radians, meters
+    # output: x,y,z in meters 3 x M
+    sla = math.sin(lat)
+    cla = math.cos(lat)
+    slo = math.sin(lon)
+    clo = math.cos(lon)
+
+    x = r * cla * clo
+    y = r * cla * slo
+    z = r * sla
+
+    return x,y,z
 
 
 main()
