@@ -109,17 +109,7 @@ class SLAB(PARAVIEW_PLOT):
             Hide(extractSelection2, renderView1)
 
 
-    def plot_step(self, **kwargs): 
-        '''
-        plot a step
-        Inputs:
-            kwargs:
-                glyphRegistrationName: the name of the glyph, used to adjust the glyph outputs
-        '''
-        # parse input
-
-
-    def plot_step(self, **kwargs): 
+    def plot_step_upper_mantle(self, **kwargs): 
         '''
         plot a step
         Inputs:
@@ -1003,7 +993,7 @@ def main():
                 _time =  all_available_graphical_times[idx]
                 Slab.goto_time(_time)
                 if "upper_mantle" in plot_types:
-                    Slab.plot_step()
+                    Slab.plot_step_upper_mantle()
                 if "whole" in plot_types:
                     Slab.plot_step_whole()
                 if "whole_whole" in plot_types:

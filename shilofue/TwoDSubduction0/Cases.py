@@ -747,7 +747,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         if mantle_rheology_scheme == "HK03_wet_mod_twod":  # get the type of rheology
             # note that the jump on 660 is about 15.0 in magnitude
             # deprecated
-            rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
+            rheology,viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
     dVdiff=-5.5e-6, dVdisl=2.12e-6, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.040297619, save_json=1,\
     jump_lower_mantle=15.0, Coh=mantle_coh)
             if sz_viscous_scheme == "constant" and\
@@ -761,7 +761,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
         elif mantle_rheology_scheme == "HK03_wet_mod_twod1":  # get the type of rheology
             # note that the jump on 660 is about 15.0 in magnitude
             # fix the issue that in the previous scheme, the rheolog is not assigned to the prm.
-            rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
+            rheology, viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=30e3,\
     dVdiff=-5.5e-6, dVdisl=2.12e-6, save_profile=1, dAdiff_ratio=0.33333333333, dAdisl_ratio=1.040297619, save_json=1,\
     jump_lower_mantle=15.0, Coh=mantle_coh)
             if sz_viscous_scheme == "constant" and\
@@ -774,25 +774,25 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         elif mantle_rheology_scheme == "HK03_wet_mod_weakest_diffusion":
             # in this rheology, I maintained the prefactors from the derivation of the "HK03_wet_mod" rheology
-            rheology, _ = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
+            rheology, viscosity_profile = Operator.MantleRheology(rheology="HK03_wet_mod", dEdiff=-40e3, dEdisl=20e3,\
     dVdiff=-5.5e-6, dVdisl=-1.2e-6, save_profile=1, save_json=1, jump_lower_mantle=15.0, Coh=mantle_coh)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         elif mantle_rheology_scheme == "HK03":
             # in this one, I don't include F because of the issue related to pressure calibration
-            rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, use_effective_strain_rate=False, save_profile=1, save_json=1,\
+            rheology, viscosity_profile = Operator.MantleRheology(rheology=mantle_rheology_scheme, use_effective_strain_rate=False, save_profile=1, save_json=1,\
     jump_lower_mantle=15.0)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         elif mantle_rheology_scheme == "HK03_const":
             # use the const coh = 1000.0 rheology in HK03
-            rheology, _ = Operator.MantleRheology(rheology="HK03", use_effective_strain_rate=True, save_profile=1, save_json=1,\
+            rheology, viscosity_profile = Operator.MantleRheology(rheology="HK03", use_effective_strain_rate=True, save_profile=1, save_json=1,\
                         jump_lower_mantle=15.0)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         elif mantle_rheology_scheme == "HK03_dry":
             # use dry olivine rheology
-            rheology, _ = Operator.MantleRheology(rheology="HK03_dry", use_effective_strain_rate=True, save_profile=1, save_json=1,\
+            rheology, viscosity_profile = Operator.MantleRheology(rheology="HK03_dry", use_effective_strain_rate=True, save_profile=1, save_json=1,\
                         jump_lower_mantle=15.0)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
@@ -817,7 +817,7 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             print("refit rheology") # debug
             rheology_dict_refit = RefitRheology(rheology_dict, diff_correction, disl_correction, ref_state)
             # derive mantle rheology
-            rheology, _ = Operator.MantleRheology(assign_rheology=True, diffusion_creep=rheology_dict_refit['diffusion'],\
+            rheology, viscosity_profile = Operator.MantleRheology(assign_rheology=True, diffusion_creep=rheology_dict_refit['diffusion'],\
                                                         dislocation_creep=rheology_dict_refit['dislocation'], save_profile=1,\
                                                         use_effective_strain_rate=True, save_json=1, Coh=mantle_coh,\
                                                         jump_lower_mantle=jump_lower_mantle)
@@ -828,12 +828,13 @@ $ASPECT_SOURCE_DIR/build%s/isosurfaces_TwoD1/libisosurfaces_TwoD1.so" % (branch_
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         else:
             # default is to fix F
-            rheology, _ = Operator.MantleRheology(rheology=mantle_rheology_scheme, save_profile=1, save_json=1)
+            rheology, viscosity_profile = Operator.MantleRheology(rheology=mantle_rheology_scheme, save_profile=1, save_json=1)
             CDPT_assign_mantle_rheology(o_dict, rheology, sz_viscous_scheme=sz_viscous_scheme, sz_constant_viscosity=sz_constant_viscosity,\
             sz_minimum_viscosity=sz_minimum_viscosity, slab_core_viscosity=slab_core_viscosity, minimum_viscosity=minimum_viscosity)
         # record the upper mantle rheology
         um_diffusion_creep = rheology['diffusion_creep']
         um_dislocation_creep = rheology['dislocation_creep']
+        self.viscosity_profile=viscosity_profile
 
         # these files are generated with the rheology variables
         self.output_files.append(Operator.output_json)
