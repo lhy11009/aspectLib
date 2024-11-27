@@ -57,7 +57,7 @@ class SLAB(PARAVIEW_PLOT):
         # Extract a selection of points, one with smaller longitude, one with bigger longitude
         # Then set color to "solid"
         # Note: For now, I can only get one point to work
-        if True:
+        if False:
             _source="Transform1" # name
             pvd = FindSource(_source) # pvd - the actual source
             SetActiveSource(pvd)
@@ -108,6 +108,26 @@ class SLAB(PARAVIEW_PLOT):
             Hide(extractSelection1, renderView1)
             Hide(extractSelection2, renderView1)
 
+        # add contours
+        renderView1 = GetActiveViewOrCreate('RenderView')
+
+        _source="Transform1" # name
+        pvd = FindSource(_source) # pvd - the actual source
+        fieldTLUT = GetColorTransferFunction('T')
+
+        contourT = Contour(registrationName='ContourT', Input=pvd)
+        contourT.ContourBy = ['POINTS', 'T']
+        contourT.Isosurfaces = [1373.0]
+        contourT.PointMergeMethod = 'Uniform Binning'
+
+        contourTDisplay = Show(contourT, renderView1, 'GeometryRepresentation')
+        contourTDisplay.LineWidth = 2.0
+        contourTDisplay.Ambient = 1.0
+
+        Hide(contourT, renderView1)
+        HideScalarBarIfNotNeeded(fieldTLUT, renderView1)
+
+
     def plot_step_upper_mantle(self, **kwargs): 
         """
         Plot a step in the upper mantle with visualizations including scalar and vector fields.
@@ -157,7 +177,7 @@ class SLAB(PARAVIEW_PLOT):
         HideScalarBarIfNotNeeded(field2LUT, renderView1)
         HideScalarBarIfNotNeeded(field3LUT, renderView1)
         source1Display.SetScalarBarVisibility(renderView1, True)
-        field1LUT.RescaleTransferFunction(273.0, 2273.0)
+        rescale_transfer_function_combined('T', 273.0, 1673.0)
 
         # Configure the color bar for the temperature field.
         field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
@@ -216,6 +236,14 @@ class SLAB(PARAVIEW_PLOT):
             raise NotImplementedError()
         self.adjust_glyph_properties('Glyph1', scale_factor, n_sample_points, point_source_center)
 
+        # show contour
+        fieldTLUT = GetColorTransferFunction("T")
+        source_contour = FindSource("contourT")
+
+        contourTDisplay = Show(source_contour, renderView1, 'GeometryRepresentation')
+        
+        rescale_transfer_function_combined('T', 273.0, 1673.0)
+
         # Configure layout and camera settings based on geometry.
         layout1 = GetLayout()
         layout1.SetSize(layout_resolution[0], layout_resolution[1])
@@ -232,31 +260,34 @@ class SLAB(PARAVIEW_PLOT):
         
         # Simply comments all the following to debug
 
-        # # Save the first figure (temperature field).
-        # fig_path = os.path.join(self.pv_output_dir, "T_t%.4e.pdf" % self.time)
-        # fig_png_path = os.path.join(self.pv_output_dir, "T_t%.4e.png" % self.time)
-        # SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
-        # ExportView(fig_path, view=renderView1)
+        # Save the first figure (temperature field).
+        fig_path = os.path.join(self.pv_output_dir, "T_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "T_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
 
-        # # Plot the second scalar field (viscosity) and configure settings.
-        # field2 = "viscosity"
-        # ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
-        # source1Display.SetScalarBarVisibility(renderView1, True)
-        # HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        # Plot the second scalar field (viscosity) and configure settings.
+        field2 = "viscosity"
+        ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        rescale_transfer_function_combined('viscosity', ETA_MIN, ETA_MAX)
 
-        # # Save the second figure (viscosity field).
-        # fig_path = os.path.join(self.pv_output_dir, "viscosity_t%.4e.pdf" % self.time)
-        # fig_png_path = os.path.join(self.pv_output_dir, "viscosity_t%.4e.png" % self.time)
-        # SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
-        # ExportView(fig_path, view=renderView1)
+        # Save the second figure (viscosity field).
+        fig_path = os.path.join(self.pv_output_dir, "viscosity_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "viscosity_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
 
-        # # Hide all the plots and scalar bars to clean up.
-        # Hide(source1, renderView1)
-        # Hide(sourceV, renderView1)
-        # Hide(sourceVRE, renderView1)
-        # Hide(sourceVTXT, renderView1)
-        # HideScalarBarIfNotNeeded(field2LUT, renderView1)
-        # HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+        # Hide all the plots and scalar bars to clean up.
+        Hide(source1, renderView1)
+        Hide(sourceV, renderView1)
+        Hide(sourceVRE, renderView1)
+        Hide(sourceVTXT, renderView1)
+        Hide(source_contour, renderView1)
+        HideScalarBarIfNotNeeded(field2LUT, renderView1)
+        HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+        HideScalarBarIfNotNeeded(fieldTLUT, renderView1)
 
 
     def plot_step_upper_mantle_DM(self, **kwargs): 
@@ -303,6 +334,7 @@ class SLAB(PARAVIEW_PLOT):
         ColorBy(source1Display, ('POINTS', field1, 'Magnitude'))
         source1Display.SetScalarBarVisibility(renderView1, True)
         field1LUT.RescaleTransferFunction(0.0, 3.0)
+        field1LUT.NumberOfTableValues = 4
 
         # Configure the color bar for the temperature field.
         field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
@@ -374,6 +406,20 @@ class SLAB(PARAVIEW_PLOT):
             renderView1.CameraPosition = [4700895.868280185, 2538916.5897593317, 15340954.822755022]
             renderView1.CameraFocalPoint = [4700895.868280185, 2538916.5897593317, 0.0]
             renderView1.CameraParallelScale = 487763.78047352127
+        
+        # Save the deformation mechanism plot.
+        fig_path = os.path.join(self.pv_output_dir, "dm_t%.4e.eps" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "dm_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
+        
+        # # Hide all the plots and scalar bars to clean up.
+        Hide(source1, renderView1)
+        Hide(sourceV, renderView1)
+        Hide(sourceVRE, renderView1)
+        Hide(sourceVTXT, renderView1)
+        HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
 
     
     def plot_step_whole(self, **kwargs): 

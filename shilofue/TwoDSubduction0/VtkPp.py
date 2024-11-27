@@ -175,6 +175,7 @@ class VTKP(VtkPp.VTKP):
         self.slab_envelop_interval = kwargs.get("slab_envelop_interval", 5e3)
         self.velocitw_query_depth = 5e3  # depth to look up plate velocities
         self.velocitw_query_disl_to_trench = 500e3  # distance to trench to look up plate velocities
+        self.shallow_trench = None
         default_gravity_file = os.path.join(Utilities.var_subs('${ASPECT_SOURCE_DIR}'),\
         "data", "gravity-model", "prem.txt") 
         gravity_file = kwargs.get('gravity_file', default_gravity_file)
@@ -191,6 +192,7 @@ class VTKP(VtkPp.VTKP):
         Parameters:
             trench_initial (float): Initial trench position in radians.
             **kwargs: Additional options, including trench_lookup_range and export_shallow_file.
+                n_crust - number of crust in the model
     
         Returns:
             dict: Contains information on original and corrected points with distances.
@@ -202,6 +204,7 @@ class VTKP(VtkPp.VTKP):
     
         trench_lookup_range = kwargs.get("trench_lookup_range", 10.0 * np.pi / 180.0)
         export_shallow_file = kwargs.get("export_shallow_file", None)
+        n_crust = kwargs.get("n_crust", 1)
     
         print("%s started" % Utilities.func_name())
         start = time.time()
@@ -209,7 +212,7 @@ class VTKP(VtkPp.VTKP):
         # Sorts the shallow points and retrieves relevant data arrays for processing.
         points = vtk_to_numpy(self.i_poly_data.GetPoints().GetData())
         point_data = self.i_poly_data.GetPointData()
-    
+
         pinned_field = vtk_to_numpy(point_data.GetArray("spcrust"))
         pinned_bottom_field = vtk_to_numpy(point_data.GetArray("spharz"))
     
@@ -316,6 +319,8 @@ class VTKP(VtkPp.VTKP):
         x_b_min, y_b_min, z_b_min = bottom_points[i_min]
     
         outputs["corrected"] = {"points": [x_new, y_new, z_new], "match points": [x_b_min, y_b_min, z_b_min], "distance": min_dist}
+
+        self.shallow_trench = [x_new, y_new, z_new]
     
         end = time.time()
         print("\tPerform correction, takes %.2f s" % (end - start))
@@ -1529,10 +1534,11 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     VtkP.PrepareSlab(crust_fields + ['spharz'], prepare_slab_distant_properties=True, depth_distant_lookup=depth_distant_lookup)
     # todo_shallow
     if find_shallow_trench:
+        if n_crust == 2:
+            raise NotImplementedError()
         outputs = VtkP.PrepareSlabShallow(Visit_Options.options['THETA_REF_TRENCH'])
         x, y, z = outputs["corrected"]["points"]
         _, _, trench_shallow = Utilities.cart2sph(x, y, z)
-
     if findmdd:
         try:
             mdd1 = VtkP.FindMDD(tolerance=findmdd_tolerance, dx1=-Visit_Options.options["INITIAL_SHEAR_ZONE_THICKNESS"])
@@ -1839,6 +1845,12 @@ def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
     output_slab = kwargs.get('output_slab', False)
     output_poly_data = kwargs.get('output_poly_data', True)
     slab_envelop_interval = kwargs.get("slab_envelop_interval", 5e3)
+    max_depth = kwargs.get("max_depth", 660e3)
+
+    # todo_T
+    fix_shallow = kwargs.get("fix_shallow", False)
+    ofile_surface = kwargs.get("ofile_surface", None)
+    ofile_moho = kwargs.get("ofile_moho", None)
     output_path = os.path.join(case_dir, "vtk_outputs")
     if not os.path.isdir(output_path):
         os.mkdir(output_path)
@@ -1860,18 +1872,21 @@ def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
     if has_dynamic_pressure == 1:
         field_names += ['nonadiabatic_pressure']
     VtkP.ConstructPolyData(field_names, include_cell_center=True, construct_Tdiff=False)
+   
     # include a v_profile
     r0_range = [6371e3 - 2890e3, 6371e3]
     Ro = 6371e3
     x1 = 0.01 
     n = 100
     v_profile = VtkP.VerticalProfile2D(r0_range, x1, n)
+    
     # output poly data, debug
     if output_poly_data:
         file_out = os.path.join(output_path, "processed-%05d.vtp" % vtu_snapshot)
         VtkPp.ExportPolyData(VtkP.i_poly_data, file_out)
         file_out_1 = os.path.join(output_path, "processed_center-%05d.vtp" % vtu_snapshot)
         VtkPp.ExportPolyData(VtkP.c_poly_data, file_out_1)
+    
     # slab envelop
     VtkP.PrepareSlab(['spcrust', 'spharz'], prepare_cmb='spcrust')  # slab: composition
     slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
@@ -1894,64 +1909,113 @@ def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
         print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
     rs_n = 5 # resample interval
     ip_interval = 1e3  # interval for interpolation
-    # resample the original envelop dataset
+
+    # resample the origin slab surface
     n_point = slab_envelop1.shape[0]
     rs_idx = range(0, n_point, rs_n)
-    slab_envelop_rs = slab_envelop1[np.ix_(rs_idx, [0, 1])]  # for slab surface
-    depths = np.zeros(slab_envelop_rs.shape[0])
-    for i in range(0, slab_envelop_rs.shape[0]):
-        # get depths
-        x = slab_envelop_rs[i, 0]
-        y = slab_envelop_rs[i, 1]
-        r = (x*x + y*y)**0.5
-        depth = Ro - r  # depth of this point
-        depths[i] = depth
-    slab_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, slab_envelop_rs, quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
-    env_Ttops  = vtk_to_numpy(slab_env_polydata.GetPointData().GetArray('T'))
+    slab_envelop_rs_raw = slab_envelop1[np.ix_(rs_idx, [0, 1])]  # for slab surface
+    
+    # todo_T
+    if fix_shallow:
+        # append the shallow trench point
+        outputs_shallow = VtkP.PrepareSlabShallow(Visit_Options.options['THETA_REF_TRENCH'])
+        slab_envelop_rs_raw = np.vstack((outputs_shallow["corrected"]["points"][0:2], slab_envelop_rs_raw)) 
+    else:
+        outputs_shallow = None
+    
+    depths_raw = Ro - (slab_envelop_rs_raw[:, 0]**2.0 + slab_envelop_rs_raw[:, 1]**2.0)**0.5
+    id_max = np.where(depths_raw < max_depth)[0][-1]
+    
+    depths = depths_raw[0: id_max+1]
+    slab_envelop_rs = slab_envelop_rs_raw[0: id_max+1, :]
+
+    # resample the original cmb
     if debug:
         print("cmb_envelop: ")  # screen outputs
         print(cmb_envelop)
     try:
-        cmb_envelop_rs = cmb_envelop[np.ix_(rs_idx, [0, 1])]
+        cmb_envelop_rs_raw = cmb_envelop[np.ix_(rs_idx, [0, 1])]
         if debug:
-            print("cmb_envelop_rs: ")  # screen outputs
-            print(cmb_envelop_rs)
+            print("cmb_envelop_rs_raw: ")  # screen outputs
+            print(cmb_envelop_rs_raw)
     except IndexError as e:
         rs_idx_last = rs_idx[-1]
-        cmb_envelop_rs_length = cmb_envelop.shape[0]
+        cmb_envelop_rs_raw_length = cmb_envelop.shape[0]
         raise CmbExtractionIndexError("the last index to extract is %d, while the shape of the cmb_envelop is %d"\
-        % (rs_idx_last, cmb_envelop_rs_length)) from e
-    cmb_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, cmb_envelop_rs, quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
+        % (rs_idx_last, cmb_envelop_rs_raw_length)) from e
+    
+    # todo_T
+    if fix_shallow:
+        # append the shallow trench point
+        r, theta, phi = Utilities.cart2sph(*outputs_shallow["corrected"]["points"])
+        r1 = r - Visit_Options.options["INITIAL_SHEAR_ZONE_THICKNESS"]
+        moho_shallow = np.array([r1 * np.sin(theta) * np.cos(phi), r1 * np.sin(theta) * np.sin(phi), 0])
+        cmb_envelop_rs_raw = np.vstack((moho_shallow[0:2], cmb_envelop_rs_raw))
+    
+    
+    depths_cmb_raw = Ro - (cmb_envelop_rs_raw[:, 0]**2.0 + cmb_envelop_rs_raw[:, 1]**2.0)**0.5
+    
+    depths_cmb = depths_cmb_raw[0: id_max+1] # match the array for the surface
+    cmb_envelop_rs = cmb_envelop_rs_raw[0: id_max+1, :]
+    
+    id_valid = np.where(depths_cmb > 0.0)[0][-1] # reason: max depth could be shallower than the slab surface
+    
+    # interpolate the curve
+    # start = np.ceil(depths[0]/ip_interval) * ip_interval
+    start = np.ceil(depths[0]/ip_interval) * ip_interval
+    end = np.floor(depths[-1]/ip_interval) * ip_interval
+    n_out = int((end-start) / ip_interval)
+    depths_out = np.arange(start, end, ip_interval)
+
+    slab_Xs = interp1d(depths, slab_envelop_rs[:, 0], kind='cubic')(depths_out)
+    slab_Ys = interp1d(depths, slab_envelop_rs[:, 1], kind='cubic')(depths_out)
+
+    mask_cmb = ((depths_out > depths_cmb[0]) & (depths_out < depths_cmb[id_valid]))
+    cmb_Xs = np.zeros(depths_out.shape)
+    cmb_Ys = np.zeros(depths_out.shape)
+    cmb_Xs[mask_cmb] = interp1d(depths_cmb[0: id_valid+1], cmb_envelop_rs[0: id_valid+1, 0], kind='cubic')(depths_out[mask_cmb])
+    cmb_Ys[mask_cmb] = interp1d(depths_cmb[0: id_valid+1], cmb_envelop_rs[0: id_valid+1, 1], kind='cubic')(depths_out[mask_cmb])
+
+    # interpolate the T 
+    slab_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, np.column_stack((slab_Xs, slab_Ys)), quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
+    env_Ttops  = vtk_to_numpy(slab_env_polydata.GetPointData().GetArray('T'))
+    
+    cmb_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, np.column_stack((cmb_Xs, cmb_Ys)), quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
     env_Tbots = vtk_to_numpy(cmb_env_polydata.GetPointData().GetArray('T'))
-    # fix the non-sense values
-    mask = (env_Tbots < 1.0)
-    env_Tbots[mask] = -1e31
+    
+    mask = (env_Tbots < 1.0) # fix the non-sense values
+    env_Tbots[mask] = -np.finfo(np.float32).max
     if debug:
         print("env_Tbots")  # screen outputs
         print(env_Tbots)
+
+    # output 
     if ofile is not None:
         # write output if a valid path is given
-        data_env0 = np.zeros((env_Tbots.size, 4)) # output: x, y, Tbot, Ttop
-        data_env0[:, 0] = slab_envelop_rs[:, 0]
-        data_env0[:, 1] = slab_envelop_rs[:, 1]
-        data_env0[:, 2] = env_Tbots
-        data_env0[:, 3] = env_Ttops
+        data_env0 = np.zeros((depths_out.size, 7)) # output: x, y, Tbot, Ttop
+        data_env0[:, 0] = depths_out
+        data_env0[:, 1] = slab_Xs
+        data_env0[:, 2] = slab_Ys
+        data_env0[:, 3] = cmb_Xs
+        data_env0[:, 4] = cmb_Ys
+        data_env0[:, 5] = env_Tbots
+        data_env0[:, 6] = env_Ttops
         c_out = data_env0.shape[1]
         # interpolate data to regular grid & prepare outputs
-        start = np.ceil(depths[0]/ip_interval) * ip_interval
-        end = np.floor(depths[-1]/ip_interval) * ip_interval
-        n_out = int((end-start) / ip_interval)
-        data_env0_out = np.zeros((n_out, c_out+1))
-        depths_out = np.arange(start, end, ip_interval)
-        data_env0_out[:, 0] = depths_out
         for j in range(c_out):
-            data_env0_out[:, j+1] = np.interp(depths_out, depths, data_env0[:, j]) # interpolation
-            header = "# 1: depth (m)\n# 2: x (m)\n# 3: y (m)\n# 4: Tbot (K)\n# 5: Ttop (K)\n"
+            header = "# 1: depth (m)\n# 2: x (m)\n# 3: y (m)\n# 4: x bot (m)\n# 5: y bot (m)\n# 6: Tbot (K)\n# 7: Ttop (K)\n"
         with open(ofile, 'w') as fout:
             fout.write(header)
         with open(ofile, 'a') as fout: 
-            np.savetxt(fout, data_env0_out, fmt='%.4e\t')
+            np.savetxt(fout, data_env0, fmt='%.4e\t')
         print("%s%s: write output %s" % (' '*indent, Utilities.func_name(), ofile))
+    if ofile_surface is not None:
+        # write output of surface and moho profile
+        # todo_T
+        VtkPp.ExportPolyDataFromRaw(slab_Xs, slab_Ys, None, None, ofile_surface) # write the polydata
+    if ofile_moho is not None:
+        VtkPp.ExportPolyDataFromRaw(cmb_Xs, cmb_Ys, None, None, ofile_moho) # write the polydata
+        
     return depths, env_Ttops, env_Tbots  # return depths and pressures
 
 
@@ -1959,12 +2023,25 @@ def SlabTemperature1(case_dir, vtu_snapshot, **kwargs):
     '''
     a wrapper for the SlabTemperature function
     '''
-    output_path = os.path.join(case_dir, "vtk_outputs")
+    output_path = os.path.join(case_dir, "vtk_outputs", "temperature")
     Visit_Options = VISIT_OPTIONS(case_dir)
     Visit_Options.Interpret()
     geometry = Visit_Options.options['GEOMETRY']
     vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+
+    if not os.path.isdir(os.path.dirname(output_path)):
+        os.mkdir(os.path.dirname(output_path))
+    if not os.path.isdir(output_path):
+        os.mkdir(output_path)
+
+    # todo_T 
     ofile = os.path.join(output_path, "slab_temperature_%05d.txt" % (vtu_step))
+    ofile_surface = os.path.join(output_path, "slab_surface_%05d.vtp" % (vtu_step))
+    ofile_moho = os.path.join(output_path, "slab_moho_%05d.vtp" % (vtu_step))
+    
+    kwargs["ofile_surface"] = ofile_surface
+    kwargs["ofile_moho"] = ofile_moho
+    
     SlabTemperature(case_dir, vtu_snapshot, ofile=ofile, **kwargs)
 
 
@@ -2175,7 +2252,8 @@ def SlabTemperatureCase(case_dir, **kwargs):
     if not os.path.isdir(vtk_output_dir):
         os.mkdir(vtk_output_dir)
     # Initiation Wrapper class for parallel computation
-    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_temperature', SlabTemperature1, if_rewrite=True, assemble=False, output_poly_data=False)
+    # todo_T
+    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_temperature', SlabTemperature1, if_rewrite=True, assemble=False, output_poly_data=False, fix_shallow=True)
     ParallelWrapper.configure(case_dir)  # assign case directory
     # Remove previous file
     print("%s: Delete old slab_temperature.txt file." % Utilities.func_name())
@@ -4825,7 +4903,7 @@ def main():
     elif _commend == 'morph_case_parallel':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True,\
-            use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt', find_shallow_trench=True)
+            use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt', find_shallow_trench=False)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')

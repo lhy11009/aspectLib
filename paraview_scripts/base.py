@@ -338,6 +338,28 @@ def adjust_slice_color(slice1Display, field, renderView):
     sp_upperPWF = GetOpacityTransferFunction(field)
 
 
+def rescale_transfer_function_combined(field, min_val, max_val):
+
+    # get color transfer function/color map for 'T'
+    # Rescale transfer function
+    tLUT = GetColorTransferFunction(field)
+    tLUT.RescaleTransferFunction(min_val, max_val)
+
+    # get opacity transfer function/opacity map for 'T'
+    # Rescale transfer function
+    tPWF = GetOpacityTransferFunction(field)
+    tPWF.RescaleTransferFunction(min_val, max_val)
+
+    # get 2D transfer function for 'T'
+    # Rescale 2D transfer function
+    try:
+        tTF2D = GetTransferFunction2D(field)
+    except NameError:
+        pass
+    else:
+        tTF2D.RescaleTransferFunction(min_val, max_val, 0.0, 1.0)
+
+
 def adjust_camera(renderView, position, focalPoint, parallelScale, viewUp):
     '''
     adjust camera
