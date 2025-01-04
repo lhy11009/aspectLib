@@ -343,6 +343,12 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
             V_plate_avg = -1.0
             V_ov_plate_avg = -1.0
             V_trench_avg = -1.0
+        except FileNotFoundError:
+            print("Some other files not found for case %s" % case_dir)
+            V_sink_avg = -1.0
+            V_plate_avg = -1.0
+            V_ov_plate_avg = -1.0
+            V_trench_avg = -1.0
         self.V_sink_avgs[i] = V_sink_avg
         self.V_plate_avgs[i] = V_plate_avg
         self.V_ov_plate_avgs[i] = V_ov_plate_avg

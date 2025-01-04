@@ -304,7 +304,7 @@ class VTKP(VtkPp.VTKP):
     
         dphi = 0.001 * np.pi / 180.0
         dphi_increment = 0.001 * np.pi / 180.0
-        phi_new = None
+        phi_new = phi_max
         i_min = None
         while dphi < 1.0:
             phi = phi_max - dphi
@@ -314,7 +314,7 @@ class VTKP(VtkPp.VTKP):
                 phi_new = phi
                 break
             dphi += dphi_increment
-    
+ 
         x_new, y_new, z_new = Utilities.ggr2cart(0.0, phi_new, self.Ro)
         x_b_min, y_b_min, z_b_min = bottom_points[i_min]
     
@@ -1536,9 +1536,14 @@ def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
     if find_shallow_trench:
         if n_crust == 2:
             raise NotImplementedError()
-        outputs = VtkP.PrepareSlabShallow(Visit_Options.options['THETA_REF_TRENCH'])
-        x, y, z = outputs["corrected"]["points"]
-        _, _, trench_shallow = Utilities.cart2sph(x, y, z)
+        try:
+            # This is not a stable algorithm yet.
+            outputs = VtkP.PrepareSlabShallow(Visit_Options.options['THETA_REF_TRENCH'])
+        except Exception:
+            trench_shallow = np.finfo(np.float16).tiny
+        else:
+            x, y, z = outputs["corrected"]["points"]
+            _, _, trench_shallow = Utilities.cart2sph(x, y, z)
     if findmdd:
         try:
             mdd1 = VtkP.FindMDD(tolerance=findmdd_tolerance, dx1=-Visit_Options.options["INITIAL_SHEAR_ZONE_THICKNESS"])
@@ -2041,8 +2046,11 @@ def SlabTemperature1(case_dir, vtu_snapshot, **kwargs):
     
     kwargs["ofile_surface"] = ofile_surface
     kwargs["ofile_moho"] = ofile_moho
-    
-    SlabTemperature(case_dir, vtu_snapshot, ofile=ofile, **kwargs)
+
+    try: 
+        SlabTemperature(case_dir, vtu_snapshot, ofile=ofile, **kwargs)
+    except ValueError:
+        warnings.warn("Generation of file for vtu_snapshot %d" % vtu_snapshot)
 
 
 def WedgeT(case_dir, vtu_snapshot, **kwargs):
@@ -2565,6 +2573,9 @@ class SLABPLOT(LINEARPLOT):
     '''
     def __init__(self, _name):
         LINEARPLOT.__init__(self, _name)
+
+    class MorphFileReadingError(Exception):
+        pass
  
     def ReadWedgeT(self, case_dir, **kwargs):
         '''
@@ -4003,11 +4014,16 @@ class SLABPLOT(LINEARPLOT):
         Utilities.my_assert(os.path.isfile(morph_file), self.SlabMorphFileNotExistError, "%s is not a file." % morph_file)
         self.ReadHeader(morph_file)
         self.ReadData(morph_file)
-        
-        col_time = self.header['time']['col']
-        times = self.data[:, col_time]
-        col_slab_depth = self.header['slab_depth']['col']
-        slab_depths = self.data[:, col_slab_depth]
+
+        try: 
+            col_time = self.header['time']['col']
+            times = self.data[:, col_time]
+            col_slab_depth = self.header['slab_depth']['col']
+            slab_depths = self.data[:, col_slab_depth]
+        except IndexError as e:
+            # in case the file cannot be read, just return an invalid value
+            return -1.0
+            # raise SLABPLOT.MorphFileReadingError("Error while reading slab morphology file %s" % morph_file) from e
         query_time = -1.0
         for i in range(len(times)-1):
             _time = times[i]
@@ -4046,15 +4062,18 @@ class SLABPLOT(LINEARPLOT):
         self.ReadHeader(morph_file)
         self.ReadData(morph_file)
         
-        col_time = self.header['time']['col']
-        times = self.data[:, col_time]
-
+        # assign initial values 
         V_sink_avg = -1.0
-        # todo_ovs
         V_plate_avg = -1.0
         V_ov_plate_avg = -1.0
         V_trench_avg = -1.0
 
+        try: 
+            col_time = self.header['time']['col']
+            times = self.data[:, col_time]
+        except IndexError:
+            return V_sink_avg, V_plate_avg, V_ov_plate_avg, V_trench_avg
+            
         # if the time range is invalid (t1 should be bigger), return a state of -2.0 
         if (t1 <= t0):
             V_sink_avg = -2.0
@@ -4903,7 +4922,7 @@ def main():
     elif _commend == 'morph_case_parallel':
         # slab morphology for a case
         SlabMorphologyCase(arg.inputs, rewrite=1, findmdd=True, time_interval=arg.time_interval, project_velocity=True,\
-            use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt', find_shallow_trench=False)
+            use_parallel=True, file_tag='interval', findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt', find_shallow_trench=True)
     elif _commend == 'plot_morph':
         # plot slab morphology
         SlabPlot = SLABPLOT('slab')

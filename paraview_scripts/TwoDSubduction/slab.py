@@ -38,7 +38,11 @@ class SLAB(PARAVIEW_PLOT):
         kwargs['all_variables'] = ['velocity', 'p', 'T',  'density', 'viscosity', 'spcrust', 'spharz',\
                 'dislocation_viscosity', 'diffusion_viscosity', 'peierls_viscosity', 'strain_rate', 'nonadiabatic_pressure']\
                     +  ADDITIONAL_FIELDS
+       
         PARAVIEW_PLOT.__init__(self, filein, **kwargs)
+        
+        # load the types of plots
+        plot_types = PLOT_TYPES
 
         self.eta_min = ETA_MIN
         self.eta_max = ETA_MAX
@@ -48,11 +52,16 @@ class SLAB(PARAVIEW_PLOT):
         apply_rotation("solution.pvd", [0.0, 0.0, 0.0], [0.0, 0.0, ROTATION_ANGLE], registrationName="Transform1")
         add_plot("Transform1", "viscosity", use_log=True, lim=[self.eta_min, self.eta_max], color="roma")
         add_plot("Transform1", "T", lim=[self.T_min, self.T_max], color="vik")
-        # todo_wedge
+
+        # add glyph
         add_glyph1("Transform1", "velocity", 1e6, registrationName="Glyph1")
+
+        # add plot of composition
         add_plot("Transform1", "spcrust", lim=[0.0, 1.0], color="vik")
+
+        # add plot of deformation mechanism
         add_deformation_mechanism("Transform1", registrationName="pFilter_DM")
-    
+
         # Extract points
         # Extract a selection of points, one with smaller longitude, one with bigger longitude
         # Then set color to "solid"
@@ -108,23 +117,29 @@ class SLAB(PARAVIEW_PLOT):
             Hide(extractSelection1, renderView1)
             Hide(extractSelection2, renderView1)
 
-        # add contours
+        # add contour T
         renderView1 = GetActiveViewOrCreate('RenderView')
 
         _source="Transform1" # name
         pvd = FindSource(_source) # pvd - the actual source
         fieldTLUT = GetColorTransferFunction('T')
 
-        contourT = Contour(registrationName='ContourT', Input=pvd)
-        contourT.ContourBy = ['POINTS', 'T']
-        contourT.Isosurfaces = [1373.0]
-        contourT.PointMergeMethod = 'Uniform Binning'
+        # add contour of T
+        contourT1 = Contour(registrationName='ContourT1', Input=pvd)
+        contourT1.ContourBy = ['POINTS', 'T']
+        if "upper_mantle" in plot_types or "wedge" in plot_types:
+            contourT1.Isosurfaces = [673.15, 1073.15]
+        elif "wedge_small" in plot_types:
+            contourT1.Isosurfaces = [673.15, 873.15, 1073.15, 1273.15]
+        else:
+            contourT1.Isosurfaces = [1373.15]
 
-        contourTDisplay = Show(contourT, renderView1, 'GeometryRepresentation')
-        contourTDisplay.LineWidth = 2.0
-        contourTDisplay.Ambient = 1.0
+        contourT1Display = Show(contourT1, renderView1, 'GeometryRepresentation')
+        contourT1Display.LineWidth = 2.0
+        contourT1Display.Ambient = 1.0
 
-        Hide(contourT, renderView1)
+
+        Hide(contourT1, renderView1)
         HideScalarBarIfNotNeeded(fieldTLUT, renderView1)
 
 
@@ -236,9 +251,9 @@ class SLAB(PARAVIEW_PLOT):
             raise NotImplementedError()
         self.adjust_glyph_properties('Glyph1', scale_factor, n_sample_points, point_source_center)
 
-        # show contour
+        # Show contour
         fieldTLUT = GetColorTransferFunction("T")
-        source_contour = FindSource("contourT")
+        source_contour = FindSource("contourT1")
 
         contourTDisplay = Show(source_contour, renderView1, 'GeometryRepresentation')
         
@@ -249,10 +264,9 @@ class SLAB(PARAVIEW_PLOT):
         layout1.SetSize(layout_resolution[0], layout_resolution[1])
         renderView1.InteractionMode = '2D'
         if "GEOMETRY" == "chunk":
-            renderView1.CameraPosition = [-22000.0, 334282.0428107196, 24950883.772515625]
-            renderView1.CameraFocalPoint = [-22000.0, 5774282.042810716, -49116.227484387426]
-            renderView1.CameraViewUp = [0.0, 0.9771340138064095, 0.2126243614042745]
-            renderView1.CameraParallelScale = 968000.0000000001
+            renderView1.CameraPosition = [-74708.2999944719, 5867664.065060813, 24790239.31741349]
+            renderView1.CameraFocalPoint = [-74708.2999944719, 5867664.065060813, 0.0]
+            renderView1.CameraParallelScale = 651407.1273990012
         elif "GEOMETRY" == "box":
             renderView1.CameraPosition = [4700895.868280185, 2538916.5897593317, 15340954.822755022]
             renderView1.CameraFocalPoint = [4700895.868280185, 2538916.5897593317, 0.0]
@@ -716,6 +730,235 @@ class SLAB(PARAVIEW_PLOT):
         Hide(source1, renderView1)
         HideScalarBarIfNotNeeded(field2LUT, renderView1)
 
+
+    def plot_step_wedge_small(self, **kwargs): 
+        '''
+        plot a step and focus on the wedge
+        Inputs:
+            kwargs:
+                glyphRegistrationName: the name of the glyph, used to adjust the glyph outputs
+        '''
+        # parse input
+        glyphRegistrationName = kwargs.get("glyphRegistrationName", "Glyph1")
+        
+        # get active view and source
+        renderView1 = GetActiveViewOrCreate('RenderView')
+        renderView1.UseColorPaletteForBackground = 0
+        renderView1.Background = [1.0, 1.0, 1.0]
+
+        # set source and field
+        _source = "Transform1"
+        _source_v = "Glyph1"
+        field1 = "T"
+        field2 = "viscosity"
+        field3 = "spcrust"
+        layout_resolution = (1350, 704)
+        # get color transfer function/color map for 'field'
+        field2LUT = GetColorTransferFunction(field2)
+        field3LUT = GetColorTransferFunction(field3)
+       
+        # find source
+        source1 = FindSource(_source)
+        sourceV = FindSource(_source_v)
+    
+        # show source1
+        source1Display = Show(source1, renderView1, 'GeometryRepresentation')
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        if PLOT_AXIS:
+            source1Display.DataAxesGrid.GridAxesVisibility = 1
+            source1Display.DataAxesGrid.GridColor = [0.0, 0.0, 0.0]
+            source1Display.DataAxesGrid.XLabelColor = [0.0, 0.0, 0.0]
+            source1Display.DataAxesGrid.YLabelColor = [0.0, 0.0, 0.0]
+            source1Display.DataAxesGrid.ZLabelColor = [0.0, 0.0, 0.0]
+        
+        # Configure temperature field settings for the scalar plot.
+        field1LUT = GetColorTransferFunction(field1)
+        ColorBy(source1Display, ('POINTS', field1, 'Magnitude'))
+        HideScalarBarIfNotNeeded(field2LUT, renderView1)
+        HideScalarBarIfNotNeeded(field3LUT, renderView1)
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        rescale_transfer_function_combined('T', 273.0, 1673.0)
+
+        # colorbar position
+        field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
+        field1LUTColorBar.Orientation = 'Horizontal'
+        field1LUTColorBar.WindowLocation = 'Any Location'
+        field1LUTColorBar.Position = [0.041, 0.908]
+        field1LUTColorBar.ScalarBarLength = 0.33
+        field1LUTColorBar.TitleColor = [0.0, 0.0, 0.0]
+        field1LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
+        field1LUTColorBar.TitleFontFamily = 'Times'
+        field1LUTColorBar.LabelFontFamily = 'Times'
+        # hide the grid axis
+        renderView1.OrientationAxesVisibility = 0
+        
+        # show sourceV (vector field)
+        sourceVDisplay = Show(sourceV, renderView1, 'GeometryRepresentation')
+        sourceVDisplay.SetScalarBarVisibility(renderView1, True)
+        # get color transfer function/color map for 'field'
+        fieldVLUT = GetColorTransferFunction('velocity')
+        if MAX_VELOCITY > 0.0:
+            fieldVLUT.RescaleTransferFunction(0.0, MAX_VELOCITY)
+        # colorbar position
+        fieldVLUTColorBar = GetScalarBar(fieldVLUT, renderView1)
+        fieldVLUTColorBar.Orientation = 'Horizontal'
+        fieldVLUTColorBar.WindowLocation = 'Any Location'
+        fieldVLUTColorBar.Position = [0.630, 0.908]
+        fieldVLUTColorBar.ScalarBarLength = 0.33
+        fieldVLUTColorBar.TitleColor = [0.0, 0.0, 0.0]
+        fieldVLUTColorBar.LabelColor = [0.0, 0.0, 0.0]
+        fieldVLUTColorBar.TitleFontFamily = 'Times'
+        fieldVLUTColorBar.LabelFontFamily = 'Times'
+        # hide the grid axis
+        renderView1.OrientationAxesVisibility = 0
+
+
+        # change point position
+        pointName = "PointSource_" + glyphRegistrationName
+        pointSource1 = FindSource(pointName)
+        if "chunk" == "chunk":
+            pointSource1.Center = [0, 6.7e6, 0]
+        # show the representative point                                                                                                    
+        _source_v_re = _source_v + "_representative"                                                                                       
+        sourceVRE = FindSource(_source_v_re)                                                                                               
+        sourceVREDisplay = Show(sourceVRE, renderView1, 'GeometryRepresentation') 
+        # show the annotation
+        _source_v_txt = _source_v + "_text" 
+        sourceVTXT = FindSource(_source_v_txt)                                                                                               
+        sourceVTXTDisplay = Show(sourceVTXT, renderView1, 'GeometryRepresentation')
+        sourceVTXTDisplay.Color = [0.0, 0.0, 0.0]
+        # set the camera position
+        CameraPosition = [-5812.506046829139, 6295461.30365194, 25000000.0]
+        CameraFocalPoint = [-5812.506046829139, 6295461.30365194, 0.0]
+        CameraParallelScale = 39173.24444222669
+
+        # Set Glyph
+        scale_factor = 100000
+        n_sample_points = 800000
+        point_source_center = [0.0, 0.0, 0.0]
+        if "chunk" == "chunk":
+            point_source_center = [CameraPosition[0] - 0.1e5, 6.4e6, 0]
+        elif "chunk" == "box":
+            point_source_center = [4.65e6, 2.95e6, 0]
+        else:
+            raise NotImplementedError()
+        self.adjust_glyph_properties('Glyph1', scale_factor, n_sample_points, point_source_center)
+        
+        # Show contours
+        fieldTLUT = GetColorTransferFunction("T")
+
+        source_contour1 = FindSource("contourT1")
+        contourT1Display = Show(source_contour1, renderView1, 'GeometryRepresentation')
+        
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(layout_resolution[0], layout_resolution[1])
+        renderView1.InteractionMode = '2D'
+        if "GEOMETRY" == "chunk":
+            # test new camera parameters
+            renderView1.CameraPosition = CameraPosition
+            renderView1.CameraFocalPoint = CameraFocalPoint
+            renderView1.CameraParallelScale = CameraParallelScale
+        elif "GEOMETRY" == "box":
+            raise NotImplementError()
+        # # save figure
+        # fig_path = os.path.join(self.pv_output_dir, "T_wedge_small_t%.4e.pdf" % self.time)
+        # fig_png_path = os.path.join(self.pv_output_dir, "T_wedge_small_t%.4e.png" % self.time)
+        # SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        # ExportView(fig_path, view=renderView1)
+
+        # # Comment the codes below to debug
+        # # second plot
+        # # set scalar coloring
+        # ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
+        # source1Display.SetScalarBarVisibility(renderView1, True)
+        # # hide the grid axis
+        # renderView1.OrientationAxesVisibility = 0
+        # # Hide the scalar bar for the first field color map
+        # HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        # # adjust layout and camera & get layout & set layout/tab size in pixels
+        # layout1 = GetLayout()
+        # layout1.SetSize(1350, 704)
+        # renderView1.InteractionMode = '2D'
+        # if "GEOMETRY" == "chunk":
+        #     # test new camera parameters
+        #     renderView1.CameraPosition = CameraPosition
+        #     renderView1.CameraFocalPoint = CameraFocalPoint
+        #     renderView1.CameraParallelScale = CameraParallelScale
+        # elif "GEOMETRY" == "box":
+        #     raise NotImplementError()
+        # # colorbar position
+        # field2LUTColorBar = GetScalarBar(field2LUT, renderView1)
+        # field2LUTColorBar.Orientation = 'Horizontal'
+        # field2LUTColorBar.WindowLocation = 'Any Location'
+        # field2LUTColorBar.Position = [0.041, 0.908]
+        # field2LUTColorBar.ScalarBarLength = 0.33
+        # field2LUTColorBar.TitleColor = [0.0, 0.0, 0.0]
+        # field2LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
+        # field2LUTColorBar.TitleFontFamily = 'Times'
+        # field2LUTColorBar.LabelFontFamily = 'Times'
+        # # get color transfer function/color map for 'field'
+        # field2LUT = GetColorTransferFunction(field2)
+        # field2PWF = GetOpacityTransferFunction('viscosity')
+        # field2LUT.RescaleTransferFunction(ETA_MIN, ETA_MAX)
+        # field2PWF.RescaleTransferFunction(ETA_MIN, ETA_MAX)
+        # # save figure
+        # fig_path = os.path.join(self.pv_output_dir, "viscosity_wedge_small_t%.4e.pdf" % self.time)
+        # fig_png_path = os.path.join(self.pv_output_dir, "viscosity_wedge_small_t%.4e.png" % self.time)
+        # SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        # ExportView(fig_path, view=renderView1)
+
+        # # third plot
+        # # set scalar coloring
+        # ColorBy(source1Display, ('POINTS', field3, 'Magnitude'))
+        # source1Display.SetScalarBarVisibility(renderView1, True)
+        # # hide the grid axis
+        # renderView1.OrientationAxesVisibility = 0
+        # # Hide the scalar bar for the first field color map
+        # HideScalarBarIfNotNeeded(field2LUT, renderView1)
+        # # adjust layout and camera & get layout & set layout/tab size in pixels
+        # layout1 = GetLayout()
+        # layout1.SetSize(1350, 704)
+        # renderView1.InteractionMode = '2D'
+        # if "GEOMETRY" == "chunk":
+        #     # test new camera parameters
+        #     renderView1.CameraPosition = CameraPosition
+        #     renderView1.CameraFocalPoint = CameraFocalPoint
+        #     renderView1.CameraParallelScale = CameraParallelScale
+        # elif "GEOMETRY" == "box":
+        #     raise NotImplementError()
+        # # colorbar position
+        # field3LUTColorBar = GetScalarBar(field3LUT, renderView1)
+        # field3LUTColorBar.Orientation = 'Horizontal'
+        # field3LUTColorBar.WindowLocation = 'Any Location'
+        # field3LUTColorBar.Position = [0.041, 0.908]
+        # field3LUTColorBar.ScalarBarLength = 0.33
+        # field3LUTColorBar.TitleColor = [0.0, 0.0, 0.0]
+        # field3LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
+        # field3LUTColorBar.TitleFontFamily = 'Times'
+        # field3LUTColorBar.LabelFontFamily = 'Times'
+        # # get color transfer function/color map for 'field'
+        # field3LUT = GetColorTransferFunction(field3)
+        # field3PWF = GetOpacityTransferFunction(field3)
+        # field3LUT.RescaleTransferFunction(0.0, 1.0)
+        # field3PWF.RescaleTransferFunction(0.0, 1.0)
+        # # save figure
+        # fig_path = os.path.join(self.pv_output_dir, "%s_wedge_small_t%.4e.pdf" % (field3, self.time))
+        # fig_png_path = os.path.join(self.pv_output_dir, "%s_wedge_small_t%.4e.png" % (field3, self.time))
+        # SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        # ExportView(fig_path, view=renderView1)
+
+        # hide plots
+        # Hide(source1, renderView1)
+        # Hide(sourceV, renderView1)
+        # Hide(sourceVRE, renderView1)
+        # Hide(sourceVTXT, renderView1)
+        # Hide(source_contour1, renderView1)
+        # HideScalarBarIfNotNeeded(field2LUT, renderView1)
+        # HideScalarBarIfNotNeeded(field3LUT, renderView1)
+        # HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+        # HideScalarBarIfNotNeeded(fieldTLUT, renderView1)
+
     def plot_step_wedge(self, **kwargs): 
         '''
         plot a step and focus on the wedge
@@ -755,15 +998,15 @@ class SLAB(PARAVIEW_PLOT):
             source1Display.DataAxesGrid.XLabelColor = [0.0, 0.0, 0.0]
             source1Display.DataAxesGrid.YLabelColor = [0.0, 0.0, 0.0]
             source1Display.DataAxesGrid.ZLabelColor = [0.0, 0.0, 0.0]
-        # get color transfer function/color map for 'field'
+        
+        # Configure temperature field settings for the scalar plot.
         field1LUT = GetColorTransferFunction(field1)
-        # set scalar coloring
         ColorBy(source1Display, ('POINTS', field1, 'Magnitude'))
         HideScalarBarIfNotNeeded(field2LUT, renderView1)
         HideScalarBarIfNotNeeded(field3LUT, renderView1)
         source1Display.SetScalarBarVisibility(renderView1, True)
-        # Rescale transfer function, 2d transfer function
-        field1LUT.RescaleTransferFunction(273.0, 2273.0)
+        rescale_transfer_function_combined('T', 273.0, 1673.0)
+
         # colorbar position
         field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
         field1LUTColorBar.Orientation = 'Horizontal'
@@ -813,10 +1056,12 @@ class SLAB(PARAVIEW_PLOT):
         sourceVTXTDisplay = Show(sourceVTXT, renderView1, 'GeometryRepresentation')
         sourceVTXTDisplay.Color = [0.0, 0.0, 0.0]
 
-        # todo_wedge
-        scale_factor = 1e5
-        n_sample_points = 3200000
-        camera_x = 0.0
+        # Set Camera parameters
+        camera_x = 14021.022727272742
+
+        # Set Glyph
+        scale_factor = 5e5
+        n_sample_points = 100000
         point_source_center = [0.0, 0.0, 0.0]
         if "chunk" == "chunk":
             point_source_center = [camera_x - 0.1e5, 6.4e6, 0]
@@ -826,14 +1071,21 @@ class SLAB(PARAVIEW_PLOT):
             raise NotImplementedError()
         self.adjust_glyph_properties('Glyph1', scale_factor, n_sample_points, point_source_center)
         
+        # Show contours
+        fieldTLUT = GetColorTransferFunction("T")
+        source_contour1 = FindSource("contourT1")
+
+        contourT1Display = Show(source_contour1, renderView1, 'GeometryRepresentation')
+        
         # adjust layout and camera & get layout & set layout/tab size in pixels
         layout1 = GetLayout()
         layout1.SetSize(layout_resolution[0], layout_resolution[1])
         renderView1.InteractionMode = '2D'
         if "GEOMETRY" == "chunk":
-            renderView1.CameraPosition = [camera_x, 6.3e6, 2.5e7]
-            renderView1.CameraFocalPoint = [camera_x, 6.3e6, 0.0]
-            renderView1.CameraParallelScale = 1.2e5
+            # test new camera parameters
+            renderView1.CameraPosition = [14021.022727272742, 6239955.681818183, 25000000.0]
+            renderView1.CameraFocalPoint = [14021.022727272742, 6239955.681818183, 0.0]
+            renderView1.CameraParallelScale = 217800.00000000003
         elif "GEOMETRY" == "box":
             raise NotImplementError()
         # save figure
@@ -842,6 +1094,7 @@ class SLAB(PARAVIEW_PLOT):
         SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
         ExportView(fig_path, view=renderView1)
 
+        # Comment the codes below to debug
         # second plot
         # set scalar coloring
         ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
@@ -855,9 +1108,10 @@ class SLAB(PARAVIEW_PLOT):
         layout1.SetSize(1350, 704)
         renderView1.InteractionMode = '2D'
         if "GEOMETRY" == "chunk":
-            renderView1.CameraPosition = [camera_x, 6.3e6, 2.5e7]
-            renderView1.CameraFocalPoint = [camera_x, 6.3e6, 0.0]
-            renderView1.CameraParallelScale = 1.2e5
+            # test new camera parameters
+            renderView1.CameraPosition = [camera_x, 6239955.681818183, 25000000.0]
+            renderView1.CameraFocalPoint = [camera_x, 6239955.681818183, 0.0]
+            renderView1.CameraParallelScale = 217800.00000000003
         elif "GEOMETRY" == "box":
             raise NotImplementError()
         # colorbar position
@@ -894,9 +1148,11 @@ class SLAB(PARAVIEW_PLOT):
         layout1.SetSize(1350, 704)
         renderView1.InteractionMode = '2D'
         if "GEOMETRY" == "chunk":
-            renderView1.CameraPosition = [camera_x, 6.3e6, 2.5e7]
-            renderView1.CameraFocalPoint = [camera_x, 6.3e6, 0.0]
-            renderView1.CameraParallelScale = 1.2e5
+            # test new camera parameters
+            renderView1.CameraPosition = [camera_x, 6239955.681818183, 25000000.0]
+            renderView1.CameraFocalPoint = [camera_x, 6239955.681818183, 0.0]
+            renderView1.CameraParallelScale = 217800.00000000003
+
         elif "GEOMETRY" == "box":
             raise NotImplementError()
         # colorbar position
@@ -921,12 +1177,16 @@ class SLAB(PARAVIEW_PLOT):
         ExportView(fig_path, view=renderView1)
 
         # hide plots
-        Hide(source1, renderView1)
-        Hide(sourceV, renderView1)
-        Hide(sourceVRE, renderView1)
-        Hide(sourceVTXT, renderView1)
-        HideScalarBarIfNotNeeded(field3LUT, renderView1)
-        HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+        # Hide(source1, renderView1)
+        # Hide(sourceV, renderView1)
+        # Hide(sourceVRE, renderView1)
+        # Hide(sourceVTXT, renderView1)
+        # Hide(source_contour1, renderView1)
+        # HideScalarBarIfNotNeeded(field2LUT, renderView1)
+        # HideScalarBarIfNotNeeded(field3LUT, renderView1)
+        # HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+        # HideScalarBarIfNotNeeded(fieldTLUT, renderView1)
+
     
     # todo_wedge
     def adjust_glyph_properties(self, registrationName, scale_factor, n_sample_points, point_center, **kwargs):
@@ -1139,6 +1399,8 @@ def main():
                     Slab.plot_step_whole_whole()
                 if "wedge" in plot_types:
                     Slab.plot_step_wedge()
+                if "wedge_small" in plot_types:
+                    Slab.plot_step_wedge_small()
                #  Slab(INITIAL_ADAPTIVE_REFINEMENT+step)
             else:
                 print ("step %s is not valid. There is no output" % step)
