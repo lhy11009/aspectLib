@@ -1057,7 +1057,7 @@ class SLAB(PARAVIEW_PLOT):
         sourceVTXTDisplay.Color = [0.0, 0.0, 0.0]
 
         # Set Camera parameters
-        camera_x = 14021.02272727274
+        camera_x = 399.56120266253004
 
         # Set Glyph
         scale_factor = 5e5
@@ -1083,9 +1083,9 @@ class SLAB(PARAVIEW_PLOT):
         renderView1.InteractionMode = '2D'
         if "GEOMETRY" == "chunk":
             # test new camera parameters
-            renderView1.CameraPosition = [14021.022727272742, 6239955.681818183, 25000000.0]
-            renderView1.CameraFocalPoint = [14021.022727272742, 6239955.681818183, 0.0]
-            renderView1.CameraParallelScale = 217800.00000000003
+            renderView1.CameraPosition = [camera_x, 6280121.52990357, 25000000.0]
+            renderView1.CameraFocalPoint = [camera_x, 6280121.52990357, 0.0]
+            renderView1.CameraParallelScale = 122942.42196571268
         elif "GEOMETRY" == "box":
             raise NotImplementError()
         # save figure
@@ -1109,9 +1109,9 @@ class SLAB(PARAVIEW_PLOT):
         renderView1.InteractionMode = '2D'
         if "GEOMETRY" == "chunk":
             # test new camera parameters
-            renderView1.CameraPosition = [camera_x, 6239955.681818183, 25000000.0]
-            renderView1.CameraFocalPoint = [camera_x, 6239955.681818183, 0.0]
-            renderView1.CameraParallelScale = 217800.00000000003
+            renderView1.CameraPosition = [camera_x, 6280121.52990357, 25000000.0]
+            renderView1.CameraFocalPoint = [camera_x, 6280121.52990357, 0.0]
+            renderView1.CameraParallelScale = 122942.42196571268
         elif "GEOMETRY" == "box":
             raise NotImplementError()
         # colorbar position
@@ -1149,9 +1149,9 @@ class SLAB(PARAVIEW_PLOT):
         renderView1.InteractionMode = '2D'
         if "GEOMETRY" == "chunk":
             # test new camera parameters
-            renderView1.CameraPosition = [camera_x, 6239955.681818183, 25000000.0]
-            renderView1.CameraFocalPoint = [camera_x, 6239955.681818183, 0.0]
-            renderView1.CameraParallelScale = 217800.00000000003
+            renderView1.CameraPosition = [camera_x, 6280121.52990357, 25000000.0]
+            renderView1.CameraFocalPoint = [camera_x, 6280121.52990357, 0.0]
+            renderView1.CameraParallelScale = 122942.42196571268
 
         elif "GEOMETRY" == "box":
             raise NotImplementError()
