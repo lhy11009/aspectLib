@@ -861,103 +861,103 @@ class SLAB(PARAVIEW_PLOT):
             renderView1.CameraParallelScale = CameraParallelScale
         elif "GEOMETRY" == "box":
             raise NotImplementError()
-        # # save figure
-        # fig_path = os.path.join(self.pv_output_dir, "T_wedge_small_t%.4e.pdf" % self.time)
-        # fig_png_path = os.path.join(self.pv_output_dir, "T_wedge_small_t%.4e.png" % self.time)
-        # SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
-        # ExportView(fig_path, view=renderView1)
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "T_wedge_small_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "T_wedge_small_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
 
-        # # Comment the codes below to debug
-        # # second plot
-        # # set scalar coloring
-        # ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
-        # source1Display.SetScalarBarVisibility(renderView1, True)
-        # # hide the grid axis
-        # renderView1.OrientationAxesVisibility = 0
-        # # Hide the scalar bar for the first field color map
-        # HideScalarBarIfNotNeeded(field1LUT, renderView1)
-        # # adjust layout and camera & get layout & set layout/tab size in pixels
-        # layout1 = GetLayout()
-        # layout1.SetSize(1350, 704)
-        # renderView1.InteractionMode = '2D'
-        # if "GEOMETRY" == "chunk":
-        #     # test new camera parameters
-        #     renderView1.CameraPosition = CameraPosition
-        #     renderView1.CameraFocalPoint = CameraFocalPoint
-        #     renderView1.CameraParallelScale = CameraParallelScale
-        # elif "GEOMETRY" == "box":
-        #     raise NotImplementError()
-        # # colorbar position
-        # field2LUTColorBar = GetScalarBar(field2LUT, renderView1)
-        # field2LUTColorBar.Orientation = 'Horizontal'
-        # field2LUTColorBar.WindowLocation = 'Any Location'
-        # field2LUTColorBar.Position = [0.041, 0.908]
-        # field2LUTColorBar.ScalarBarLength = 0.33
-        # field2LUTColorBar.TitleColor = [0.0, 0.0, 0.0]
-        # field2LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
-        # field2LUTColorBar.TitleFontFamily = 'Times'
-        # field2LUTColorBar.LabelFontFamily = 'Times'
-        # # get color transfer function/color map for 'field'
-        # field2LUT = GetColorTransferFunction(field2)
-        # field2PWF = GetOpacityTransferFunction('viscosity')
-        # field2LUT.RescaleTransferFunction(ETA_MIN, ETA_MAX)
-        # field2PWF.RescaleTransferFunction(ETA_MIN, ETA_MAX)
-        # # save figure
-        # fig_path = os.path.join(self.pv_output_dir, "viscosity_wedge_small_t%.4e.pdf" % self.time)
-        # fig_png_path = os.path.join(self.pv_output_dir, "viscosity_wedge_small_t%.4e.png" % self.time)
-        # SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
-        # ExportView(fig_path, view=renderView1)
+        # Comment the codes below to debug
+        # second plot
+        # set scalar coloring
+        ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        # hide the grid axis
+        renderView1.OrientationAxesVisibility = 0
+        # Hide the scalar bar for the first field color map
+        HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(1350, 704)
+        renderView1.InteractionMode = '2D'
+        if "GEOMETRY" == "chunk":
+            # test new camera parameters
+            renderView1.CameraPosition = CameraPosition
+            renderView1.CameraFocalPoint = CameraFocalPoint
+            renderView1.CameraParallelScale = CameraParallelScale
+        elif "GEOMETRY" == "box":
+            raise NotImplementError()
+        # colorbar position
+        field2LUTColorBar = GetScalarBar(field2LUT, renderView1)
+        field2LUTColorBar.Orientation = 'Horizontal'
+        field2LUTColorBar.WindowLocation = 'Any Location'
+        field2LUTColorBar.Position = [0.041, 0.908]
+        field2LUTColorBar.ScalarBarLength = 0.33
+        field2LUTColorBar.TitleColor = [0.0, 0.0, 0.0]
+        field2LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
+        field2LUTColorBar.TitleFontFamily = 'Times'
+        field2LUTColorBar.LabelFontFamily = 'Times'
+        # get color transfer function/color map for 'field'
+        field2LUT = GetColorTransferFunction(field2)
+        field2PWF = GetOpacityTransferFunction('viscosity')
+        field2LUT.RescaleTransferFunction(ETA_MIN, ETA_MAX)
+        field2PWF.RescaleTransferFunction(ETA_MIN, ETA_MAX)
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "viscosity_wedge_small_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "viscosity_wedge_small_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
 
-        # # third plot
-        # # set scalar coloring
-        # ColorBy(source1Display, ('POINTS', field3, 'Magnitude'))
-        # source1Display.SetScalarBarVisibility(renderView1, True)
-        # # hide the grid axis
-        # renderView1.OrientationAxesVisibility = 0
-        # # Hide the scalar bar for the first field color map
-        # HideScalarBarIfNotNeeded(field2LUT, renderView1)
-        # # adjust layout and camera & get layout & set layout/tab size in pixels
-        # layout1 = GetLayout()
-        # layout1.SetSize(1350, 704)
-        # renderView1.InteractionMode = '2D'
-        # if "GEOMETRY" == "chunk":
-        #     # test new camera parameters
-        #     renderView1.CameraPosition = CameraPosition
-        #     renderView1.CameraFocalPoint = CameraFocalPoint
-        #     renderView1.CameraParallelScale = CameraParallelScale
-        # elif "GEOMETRY" == "box":
-        #     raise NotImplementError()
-        # # colorbar position
-        # field3LUTColorBar = GetScalarBar(field3LUT, renderView1)
-        # field3LUTColorBar.Orientation = 'Horizontal'
-        # field3LUTColorBar.WindowLocation = 'Any Location'
-        # field3LUTColorBar.Position = [0.041, 0.908]
-        # field3LUTColorBar.ScalarBarLength = 0.33
-        # field3LUTColorBar.TitleColor = [0.0, 0.0, 0.0]
-        # field3LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
-        # field3LUTColorBar.TitleFontFamily = 'Times'
-        # field3LUTColorBar.LabelFontFamily = 'Times'
-        # # get color transfer function/color map for 'field'
-        # field3LUT = GetColorTransferFunction(field3)
-        # field3PWF = GetOpacityTransferFunction(field3)
-        # field3LUT.RescaleTransferFunction(0.0, 1.0)
-        # field3PWF.RescaleTransferFunction(0.0, 1.0)
-        # # save figure
-        # fig_path = os.path.join(self.pv_output_dir, "%s_wedge_small_t%.4e.pdf" % (field3, self.time))
-        # fig_png_path = os.path.join(self.pv_output_dir, "%s_wedge_small_t%.4e.png" % (field3, self.time))
-        # SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
-        # ExportView(fig_path, view=renderView1)
+        # third plot
+        # set scalar coloring
+        ColorBy(source1Display, ('POINTS', field3, 'Magnitude'))
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        # hide the grid axis
+        renderView1.OrientationAxesVisibility = 0
+        # Hide the scalar bar for the first field color map
+        HideScalarBarIfNotNeeded(field2LUT, renderView1)
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(1350, 704)
+        renderView1.InteractionMode = '2D'
+        if "GEOMETRY" == "chunk":
+            # test new camera parameters
+            renderView1.CameraPosition = CameraPosition
+            renderView1.CameraFocalPoint = CameraFocalPoint
+            renderView1.CameraParallelScale = CameraParallelScale
+        elif "GEOMETRY" == "box":
+            raise NotImplementError()
+        # colorbar position
+        field3LUTColorBar = GetScalarBar(field3LUT, renderView1)
+        field3LUTColorBar.Orientation = 'Horizontal'
+        field3LUTColorBar.WindowLocation = 'Any Location'
+        field3LUTColorBar.Position = [0.041, 0.908]
+        field3LUTColorBar.ScalarBarLength = 0.33
+        field3LUTColorBar.TitleColor = [0.0, 0.0, 0.0]
+        field3LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
+        field3LUTColorBar.TitleFontFamily = 'Times'
+        field3LUTColorBar.LabelFontFamily = 'Times'
+        # get color transfer function/color map for 'field'
+        field3LUT = GetColorTransferFunction(field3)
+        field3PWF = GetOpacityTransferFunction(field3)
+        field3LUT.RescaleTransferFunction(0.0, 1.0)
+        field3PWF.RescaleTransferFunction(0.0, 1.0)
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "%s_wedge_small_t%.4e.pdf" % (field3, self.time))
+        fig_png_path = os.path.join(self.pv_output_dir, "%s_wedge_small_t%.4e.png" % (field3, self.time))
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
 
         # hide plots
-        # Hide(source1, renderView1)
-        # Hide(sourceV, renderView1)
-        # Hide(sourceVRE, renderView1)
-        # Hide(sourceVTXT, renderView1)
-        # Hide(source_contour1, renderView1)
-        # HideScalarBarIfNotNeeded(field2LUT, renderView1)
-        # HideScalarBarIfNotNeeded(field3LUT, renderView1)
-        # HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
-        # HideScalarBarIfNotNeeded(fieldTLUT, renderView1)
+        Hide(source1, renderView1)
+        Hide(sourceV, renderView1)
+        Hide(sourceVRE, renderView1)
+        Hide(sourceVTXT, renderView1)
+        Hide(source_contour1, renderView1)
+        HideScalarBarIfNotNeeded(field2LUT, renderView1)
+        HideScalarBarIfNotNeeded(field3LUT, renderView1)
+        HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+        HideScalarBarIfNotNeeded(fieldTLUT, renderView1)
 
     def plot_step_wedge(self, **kwargs): 
         '''
@@ -1057,7 +1057,7 @@ class SLAB(PARAVIEW_PLOT):
         sourceVTXTDisplay.Color = [0.0, 0.0, 0.0]
 
         # Set Camera parameters
-        camera_x = 14021.022727272742
+        camera_x = 14021.02272727274
 
         # Set Glyph
         scale_factor = 5e5

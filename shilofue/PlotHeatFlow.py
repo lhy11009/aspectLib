@@ -206,6 +206,7 @@ def HeatFlowRetriveProfile(local_dir: str, _time: float, Visit_Options: object, 
 
     idx = np.argmin(np.abs(times-_time1))
     trench = trenches[idx]
+    print("trench: ", trench) # debug
     if shallow_trenches is not None:
         shallow_trench = shallow_trenches[idx]
     else:
