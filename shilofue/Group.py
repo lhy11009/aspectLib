@@ -976,7 +976,8 @@ class CASE_SUMMARY():
             if len(temp) > 0:
                 # len(temp) == 0 marks an void field
                 Utilities.my_assert(length_of_data == len(temp), ValueError,\
-                    "Data for field \'%s\'(%d) doesn't much the length of data (%d)" % (_attr, len(temp), length_of_data))
+                    "Data for field \'%s\'(%d) doesn't much the length of data (%d), " % (_attr, len(temp), length_of_data)\
+                        + str(temp))
                 if mask is not None:
                     data[header] = temp[mask]
                 else:
