@@ -2659,20 +2659,30 @@ class SLABPLOT(LINEARPLOT):
         col_pvtu_step = self.header['pvtu_step']['col']
         col_pvtu_time = self.header['time']['col']
         col_pvtu_trench = self.header['trench']['col']
-        col_pvtu_shallow_trench = self.header['shallow_trench']['col']
         col_pvtu_slab_depth = self.header['slab_depth']['col']
         col_pvtu_sp_v = self.header['subducting_plate_velocity']['col']
         col_pvtu_ov_v = self.header['overiding_plate_velocity']['col']
         pvtu_steps = self.data[:, col_pvtu_step]
         times = self.data[:, col_pvtu_time]
         trenches = self.data[:, col_pvtu_trench]
-        shallow_trenches = self.data[:, col_pvtu_shallow_trench]
         time_interval = times[1] - times[0]
+
+        try: 
+            col_pvtu_shallow_trench = self.header['shallow_trench']['col']
+        except KeyError:
+            col_pvtu_shallow_trench = None
+            shallow_trenches = None
+        else:
+            shallow_trenches = self.data[:, col_pvtu_shallow_trench]
+
         if time_interval < 0.5e6:
             warnings.warn("Time intervals smaller than 0.5e6 may cause vabriation in the velocity (get %.4e)" % time_interval)
         if geometry == "chunk":
             trenches_migration_length = (trenches - trenches[0]) * Ro  # length of migration
-            shallow_trenches_migration_length = (shallow_trenches - shallow_trenches[0]) * Ro  # length of migration
+            if shallow_trenches is not None:
+                shallow_trenches_migration_length = (shallow_trenches - shallow_trenches[0]) * Ro  # length of migration
+            else:
+                shallow_trenches_migration_length = None
         elif geometry == 'box':
             trenches_migration_length = trenches - trenches[0]
             shallow_trenches_migration_length = None # not implemented yet

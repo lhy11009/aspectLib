@@ -167,7 +167,7 @@ class BOUNDARYOUTPUTs():
         return self.xs[mask], self.ys[mask], self.zs[mask], self.hfs[mask]
 
 
-def HeatFlowRetriveProfile(local_dir: str, _time: float, Visit_Options: object, **kwargs: dict) -> tuple:
+def HeatFlowRetriveProfile(local_dir: str, _time: float, _time_step: float, Visit_Options: object, **kwargs: dict) -> tuple:
     '''
     Retrieves the heat flow profile based on the given parameters.
 

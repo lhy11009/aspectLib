@@ -334,9 +334,11 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         # and get the t660
         SlabPlot = SLABPLOT('foo')
         try:
-            t660 = SlabPlot.GetTimeDepthTip(case_dir, 660e3, filename="slab_morph_t1.00e+05.txt")
+            # t660 = SlabPlot.GetTimeDepthTip(case_dir, 660e3, filename="slab_morph_t1.00e+05.txt")
+            t1000 = SlabPlot.GetTimeDepthTip(case_dir, 1000e3, filename="slab_morph_t1.00e+05.txt")
             # sink velocity, sp plate velocity and the trench velocity averaged in a time range
-            V_sink_avg, V_plate_avg, V_ov_plate_avg, V_trench_avg = SlabPlot.GetAverageVelocities(case_dir, t660, t1, filename="slab_morph_t1.00e+05.txt")
+            # V_sink_avg, V_plate_avg, V_ov_plate_avg, V_trench_avg = SlabPlot.GetAverageVelocities(case_dir, t660, t1, filename="slab_morph_t1.00e+05.txt")
+            V_sink_avg, V_plate_avg, V_ov_plate_avg, V_trench_avg = SlabPlot.GetAverageVelocities(case_dir, 0.0, t1000, filename="slab_morph_t1.00e+05.txt")
         except SLABPLOT.SlabMorphFileNotExistError:
             print("morph file not exsit in dir: %s" % case_dir) # debug
             V_sink_avg = -1.0

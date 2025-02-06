@@ -294,14 +294,14 @@ class SLAB(PARAVIEW_PLOT):
         ExportView(fig_path, view=renderView1)
 
         # Hide all the plots and scalar bars to clean up.
-        Hide(source1, renderView1)
-        Hide(sourceV, renderView1)
-        Hide(sourceVRE, renderView1)
-        Hide(sourceVTXT, renderView1)
-        Hide(source_contour, renderView1)
-        HideScalarBarIfNotNeeded(field2LUT, renderView1)
-        HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
-        HideScalarBarIfNotNeeded(fieldTLUT, renderView1)
+        # Hide(source1, renderView1)
+        # Hide(sourceV, renderView1)
+        # Hide(sourceVRE, renderView1)
+        # Hide(sourceVTXT, renderView1)
+        # Hide(source_contour, renderView1)
+        # HideScalarBarIfNotNeeded(field2LUT, renderView1)
+        # HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
+        # HideScalarBarIfNotNeeded(fieldTLUT, renderView1)
 
 
     def plot_step_upper_mantle_DM(self, **kwargs): 
