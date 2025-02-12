@@ -1073,7 +1073,8 @@ class CASE_SUMMARY():
             self.write_file(o_path)
         else:
             print("%s: File already exists %s" % (Utilities.func_name(), o_path))
-    
+
+    # todo_export 
     def export_to_latex_table(self, fout, attrs_to_output, headers):
         '''
         export summary results to a table in latex format
