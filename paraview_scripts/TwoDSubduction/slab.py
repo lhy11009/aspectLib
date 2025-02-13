@@ -1239,7 +1239,7 @@ class SLAB(PARAVIEW_PLOT):
         source1Display.SetScalarBarVisibility(renderView1, True)
     
         # Rescale transfer function
-        field1LUT.RescaleTransferFunction(273.0, 2273.0)
+        field1LUT.RescaleTransferFunction(273.0, 1673.0)
     
         # Colorbar position
         field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
@@ -1298,8 +1298,8 @@ class SLAB(PARAVIEW_PLOT):
         sourceVTXTDisplay.Color = [0.0, 0.0, 0.0]
     
         # Adjust glyph properties
-        scale_factor = 1e5
-        n_sample_points = 3200000
+        scale_factor = 5e5
+        n_sample_points = 100000
         camera_x = 0.0
         point_source_center = [0.0, 0.0, 0.0]
     
