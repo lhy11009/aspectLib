@@ -131,6 +131,8 @@ class SLAB(PARAVIEW_PLOT):
             contourT1.Isosurfaces = [673.15, 1073.15]
         elif "wedge_small" in plot_types:
             contourT1.Isosurfaces = [673.15, 873.15, 1073.15, 1273.15]
+        elif "wedge_bigger" in plot_types:
+            contourT1.Isosurfaces = [473.15, 673.15, 1073.15]
         else:
             contourT1.Isosurfaces = [1373.15]
 
@@ -138,8 +140,19 @@ class SLAB(PARAVIEW_PLOT):
         contourT1Display.LineWidth = 2.0
         contourT1Display.Ambient = 1.0
 
+        # add contour of sp_crust
+        contourCr = Contour(registrationName='ContourCr', Input=pvd)
+        contourCr.ContourBy = ['POINTS', 'spcrust']
+        contourCr.Isosurfaces = [0.8]
+        contourCrDisplay = Show(contourCr, renderView1, 'GeometryRepresentation')
+        contourCrDisplay.LineWidth = 2.0
+        contourCrDisplay.AmbientColor = [0.3333333333333333, 0.3333333333333333, 0.0]
+        contourCrDisplay.ColorArrayName = [None, '']
+        contourCrDisplay.DiffuseColor = [0.3333333333333333, 0.3333333333333333, 0.0]
 
+        # hide all plots
         Hide(contourT1, renderView1)
+        Hide(contourCr, renderView1)
         HideScalarBarIfNotNeeded(fieldTLUT, renderView1)
 
 
@@ -1302,6 +1315,18 @@ class SLAB(PARAVIEW_PLOT):
         n_sample_points = 100000
         camera_x = 0.0
         point_source_center = [0.0, 0.0, 0.0]
+
+        # Show contour
+        fieldTLUT = GetColorTransferFunction("T")
+        source_contour = FindSource("ContourT1")
+
+        contourTDisplay = Show(source_contour, renderView1, 'GeometryRepresentation')
+        
+        rescale_transfer_function_combined('T', 273.0, 1673.0)
+
+        # Show contour1: spcrust 
+        source_contour1 = FindSource("ContourCr")
+        contourCrDisplay = Show(source_contour1, renderView1, 'GeometryRepresentation')
     
         if "chunk" == "chunk":
             point_source_center = [camera_x - 0.1e5, 6.4e6, 0]
@@ -1318,9 +1343,9 @@ class SLAB(PARAVIEW_PLOT):
         renderView1.InteractionMode = '2D'
     
         if "GEOMETRY" == "chunk":
-            renderView1.CameraPosition = [camera_x, 6.3e6, 2.5e7]
-            renderView1.CameraFocalPoint = [camera_x, 6.3e6, 0.0]
-            renderView1.CameraParallelScale = 1.2e5
+            renderView1.CameraPosition = [camera_x, 6259332.1857954515, 25000000.0]
+            renderView1.CameraFocalPoint = [camera_x, 6259332.1857954515, 0.0]
+            renderView1.CameraParallelScale = 175692.00000000006
         elif "GEOMETRY" == "box":
             raise NotImplementedError()
     
@@ -1335,6 +1360,8 @@ class SLAB(PARAVIEW_PLOT):
         Hide(sourceV, renderView1)
         Hide(sourceVRE, renderView1)
         Hide(sourceVTXT, renderView1)
+        Hide(source_contour, renderView1)
+        Hide(source_contour1, renderView1)
         HideScalarBarIfNotNeeded(field3LUT, renderView1)
         HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
 
