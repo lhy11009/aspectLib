@@ -152,6 +152,7 @@ def PlotCaseRun(case_path, **kwargs):
         paraview_script = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts', 'TwoDSubduction', py_script)
         paraview_script_base = os.path.join(ASPECT_LAB_DIR, 'paraview_scripts', 'base.py')
         Visit_Options.read_contents(paraview_script_base, paraview_script)  # combine these two scripts
+        # todo_split
         Visit_Options.substitute()
     elif visualization == 'pygmt':
         odir = os.path.join(case_path, 'pygmt_scripts')
