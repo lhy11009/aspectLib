@@ -266,7 +266,7 @@ class SLAB(PARAVIEW_PLOT):
 
         # Show contour
         fieldTLUT = GetColorTransferFunction("T")
-        source_contour = FindSource("contourT1")
+        source_contour = FindSource("ContourT1")
 
         contourTDisplay = Show(source_contour, renderView1, 'GeometryRepresentation')
         
@@ -860,7 +860,7 @@ class SLAB(PARAVIEW_PLOT):
         # Show contours
         fieldTLUT = GetColorTransferFunction("T")
 
-        source_contour1 = FindSource("contourT1")
+        source_contour1 = FindSource("ContourT1")
         contourT1Display = Show(source_contour1, renderView1, 'GeometryRepresentation')
         
         # adjust layout and camera & get layout & set layout/tab size in pixels
@@ -1086,7 +1086,7 @@ class SLAB(PARAVIEW_PLOT):
         
         # Show contours
         fieldTLUT = GetColorTransferFunction("T")
-        source_contour1 = FindSource("contourT1")
+        source_contour1 = FindSource("ContourT1")
 
         contourT1Display = Show(source_contour1, renderView1, 'GeometryRepresentation')
         
