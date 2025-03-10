@@ -1320,6 +1320,10 @@ class SLAB(PARAVIEW_PLOT):
         contourTDisplay = Show(source_contour, renderView1, 'GeometryRepresentation')
         
         rescale_transfer_function_combined('T', 273.0, 1673.0)
+        
+        # Show contour1: spcrust 
+        source_contour1 = FindSource("ContourCr")
+        contourCrDisplay = Show(source_contour1, renderView1, 'GeometryRepresentation')
 
         
         # adjust layout and camera & get layout & set layout/tab size in pixels
@@ -1421,12 +1425,63 @@ class SLAB(PARAVIEW_PLOT):
         SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
         ExportView(fig_path, view=renderView1)
 
+        # fourth plot
+        # set scalar coloring
+        field4 = "strain rate"
+        ColorBy(source1Display, ('POINTS', field4, 'Magnitude'))
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        # hide the grid axis
+        renderView1.OrientationAxesVisibility = 0
+        # Hide the scalar bar for the first field color map
+        HideScalarBarIfNotNeeded(field3LUT, renderView1)
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(1350, 704)
+        renderView1.InteractionMode = '2D'
+        if "GEOMETRY" == "chunk":
+            # test new camera parameters
+            renderView1.CameraPosition = [camera_x, 6300734.12934143, 25000000.0]
+            renderView1.CameraFocalPoint = [camera_x, 6300734.12934143, 0.0]
+            renderView1.CameraParallelScale = 101605.30740967988
+        elif "GEOMETRY" == "box":
+            raise NotImplementError()
+        # colorbar position
+        field4LUT = GetColorTransferFunction(field4)
+        field4LUTColorBar = GetScalarBar(field4LUT, renderView1)
+        field4LUTColorBar.Orientation = 'Horizontal'
+        field4LUTColorBar.WindowLocation = 'Any Location'
+        field4LUTColorBar.Position = [0.041, 0.908]
+        field4LUTColorBar.ScalarBarLength = 0.33
+        field4LUTColorBar.TitleColor = [0.0, 0.0, 0.0]
+        field4LUTColorBar.LabelColor = [0.0, 0.0, 0.0]
+        field4LUTColorBar.TitleFontFamily = 'Times'
+        field4LUTColorBar.LabelFontFamily = 'Times'
+        # get color transfer function/color map for 'field'
+        # convert to log space
+        strain_rate_min = 1e-16
+        strain_rate_max = 1e-14
+        field4LUT.ApplyPreset("Viridis (matplotlib)", True)
+        field4LUT = GetColorTransferFunction(field4)
+        field4PWF = GetOpacityTransferFunction(field4)
+        field4LUT.RescaleTransferFunction(strain_rate_min, strain_rate_max)
+        field4PWF.RescaleTransferFunction(strain_rate_min, strain_rate_max)
+        field4LUT.MapControlPointsToLogSpace()
+        field4LUT.UseLogScale = 1
+        field4PWF.MapControlPointsToLogSpace()
+        field4PWF.UseLogScale = 1
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "strain_rate_wedge_02252025_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "strain_rate_wedge_02252025_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
+
         # hide plots
         # Hide(source1, renderView1)
         # Hide(sourceV, renderView1)
         # Hide(sourceVRE, renderView1)
         # Hide(sourceVTXT, renderView1)
         # Hide(source_contour, renderView1)
+        # Hide(source_contour1, renderView1)
         # HideScalarBarIfNotNeeded(field2LUT, renderView1)
         # HideScalarBarIfNotNeeded(field3LUT, renderView1)
         # HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
