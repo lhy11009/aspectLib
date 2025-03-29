@@ -42,6 +42,11 @@ shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
 
+HaMaGeoLib_DIR = "/home/lochy/ASPECT_PROJECT/HaMaGeoLib"
+if os.path.abspath(HaMaGeoLib_DIR) not in sys.path:
+    sys.path.append(os.path.abspath(HaMaGeoLib_DIR))
+from hamageolib.research.haoyuan_2d_subduction.legacy_tools import PlotNewtonSolverHistory
+
 def Usage():
     print("\
 This scripts generate plots for a single case in TwoDSubduction project\n\
@@ -150,7 +155,7 @@ class PLOTTER():
             print("%s: result at step %d is found (%s), skip" % (Utilities.func_name(), step, file_to_expect))
         return file_to_expect
 
-
+# todo_legacy: move plotting functions to new package
 def PlotCaseRun(case_path, **kwargs):
     '''
     Plot case run result
@@ -222,7 +227,8 @@ def PlotCaseRun(case_path, **kwargs):
     match_obj1 = re.search('iterated defect correction Stokes', solver_scheme)
     if match_obj or match_obj1:
         print("Plotting newton solver history")
-        PlotRunTime.PlotNewtonSolverHistory(log_file, fig_path, step_range=step_range)
+        log_path = os.path.join(RESULT_DIR, 'run_time_output_newton')
+        PlotNewtonSolverHistory(log_path, fig_path, step_range=step_range)
     else:
         print("Skipping newton solver history")
     return 0

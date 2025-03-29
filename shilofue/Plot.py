@@ -17,7 +17,6 @@ JSON_FILE_DIR = os.path.join(ASPECT_LAB_DIR, "files", "json_examples")
 sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
 
-
 class LINEARPLOT():
     '''
     LINEARPLOT():

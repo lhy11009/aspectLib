@@ -132,12 +132,12 @@ class SLAB(PARAVIEW_PLOT):
         elif "wedge_small" in plot_types:
             contourT1.Isosurfaces = [673.15, 873.15, 1073.15, 1273.15]
         elif "wedge_bigger" or "wedge_02252025" in plot_types:
-            contourT1.Isosurfaces = [473.15, 673.15, 1073.15]
+            contourT1.Isosurfaces = [373.15, 473.15, 573.15, 673.15, 773.15, 873,15, 973.15, 1073.15, 1173.15, 1273.15]
         else:
             contourT1.Isosurfaces = [1373.15]
 
         contourT1Display = Show(contourT1, renderView1, 'GeometryRepresentation')
-        contourT1Display.LineWidth = 2.0
+        contourT1Display.LineWidth = 4.0
         contourT1Display.Ambient = 1.0
 
         # add contour of sp_crust
@@ -1225,6 +1225,14 @@ class SLAB(PARAVIEW_PLOT):
         # get color transfer function/color map for 'field'
         field2LUT = GetColorTransferFunction(field2)
         field3LUT = GetColorTransferFunction(field3)
+
+        # glyph scales 
+        scale_factor = 2.5e5
+        n_sample_points = 400000
+        n_sample_points_small = 1600000
+        CameraParallelScale = 101605.30740967988
+        CameraParallelScaleSmall = 39173.24444222669
+        small_scale_fraction = CameraParallelScaleSmall / CameraParallelScale
        
         # find source
         source1 = FindSource(_source)
@@ -1301,8 +1309,6 @@ class SLAB(PARAVIEW_PLOT):
         camera_x = -192.1742524223165
 
         # Set Glyph
-        scale_factor = 5e5
-        n_sample_points = 100000
         point_source_center = [0.0, 0.0, 0.0]
         if "chunk" == "chunk":
             point_source_center = [camera_x - 0.1e5, 6.4e6, 0]
@@ -1319,7 +1325,7 @@ class SLAB(PARAVIEW_PLOT):
 
         contourTDisplay = Show(source_contour, renderView1, 'GeometryRepresentation')
         
-        rescale_transfer_function_combined('T', 273.0, 1673.0)
+        rescale_transfer_function_combined('T', 273.15, 1273.15)
         
         # Show contour1: spcrust 
         source_contour1 = FindSource("ContourCr")
@@ -1334,12 +1340,56 @@ class SLAB(PARAVIEW_PLOT):
             # test new camera parameters
             renderView1.CameraPosition = [camera_x, 6300734.12934143, 25000000.0]
             renderView1.CameraFocalPoint = [camera_x, 6300734.12934143, 0.0]
-            renderView1.CameraParallelScale = 101605.30740967988
+            renderView1.CameraParallelScale = CameraParallelScale
         elif "GEOMETRY" == "box":
             raise NotImplementError()
         # save figure
         fig_path = os.path.join(self.pv_output_dir, "T_wedge_02252025_t%.4e.pdf" % self.time)
         fig_png_path = os.path.join(self.pv_output_dir, "T_wedge_02252025_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
+
+        # adjust for a smaller region
+        # change point position
+        pointName = "PointSource_" + glyphRegistrationName
+        pointSource1 = FindSource(pointName)
+        if "chunk" == "chunk":
+            pointSource1.Center = [0, 6.7e6, 0]
+        # show the representative point                                                                                                    
+        _source_v_re = _source_v + "_representative"                                                                                       
+        sourceVRE = FindSource(_source_v_re)                                                                                               
+        sourceVREDisplay = Show(sourceVRE, renderView1, 'GeometryRepresentation') 
+        # show the annotation
+        _source_v_txt = _source_v + "_text" 
+        sourceVTXT = FindSource(_source_v_txt)                                                                                               
+        sourceVTXTDisplay = Show(sourceVTXT, renderView1, 'GeometryRepresentation')
+        sourceVTXTDisplay.Color = [0.0, 0.0, 0.0]
+        # set the camera position
+        CameraPosition = [-5144.780289291184, 6305365.90238875, 25000000.0]
+        CameraFocalPoint = [-5144.780289291184, 6305365.90238875, 0.0]
+        # Set Glyph
+        point_source_center = [0.0, 0.0, 0.0]
+        if "chunk" == "chunk":
+            point_source_center = [CameraPosition[0] - 0.1e5, 6.4e6, 0]
+        elif "chunk" == "box":
+            point_source_center = [4.65e6, 2.95e6, 0]
+        else:
+            raise NotImplementedError()
+        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_sample_points_small, point_source_center)  
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(layout_resolution[0], layout_resolution[1])
+        renderView1.InteractionMode = '2D'
+        if "GEOMETRY" == "chunk":
+            # test new camera parameters
+            renderView1.CameraPosition = CameraPosition
+            renderView1.CameraFocalPoint = CameraFocalPoint
+            renderView1.CameraParallelScale = CameraParallelScaleSmall
+        elif "GEOMETRY" == "box":
+            raise NotImplementError()
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "T_wedge_small_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "T_wedge_small_t%.4e.png" % self.time)
         SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
         ExportView(fig_path, view=renderView1)
 
@@ -1350,6 +1400,15 @@ class SLAB(PARAVIEW_PLOT):
         source1Display.SetScalarBarVisibility(renderView1, True)
         # hide the grid axis
         renderView1.OrientationAxesVisibility = 0
+        # adjust glyph 
+        point_source_center = [0.0, 0.0, 0.0]
+        if "chunk" == "chunk":
+            point_source_center = [camera_x - 0.1e5, 6.4e6, 0]
+        elif "chunk" == "box":
+            point_source_center = [4.65e6, 2.95e6, 0]
+        else:
+            raise NotImplementedError()
+        self.adjust_glyph_properties('Glyph1', scale_factor, n_sample_points, point_source_center)
         # Hide the scalar bar for the first field color map
         HideScalarBarIfNotNeeded(field1LUT, renderView1)
         # adjust layout and camera & get layout & set layout/tab size in pixels
@@ -1360,7 +1419,7 @@ class SLAB(PARAVIEW_PLOT):
             # test new camera parameters
             renderView1.CameraPosition = [camera_x, 6300734.12934143, 25000000.0]
             renderView1.CameraFocalPoint = [camera_x, 6300734.12934143, 0.0]
-            renderView1.CameraParallelScale = 101605.30740967988
+            renderView1.CameraParallelScale = CameraParallelScale
         elif "GEOMETRY" == "box":
             raise NotImplementError()
         # colorbar position
@@ -1384,6 +1443,52 @@ class SLAB(PARAVIEW_PLOT):
         SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
         ExportView(fig_path, view=renderView1)
 
+        # adjust for a smaller region
+        # change point position
+        pointName = "PointSource_" + glyphRegistrationName
+        pointSource1 = FindSource(pointName)
+        if "chunk" == "chunk":
+            pointSource1.Center = [0, 6.7e6, 0]
+        # show the representative point                                                                                                    
+        _source_v_re = _source_v + "_representative"                                                                                       
+        sourceVRE = FindSource(_source_v_re)                                                                                               
+        sourceVREDisplay = Show(sourceVRE, renderView1, 'GeometryRepresentation') 
+        # show the annotation
+        _source_v_txt = _source_v + "_text" 
+        sourceVTXT = FindSource(_source_v_txt)                                                                                               
+        sourceVTXTDisplay = Show(sourceVTXT, renderView1, 'GeometryRepresentation')
+        sourceVTXTDisplay.Color = [0.0, 0.0, 0.0]
+        # set the camera position
+        CameraPosition = [-5144.780289291184, 6305365.90238875, 25000000.0]
+        CameraFocalPoint = [-5144.780289291184, 6305365.90238875, 0.0]
+        # Set Glyph
+        # n_sample_points = 1600000
+        point_source_center = [0.0, 0.0, 0.0]
+        if "chunk" == "chunk":
+            point_source_center = [CameraPosition[0] - 0.1e5, 6.4e6, 0]
+        elif "chunk" == "box":
+            point_source_center = [4.65e6, 2.95e6, 0]
+        else:
+            raise NotImplementedError()
+        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_sample_points_small, point_source_center)  
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(layout_resolution[0], layout_resolution[1])
+        renderView1.InteractionMode = '2D'
+        if "GEOMETRY" == "chunk":
+            # test new camera parameters
+            renderView1.CameraPosition = CameraPosition
+            renderView1.CameraFocalPoint = CameraFocalPoint
+            renderView1.CameraParallelScale = CameraParallelScaleSmall
+        elif "GEOMETRY" == "box":
+            raise NotImplementError()
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "viscosity_wedge_small_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "viscosity_wedge_small_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
+
+        
         # third plot
         # set scalar coloring
         ColorBy(source1Display, ('POINTS', field3, 'Magnitude'))
@@ -1392,6 +1497,15 @@ class SLAB(PARAVIEW_PLOT):
         renderView1.OrientationAxesVisibility = 0
         # Hide the scalar bar for the first field color map
         HideScalarBarIfNotNeeded(field2LUT, renderView1)
+        # Adjust glyph 
+        point_source_center = [0.0, 0.0, 0.0]
+        if "chunk" == "chunk":
+            point_source_center = [camera_x - 0.1e5, 6.4e6, 0]
+        elif "chunk" == "box":
+            point_source_center = [4.65e6, 2.95e6, 0]
+        else:
+            raise NotImplementedError()
+        self.adjust_glyph_properties('Glyph1', scale_factor, n_sample_points, point_source_center)
         # adjust layout and camera & get layout & set layout/tab size in pixels
         layout1 = GetLayout()
         layout1.SetSize(1350, 704)
@@ -1400,7 +1514,7 @@ class SLAB(PARAVIEW_PLOT):
             # test new camera parameters
             renderView1.CameraPosition = [camera_x, 6300734.12934143, 25000000.0]
             renderView1.CameraFocalPoint = [camera_x, 6300734.12934143, 0.0]
-            renderView1.CameraParallelScale = 101605.30740967988
+            renderView1.CameraParallelScale = CameraParallelScale
 
         elif "GEOMETRY" == "box":
             raise NotImplementError()
@@ -1420,20 +1534,75 @@ class SLAB(PARAVIEW_PLOT):
         field3LUT.RescaleTransferFunction(0.0, 1.0)
         field3PWF.RescaleTransferFunction(0.0, 1.0)
         # save figure
-        fig_path = os.path.join(self.pv_output_dir, "%s_wedge_02252025_t%.4e.pdf" % (field3, self.time))
-        fig_png_path = os.path.join(self.pv_output_dir, "%s_wedge_02252025_t%.4e.png" % (field3, self.time))
+        fig_path = os.path.join(self.pv_output_dir, "spcrust_wedge_02252025_t%.4e.pdf" % (self.time))
+        fig_png_path = os.path.join(self.pv_output_dir, "spcrust_wedge_02252025_t%.4e.png" % (self.time))
         SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
         ExportView(fig_path, view=renderView1)
 
+        # adjust for a smaller region
+        # change point position
+        pointName = "PointSource_" + glyphRegistrationName
+        pointSource1 = FindSource(pointName)
+        if "chunk" == "chunk":
+            pointSource1.Center = [0, 6.7e6, 0]
+        # show the representative point                                                                                                    
+        _source_v_re = _source_v + "_representative"                                                                                       
+        sourceVRE = FindSource(_source_v_re)                                                                                               
+        sourceVREDisplay = Show(sourceVRE, renderView1, 'GeometryRepresentation') 
+        # show the annotation
+        _source_v_txt = _source_v + "_text" 
+        sourceVTXT = FindSource(_source_v_txt)                                                                                               
+        sourceVTXTDisplay = Show(sourceVTXT, renderView1, 'GeometryRepresentation')
+        sourceVTXTDisplay.Color = [0.0, 0.0, 0.0]
+        # set the camera position
+        CameraPosition = [-5144.780289291184, 6305365.90238875, 25000000.0]
+        CameraFocalPoint = [-5144.780289291184, 6305365.90238875, 0.0]
+        # Set Glyph
+        # n_sample_points = 1600000
+        point_source_center = [0.0, 0.0, 0.0]
+        if "chunk" == "chunk":
+            point_source_center = [CameraPosition[0] - 0.1e5, 6.4e6, 0]
+        elif "chunk" == "box":
+            point_source_center = [4.65e6, 2.95e6, 0]
+        else:
+            raise NotImplementedError()
+        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_sample_points_small, point_source_center)  
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(layout_resolution[0], layout_resolution[1])
+        renderView1.InteractionMode = '2D'
+        if "GEOMETRY" == "chunk":
+            # test new camera parameters
+            renderView1.CameraPosition = CameraPosition
+            renderView1.CameraFocalPoint = CameraFocalPoint
+            renderView1.CameraParallelScale = CameraParallelScaleSmall
+        elif "GEOMETRY" == "box":
+            raise NotImplementError()
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "spcrust_wedge_small_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "spcrust_wedge_small_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
+
+
         # fourth plot
         # set scalar coloring
-        field4 = "strain rate"
+        field4 = "strain_rate"
         ColorBy(source1Display, ('POINTS', field4, 'Magnitude'))
         source1Display.SetScalarBarVisibility(renderView1, True)
         # hide the grid axis
         renderView1.OrientationAxesVisibility = 0
         # Hide the scalar bar for the first field color map
         HideScalarBarIfNotNeeded(field3LUT, renderView1)
+        # Adjust glyph 
+        point_source_center = [0.0, 0.0, 0.0]
+        if "chunk" == "chunk":
+            point_source_center = [camera_x - 0.1e5, 6.4e6, 0]
+        elif "chunk" == "box":
+            point_source_center = [4.65e6, 2.95e6, 0]
+        else:
+            raise NotImplementedError()
+        self.adjust_glyph_properties('Glyph1', scale_factor, n_sample_points, point_source_center)
         # adjust layout and camera & get layout & set layout/tab size in pixels
         layout1 = GetLayout()
         layout1.SetSize(1350, 704)
@@ -1442,7 +1611,7 @@ class SLAB(PARAVIEW_PLOT):
             # test new camera parameters
             renderView1.CameraPosition = [camera_x, 6300734.12934143, 25000000.0]
             renderView1.CameraFocalPoint = [camera_x, 6300734.12934143, 0.0]
-            renderView1.CameraParallelScale = 101605.30740967988
+            renderView1.CameraParallelScale = CameraParallelScale
         elif "GEOMETRY" == "box":
             raise NotImplementError()
         # colorbar position
@@ -1474,6 +1643,51 @@ class SLAB(PARAVIEW_PLOT):
         fig_png_path = os.path.join(self.pv_output_dir, "strain_rate_wedge_02252025_t%.4e.png" % self.time)
         SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
         ExportView(fig_path, view=renderView1)
+
+        # adjust for a smaller region
+        # change point position
+        pointName = "PointSource_" + glyphRegistrationName
+        pointSource1 = FindSource(pointName)
+        if "chunk" == "chunk":
+            pointSource1.Center = [0, 6.7e6, 0]
+        # show the representative point                                                                                                    
+        _source_v_re = _source_v + "_representative"                                                                                       
+        sourceVRE = FindSource(_source_v_re)                                                                                               
+        sourceVREDisplay = Show(sourceVRE, renderView1, 'GeometryRepresentation') 
+        # show the annotation
+        _source_v_txt = _source_v + "_text" 
+        sourceVTXT = FindSource(_source_v_txt)                                                                                               
+        sourceVTXTDisplay = Show(sourceVTXT, renderView1, 'GeometryRepresentation')
+        sourceVTXTDisplay.Color = [0.0, 0.0, 0.0]
+        # set the camera position
+        CameraPosition = [-5144.780289291184, 6305365.90238875, 25000000.0]
+        CameraFocalPoint = [-5144.780289291184, 6305365.90238875, 0.0]
+        # Set Glyph
+        point_source_center = [0.0, 0.0, 0.0]
+        if "chunk" == "chunk":
+            point_source_center = [CameraPosition[0] - 0.1e5, 6.4e6, 0]
+        elif "chunk" == "box":
+            point_source_center = [4.65e6, 2.95e6, 0]
+        else:
+            raise NotImplementedError()
+        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_sample_points_small, point_source_center)  
+        # adjust layout and camera & get layout & set layout/tab size in pixels
+        layout1 = GetLayout()
+        layout1.SetSize(layout_resolution[0], layout_resolution[1])
+        renderView1.InteractionMode = '2D'
+        if "GEOMETRY" == "chunk":
+            # test new camera parameters
+            renderView1.CameraPosition = CameraPosition
+            renderView1.CameraFocalPoint = CameraFocalPoint
+            renderView1.CameraParallelScale = CameraParallelScaleSmall
+        elif "GEOMETRY" == "box":
+            raise NotImplementError()
+        # save figure
+        fig_path = os.path.join(self.pv_output_dir, "strain_rate_wedge_small_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "strain_rate_wedge_small_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
+
 
         # hide plots
         # Hide(source1, renderView1)
@@ -1654,7 +1868,6 @@ class SLAB(PARAVIEW_PLOT):
 
 
     
-    # todo_wedge
     def adjust_glyph_properties(self, registrationName, scale_factor, n_sample_points, point_center, **kwargs):
         '''
         adjust the properties of the glyph source

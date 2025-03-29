@@ -421,8 +421,7 @@ def PlotNewtonSolver(log_path, fig_path_base, **kwargs):
     print("New figure: %s" % fig_path)
     return fig_path
 
-
-def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
+def PlotNewtonSolverHistory(fig_path_base, **kwargs):
     '''
     Read runtime info from log file and then plot
     Inputs:
@@ -437,8 +436,8 @@ def PlotNewtonSolverHistory(log_path, fig_path_base, **kwargs):
     
     trailer = None
     
-    print("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
-    os.system("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
+    # print("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
+    # os.system("awk -f %s/bash_scripts/awk_states/parse_block_newton %s > %s" % (ASPECT_LAB_DIR, log_path, temp_path))
     Plotter = Plot.LINEARPLOT('SolverHistory', {})
     Plotter.ReadHeader(temp_path)
     try:
