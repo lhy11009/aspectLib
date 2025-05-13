@@ -22,6 +22,7 @@
 # outer radius
 #   OUTER_RADIUS
 
+# todo_cv
 class SLAB(PARAVIEW_PLOT):
     '''
     Inherit frome PARAVIEW_PLOT
@@ -48,10 +49,18 @@ class SLAB(PARAVIEW_PLOT):
         self.eta_max = ETA_MAX
         self.T_min = 273.0
         self.T_max = 2273.0
+        # todo_density
+        self.density_min = 3100.0
+        self.density_max = 4000.0
         self.camera_dict['twod_upper_mantle'] = [[0.0, 6e6, 2.5e7],[0.0, 6e6, 0.0], 5.4e5, None]
+        # todo_Vres
+        add_velocity_residual("solution.pvd", registrationName="pFilter_Vres")
+        
+        # add rotation 
         apply_rotation("solution.pvd", [0.0, 0.0, 0.0], [0.0, 0.0, ROTATION_ANGLE], registrationName="Transform1")
         add_plot("Transform1", "viscosity", use_log=True, lim=[self.eta_min, self.eta_max], color="roma")
         add_plot("Transform1", "T", lim=[self.T_min, self.T_max], color="vik")
+        add_plot("Transform1", "density", lim=[self.density_min, self.density_max], color="Inferno (matplotlib)", invert=True)
 
         # add glyph
         add_glyph1("Transform1", "velocity", 1e6, registrationName="Glyph1")
@@ -61,6 +70,7 @@ class SLAB(PARAVIEW_PLOT):
 
         # add plot of deformation mechanism
         add_deformation_mechanism("Transform1", registrationName="pFilter_DM")
+
 
         # Extract points
         # Extract a selection of points, one with smaller longitude, one with bigger longitude
@@ -305,6 +315,21 @@ class SLAB(PARAVIEW_PLOT):
         fig_png_path = os.path.join(self.pv_output_dir, "viscosity_t%.4e.png" % self.time)
         SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
         ExportView(fig_path, view=renderView1)
+
+        # todo_density
+        # Plot the third scalar field (viscosity) and configure settings.
+        field3 = "density"
+        ColorBy(source1Display, ('POINTS', field3, 'Magnitude'))
+        source1Display.SetScalarBarVisibility(renderView1, True)
+        HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        rescale_transfer_function_combined(field3, self.density_min, self.density_max)
+
+        # Save the second figure (viscosity field).
+        fig_path = os.path.join(self.pv_output_dir, "density_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "density_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
+
 
         # Hide all the plots and scalar bars to clean up.
         # Hide(source1, renderView1)
@@ -1254,7 +1279,6 @@ class SLAB(PARAVIEW_PLOT):
         HideScalarBarIfNotNeeded(field2LUT, renderView1)
         HideScalarBarIfNotNeeded(field3LUT, renderView1)
         source1Display.SetScalarBarVisibility(renderView1, True)
-        rescale_transfer_function_combined('T', 273.0, 1673.0)
 
         # colorbar position
         field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
@@ -1325,7 +1349,7 @@ class SLAB(PARAVIEW_PLOT):
 
         contourTDisplay = Show(source_contour, renderView1, 'GeometryRepresentation')
         
-        rescale_transfer_function_combined('T', 273.15, 1273.15)
+        rescale_transfer_function_combined('T', 273.15, 1273.15) # change this range to adjust temperature
         
         # Show contour1: spcrust 
         source_contour1 = FindSource("ContourCr")
@@ -2041,6 +2065,63 @@ output.PointData.append(d_mech, "deformation_mechanism")
     programmableFilter1.RequestInformationScript = ''
     programmableFilter1.RequestUpdateExtentScript = ''
     programmableFilter1.PythonPath = ''
+
+# todo_Vres
+def add_velocity_residual(_source, **kwargs):
+    '''
+    add programable filter to deal with the deformation mechanism
+    Inputs:
+        _source to extract the data
+    kwargs:
+        registrationName : the name of registration
+    '''
+    registrationName = kwargs.get("registrationName", 'Vres')
+    
+    # get active source and renderview
+    pvd = FindSource(_source)
+    renderView1 = GetActiveViewOrCreate('RenderView')
+
+    # create a new 'Programmable Filter'
+    programmableFilter = ProgrammableFilter(registrationName=registrationName, Input=pvd)
+    programmableFilter.Script = \
+"""
+from paraview.vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
+import numpy as np
+
+vtk_points = inputs[0].GetPoints()
+np_points = vtk_to_numpy(vtk_points)
+
+# Split into X, Y, Z
+x = np_points[:, 0]
+y = np_points[:, 1]
+
+r = np.sqrt(x**2 + y**2)
+phi = np.mod(np.arctan2(y, x), 2*np.pi)           # azimuthal angle [-pi, pi]
+
+v1phi = 10
+v1x = -v1phi * np.sin(phi)
+v1y = v1phi * np.cos(phi)
+
+# 6. Load original velocity field
+velocity = vtk_to_numpy(inputs[0].GetPointData().GetArray("velocity"))
+vx, vy, vz = velocity[:, 0], velocity[:, 1], velocity[:, 2]
+
+# 7. Subtract φ-direction velocity
+vx_res = vx - v1x
+vy_res = vy - v1y
+vz_res = vz
+
+# 8. Combine into residual velocity array
+velocity_residual = np.column_stack((vx_res, vy_res, vz_res))
+
+# 9. Convert to VTK array and add to output
+vtk_array = numpy_to_vtk(velocity_residual, deep=True)
+vtk_array.SetName("velocity_residual")
+output.GetPointData().AddArray(vtk_array)
+"""
+    programmableFilter.RequestInformationScript = ''
+    programmableFilter.RequestUpdateExtentScript = ''
+    programmableFilter.PythonPath = ''
 
 
 

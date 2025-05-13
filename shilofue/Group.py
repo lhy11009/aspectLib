@@ -42,6 +42,13 @@ shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
 
+HaMaGeoLib_DIR = "/home/lochy/ASPECT_PROJECT/HaMaGeoLib"
+if os.path.abspath(HaMaGeoLib_DIR) not in sys.path:
+    sys.path.append(os.path.abspath(HaMaGeoLib_DIR))
+from hamageolib.utils.case_options import parse_log_file_for_time_info
+from hamageolib.utils.plot_helper import fix_wallclock_time
+from hamageolib.utils.file_reader import read_aspect_header_file
+
 def Usage():
     print("\
 (One liner description\n\
@@ -691,13 +698,39 @@ class CASE_SUMMARY():
             self.includes += [1 for i in range(self.n_case - len(self.includes))]
         # update step, time and wallclock time
         for i in range(self.n_case):
+            # todo_time
             step, _time, wallclock = -1, -1.0, -1.0
-            log_file = os.path.join(self.ab_paths[i], 'output', 'log.txt')
-            if os.path.isfile(log_file):
+            # log_file = os.path.join(self.ab_paths[i], 'output', 'log.txt')
+            # if os.path.isfile(log_file):
+            #     try:
+            #         step, _time, wallclock = RunTimeInfo(log_file, quiet=True)
+            #     except TypeError:
+            #         pass
+            
+            log_path = os.path.join(self.ab_paths[i], 'output', 'log.txt')
+            
+            if os.path.isfile(log_path):
+
+                output_dir = os.path.join(self.ab_paths[i], "awk_outputs")
+                if not os.path.isdir(output_dir):
+                    os.mkdir(output_dir)
+
+                output_path = os.path.join(output_dir, "run_time_output.txt") 
+
                 try:
-                    step, _time, wallclock = RunTimeInfo(log_file, quiet=True)
+                    # parse time info
+                    parse_log_file_for_time_info(log_path, output_path)
+
+                    pd_data = read_aspect_header_file(output_path)
                 except TypeError:
                     pass
+                else:
+                    # fix wallclock time
+                    pd_data = fix_wallclock_time(pd_data)
+                    step = pd_data["Time step number"].iloc[-1]
+                    _time = pd_data["Time"].iloc[-1]
+                    wallclock = pd_data["Wall Clock"].iloc[-1]
+
             self.steps[i] = step
             if _time > 0.0:
                 self.times[i] = _time / 1e6

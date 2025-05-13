@@ -128,6 +128,9 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         self.attrs.append("dip660s")
         self.include_Ps = []
         self.attrs.append("include_Ps")
+        # todo_check
+        self.data_avails = []
+        self.attrs.append("data_avails")
 
         self.attrs_to_output += self.attrs
         # ['t660s', "sz_thicks", "sz_depths", "sz_viscs", "slab_strs", "sd_modes", "V_sink_avgs", "V_plate_avgs", "V_ov_plate_avgs", "V_trench_avgs", "sp_ages", "ov_ages"]
@@ -225,6 +228,13 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
                 self.dip660s = [np.nan for i in range(self.n_case)]
             else:
                 pass
+        
+        # todo_check
+        # check existance of data
+        if "data_avail" in actions:
+            self.data_avails = [False for i in range(self.n_case)]
+            for i in range(self.n_case):
+                self.check_data(i)
 
     # todo_diagram
     def generate_py_scripts(self):
@@ -428,6 +438,39 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         update the 660 dip angle
         '''
         self.dip660s[i] = dip660
+
+    # todo_check
+    def check_data(self, i):
+        '''
+        update data existance
+        '''
+        case_dir = self.ab_paths[i]
+        t1000 = self.t1000s[i]
+        if t1000 < 0:
+            t_inspect = (self.times[i] - 1.0)*1e6
+        else:
+            t_inspect = t1000
+
+        # set default to false
+        try:
+            Visit_Options = self.VISIT_OPTIONS(case_dir)
+            Visit_Options.Interpret()
+        except FileNotFoundError:
+            return
+        
+        # if we fail to get the related vtu_step, do nothing
+        try:
+            _, _, vtu_step = Visit_Options.get_timestep_by_time(t_inspect)
+        except ValueError:
+            return
+        
+        vtu_snapshot = vtu_step + int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT'])
+        pvtu_file = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+        vtu_file = os.path.join(case_dir, "output", "solution", "solution-%05d.0000.vtu" % vtu_snapshot)
+        # print("pvtu_file: ", pvtu_file) # debug
+        # print("vtu_file: ", vtu_file) # debug
+        if os.path.isfile(pvtu_file) and os.path.isfile(vtu_file):
+            self.data_avails[i] = True
 
     def plot_diagram_t660(self, **kwargs):
         '''

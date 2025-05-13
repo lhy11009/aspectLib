@@ -406,6 +406,8 @@ def add_plot(_source, field, **kwargs):
     use_log = kwargs.get("use_log", False)
     lim = kwargs.get("lim", None)
     _color = kwargs.get("color", None)
+    # todo_density
+    invert = kwargs.get("invert", False)
 
     # get active source.
     pvd = FindSource(_source)
@@ -443,6 +445,8 @@ def add_plot(_source, field, **kwargs):
     if _color is not None: 
         # Apply a preset using its name. Note this may not work as expected when presets have duplicate names.
         fieldLUT.ApplyPreset(_color, True)
+        if invert:
+            fieldLUT.InvertTransferFunction()
    
     # reset view to fit data
     # without this, the figure won't show

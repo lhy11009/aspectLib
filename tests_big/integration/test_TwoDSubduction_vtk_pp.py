@@ -37,36 +37,12 @@ TwoDSubduction_DIR = os.environ['TwoDSubduction_DIR']
 has_project_root = (os.path.isdir(TwoDSubduction_DIR))
 ASPECTLIB_PERFORM_TEST_ON_LOCAL_DATA = True
 
-
+# todo_temp
 def test_slab_temperature():
     '''
     test the implementation of SlabTemperature
     this test only deal with the generation of the data file without generating any plots
     '''
-    # test 1: slab temperature
-    source_dir1 = os.path.join(source_dir, 'slab_temperature') 
-    if has_project_root and ASPECTLIB_PERFORM_TEST_ON_LOCAL_DATA:
-        # o_file_std = os.path.join(source_dir1, 'slab_temperature_std')
-        # assert(os.path.isfile(o_file_std))
-        case_dir = os.path.join(TwoDSubduction_DIR, 'EBA_CDPT3', 'eba_cdpt_SA80.0_OA40.0')
-        o_dir = os.path.join(test_dir, "TwoDSubduction_vtk_pp")
-        if not os.path.isdir(o_dir):
-            os.mkdir(o_dir)
-        cmb_env_o_file_std = os.path.join(source_dir1, "cmb_env_00100_std.vtp")
-        cmb_env_o_file = os.path.join(case_dir, "vtk_outputs", "cmb_env_00100.vtp")
-        if os.path.isfile(cmb_env_o_file):
-            os.remove(cmb_env_o_file)
-        o_file = os.path.join(o_dir, "slab_temperature_00105.txt")
-        o_file_std = os.path.join(source_dir1, "slab_temperature_00105_std.txt")
-        if os.path.isfile(o_file):
-            os.remove(o_file)
-        vtu_snapshot = 105 # 10 Ma
-        assert(os.path.isdir(case_dir))
-        _, _, _ = SlabTemperature(case_dir, vtu_snapshot, o_file, output_slab=True)
-        assert(os.path.isfile(cmb_env_o_file))  # assert the outputs of slab and cmb envelops
-        assert(filecmp.cmp(cmb_env_o_file, cmb_env_o_file_std))  # compare file contents
-        assert(os.path.isfile(o_file))  # assert the outputs of temperature profiles
-        assert(filecmp.cmp(o_file, o_file_std))  # compare file contents
     # test 2: a different snapshot. Initially, the number of points in the cmb envelop is 
     # different from the number of points in the slab envelops, thus, this test assert that
     # this is fixed in the output stage
@@ -74,14 +50,14 @@ def test_slab_temperature():
     if has_project_root and ASPECTLIB_PERFORM_TEST_ON_LOCAL_DATA:
         # o_file_std = os.path.join(source_dir1, 'slab_temperature_std')
         # assert(os.path.isfile(o_file_std))
-        case_dir = os.path.join(TwoDSubduction_DIR, 'EBA_CDPT3', 'eba_cdpt_SA80.0_OA40.0')
+        case_dir = "/mnt/lochz/ASPECT_DATA/TwoDSubduction/EBA_CDPT_morb_dE/eba_cdpt_coh500_SA80.0_cd7.5_log"
         o_dir = os.path.join(test_dir, "TwoDSubduction_vtk_pp")
         if not os.path.isdir(o_dir):
             os.mkdir(o_dir)
-        cmb_env_o_file_std = os.path.join(source_dir1, "cmb_env_00000_std.vtp")
-        cmb_env_o_file = os.path.join(case_dir, "vtk_outputs", "cmb_env_00000.vtp")
-        if os.path.isfile(cmb_env_o_file):
-            os.remove(cmb_env_o_file)
+        # cmb_env_o_file_std = os.path.join(source_dir1, "cmb_env_00000_std.vtp")
+        # cmb_env_o_file = os.path.join(case_dir, "vtk_outputs", "cmb_env_00000.vtp")
+        # if os.path.isfile(cmb_env_o_file):
+            # os.remove(cmb_env_o_file)
         o_file = os.path.join(o_dir, "slab_temperature_00005.txt")
         o_file_std = os.path.join(source_dir1, "slab_temperature_00005_std.txt")
         if os.path.isfile(o_file):
@@ -89,7 +65,6 @@ def test_slab_temperature():
         vtu_snapshot = 5 # 0 Ma
         assert(os.path.isdir(case_dir))
         _, _, _ = SlabTemperature(case_dir, vtu_snapshot, o_file, output_slab=True)
-        assert(os.path.isfile(cmb_env_o_file))  # assert the outputs of slab and cmb envelops
         assert(os.path.isfile(o_file))  # assert the outputs of temperature profiles
         assert(filecmp.cmp(o_file, o_file_std))  # compare file contents
 

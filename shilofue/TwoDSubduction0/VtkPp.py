@@ -58,6 +58,12 @@ shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
 
+HaMaGeoLib_path = os.path.abspath("/home/lochy/ASPECT_PROJECT/HaMaGeoLib")
+if HaMaGeoLib_path not in sys.path:
+    sys.path.append(HaMaGeoLib_path)
+
+from hamageolib.research.haoyuan_2d_subduction.legacy_tools import SlabTemperature, SlabTemperatureCase
+
 def Usage():
     print("\
 (One liner description\n\
@@ -1831,7 +1837,8 @@ def SlabPressures(VtkP, slab_envelop, **kwargs):
 class CmbExtractionIndexError(Exception):
     pass
 
-def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
+# todo_temp
+def SlabTemperature_old(case_dir, vtu_snapshot, ofile=None, **kwargs):
     '''
     Perform analysis on the slab, this would output a file including the
     buoyancy forces of the slab and the pressures on the slab surface.
@@ -1852,7 +1859,6 @@ def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
     slab_envelop_interval = kwargs.get("slab_envelop_interval", 5e3)
     max_depth = kwargs.get("max_depth", 660e3)
 
-    # todo_T
     fix_shallow = kwargs.get("fix_shallow", False)
     ofile_surface = kwargs.get("ofile_surface", None)
     ofile_moho = kwargs.get("ofile_moho", None)
@@ -1893,23 +1899,23 @@ def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
         VtkPp.ExportPolyData(VtkP.c_poly_data, file_out_1)
     
     # slab envelop
-    VtkP.PrepareSlab(['spcrust', 'spharz'], prepare_cmb='spcrust')  # slab: composition
+    VtkP.PrepareSlab(['spcrust', 'spharz'], prepare_moho='spcrust')  # slab: composition
     slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
-    cmb_envelop = VtkP.ExportSlabCmbCoord()
+    moho_envelop = VtkP.ExportSlabmohoCoord()
     if output_slab:
         slab_internal = VtkP.ExportSlabInternal(output_xy=True)
         o_slab_env0 = os.path.join(case_dir,\
             "vtk_outputs", "slab_env0_%05d.vtp" % (vtu_step)) # envelop 0
         o_slab_env1 = os.path.join(case_dir,\
             "vtk_outputs", "slab_env1_%05d.vtp" % (vtu_step)) # envelop 1
-        o_cmb_env = os.path.join(case_dir,\
-            "vtk_outputs", "cmb_env_%05d.vtp" % (vtu_step)) # envelop 0
+        o_moho_env = os.path.join(case_dir,\
+            "vtk_outputs", "moho_env_%05d.vtp" % (vtu_step)) # envelop 0
         o_slab_in = os.path.join(case_dir,\
             "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
         VtkPp.ExportPolyDataFromRaw(slab_envelop0[:, 0], slab_envelop0[:, 1], None, None, o_slab_env0) # write the polydata
         VtkPp.ExportPolyDataFromRaw(slab_envelop1[:, 0], slab_envelop1[:, 1], None, None, o_slab_env1) # write the polydata
         # export the envelop of the core-mantle boundary
-        VtkPp.ExportPolyDataFromRaw(cmb_envelop[:, 0], cmb_envelop[:, 1], None, None, o_cmb_env) # write the polydata
+        VtkPp.ExportPolyDataFromRaw(moho_envelop[:, 0], moho_envelop[:, 1], None, None, o_moho_env) # write the polydata
         np.savetxt(o_slab_in, slab_internal)
         print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
     rs_n = 5 # resample interval
@@ -1920,7 +1926,6 @@ def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
     rs_idx = range(0, n_point, rs_n)
     slab_envelop_rs_raw = slab_envelop1[np.ix_(rs_idx, [0, 1])]  # for slab surface
     
-    # todo_T
     if fix_shallow:
         # append the shallow trench point
         outputs_shallow = VtkP.PrepareSlabShallow(Visit_Options.options['THETA_REF_TRENCH'])
@@ -1934,36 +1939,35 @@ def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
     depths = depths_raw[0: id_max+1]
     slab_envelop_rs = slab_envelop_rs_raw[0: id_max+1, :]
 
-    # resample the original cmb
+    # resample the original moho
     if debug:
-        print("cmb_envelop: ")  # screen outputs
-        print(cmb_envelop)
+        print("moho_envelop: ")  # screen outputs
+        print(moho_envelop)
     try:
-        cmb_envelop_rs_raw = cmb_envelop[np.ix_(rs_idx, [0, 1])]
+        moho_envelop_rs_raw = moho_envelop[np.ix_(rs_idx, [0, 1])]
         if debug:
-            print("cmb_envelop_rs_raw: ")  # screen outputs
-            print(cmb_envelop_rs_raw)
+            print("moho_envelop_rs_raw: ")  # screen outputs
+            print(moho_envelop_rs_raw)
     except IndexError as e:
         rs_idx_last = rs_idx[-1]
-        cmb_envelop_rs_raw_length = cmb_envelop.shape[0]
-        raise CmbExtractionIndexError("the last index to extract is %d, while the shape of the cmb_envelop is %d"\
-        % (rs_idx_last, cmb_envelop_rs_raw_length)) from e
+        moho_envelop_rs_raw_length = moho_envelop.shape[0]
+        raise mohoExtractionIndexError("the last index to extract is %d, while the shape of the moho_envelop is %d"\
+        % (rs_idx_last, moho_envelop_rs_raw_length)) from e
     
-    # todo_T
     if fix_shallow:
         # append the shallow trench point
         r, theta, phi = Utilities.cart2sph(*outputs_shallow["corrected"]["points"])
         r1 = r - Visit_Options.options["INITIAL_SHEAR_ZONE_THICKNESS"]
         moho_shallow = np.array([r1 * np.sin(theta) * np.cos(phi), r1 * np.sin(theta) * np.sin(phi), 0])
-        cmb_envelop_rs_raw = np.vstack((moho_shallow[0:2], cmb_envelop_rs_raw))
+        moho_envelop_rs_raw = np.vstack((moho_shallow[0:2], moho_envelop_rs_raw))
     
     
-    depths_cmb_raw = Ro - (cmb_envelop_rs_raw[:, 0]**2.0 + cmb_envelop_rs_raw[:, 1]**2.0)**0.5
+    depths_moho_raw = Ro - (moho_envelop_rs_raw[:, 0]**2.0 + moho_envelop_rs_raw[:, 1]**2.0)**0.5
     
-    depths_cmb = depths_cmb_raw[0: id_max+1] # match the array for the surface
-    cmb_envelop_rs = cmb_envelop_rs_raw[0: id_max+1, :]
+    depths_moho = depths_moho_raw[0: id_max+1] # match the array for the surface
+    moho_envelop_rs = moho_envelop_rs_raw[0: id_max+1, :]
     
-    id_valid = np.where(depths_cmb > 0.0)[0][-1] # reason: max depth could be shallower than the slab surface
+    id_valid = np.where(depths_moho > 0.0)[0][-1] # reason: max depth could be shallower than the slab surface
     
     # interpolate the curve
     # start = np.ceil(depths[0]/ip_interval) * ip_interval
@@ -1975,18 +1979,18 @@ def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
     slab_Xs = interp1d(depths, slab_envelop_rs[:, 0], kind='cubic')(depths_out)
     slab_Ys = interp1d(depths, slab_envelop_rs[:, 1], kind='cubic')(depths_out)
 
-    mask_cmb = ((depths_out > depths_cmb[0]) & (depths_out < depths_cmb[id_valid]))
-    cmb_Xs = np.zeros(depths_out.shape)
-    cmb_Ys = np.zeros(depths_out.shape)
-    cmb_Xs[mask_cmb] = interp1d(depths_cmb[0: id_valid+1], cmb_envelop_rs[0: id_valid+1, 0], kind='cubic')(depths_out[mask_cmb])
-    cmb_Ys[mask_cmb] = interp1d(depths_cmb[0: id_valid+1], cmb_envelop_rs[0: id_valid+1, 1], kind='cubic')(depths_out[mask_cmb])
+    mask_moho = ((depths_out > depths_moho[0]) & (depths_out < depths_moho[id_valid]))
+    moho_Xs = np.zeros(depths_out.shape)
+    moho_Ys = np.zeros(depths_out.shape)
+    moho_Xs[mask_moho] = interp1d(depths_moho[0: id_valid+1], moho_envelop_rs[0: id_valid+1, 0], kind='cubic')(depths_out[mask_moho])
+    moho_Ys[mask_moho] = interp1d(depths_moho[0: id_valid+1], moho_envelop_rs[0: id_valid+1, 1], kind='cubic')(depths_out[mask_moho])
 
     # interpolate the T 
     slab_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, np.column_stack((slab_Xs, slab_Ys)), quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
     env_Ttops  = vtk_to_numpy(slab_env_polydata.GetPointData().GetArray('T'))
     
-    cmb_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, np.column_stack((cmb_Xs, cmb_Ys)), quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
-    env_Tbots = vtk_to_numpy(cmb_env_polydata.GetPointData().GetArray('T'))
+    moho_env_polydata = VtkPp.InterpolateGrid(VtkP.i_poly_data, np.column_stack((moho_Xs, moho_Ys)), quiet=True) # note here VtkPp is module shilofue/VtkPp, while the VtkP is the class
+    env_Tbots = vtk_to_numpy(moho_env_polydata.GetPointData().GetArray('T'))
     
     mask = (env_Tbots < 1.0) # fix the non-sense values
     env_Tbots[mask] = -np.finfo(np.float32).max
@@ -2001,8 +2005,8 @@ def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
         data_env0[:, 0] = depths_out
         data_env0[:, 1] = slab_Xs
         data_env0[:, 2] = slab_Ys
-        data_env0[:, 3] = cmb_Xs
-        data_env0[:, 4] = cmb_Ys
+        data_env0[:, 3] = moho_Xs
+        data_env0[:, 4] = moho_Ys
         data_env0[:, 5] = env_Tbots
         data_env0[:, 6] = env_Ttops
         c_out = data_env0.shape[1]
@@ -2016,10 +2020,9 @@ def SlabTemperature(case_dir, vtu_snapshot, ofile=None, **kwargs):
         print("%s%s: write output %s" % (' '*indent, Utilities.func_name(), ofile))
     if ofile_surface is not None:
         # write output of surface and moho profile
-        # todo_T
         VtkPp.ExportPolyDataFromRaw(slab_Xs, slab_Ys, None, None, ofile_surface) # write the polydata
     if ofile_moho is not None:
-        VtkPp.ExportPolyDataFromRaw(cmb_Xs, cmb_Ys, None, None, ofile_moho) # write the polydata
+        VtkPp.ExportPolyDataFromRaw(moho_Xs, moho_Ys, None, None, ofile_moho) # write the polydata
         
     return depths, env_Ttops, env_Tbots  # return depths and pressures
 
@@ -2039,7 +2042,6 @@ def SlabTemperature1(case_dir, vtu_snapshot, **kwargs):
     if not os.path.isdir(output_path):
         os.mkdir(output_path)
 
-    # todo_T 
     ofile = os.path.join(output_path, "slab_temperature_%05d.txt" % (vtu_step))
     ofile_surface = os.path.join(output_path, "slab_surface_%05d.vtp" % (vtu_step))
     ofile_moho = os.path.join(output_path, "slab_moho_%05d.vtp" % (vtu_step))
@@ -2172,7 +2174,7 @@ def PlotSlabTemperature(case_dir, vtu_snapshot, **kwargs):
     if os.path.isfile(o_file):
         os.remove(o_file)
     assert(os.path.isdir(case_dir))
-    _, _, _ = SlabTemperature(case_dir, vtu_snapshot, o_file, output_slab=True)
+    _, _, _ = SlabTemperature_old(case_dir, vtu_snapshot, o_file, output_slab=True)
     assert(os.path.isfile(o_file))  # assert the outputs of slab and cmb envelops
     # plot
     fig_path = os.path.join(img_o_dir, "slab_temperature_%05d.png" % vtu_step) 
@@ -2236,44 +2238,44 @@ def PlotWedgeTCase(case_dir, **kwargs):
     assert(os.path.isfile(ofile))
     print("%s: output figure %s" % (Utilities.func_name(), ofile))
 
-
+# todo_T
 ####
 # Case-wise functions
 ####
-def SlabTemperatureCase(case_dir, **kwargs):
-    '''
-    run vtk and get outputs for every snapshots
-    Inputs:
-        kwargs:
-            time_interval: the interval between two processing steps
-    '''
-    # get all available snapshots
-    # the interval is choosen so there is no high frequency noises
-    time_interval_for_slab_morphology = kwargs.get("time_interval", 0.5e6)
-    Visit_Options = VISIT_OPTIONS(case_dir)
-    Visit_Options.Interpret()
-    # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
-    available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
-    print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # debug
-    # get where previous session ends
-    vtk_output_dir = os.path.join(case_dir, 'vtk_outputs')
-    if not os.path.isdir(vtk_output_dir):
-        os.mkdir(vtk_output_dir)
-    # Initiation Wrapper class for parallel computation
-    # todo_T
-    ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_temperature', SlabTemperature1, if_rewrite=True, assemble=False, output_poly_data=False, fix_shallow=True)
-    ParallelWrapper.configure(case_dir)  # assign case directory
-    # Remove previous file
-    print("%s: Delete old slab_temperature.txt file." % Utilities.func_name())
-    ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
-    num_cores = multiprocessing.cpu_count()
-    # loop for all the steps to plot
-    Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_snapshot)\
-    for pvtu_snapshot in available_pvtu_snapshots)  # first run in parallel and get stepwise output
-    ParallelWrapper.clear()
-    # for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
-    #    ParallelWrapper(pvtu_snapshot)
-    # pvtu_steps_o, outputs = ParallelWrapper.assemble()
+# def SlabTemperatureCase(case_dir, **kwargs):
+#     '''
+#     run vtk and get outputs for every snapshots
+#     Inputs:
+#         kwargs:
+#             time_interval: the interval between two processing steps
+#     '''
+#     # get all available snapshots
+#     # the interval is choosen so there is no high frequency noises
+#     time_interval_for_slab_morphology = kwargs.get("time_interval", 0.5e6)
+#     offsets = kwargs.get("offsets", [])
+#     Visit_Options = VISIT_OPTIONS(case_dir)
+#     Visit_Options.Interpret()
+#     # call get_snaps_for_slab_morphology, this prepare the snaps with a time interval in between.
+#     available_pvtu_snapshots= Visit_Options.get_snaps_for_slab_morphology(time_interval=time_interval_for_slab_morphology)
+#     print("available_pvtu_snapshots: ", available_pvtu_snapshots)  # debug
+#     # get where previous session ends
+#     vtk_output_dir = os.path.join(case_dir, 'vtk_outputs')
+#     if not os.path.isdir(vtk_output_dir):
+#         os.mkdir(vtk_output_dir)
+#     # Initiation Wrapper class for parallel computation
+#     ParallelWrapper = PARALLEL_WRAPPER_FOR_VTK('slab_temperature', SlabTemperature1, if_rewrite=True, assemble=False, output_poly_data=False, fix_shallow=True, offsets=offsets)
+#     ParallelWrapper.configure(case_dir)  # assign case directory
+#     # Remove previous file
+#     print("%s: Delete old slab_temperature.txt file." % Utilities.func_name())
+#     ParallelWrapper.delete_temp_files(available_pvtu_snapshots)  # delete intermediate file if rewrite
+#     num_cores = multiprocessing.cpu_count()
+#     # loop for all the steps to plot
+#     Parallel(n_jobs=num_cores)(delayed(ParallelWrapper)(pvtu_snapshot)\
+#     for pvtu_snapshot in available_pvtu_snapshots)  # first run in parallel and get stepwise output
+#     ParallelWrapper.clear()
+#     # for pvtu_snapshot in available_pvtu_snapshots:  # then run in on cpu to assemble these results
+#     #    ParallelWrapper(pvtu_snapshot)
+#     # pvtu_steps_o, outputs = ParallelWrapper.assemble()
 
 def SlabMorphologyCase(case_dir, **kwargs):
     '''
@@ -4892,6 +4894,10 @@ def main():
     parser.add_argument('-mdx1', '--mdd_dx1', type=float,
                         default=10e3,
                         help='Distance from surface when finding the mdd (larger x side)')
+    # todo_T
+    parser.add_argument('-rp', '--run_parallel', type=int,
+                        default=1,
+                        help='run in parallel')
     _options = []
     try:
         _options = sys.argv[2: ]
@@ -4967,7 +4973,8 @@ but will not generarte that file. Make sure all these files are updated, proceed
     elif _commend == "plot_slab_temperature":
         PlotSlabTemperature(arg.inputs, int(arg.vtu_snapshot))
     elif _commend == "slab_temperature_case":
-        SlabTemperatureCase(arg.inputs, rewrite=1, time_interval=arg.time_interval)
+        # todo_T
+        SlabTemperatureCase(arg.inputs, rewrite=1, time_interval=arg.time_interval, offsets=[-5e3, -10e3], run_parallel=arg.run_parallel)
     elif _commend == "mantle_wedge_T_case":
         WedgeTCase(arg.inputs, time_interval=arg.time_interval)
     elif _commend == "plot_slab_temperature_case":
