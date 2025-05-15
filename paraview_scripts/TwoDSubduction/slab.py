@@ -58,8 +58,8 @@ class SLAB(PARAVIEW_PLOT):
         
         # add rotation 
         apply_rotation("solution.pvd", [0.0, 0.0, 0.0], [0.0, 0.0, ROTATION_ANGLE], registrationName="Transform1")
-        add_plot("Transform1", "viscosity", use_log=True, lim=[self.eta_min, self.eta_max], color="roma")
-        add_plot("Transform1", "T", lim=[self.T_min, self.T_max], color="vik")
+        add_plot("Transform1", "viscosity", use_log=True, lim=[self.eta_min, self.eta_max], color="bilbao")
+        add_plot("Transform1", "T", lim=[self.T_min, self.T_max], color="lapaz")
         add_plot("Transform1", "density", lim=[self.density_min, self.density_max], color="Inferno (matplotlib)", invert=True)
 
         # add glyph
@@ -692,7 +692,7 @@ class SLAB(PARAVIEW_PLOT):
         HideScalarBarIfNotNeeded(field3LUT, renderView1)
         source1Display.SetScalarBarVisibility(renderView1, True)
         # Rescale transfer function, 2d transfer function
-        field1LUT.RescaleTransferFunction(273.0, 2273.0)
+        field1LUT.RescaleTransferFunction(273.0, 3500.0)
         # colorbar position
         field1LUTColorBar = GetScalarBar(field1LUT, renderView1)
         field1LUTColorBar.Orientation = 'Horizontal'
