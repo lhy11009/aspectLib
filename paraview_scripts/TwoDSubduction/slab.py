@@ -1251,10 +1251,12 @@ class SLAB(PARAVIEW_PLOT):
         field2LUT = GetColorTransferFunction(field2)
         field3LUT = GetColorTransferFunction(field3)
 
-        # glyph scales 
+        # glyph scales
+        # For the wedge plot and the "small" wedge plot
+        # we use different method. 
         scale_factor = 2.5e5
         n_sample_points = 400000
-        n_sample_points_small = 1600000
+        n_stride_small = 150
         CameraParallelScale = 101605.30740967988
         CameraParallelScaleSmall = 39173.24444222669
         small_scale_fraction = CameraParallelScaleSmall / CameraParallelScale
@@ -1399,7 +1401,8 @@ class SLAB(PARAVIEW_PLOT):
             point_source_center = [4.65e6, 2.95e6, 0]
         else:
             raise NotImplementedError()
-        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_sample_points_small, point_source_center)  
+        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_stride_small,\
+            point_source_center, GlyphMode="Every Nth Point")
         # adjust layout and camera & get layout & set layout/tab size in pixels
         layout1 = GetLayout()
         layout1.SetSize(layout_resolution[0], layout_resolution[1])
@@ -1494,7 +1497,9 @@ class SLAB(PARAVIEW_PLOT):
             point_source_center = [4.65e6, 2.95e6, 0]
         else:
             raise NotImplementedError()
-        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_sample_points_small, point_source_center)  
+        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_stride_small,\
+            point_source_center, GlyphMode="Every Nth Point")
+
         # adjust layout and camera & get layout & set layout/tab size in pixels
         layout1 = GetLayout()
         layout1.SetSize(layout_resolution[0], layout_resolution[1])
@@ -1590,7 +1595,8 @@ class SLAB(PARAVIEW_PLOT):
             point_source_center = [4.65e6, 2.95e6, 0]
         else:
             raise NotImplementedError()
-        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_sample_points_small, point_source_center)  
+        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_stride_small,\
+            point_source_center, GlyphMode="Every Nth Point")
         # adjust layout and camera & get layout & set layout/tab size in pixels
         layout1 = GetLayout()
         layout1.SetSize(layout_resolution[0], layout_resolution[1])
@@ -1694,7 +1700,8 @@ class SLAB(PARAVIEW_PLOT):
             point_source_center = [4.65e6, 2.95e6, 0]
         else:
             raise NotImplementedError()
-        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_sample_points_small, point_source_center)  
+        self.adjust_glyph_properties('Glyph1', scale_factor * small_scale_fraction, n_stride_small,\
+            point_source_center, GlyphMode="Every Nth Point")
         # adjust layout and camera & get layout & set layout/tab size in pixels
         layout1 = GetLayout()
         layout1.SetSize(layout_resolution[0], layout_resolution[1])
@@ -1891,25 +1898,37 @@ class SLAB(PARAVIEW_PLOT):
         HideScalarBarIfNotNeeded(fieldVLUT, renderView1)
 
 
-    
-    def adjust_glyph_properties(self, registrationName, scale_factor, n_sample_points, point_center, **kwargs):
+    def adjust_glyph_properties(self, registrationName, scale_factor, n_value, point_center, **kwargs):
         '''
         adjust the properties of the glyph source
         Inputs:
             scale_factor: scale of arrows
+            n_value: used to assign the MaximumNumberOfSamplePoints or Stride variable.
             ghost_field: the colorbar of a previous "ghost field" needs to be hide again to
                 prevent it from being shown.
             kwargs:
                 registrationName : the name of registration
                 representative_value: a value to represent by the constant vector
+                GlyphMode: mode of glyph
         '''
-        assert(type(n_sample_points) == int)
+        GlyphMode = kwargs.get("GlyphMode", "Uniform Spatial Distribution (Bounds Based)")
+
+        assert(type(n_value) == int)
         assert(type(point_center) == list and len(point_center) == 3)
         representative_value = kwargs.get("representative_value", 0.05)
         
         glyph1 = FindSource(registrationName)
         glyph1.ScaleFactor = scale_factor
-        glyph1.MaximumNumberOfSamplePoints = n_sample_points
+
+        if GlyphMode == "Uniform Spatial Distribution (Bounds Based)":
+            glyph1.GlyphMode = GlyphMode
+            glyph1.MaximumNumberOfSamplePoints = n_value
+        elif GlyphMode == "Every Nth Point":
+            glyph1.GlyphMode = GlyphMode
+            glyph1.Stride = n_value
+        else:
+            return NotImplementedError()
+
     
         pointName = "PointSource_" + registrationName
         pointSource1 = FindSource(pointName)

@@ -1951,8 +1951,7 @@ def SlabTemperature_old(case_dir, vtu_snapshot, ofile=None, **kwargs):
     except IndexError as e:
         rs_idx_last = rs_idx[-1]
         moho_envelop_rs_raw_length = moho_envelop.shape[0]
-        raise mohoExtractionIndexError("the last index to extract is %d, while the shape of the moho_envelop is %d"\
-        % (rs_idx_last, moho_envelop_rs_raw_length)) from e
+        raise IndexError("the last index to extract is %d, while the shape of the moho_envelop is %d" % (rs_idx_last, moho_envelop_rs_raw_length))
     
     if fix_shallow:
         # append the shallow trench point
