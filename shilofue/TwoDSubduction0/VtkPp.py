@@ -62,7 +62,7 @@ HaMaGeoLib_path = os.path.abspath("/home/lochy/ASPECT_PROJECT/HaMaGeoLib")
 if HaMaGeoLib_path not in sys.path:
     sys.path.append(HaMaGeoLib_path)
 
-from hamageolib.research.haoyuan_2d_subduction.legacy_tools import SlabTemperature, SlabTemperatureCase
+from hamageolib.research.haoyuan_2d_subduction.legacy_tools import SlabTemperature, SlabTemperatureCase, SlabMorphology_dual_mdd
 
 def Usage():
     print("\
@@ -1485,145 +1485,145 @@ def SlabMorphology(case_dir, vtu_snapshot, **kwargs):
     print("%s%s" % (indent*" ", outputs)) # debug
     return vtu_step, outputs
 
-def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
-    '''
-    Wrapper for using PVTK class to get slab morphology, uses two distinct mdd_dx1 value
-    to get both the partial and the final coupling point.
-    Inputs:
-        case_dir (str): case directory
-        vtu_snapshot (int): index of file in vtu outputs
-        kwargs:
-            project_velocity - whether the velocity is projected to the tangential direction
-    '''
-    indent = kwargs.get("indent", 0)  # indentation for outputs
-    findmdd = kwargs.get("findmdd", False)
-    output_ov_ath_profile = kwargs.get("output_ov_ath_profile", False)
-    output_path = os.path.join(case_dir, "vtk_outputs")
-    if not os.path.isdir(output_path):
-        os.mkdir(output_path)
-    findmdd_tolerance = kwargs.get("findmdd_tolerance", 0.05)
-    depth_distant_lookup = kwargs.get("depth_distant_lookup", 200e3)
-    dip_angle_depth_lookup = kwargs.get("dip_angle_depth_lookup", None)
-    dip_angle_depth_lookup_interval = kwargs.get("dip_angle_depth_lookup_interval", 60e3)
-    project_velocity = kwargs.get('project_velocity', False)
-    find_shallow_trench = kwargs.get("find_shallow_trench", False)
-    mdd = -1.0 # an initial value
-    print("%s%s: Start" % (indent*" ", Utilities.func_name()))
-    output_slab = kwargs.get('output_slab', None)
-    # todo_crust
-    n_crust = kwargs.get("n_crust", 1)
-    if n_crust == 1:
-        crust_fields = ['spcrust']
-    elif n_crust == 2:
-        crust_fields = ['spcrust_up', 'spcrust_low']
-    filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
-    if not os.path.isfile(filein):
-        raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
-    else:
-        print("SlabMorphology_dual_mdd: processing %s" % filein)
-    Visit_Options = VISIT_OPTIONS(case_dir)
-    Visit_Options.Interpret()
-    # vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis',\
-    # vtu_step=vtu_step, include_step_in_filename=True, generate_horiz=True)
-    vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
-    _time, step = Visit_Options.get_time_and_step(vtu_step)
-    geometry = Visit_Options.options['GEOMETRY']
-    Ro =  Visit_Options.options['OUTER_RADIUS']
-    if geometry == "chunk":
-        Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
-    else:
-        Xmax = Visit_Options.options['XMAX']
-    VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
-    VtkP.ReadFile(filein)
-    field_names = ['T', 'density', 'spharz', 'velocity', 'viscosity'] + crust_fields
-    VtkP.ConstructPolyData(field_names, include_cell_center=True)
-    VtkP.PrepareSlab(crust_fields + ['spharz'], prepare_slab_distant_properties=True, depth_distant_lookup=depth_distant_lookup)
-    # todo_shallow
-    if find_shallow_trench:
-        if n_crust == 2:
-            raise NotImplementedError()
-        try:
-            # This is not a stable algorithm yet.
-            outputs = VtkP.PrepareSlabShallow(Visit_Options.options['THETA_REF_TRENCH'])
-        except Exception:
-            trench_shallow = np.finfo(np.float16).tiny
-        else:
-            x, y, z = outputs["corrected"]["points"]
-            _, _, trench_shallow = Utilities.cart2sph(x, y, z)
-    if findmdd:
-        try:
-            mdd1 = VtkP.FindMDD(tolerance=findmdd_tolerance, dx1=-Visit_Options.options["INITIAL_SHEAR_ZONE_THICKNESS"])
-            mdd2 = VtkP.FindMDD(tolerance=findmdd_tolerance, dx1=10e3)
-        except ValueError:
-            mdd1 = - 1.0
-            mdd2 = - 1.0
-    # output slab profile
-    if output_slab is not None:
-        slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
-        slab_internal = VtkP.ExportSlabInternal(output_xy=True)
-        if output_slab == "vtp":
-            o_slab_env0 = os.path.join(case_dir,\
-                "vtk_outputs", "slab_env0_%05d.vtp" % (vtu_step)) # envelop 0
-            o_slab_env1 = os.path.join(case_dir,\
-                "vtk_outputs", "slab_env1_%05d.vtp" % (vtu_step)) # envelop 1
-            o_slab_in = os.path.join(case_dir,\
-                "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
-            VtkPp.ExportPolyDataFromRaw(slab_envelop0[:, 0], slab_envelop0[:, 1], None, None, o_slab_env0) # write the polydata
-            # np.savetxt(o_slab_env0, slab_envelop0)
-            print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env0))
-            VtkPp.ExportPolyDataFromRaw(slab_envelop1[:, 0], slab_envelop1[:, 1], None, None, o_slab_env1) # write the polydata
-            print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env1))
-            np.savetxt(o_slab_in, slab_internal)
-            print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
-        # todo_o_env
-        if output_slab == "txt":
-            o_slab_env =  os.path.join(case_dir, \
-                "vtk_outputs", "slab_env_%05d.txt" % (vtu_step)) # envelop 1
-            slab_env_outputs = np.concatenate([slab_envelop0, slab_envelop1], axis=1) 
-            slab_env_output_header = "X0 Y0 X1 Y1"
-            np.savetxt(o_slab_env, slab_env_outputs, header=slab_env_output_header)
-            print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env))
-            o_slab_in = os.path.join(case_dir,\
-                "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
-            np.savetxt(o_slab_in, slab_internal)
-            print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
-    # output a profile distant to the slab
-    n_distant_profiel_sample = 100
-    v_distant_profile = None; query_viscs = None
-    if output_ov_ath_profile:
-        header = "# 1: x (m)\n# 2: y (m)\n# 3: depth (m)\n# 4: velocity_h (m/s)\n# 5: velocity_r (m/s)\n# 6: viscosity (pa*s)\n# 7: fixing (by 0.1 deg)\n"
-        coords, depths, v_distant_profile, query_viscs, value_fixing = VtkP.ExportOvAthenProfile(depth_distant_lookup, n_sample=n_distant_profiel_sample)
-        outputs = np.concatenate((coords, depths.reshape((-1, 1)), v_distant_profile,\
-            query_viscs.reshape((-1, 1)), value_fixing.reshape((-1, 1))), axis=1)
-        o_file = os.path.join(output_path, "ov_ath_profile_%05d.txt" % (vtu_step))
-        with open(o_file, 'w') as fout:
-            fout.write(header)  # output header
-        with open(o_file, 'a') as fout:
-            np.savetxt(fout, outputs, fmt="%20.8e")  # output data
-        print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_file))
-    # process trench, slab depth, dip angle
-    trench, slab_depth, dip_100 = VtkP.ExportSlabInfo()
-    if project_velocity:
-        vsp_magnitude, vov_magnitude = VtkP.ExportVelocity(project_velocity=True)
-    else:
-        vsp, vov = VtkP.ExportVelocity()
-        vsp_magnitude = np.linalg.norm(vsp, 2)
-        vov_magnitude = np.linalg.norm(vov, 2)
-    # generate outputs
-    outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e"\
-    % (vtu_step, step, _time, trench, slab_depth, dip_100, vsp_magnitude, vov_magnitude)
-    if findmdd:
-        outputs += "%-14.4e %-14.4e" % (mdd1, mdd2)
-    if output_ov_ath_profile:
-        outputs += "%-14.4e %-14.4e" % (v_distant_profile[n_distant_profiel_sample-1, 0], query_viscs[n_distant_profiel_sample-1])
-    if dip_angle_depth_lookup is not None:
-        outputs += "%-14.4e" % (VtkP.GetDipAtDepth(dip_angle_depth_lookup, dip_angle_depth_lookup_interval))
-    if find_shallow_trench:
-        outputs += "%-14.4e" % (trench_shallow)
+# def SlabMorphology_dual_mdd(case_dir, vtu_snapshot, **kwargs):
+#     '''
+#     Wrapper for using PVTK class to get slab morphology, uses two distinct mdd_dx1 value
+#     to get both the partial and the final coupling point.
+#     Inputs:
+#         case_dir (str): case directory
+#         vtu_snapshot (int): index of file in vtu outputs
+#         kwargs:
+#             project_velocity - whether the velocity is projected to the tangential direction
+#     '''
+#     indent = kwargs.get("indent", 0)  # indentation for outputs
+#     findmdd = kwargs.get("findmdd", False)
+#     output_ov_ath_profile = kwargs.get("output_ov_ath_profile", False)
+#     output_path = os.path.join(case_dir, "vtk_outputs")
+#     if not os.path.isdir(output_path):
+#         os.mkdir(output_path)
+#     findmdd_tolerance = kwargs.get("findmdd_tolerance", 0.05)
+#     depth_distant_lookup = kwargs.get("depth_distant_lookup", 200e3)
+#     dip_angle_depth_lookup = kwargs.get("dip_angle_depth_lookup", None)
+#     dip_angle_depth_lookup_interval = kwargs.get("dip_angle_depth_lookup_interval", 60e3)
+#     project_velocity = kwargs.get('project_velocity', False)
+#     find_shallow_trench = kwargs.get("find_shallow_trench", False)
+#     mdd = -1.0 # an initial value
+#     print("%s%s: Start" % (indent*" ", Utilities.func_name()))
+#     output_slab = kwargs.get('output_slab', None)
+#     # todo_crust
+#     n_crust = kwargs.get("n_crust", 1)
+#     if n_crust == 1:
+#         crust_fields = ['spcrust']
+#     elif n_crust == 2:
+#         crust_fields = ['spcrust_up', 'spcrust_low']
+#     filein = os.path.join(case_dir, "output", "solution", "solution-%05d.pvtu" % vtu_snapshot)
+#     if not os.path.isfile(filein):
+#         raise FileExistsError("input file (pvtu) doesn't exist: %s" % filein)
+#     else:
+#         print("SlabMorphology_dual_mdd: processing %s" % filein)
+#     Visit_Options = VISIT_OPTIONS(case_dir)
+#     Visit_Options.Interpret()
+#     # vtk_option_path, _time, step = PrepareVTKOptions(VISIT_OPTIONS, case_dir, 'TwoDSubduction_SlabAnalysis',\
+#     # vtu_step=vtu_step, include_step_in_filename=True, generate_horiz=True)
+#     vtu_step = max(0, int(vtu_snapshot) - int(Visit_Options.options['INITIAL_ADAPTIVE_REFINEMENT']))
+#     _time, step = Visit_Options.get_time_and_step(vtu_step)
+#     geometry = Visit_Options.options['GEOMETRY']
+#     Ro =  Visit_Options.options['OUTER_RADIUS']
+#     if geometry == "chunk":
+#         Xmax = Visit_Options.options['XMAX'] * np.pi / 180.0
+#     else:
+#         Xmax = Visit_Options.options['XMAX']
+#     VtkP = VTKP(geometry=geometry, Ro=Ro, Xmax=Xmax)
+#     VtkP.ReadFile(filein)
+#     field_names = ['T', 'density', 'spharz', 'velocity', 'viscosity'] + crust_fields
+#     VtkP.ConstructPolyData(field_names, include_cell_center=True)
+#     VtkP.PrepareSlab(crust_fields + ['spharz'], prepare_slab_distant_properties=True, depth_distant_lookup=depth_distant_lookup)
+#     # todo_shallow
+#     if find_shallow_trench:
+#         if n_crust == 2:
+#             raise NotImplementedError()
+#         try:
+#             # This is not a stable algorithm yet.
+#             outputs = VtkP.PrepareSlabShallow(Visit_Options.options['THETA_REF_TRENCH'])
+#         except Exception:
+#             trench_shallow = np.finfo(np.float16).tiny
+#         else:
+#             x, y, z = outputs["corrected"]["points"]
+#             _, _, trench_shallow = Utilities.cart2sph(x, y, z)
+#     if findmdd:
+#         try:
+#             mdd1 = VtkP.FindMDD(tolerance=findmdd_tolerance, dx1=-Visit_Options.options["INITIAL_SHEAR_ZONE_THICKNESS"])
+#             mdd2 = VtkP.FindMDD(tolerance=findmdd_tolerance, dx1=10e3)
+#         except ValueError:
+#             mdd1 = - 1.0
+#             mdd2 = - 1.0
+#     # output slab profile
+#     if output_slab is not None:
+#         slab_envelop0, slab_envelop1 = VtkP.ExportSlabEnvelopCoord()
+#         slab_internal = VtkP.ExportSlabInternal(output_xy=True)
+#         if output_slab == "vtp":
+#             o_slab_env0 = os.path.join(case_dir,\
+#                 "vtk_outputs", "slab_env0_%05d.vtp" % (vtu_step)) # envelop 0
+#             o_slab_env1 = os.path.join(case_dir,\
+#                 "vtk_outputs", "slab_env1_%05d.vtp" % (vtu_step)) # envelop 1
+#             o_slab_in = os.path.join(case_dir,\
+#                 "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
+#             VtkPp.ExportPolyDataFromRaw(slab_envelop0[:, 0], slab_envelop0[:, 1], None, None, o_slab_env0) # write the polydata
+#             # np.savetxt(o_slab_env0, slab_envelop0)
+#             print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env0))
+#             VtkPp.ExportPolyDataFromRaw(slab_envelop1[:, 0], slab_envelop1[:, 1], None, None, o_slab_env1) # write the polydata
+#             print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env1))
+#             np.savetxt(o_slab_in, slab_internal)
+#             print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
+#         # todo_o_env
+#         if output_slab == "txt":
+#             o_slab_env =  os.path.join(case_dir, \
+#                 "vtk_outputs", "slab_env_%05d.txt" % (vtu_step)) # envelop 1
+#             slab_env_outputs = np.concatenate([slab_envelop0, slab_envelop1], axis=1) 
+#             slab_env_output_header = "X0 Y0 X1 Y1"
+#             np.savetxt(o_slab_env, slab_env_outputs, header=slab_env_output_header)
+#             print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_env))
+#             o_slab_in = os.path.join(case_dir,\
+#                 "vtk_outputs", "slab_internal_%05d.txt" % (vtu_step)) # envelop 1
+#             np.savetxt(o_slab_in, slab_internal)
+#             print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_slab_in))
+#     # output a profile distant to the slab
+#     n_distant_profiel_sample = 100
+#     v_distant_profile = None; query_viscs = None
+#     if output_ov_ath_profile:
+#         header = "# 1: x (m)\n# 2: y (m)\n# 3: depth (m)\n# 4: velocity_h (m/s)\n# 5: velocity_r (m/s)\n# 6: viscosity (pa*s)\n# 7: fixing (by 0.1 deg)\n"
+#         coords, depths, v_distant_profile, query_viscs, value_fixing = VtkP.ExportOvAthenProfile(depth_distant_lookup, n_sample=n_distant_profiel_sample)
+#         outputs = np.concatenate((coords, depths.reshape((-1, 1)), v_distant_profile,\
+#             query_viscs.reshape((-1, 1)), value_fixing.reshape((-1, 1))), axis=1)
+#         o_file = os.path.join(output_path, "ov_ath_profile_%05d.txt" % (vtu_step))
+#         with open(o_file, 'w') as fout:
+#             fout.write(header)  # output header
+#         with open(o_file, 'a') as fout:
+#             np.savetxt(fout, outputs, fmt="%20.8e")  # output data
+#         print("%s%s: write file %s" % (indent*" ", Utilities.func_name(), o_file))
+#     # process trench, slab depth, dip angle
+#     trench, slab_depth, dip_100 = VtkP.ExportSlabInfo()
+#     if project_velocity:
+#         vsp_magnitude, vov_magnitude = VtkP.ExportVelocity(project_velocity=True)
+#     else:
+#         vsp, vov = VtkP.ExportVelocity()
+#         vsp_magnitude = np.linalg.norm(vsp, 2)
+#         vov_magnitude = np.linalg.norm(vov, 2)
+#     # generate outputs
+#     outputs = "%-12s%-12d%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e%-14.4e"\
+#     % (vtu_step, step, _time, trench, slab_depth, dip_100, vsp_magnitude, vov_magnitude)
+#     if findmdd:
+#         outputs += "%-14.4e %-14.4e" % (mdd1, mdd2)
+#     if output_ov_ath_profile:
+#         outputs += "%-14.4e %-14.4e" % (v_distant_profile[n_distant_profiel_sample-1, 0], query_viscs[n_distant_profiel_sample-1])
+#     if dip_angle_depth_lookup is not None:
+#         outputs += "%-14.4e" % (VtkP.GetDipAtDepth(dip_angle_depth_lookup, dip_angle_depth_lookup_interval))
+#     if find_shallow_trench:
+#         outputs += "%-14.4e" % (trench_shallow)
     
-    outputs += "\n"
-    print("%s%s" % (indent*" ", outputs)) # debug
-    return vtu_step, outputs
+#     outputs += "\n"
+#     print("%s%s" % (indent*" ", outputs)) # debug
+#     return vtu_step, outputs
 
 
 def SlabAnalysis(case_dir, vtu_snapshot, o_file, **kwargs):
@@ -4928,7 +4928,7 @@ def main():
     elif _commend == 'morph_step':
         # slab_morphology, input is the case name
         SlabMorphology_dual_mdd(arg.inputs, int(arg.vtu_snapshot), rewrite=1, findmdd=True, project_velocity=True,\
-            findmdd_tolerance=arg.findmdd_tolerance, mdd_dx0=arg.mdd_dx0, mdd_dx1=arg.mdd_dx1, output_ov_ath_profile=True, output_slab='txt')
+            findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt', find_shallow_trench=True)
     # todo_env
     elif _commend == 'morph_case':
         # slab morphology for a case
