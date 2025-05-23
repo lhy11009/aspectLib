@@ -4928,7 +4928,8 @@ def main():
     elif _commend == 'morph_step':
         # slab_morphology, input is the case name
         SlabMorphology_dual_mdd(arg.inputs, int(arg.vtu_snapshot), rewrite=1, findmdd=True, project_velocity=True,\
-            findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt', find_shallow_trench=True)
+            findmdd_tolerance=arg.findmdd_tolerance, output_ov_ath_profile=True, output_slab='txt', find_shallow_trench=True,\
+                extract_depths=[0.0, 5e3, 10e3, 20e3, 40e3, 55e3, 70e3, 80e3])
     # todo_env
     elif _commend == 'morph_case':
         # slab morphology for a case
