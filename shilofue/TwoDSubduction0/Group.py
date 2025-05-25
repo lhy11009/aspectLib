@@ -25,13 +25,16 @@ import sys, os, argparse
 import shilofue.Group as GroupP
 from shilofue.Group import CreateGroup, ReadBasicInfoGroup
 from shilofue.TwoDSubduction0.Cases import CASE, CASE_OPT
-from shilofue.TwoDSubduction0.VtkPp import SLABPLOT
 from shilofue.Plot import LINEARPLOT
 from shilofue.TwoDSubduction0.PlotVisit import VISIT_OPTIONS
 import numpy as np
 # from matplotlib import cm
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
+
+HaMaGeoLibDir = "/home/lochy/ASPECT_PROJECT/HaMaGeoLib"
+if os.path.abspath(HaMaGeoLibDir) not in sys.path:
+    sys.path.append(os.path.abspath(HaMaGeoLibDir))
 
 # directory to the aspect Lab
 ASPECT_LAB_DIR = os.environ['ASPECT_LAB_DIR']
@@ -41,6 +44,9 @@ shilofue_DIR = os.path.join(ASPECT_LAB_DIR, 'shilofue')
 # import utilities in subdirectiory
 sys.path.append(os.path.join(ASPECT_LAB_DIR, 'utilities', "python_scripts"))
 import Utilities
+
+
+from hamageolib.research.haoyuan_2d_subduction.legacy_tools import SLABPLOT
 
 def Usage():
     print("\
@@ -279,6 +285,7 @@ class CASE_SUMMARY(GroupP.CASE_SUMMARY):
         Utilities.my_assert(os.path.isdir(case_dir), FileExistsError, "Directory doesn't exist %s" % case_dir)
         # use the SLABPLOT class to read the slab_morph.txt file
         # and get the t660
+        # todo_fdata
         SlabPlot = SLABPLOT('foo')
         try:
             t660 = SlabPlot.GetTimeDepthTip(case_dir, 660e3, filename="slab_morph_t1.00e+05.txt")

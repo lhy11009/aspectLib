@@ -1773,7 +1773,8 @@ class SLAB(PARAVIEW_PLOT):
             source1Display.DataAxesGrid.XLabelColor = [0.0, 0.0, 0.0]
             source1Display.DataAxesGrid.YLabelColor = [0.0, 0.0, 0.0]
             source1Display.DataAxesGrid.ZLabelColor = [0.0, 0.0, 0.0]
-    
+
+        # Plot field1 
         # Get color transfer function for field1
         field1LUT = GetColorTransferFunction(field1)
     
@@ -1886,6 +1887,40 @@ class SLAB(PARAVIEW_PLOT):
         fig_png_path = os.path.join(self.pv_output_dir, "T_wedge_bigger_t%.4e.png" % self.time)
         SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
         ExportView(fig_path, view=renderView1)
+
+        # todo_field2 
+        # Plot field2
+        # Get color transfer function for field2
+        field2LUT = GetColorTransferFunction(field2)
+    
+        # Set scalar coloring
+        ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
+        HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        source1Display.SetScalarBarVisibility(renderView1, True)
+
+        # rescale color functions 
+        field2PWF = GetOpacityTransferFunction('viscosity')
+        field2LUT.RescaleTransferFunction(ETA_MIN, ETA_MAX)
+        field2PWF.RescaleTransferFunction(ETA_MIN, ETA_MAX)
+
+        # Adjust layout and camera
+        layout1 = GetLayout()
+        layout1.SetSize(layout_resolution[0], layout_resolution[1])
+        renderView1.InteractionMode = '2D'
+    
+        if "GEOMETRY" == "chunk":
+            renderView1.CameraPosition = [camera_x, 6259332.1857954515, 25000000.0]
+            renderView1.CameraFocalPoint = [camera_x, 6259332.1857954515, 0.0]
+            renderView1.CameraParallelScale = 175692.00000000006
+        elif "GEOMETRY" == "box":
+            raise NotImplementedError()
+    
+        # Save figure
+        fig_path = os.path.join(self.pv_output_dir, "viscosity_wedge_bigger_t%.4e.pdf" % self.time)
+        fig_png_path = os.path.join(self.pv_output_dir, "viscosity_wedge_bigger_t%.4e.png" % self.time)
+        SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+        ExportView(fig_path, view=renderView1)
+    
     
         # Hide plots
         Hide(source1, renderView1)
