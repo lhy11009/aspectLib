@@ -66,7 +66,7 @@ class SLAB(PARAVIEW_PLOT):
         add_glyph1("Transform1", "velocity", 1e6, registrationName="Glyph1")
 
         # add plot of composition
-        add_plot("Transform1", "spcrust", lim=[0.0, 1.0], color="vik")
+        add_plot("Transform1", "spcrust", lim=[0.0, 1.0], color="tokyo")
 
         # add plot of deformation mechanism
         add_deformation_mechanism("Transform1", registrationName="pFilter_DM")
