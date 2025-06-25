@@ -715,7 +715,7 @@ class RHEOLOGY_PRM():
             # foh enters explicitly, converting to use Coh
             assert(_type in ['diffusion', 'dislocation'])
             ### effects of water accounted, see Magali's file explain_update_modHK03_rheology eq(5)
-            water_creep = getattr(RheologyPrm, "water")
+            water_creep = getattr(RheologPrm, "water")
             creep['A'] = creep['A'] / (water_creep['A'] ** creep['r'])
             creep['V'] = creep['V'] - water_creep['V'] * creep['r']
             creep['E'] = creep['E'] - water_creep['E'] * creep['r']

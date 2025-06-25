@@ -50,7 +50,7 @@ class SLAB(PARAVIEW_PLOT):
         self.T_min = 273.0
         self.T_max = 2273.0
         # todo_density
-        self.density_min = 3100.0
+        self.density_min = 3000.0
         self.density_max = 4000.0
         self.camera_dict['twod_upper_mantle'] = [[0.0, 6e6, 2.5e7],[0.0, 6e6, 0.0], 5.4e5, None]
         # todo_Vres
@@ -60,7 +60,11 @@ class SLAB(PARAVIEW_PLOT):
         apply_rotation("solution.pvd", [0.0, 0.0, 0.0], [0.0, 0.0, ROTATION_ANGLE], registrationName="Transform1")
         add_plot("Transform1", "viscosity", use_log=True, lim=[self.eta_min, self.eta_max], color="bilbao")
         add_plot("Transform1", "T", lim=[self.T_min, self.T_max], color="lapaz")
-        add_plot("Transform1", "density", lim=[self.density_min, self.density_max], color="Inferno (matplotlib)", invert=True)
+        add_plot("Transform1", "density", lim=[self.density_min, self.density_max], color="batlow")
+        # todo_Meta
+
+        if INCLUDE_METASTABLE:
+            add_plot("Transform1", "metastable", lim=[-1e10, 1e10], color="Viridis (matplotlib)")
 
         # add glyph
         add_glyph1("Transform1", "velocity", 1e6, registrationName="Glyph1")
@@ -306,6 +310,7 @@ class SLAB(PARAVIEW_PLOT):
         # Plot the second scalar field (viscosity) and configure settings.
         field2 = "viscosity"
         ColorBy(source1Display, ('POINTS', field2, 'Magnitude'))
+        field2LUT = GetColorTransferFunction(field2)
         source1Display.SetScalarBarVisibility(renderView1, True)
         HideScalarBarIfNotNeeded(field1LUT, renderView1)
         rescale_transfer_function_combined('viscosity', ETA_MIN, ETA_MAX)
@@ -320,8 +325,9 @@ class SLAB(PARAVIEW_PLOT):
         # Plot the third scalar field (viscosity) and configure settings.
         field3 = "density"
         ColorBy(source1Display, ('POINTS', field3, 'Magnitude'))
+        field3LUT = GetColorTransferFunction(field3)
         source1Display.SetScalarBarVisibility(renderView1, True)
-        HideScalarBarIfNotNeeded(field1LUT, renderView1)
+        HideScalarBarIfNotNeeded(field2LUT, renderView1)
         rescale_transfer_function_combined(field3, self.density_min, self.density_max)
 
         # Save the second figure (viscosity field).
@@ -329,6 +335,21 @@ class SLAB(PARAVIEW_PLOT):
         fig_png_path = os.path.join(self.pv_output_dir, "density_t%.4e.png" % self.time)
         SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
         ExportView(fig_path, view=renderView1)
+
+        # todo_Meta
+        if INCLUDE_METASTABLE:
+            field4 = "metastable"
+            ColorBy(source1Display, ('POINTS', field4, 'Magnitude'))
+            field4LUT = GetColorTransferFunction(field4)
+            source1Display.SetScalarBarVisibility(renderView1, True)
+            HideScalarBarIfNotNeeded(field3LUT, renderView1)
+            rescale_transfer_function_combined(field4, -1e10, 1e10)
+
+            # Save the second figure (viscosity field).
+            fig_path = os.path.join(self.pv_output_dir, "metastable_t%.4e.pdf" % self.time)
+            fig_png_path = os.path.join(self.pv_output_dir, "metastable_t%.4e.png" % self.time)
+            SaveScreenshot(fig_png_path, renderView1, ImageResolution=layout_resolution)
+            ExportView(fig_path, view=renderView1)
 
 
         # Hide all the plots and scalar bars to clean up.
@@ -2016,7 +2037,7 @@ def add_glyph1(_source, field, scale_factor, **kwargs):
     fieldPWF = GetOpacityTransferFunction(field)
 
     # set scalar coloring
-    ColorBy(glyph1Display, None)
+    # ColorBy(glyph1Display, None) # this doesn't work anymore
     glyph1Display.AmbientColor = [1.0, 1.0, 1.0]
     glyph1Display.DiffuseColor = [1.0, 1.0, 1.0]
 

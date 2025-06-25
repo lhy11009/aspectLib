@@ -86,7 +86,6 @@ Examples of usage: \n\
     Lib_TwoDSubduction0_PlotCase plot_case_composite -i /mnt/lochy0/ASPECT_DATA/TwoDSubduction/EBA_CDPT4/eba_cdpt_SA80.0_OA40.0_CpEcl \n\
         ")
 
-# todo_cv
 def PlotCaseRun(case_path, **kwargs):
     '''
     Plot case run result
@@ -109,6 +108,7 @@ def PlotCaseRun(case_path, **kwargs):
     max_velocity = kwargs.get('max_velocity', -1.0)
     plot_types = kwargs.get("plot_types", ["upper_mantle"])
     rotation_plus = kwargs.get("rotation_plus", 0.0)
+    # todo_velo
     assert(visualization in ["paraview", "visit", "pygmt"])
     print("PlotCaseRun in TwoDSubduction0: operating")
     # get case parameters

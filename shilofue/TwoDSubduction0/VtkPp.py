@@ -4974,7 +4974,7 @@ but will not generarte that file. Make sure all these files are updated, proceed
         PlotSlabTemperature(arg.inputs, int(arg.vtu_snapshot))
     elif _commend == "slab_temperature_case":
         # todo_T
-        SlabTemperatureCase(arg.inputs, rewrite=1, time_interval=arg.time_interval, offsets=[-5e3, -10e3], run_parallel=arg.run_parallel)
+        SlabTemperatureCase(arg.inputs, time_interval=arg.time_interval, run_parallel=arg.run_parallel)
     elif _commend == "mantle_wedge_T_case":
         WedgeTCase(arg.inputs, time_interval=arg.time_interval)
     elif _commend == "plot_slab_temperature_case":

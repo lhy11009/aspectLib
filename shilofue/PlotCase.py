@@ -228,7 +228,7 @@ def PlotCaseRun(case_path, **kwargs):
     if match_obj or match_obj1:
         print("Plotting newton solver history")
         log_path = os.path.join(RESULT_DIR, 'run_time_output_newton')
-        PlotNewtonSolverHistory(log_path, fig_path, step_range=step_range)
+        # PlotNewtonSolverHistory(log_path, fig_path, step_range=step_range)
     else:
         print("Skipping newton solver history")
     return 0

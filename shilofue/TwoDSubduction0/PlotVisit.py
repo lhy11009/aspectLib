@@ -252,6 +252,7 @@ class VISIT_OPTIONS(PlotVisit.VISIT_OPTIONS):
         else:
             raise ValueError("Value of geometry must be either \"chunk\" or \"box\"")
         self.options['THETA_REF_TRENCH'] = theta_ref_trench
+        # todo_velo
 
     def vtk_options(self, **kwargs):
         '''
