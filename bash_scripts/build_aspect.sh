@@ -272,7 +272,7 @@ main(){
         ##
     	[[ -n "$2" ]] || cecho $BAD "\$2 must be a name of folder"
 	do_configure="$3"
-        build_aspect_project "$2" "debug" "${do_configure}"
+        build_aspect_project "$2" "debug" "${do_configure}" "$4"
     elif [[ "${command}" = "all_plugins" ]]; then
         ##
         # Build all the plugins separately
